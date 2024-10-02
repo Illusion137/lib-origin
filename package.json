@@ -1,0 +1,38 @@
+{
+    "scripts": {
+        "test": "jest"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.25.2",
+        "@babel/preset-env": "^7.25.4",
+        "@babel/preset-typescript": "^7.24.7",
+        "@jest/globals": "^29.7.0",
+        "@types/jest": "^29.5.13",
+        "babel-jest": "^29.7.0",
+        "jest": "^29.7.0",
+        "jest-transform-stub": "^2.0.0"
+    },
+    "dependencies": {
+        "@react-native-async-storage/async-storage": "^2.0.0",
+        "@react-native-community/cookies": "^5.0.1",
+        "@types/deasync": "^0.1.5",
+        "@types/uuid": "^10.0.0",
+        "chrome-cookie": "^1.0.6",
+        "chrome-cookies-secure": "^2.1.1",
+        "deasync": "^0.1.30",
+        "dotenv": "^16.4.5",
+        "expo-av": "^14.0.7",
+        "expo-file-system": "^17.0.1",
+        "expo-haptics": "^13.0.1",
+        "expo-sqlite": "^14.0.6",
+        "node-sync": "^0.5.6",
+        "react": "^18.3.1",
+        "react-native": "^0.75.3",
+        "react-native-document-picker": "^9.3.1",
+        "react-native-ffmpeg": "^0.5.2",
+        "react-native-track-player": "^4.1.1",
+        "sha1-uint8array": "^0.10.7",
+        "uuid": "^10.0.0",
+        "vm-browserify": "^1.1.2"
+    }
+}

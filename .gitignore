@@ -1,0 +1,5 @@
+.env
+admin/**
+node_modules
+scratch
+scratch.**
