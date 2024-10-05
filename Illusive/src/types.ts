@@ -8,7 +8,7 @@ export interface ImageArtwork {
     cache: ArtworkCacheType
 }
 export type Artwork = ImageArtwork | number
-export type Promises = Promise<any>[]
+export type Promises = Promise<unknown>[]
 
 export type Route<T> = {"key": string, "name": string, "params": T, path: string};
 type T = Route<string>
@@ -36,6 +36,12 @@ export type Runs = {text: string, navigationEndpoint: any}[];
 
 export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T00:00:00.000Z`;
+
+export interface AlphabetScroll {
+    all_alphabet_fast_scroll_locations: number[],
+    current_position: number,
+    top_scroll: number
+}
 
 export interface DefaultPlaylist {
     name: string

@@ -6,11 +6,11 @@ export function generate_new_uid(prefix_name: string) {
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
-export function encode_params(data: Record<string, any>){
+export function encode_params(data: Record<string, unknown>){
 	const encoded_params: string[] = [];
 	for(const key of Object.keys(data)){
 		const param = data[key];
-		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : param )}`);
+		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : <string|number|boolean>param )}`);
 	}
 	return encoded_params.join('&');
 }
@@ -49,7 +49,7 @@ export function url_to_id(url: string, ...remove_links: string[]){
 }
 export function make_topic(title: string){ return `${title} - Topic`; }
 export function remove_topic(title: string){ return title.replace(" - Topic", ''); }
-export function is_empty(value: any){ return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0); }
+export function is_empty(value: unknown){ return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0); }
 export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 export function remove(str: string, r: string) { return str.replace(r, ''); }

@@ -6,7 +6,7 @@ import { Prefs } from './prefs';
 import { CompactPlaylist, CompactPlaylistsResult } from './types';
 
 export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResult> {
-    const cookie_jar: CookieJar = Prefs.get_pref('spotify_cookie_jar');
+    const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     const user_playlists_response = await Origin.Spotify.account_playlists({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     return {
@@ -25,7 +25,7 @@ export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResu
 }
 
 export async function amazon_music_get_user_playlists(): Promise<CompactPlaylistsResult> {
-    const cookie_jar: CookieJar = Prefs.get_pref('amazon_music_cookie_jar');
+    const cookie_jar = Prefs.get_pref('amazon_music_cookie_jar');
     const user_playlists_response = await Origin.AmazonMusic.account_playlists({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     return {
@@ -40,7 +40,7 @@ export async function amazon_music_get_user_playlists(): Promise<CompactPlaylist
 }
 
 export async function youtube_get_user_playlists(): Promise<CompactPlaylistsResult>{
-    const cookie_jar: CookieJar = Prefs.get_pref('youtube_cookie_jar');
+    const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
     const user_playlists_response = await Origin.YouTube.get_library({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     return {
@@ -55,7 +55,7 @@ export async function youtube_get_user_playlists(): Promise<CompactPlaylistsResu
 }
 
 export async function youtube_music_get_user_playlists(): Promise<CompactPlaylistsResult>{
-    const cookie_jar: CookieJar = Prefs.get_pref('youtube_music_cookie_jar');
+    const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
     const user_playlists_response = await Origin.YouTubeMusic.get_library({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     return {
@@ -70,7 +70,7 @@ export async function youtube_music_get_user_playlists(): Promise<CompactPlaylis
 }
 
 export async function apple_music_get_user_playlists(): Promise<CompactPlaylistsResult>{
-    const cookie_jar: CookieJar = Prefs.get_pref('apple_music_cookie_jar');
+    const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
     const user_playlists_response = await Origin.AppleMusic.account_playlists({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     return {
@@ -85,7 +85,7 @@ export async function apple_music_get_user_playlists(): Promise<CompactPlaylists
 }
 
 export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsResult>{
-    const cookie_jar: CookieJar = Prefs.get_pref('soundcloud_cookie_jar');
+    const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     const user_playlists_response = await Origin.SoundCloud.get_all_user_playlists({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     return {

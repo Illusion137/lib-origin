@@ -228,8 +228,8 @@ export const addFormatMeta = (format: AVFormat) => {
     format = Object.assign({}, FORMATS[format.itag], format);
     format.hasVideo = !!format.qualityLabel;
     format.hasAudio = !!format.audioBitrate;
-    format.container = (format.mimeType ?
-        (format.mimeType.split(';')[0].split('/')[1] as any) : null);
+    format.container = format.mimeType !== undefined ?
+        <typeof format.container>format.mimeType.split(';')[0].split('/')[1] : <typeof format.container><unknown>null;
     format.codecs = (format.mimeType ?
         utils.between(format.mimeType, 'codecs="', '"') : null) as string;
     format.videoCodec = format.hasVideo && format.codecs ?

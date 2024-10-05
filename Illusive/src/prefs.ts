@@ -19,39 +19,40 @@ export namespace Prefs {
         "spotify_cookie_jar":                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         "amazon_music_cookie_jar":               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         "apple_music_cookie_jar":                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        
-        "default_playlist_max_size":             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true} as Pref<number>,
-        "recently_played_max_size":              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true} as Pref<number>,
-        "download_queue_max_length":             {default_value: 5, current_value: 5, type: "NUMBER", show_in_settings: true} as Pref<number>,
-        "recent_search_limit":                   {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true} as Pref<number>,
-        "soundcloud_playlist_limit":             {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true} as Pref<number>,
-        "spotify_playlist_limit":                {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true} as Pref<number>,
-        "edit_mode_disables_playing":            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "show_track_duration":                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "auto_cache_thumbnails":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true} as Pref<boolean>,
-        "use_cookies_on_download":               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true} as Pref<boolean>,
-        "only_play_downloaded":                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true} as Pref<boolean>,
-        "always_shuffle":                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true} as Pref<boolean> ,
-        "get_account_playlists_in_get_playlist": {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true} as Pref<boolean>,
-        "simple_tags":                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true} as Pref<boolean>,
-        "hide_errors":                           {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true} as Pref<boolean>,
-        "keep_prefs":                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "dev_mode":                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "recent_searches":                       {default_value: [], current_value: [], type: "STRING_ARRAY"} as Pref<string[]>,
+
+        "default_playlist_max_size":             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true}       as Pref<number>,
+        "recently_played_max_size":              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true}       as Pref<number>,
+        "download_queue_max_length":             {default_value: 5, current_value: 5, type: "NUMBER", show_in_settings: true}           as Pref<number>,
+        "recent_search_limit":                   {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true}         as Pref<number>,
+        "soundcloud_playlist_limit":             {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true}         as Pref<number>,
+        "spotify_playlist_limit":                {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true}       as Pref<number>,
+        "edit_mode_disables_playing":            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
+        "full_queue_disables_playing":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "show_track_duration":                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
+        "auto_cache_thumbnails":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "use_cookies_on_download":               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "only_play_downloaded":                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "always_shuffle":                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean> ,
+        "get_account_playlists_in_get_playlist": {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "simple_tags":                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "hide_errors":                           {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
+        "keep_prefs":                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
+        "dev_mode":                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
     }
 
     export async function load_legacy_prefs(legacy_prefs: typeof LegacyPrefs.prefs){
         await Promise.all([
-            save_pref("youtube_cookie_jar", legacy_prefs.external_services.youtube_cookies),
-            save_pref("youtube_music_cookie_jar", legacy_prefs.external_services.youtube_music_cookies),
-            save_pref("spotify_cookie_jar", legacy_prefs.external_services.spotify_cookies),
-            save_pref("amazon_music_cookie_jar", legacy_prefs.external_services.amazon_music_cookies),
+            save_pref("youtube_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.youtube_cookies)),
+            save_pref("youtube_music_cookie_jar", CookieJar.fromString(legacy_prefs.external_services.youtube_music_cookies)),
+            save_pref("spotify_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.spotify_cookies)),
+            save_pref("amazon_music_cookie_jar",  CookieJar.fromString(legacy_prefs.external_services.amazon_music_cookies)),
         ]);
         await LegacyPrefs.clear_prefs();
     }
     
     export type PrefOptions = keyof typeof prefs;
-    export function get_pref(pref_key: PrefOptions): any { return prefs[pref_key].current_value; }
+    export function get_pref<T extends PrefOptions>(pref_key: T): (typeof prefs)[T]['default_value'] { return prefs[pref_key].current_value; }
 
     export async function load_prefs(){
         const keys: (keyof typeof prefs)[] = Object.keys(prefs) as (keyof typeof prefs)[];
@@ -68,13 +69,13 @@ export namespace Prefs {
         }
     }
     
-    export async function save_pref(pref: PrefOptions, value: any) {
+    export async function save_pref<T extends PrefOptions>(pref: T, value: (typeof prefs)[T]['default_value']) {
         switch(prefs[pref].type){
             case "BOOLEAN":      await AsyncStorage.setItem(pref, String(value as boolean)); break;
             case "NUMBER":       await AsyncStorage.setItem(pref, String(value as number)); break;
             case "COOKIE_JAR":   await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
             case "STRING_ARRAY": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            // case "DATE":       await AsyncStorage.setItem(pref, (value as Date).toDateString()); break;
+            // case "DATE":         await AsyncStorage.setItem(pref, (value).toDateString()); break;
         }
         await load_prefs();
     }

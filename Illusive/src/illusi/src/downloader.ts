@@ -9,11 +9,11 @@ import { Illusive } from '../../illusive';
 import { Alert } from 'react-native';
 
 function wait_for(condition_function: () => boolean) {
-    const poll = (resolve: any) => {
+    const poll = (resolve: ()=>void) => {
         if (condition_function()) resolve();
-        else setTimeout((_: any) => poll(resolve), 400);
+        else setTimeout((_: never) => poll(resolve), 400);
     }
-    return new Promise(poll);
+    return new Promise(<never>poll);
 }
 export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     function in_download_range(uid: string, download_queue_max_length: number) {
@@ -24,7 +24,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     }
 
     GLOBALS.downloading.push({ 'uid': track.uid, 'progress': 0, 'progress_updater': progress_updater, 'execution_id': 0, 'duration': track.duration });
-    const download_queue_max_length: number = Prefs.get_pref('download_queue_max_length');
+    const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
             const download_uri = await Illusive.get_download_url(SQLActions.document_directory(""), track);

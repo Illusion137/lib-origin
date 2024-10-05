@@ -4,7 +4,7 @@ import { IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType,
 
 export function extract_file_extension(path: string){ return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string){ return playlist_name.replace(/\s/g, '_'); }
-export function shuffle_array(array: any[]) {
+export function shuffle_array<T>(array: T[]) {
     var m = array.length, t, i;
     while (m) {
         i = Math.floor(Math.random() * m--);

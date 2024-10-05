@@ -24,9 +24,9 @@ export namespace ExampleObj {
         "thumbnail_uri": "",
         "media_uri": "",
         "lyrics_uri": "",
-        "meta": {} as any,
-        "playback": undefined as any,
-        "downloading_data": undefined as any,
+        "meta": <never>{},
+        "playback": undefined,
+        "downloading_data": undefined,
     }
     export const playlist_example0: Playlist = 
     {
