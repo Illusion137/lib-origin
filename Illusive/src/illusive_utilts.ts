@@ -1,4 +1,4 @@
-import { is_empty, make_topic, remove_special_chars } from "../../origin/src/utils/util";
+import { is_empty, make_topic, remove, remove_special_chars } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, MusicServiceURIPath, NamedUUID, ParsedUri, Playlist, Track } from "./types";
 
@@ -19,12 +19,12 @@ export function duration_to_string(track_duration: number): {left: number, durat
         const hours = Math.floor(track_duration / 3600);
         const minutes = Math.floor(track_duration % 3600 / 60);
         const seconds = Math.floor(track_duration % 3600 % 60);
-        return {"left": 33, "duration": `${String(hours)}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`};
+        return {"left": 40, "duration": `${String(hours)}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`};
     } 
     else if(track_duration / 60 >= 1){
         const minutes = Math.floor(track_duration / 60);
         const seconds = Math.floor(track_duration % 60);
-        return {"left": 46, "duration": `${String(minutes)}:${String(seconds).padStart(2,'0')}`}
+        return {"left": 50, "duration": `${String(minutes)}:${String(seconds).padStart(2,'0')}`}
     }
     else return {'left': 58, 'duration': String(track_duration).padStart(2,'0')};
 }
@@ -81,11 +81,18 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
     return {"char_data": section_chars, "section_map": [...sections]};
 }
 export function track_query_filter(tracks: Track[], query?: string){
-    if(!is_empty(query))
+    if(!is_empty(query)){
+        const jp_flag = query!.includes("@jp");
+        const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
+
+        query = remove(query!, "@jp");
+        
         return tracks.filter(track => (
             track.artists[0].name.toUpperCase().includes(query!.toUpperCase()) 
-                || remove_special_chars(track.title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase())
+                || remove_special_chars(track.title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase()) 
+                || (jp_flag && (jp_regex.test(track.title)||jp_regex.test(track.artists[0].name))) 
             ))
+    }
     return tracks;
 }
 export function playlist_query_filter(playlists: Playlist[], query?: string){

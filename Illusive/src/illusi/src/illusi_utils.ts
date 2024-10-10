@@ -3,12 +3,22 @@ import * as Sharing from 'expo-sharing';
 import { Alert, GestureResponderEvent } from "react-native";
 import { AlphabetScroll, Track } from '../../types';
 import BigList from 'react-native-big-list';
+import { alert_error } from './alert';
 
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void){
     Alert.alert(title, msg, [
         {"text": "Cancel", "onPress": () => {}},
         {"text": "OK", "onPress": on_press }
     ])
+}
+
+export function catch_function_sync(func: () => any){
+    try { func(); } 
+    catch (error) { alert_error({"error": String(error)}); return {"error": String(error)}; }
+}
+export async function catch_function_async(func: () => Promise<any>){
+    try { await func(); } 
+    catch (error) { alert_error({"error": String(error)}); return {"error": String(error)}; }
 }
 
 export function closest_to(target: number, array: number[]){
@@ -24,7 +34,7 @@ function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: st
     }
 }
 
-export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_data: string[], biglist_ref: React.MutableRefObject<BigList<any> | undefined>, event: GestureResponderEvent) {
+export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_data: string[], biglist_ref: React.MutableRefObject<BigList<any>|undefined>, event: GestureResponderEvent) {
     if(char_data.length === 0) return;
     if(!(char_data.length === alphabet_scroll.all_alphabet_fast_scroll_locations.length))
         populate_alphabet_scroll(alphabet_scroll, char_data);
@@ -32,7 +42,7 @@ export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_
     const closest = closest_to(target, alphabet_scroll.all_alphabet_fast_scroll_locations);
     if(alphabet_scroll.current_position == closest) return;
     alphabet_scroll.current_position = closest;
-    biglist_ref?.current?.scrollToLocation({ animated: false, index: 0, section: alphabet_scroll.all_alphabet_fast_scroll_locations.indexOf(closest) }); 
+    (biglist_ref?.current?.scrollToLocation as any)({ animated: false, itemIndex: 0, sectionIndex: alphabet_scroll.all_alphabet_fast_scroll_locations.indexOf(closest) }); 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 

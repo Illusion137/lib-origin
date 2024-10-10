@@ -1,25 +1,26 @@
 import * as Origin from '../../origin/src/index'
-import { CookieJar } from '../../origin/src/utils/cookie_util';
 import { extract_string_from_pattern, is_empty, url_to_id } from '../../origin/src/utils/util';
+import { Constants } from './constants';
 import { Prefs } from './prefs';
 import { Track } from './types';
 
-export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string | "LIBRARY") {
+type LibraryWritePlaylist = typeof Constants.library_write_playlist;
+export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string | LibraryWritePlaylist) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.spotify_id));
     const uris = tracks.map(track => track.spotify_id) as string[];
     let add_response;
-    if(playlist_uri == "LIBRARY") add_response = await Origin.Spotify.add_tracks_to_library({"cookie_jar": cookie_jar, "uris": uris});
+    if(playlist_uri === "LIBRARY") add_response = await Origin.Spotify.add_tracks_to_library({"cookie_jar": cookie_jar, "uris": uris});
     else                          add_response = await Origin.Spotify.add_tracks_to_playlist({"cookie_jar": cookie_jar,"playlist_uri": playlist_uri, "uris": uris});
     if("error" in add_response) return false;
     return add_response.ok;
 }
-export async function spotify_delete_tracks_from_playlist(tracks: Track[], playlist_uri: string | "LIBRARY") {
+export async function spotify_delete_tracks_from_playlist(tracks: Track[], playlist_uri: string | LibraryWritePlaylist) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.spotify_id));
     const uris = tracks.map(track => track.spotify_id) as string[];
     let deletion_response;
-    if(playlist_uri == "LIBRARY") deletion_response = await Origin.Spotify.delete_tracks_from_library({"cookie_jar": cookie_jar, "uris": uris});
+    if(playlist_uri === "LIBRARY") deletion_response = await Origin.Spotify.delete_tracks_from_library({"cookie_jar": cookie_jar, "uris": uris});
     else                          deletion_response = await Origin.Spotify.delete_tracks_from_playlist({"cookie_jar": cookie_jar, "playlist_uri": playlist_uri, "uids": uris});
     if("error" in deletion_response) return false;
     return deletion_response.ok;

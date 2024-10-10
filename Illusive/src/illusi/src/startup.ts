@@ -4,12 +4,12 @@ import * as ffmpeg from 'react-native-ffmpeg';
 import * as LegacyPrefs from './legacy/1307/legacy_prefs';
 import { Prefs } from '../../prefs';
 import { download_track } from './downloader'
-import { Promises, Track } from '../../types';
+import { Track } from '../../types';
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
-import { Alert } from 'react-native';
+import { catch_function_async } from './illusi_utils';
 
 export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void) {
-    try {
+    await catch_function_async(async() => {
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         ffmpeg.RNFFmpegConfig.setLogLevel(ffmpeg.LogLevel.AV_LOG_QUIET);
@@ -23,6 +23,7 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             }
         };
         ffmpeg.RNFFmpegConfig.enableStatisticsCallback(statistics_callback);
+        
         await SQLActions.recreate_all_tables();
 
         const legacy_prefs = LegacyPrefs.get_legacy_prefs();
@@ -34,5 +35,5 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             SQLActions.cleanup_recently_played(),
             activateKeepAwakeAsync()
         ]);
-    } catch (error) { Alert.alert("Error", String(error)); }
+    })
 }

@@ -6,6 +6,8 @@ import { is_empty } from "../../../../origin/src/utils/util";
 import { Prefs } from "../../prefs";
 import { Illusive } from "../../illusive";
 import TrackPlayer from "react-native-track-player";
+import { alert_error } from "./alert";
+import { Constants } from "../../constants";
 
 export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string){
     if(tracks.length === 0) return [];
@@ -23,11 +25,11 @@ export function filter_play_tracks(start_track: Track, tracks: Track[], playlist
         return [];
     }
 }
-export async function play_shuffle(){
+export async function play_shuffle(tracks: Track[], from: string){
     await SQLActions.fetch_track_data();
-    const tracks = Illusive.shuffle_tracks("SHUFFLE", [...GLOBALS.global_var.sql_tracks]);
-    if (tracks.length == 0){ return; }
-    GLOBALS.global_var.play_tracks(tracks[0], tracks, 'My Library');
+    const shuffled_tracks = Illusive.shuffle_tracks("SHUFFLE", [...tracks]);
+    if (shuffled_tracks.length == 0){ return; }
+    GLOBALS.global_var.play_tracks(shuffled_tracks[0], shuffled_tracks, from);
 }
 export async function push_track_to_playing_queue(track_data: Track){
     if(GLOBALS.global_var.is_playing){
@@ -40,20 +42,17 @@ export async function push_track_to_playing_queue(track_data: Track){
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 }
-async function play_mix(track_data: Track, from: string){
+export async function play_mix(track_data: Track, from: string){
     if(is_empty(from)) return;
         GLOBALS.global_var.play_tracks(track_data, [track_data], from);
     const track_mix = await Illusive.get_track_mix(track_data);
     if("error" in track_mix) {
-        Prefs.get_pref('hide_errors')
+        alert_error(track_mix);
         return track_mix;
     }
     GLOBALS.global_var.playing_tracks = GLOBALS.global_var.playing_tracks.concat(track_mix.tracks);
 }
-async function play() {
-    if(props.from === undefined) { Alert.alert("Play Tracks Error", "Track props.from is undefined"); return; }
-    if(GLOBALS.global_var.play_tracks === undefined) return;
-    if(props.from === "Illusi Mix") { await play_mix(); return; }
-    if(props.track_callback === undefined) return;
-    GLOBALS.global_var.play_tracks(props.track_data, props.track_callback(), props.from);
+export async function play(track_data: Track, from: string, track_callback: () => Track[]) {
+    if(from === Constants.illusi_mix_from) await play_mix(track_data, from);
+    else GLOBALS.global_var.play_tracks(track_data, track_callback(), from);
 }

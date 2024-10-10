@@ -5,7 +5,7 @@ import { Audio } from 'expo-av';
 import { generate_new_uid } from '../../../../origin/src/utils/util';
 import { Alert } from 'react-native';
 import { extract_file_extension, path_to_directory } from '../../illusive_utilts';
-import { Playlist } from '../..//types';
+import { Playlist, Track } from '../..//types';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)){} // User cancelled the picker, exit any dialogs or menus and move on
@@ -28,6 +28,10 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: ()
     } catch (error) { handle_document_picker_error(error); }
 }
 
+export async function upload_track_thumbnail(track: Track, callback: () => Promise<void>){
+
+}
+
 export async function upload_music_files(callback: () => Promise<void>) {
     try {
         const audio_files = await DocumentPicker.pick({type: [DocumentPicker.types.audio, DocumentPicker.types.video], copyTo: 'documentDirectory'});
@@ -48,7 +52,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 const new_file_uri = encodeURI(uid + file_extension);
                 const new_file_uri_full_path = SQLActions.document_directory(new_file_uri);
                 const directory = path_to_directory(audio_file.fileCopyUri);
-                await FileSystem.moveAsync({from: audio_file.fileCopyUri, to: new_file_uri_full_path})
+                await FileSystem.moveAsync({from: audio_file.fileCopyUri, to: new_file_uri_full_path});
 
                 const sound_temp = new Audio.Sound();
                 await sound_temp.loadAsync({uri: new_file_uri_full_path});

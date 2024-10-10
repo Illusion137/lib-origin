@@ -7,6 +7,7 @@ import { Track, SetState, DownloadTrackResult } from "../../types";
 import { Prefs } from '../../prefs';
 import { Illusive } from '../../illusive';
 import { Alert } from 'react-native';
+import { alert_error } from './alert';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -45,7 +46,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             if("url" in download_uri && download_uri.url.includes("file://")) {
                 const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                 GLOBALS.downloading.splice(item_index, 1);
-                return;
+                return "ERROR";
             }
             try {
                 if (start_download !== undefined) start_download(true);
@@ -74,12 +75,9 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                         if (set_finished_downloaded !== undefined) set_finished_downloaded(true);
                     } catch (error) {
                         if (start_download !== undefined) start_download(false);
-                        Alert.alert("Downloading Error", "Failed To Download: " + JSON.stringify(track) + ":\n" + error);
+                        alert_error({"error": "Failed To Download: " + JSON.stringify(track) + ":\n" + error});
                         const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                         GLOBALS.downloading.splice(item_index, 1)
-                        if (GLOBALS.downloading.length === 0) {
-                            Alert.alert("Finished Download Playlist")
-                        }
                     }
                 }).then(execution_id => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
@@ -89,11 +87,9 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             } catch (e) {
                 if (start_download != undefined)
                     start_download(false)
-                Alert.alert("Downloading Error", "Failed To Download: " + JSON.stringify(track) + ":\n" + e);
+                alert_error({"error": "Failed To Download: " + JSON.stringify(track) + ":\n" + e});
                 const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                 GLOBALS.downloading.splice(item_index, 1);
-                if (GLOBALS.downloading.length === 0)
-                    Alert.alert("Finished Download Playlist");
             }
             return "GOOD";
         });

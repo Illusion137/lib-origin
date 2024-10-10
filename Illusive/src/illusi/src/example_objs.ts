@@ -7,6 +7,9 @@ export namespace ExampleObj {
         "title": "",
         "artists": [],
         "duration": 0,
+        "prods": [],
+        "genre": "",
+        "tags": [],
         "explicit": "NONE",
         "unreleased": false,
         "album": {"name": "", "uri": null},
@@ -28,23 +31,24 @@ export namespace ExampleObj {
         "playback": undefined,
         "downloading_data": undefined,
     }
+
     export const playlist_example0: Playlist = 
     {
         "uuid": "",
         "title": "",
         "description": "",
-        "inherited_playlists": [],
-        "linked_playlists": [],
         "pinned": false,
+        "thumbnail_uri": "",
         "public": false,
         "public_uuid": "",
         "sort": "NEWEST",
-        "thumbnail_uri": "",
-        "visual_data": {},
+        "inherited_playlists": [],
+        "linked_playlists": [],
+        "visual_data": <never>undefined,
         "date": new Date(),
     }
     export const playlists_tracks_example0: PlaylistsTracks = {
-        "uid": "",
+        "uuid": "",
         "track_uid": ""
     }
 }

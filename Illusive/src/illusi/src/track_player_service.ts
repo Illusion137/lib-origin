@@ -3,7 +3,6 @@ import TrackPlayer, {
     Capability,
     RepeatMode,
     Event,
-    TrackMetadataBase,
     AddTrack,
     PitchAlgorithm,
     TrackType
@@ -132,7 +131,6 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (data) => {
 
     });
-    // TODO: Change to reflect depracation
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             updated_metadata_mutex = false;

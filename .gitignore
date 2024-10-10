@@ -1,5 +1,6 @@
 .env
 admin/**
+bin/**
 node_modules
 scratch
 scratch.**

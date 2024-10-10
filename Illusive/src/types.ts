@@ -3,6 +3,7 @@ import { ResponseError } from "../../origin/src/utils/types"
 
 type ArtworkCacheType = 'force-cache';
 
+export type SQLTables = "tracks" | "recently_played_tracks" | "backpack" | "playlists" | "playlists_tracks";
 export interface ImageArtwork {
     uri: string
     cache: ArtworkCacheType
@@ -14,9 +15,9 @@ export type Route<T> = {"key": string, "name": string, "params": T, path: string
 type T = Route<string>
 
 export type SQLType = "INTEGER" | "STRING" | "BOOLEAN";
-export type SQLAlter = {"table": string, "action": "DROP",   'column_name': string} | 
-                       {"table": string, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
-                       {"table": string, "action": "ADD",    'column_name': string, 'type': SQLType}
+export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
+                       {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
+                       {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
 
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
@@ -34,14 +35,29 @@ export interface SQLTable {
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
 
+
+export type HexColor = `#${string}`;
 export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T00:00:00.000Z`;
+export type Primitives = string|boolean|number;
 
 export interface AlphabetScroll {
     all_alphabet_fast_scroll_locations: number[],
     current_position: number,
     top_scroll: number
 }
+
+interface Basic_LinkerLink<T extends MusicServiceType, F extends MusicServiceType> {
+    from_playlist_url: F extends "Illusi" ? never : string
+    from_depth: F extends "Illusi" ? never : string
+    from_service: F
+    to_service: T
+    mode: "LIBRARY" | "PLAYLIST"
+}
+type LinkerLink_ToIllusi = Basic_LinkerLink<"Illusi", MusicServiceType>;
+type LinkerLink_FromIllusi = Basic_LinkerLink<MusicServiceType, "Illusi">;
+
+export type LinkerLink = LinkerLink_ToIllusi | LinkerLink_FromIllusi;
 
 export interface DefaultPlaylist {
     name: string
@@ -112,6 +128,8 @@ export interface TrackMetaData {
     last_played_date: Date
     downloaded_date?: Date
 }
+//Regex
+//\s+.+?: (.+?)\n
 interface Basic_Track<T, U, V, W, X> {
     uid: string
     title: string
@@ -141,6 +159,8 @@ interface Basic_Track<T, U, V, W, X> {
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
 }
+export type SQLTrackArray = [ string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
+
 export type SQLTrack = Basic_Track<string, string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[], string[]>
 
@@ -157,17 +177,19 @@ interface PlaylistVisualData {
 interface Basic_Playlist<T, U, V, X> {
     uuid: string
     title: string
-    description: string
-    pinned: boolean
-    thumbnail_uri: string
-    sort: SortType
-    public: boolean
-    public_uuid: string
-    inherited_playlists: T
-    linked_playlists: U
-    visual_data: V
-    date: X
+    description?: string
+    pinned?: boolean
+    thumbnail_uri?: string
+    sort?: SortType
+    public?: boolean
+    public_uuid?: string
+    inherited_playlists?: T
+    linked_playlists?: U
+    visual_data?: V
+    date?: X
 }
+export type SQLPlaylistArray = [ string, string, string, boolean, string, SortType, boolean, string, string, string, string ];
+
 export type SQLPlaylist = Basic_Playlist<string, string, string, string>
 export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], PlaylistVisualData, Date>
 
@@ -179,7 +201,7 @@ export interface CompactPlaylistData {
 }
 
 export interface PlaylistsTracks {
-    uid: string
+    uuid: string
     track_uid: string
 }
 
@@ -286,6 +308,15 @@ export class MusicService {
             map.set(playlist.title.name, service_domain_map[service] + endpoint);   
         }
         return {"map": map};
+    }
+    async get_rest_of_playlist(continuation_data: any){
+
+    }
+    async get_full_playlist(url: string){
+        const initial = await this.get_playlist(url);
+        if("error" in initial) return initial.error;
+        // while()
+        initial.tracks = initial.tracks.concat()
     }
     constructor(s: {
         app_icon: string | number,

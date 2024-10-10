@@ -1,5 +1,4 @@
 import * as Origin from '../../origin/src/index'
-import { CookieJar } from '../../origin/src/utils/cookie_util';
 import { extract_string_from_pattern, url_to_id } from '../../origin/src/utils/util';
 import { Prefs } from './prefs';
 

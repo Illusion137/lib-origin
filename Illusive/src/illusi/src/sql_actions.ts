@@ -4,7 +4,7 @@ import * as GLOBALS from './globals';
 import * as LegacyTypes1307 from './legacy/1307/legacy_types';
 import CookieManager from '@react-native-community/cookies';
 import { Illusive } from '../../illusive';
-import { Playlist, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track, TrackMetaData } from '../../types';
+import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLPlaylistArray, SQLTable, SQLTables, SQLTrack, SQLTrackArray, SQLType, Track, TrackMetaData } from '../../types';
 import { array_exclude, array_include, array_mask, extract_file_extension, playlist_name_sql_friendly } from '../../illusive_utilts';
 import { generate_new_uid, is_empty } from '../../../../origin/src/utils/util';
 import { Alert } from 'react-native';
@@ -12,7 +12,8 @@ import { Prefs } from '../../prefs';
 import { ExampleObj } from './example_objs';
 import path from 'path';
 import { parse_youtube_title_artist } from '../../track_parser';
-import * as UUID from 'uuid';
+import * as uuid from "react-native-uuid";
+import { obj_to_sql_table, obj_to_update_sql, sql_all, sql_create_table, sql_delete_from, sql_drop_table, sql_insert_values, sql_select, sql_select_count, sql_set, sql_table_to_query_variadics, sql_update_table, sql_where } from './sql_helper';
 
 const db_pre_1307_path = "illusi-db.sqlite3";
 const db_pre_1307 = SQLite.openDatabaseSync(db_pre_1307_path); // Pre 14.0.0
@@ -20,50 +21,16 @@ const db_pre_1307 = SQLite.openDatabaseSync(db_pre_1307_path); // Pre 14.0.0
 const db_path = "illusi-db-1400.sqlite3";
 export let db = SQLite.openDatabaseSync(db_path);
 
-function obj_to_sql_table(primary: string|undefined, obj: Record<string, any>, types: boolean){
-    const key_values = is_empty(primary) ? [] : [primary];
-    for(const key of Object.keys(obj)){
-        if(types === true)
-            switch(typeof obj[key]){
-                case "object": key_values.push(`${key} STRING`); break;
-                case "string": key_values.push(`${key} STRING`); break;
-                case "number": key_values.push(`${key} INTEGER`); break;
-                case "boolean": key_values.push(`${key} BOOLEAN`); break;
-                default: break;
-            }
-        else if(typeof obj[key] !== "undefined") key_values.push(`${key}`);
-    }
-    return `(${key_values.join(", ")})`;
+export async function sql_update<T extends Record<string, any>>(table: SQLTables, item: {uid: string}, key: keyof T, value: any){
+    return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]))
 }
-function sql_table_to_query_variadics(sql_table: string){
-    const qarr: string[] = [];
-    for(const i in sql_table.split(','))
-        qarr.push('?');
-    return `(${qarr.join(', ')})`;
-}
-function obj_to_update_sql(obj: Record<string, any>){
-    const updation: string[] = [];
-    const keys = Object.keys(obj);
-    for(const key of keys){
-        const value = obj[key];
-        switch(typeof value){
-            case "string": updation.push(`${key}='${value}'`); break;
-            case "object": updation.push(`${key}='${JSON.stringify(value)}'`); break;
-            case "undefined": break;
-            default: updation.push(`${key}=${value}`); break;
-        }
-    }
-    return updation;
+export async function create_table<T extends Record<string, any>>(table: SQLTables, obj: T){
+    await db.execAsync(sql_create_table<T>("tracks", obj));
 }
 
 export async function get_all_tables(database: SQLite.SQLiteDatabase) {
     const tables = await database.getAllAsync("SELECT * FROM sqlite_master where type='table'");
     return tables as SQLTable[];
-}
-
-export async function sql_update<T>(table: string, item: {uid: string}, key: keyof T, value: any){ return await db.runAsync(`UPDATE ${table} SET ${String(key)}='${value}' WHERE uid='${item.uid}'`); }
-export async function create_table(table: string, obj: Record<string, any>){
-    await db.execAsync(`CREATE TABLE IF NOT EXISTS ${table} ${obj_to_sql_table("id INTEGER PRIMARY KEY", obj, true)}`);
 }
 
 export async function add_playback_saved_data_to_tracks(tracks: Track[]){
@@ -83,25 +50,22 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]){
 export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1307.Track): Promise<Track>{
     const media_info = is_empty(legacy_1307_track.media_uri) ? null : await FileSystem.getInfoAsync(media_directory() + legacy_1307_track.media_uri);
     const download_date = media_info !== null && media_info.exists && media_info.isDirectory === false ? new Date(media_info.modificationTime) : new Date(0);
-    const parsed_track = parse_youtube_title_artist({title: legacy_1307_track.video_name, artist: legacy_1307_track.video_creator});
+    // const parsed_track = parse_youtube_title_artist({title: legacy_1307_track.video_name, artists: [{"name": legacy_1307_track.video_creator. }]});
     
-    const topiced = legacy_1307_track.video_creator.includes(" - Topic");
+    // const topiced = legacy_1307_track.video_creator.includes(" - Topic");
 
     return {
         "uid": legacy_1307_track.uid,
-        "title": topiced ? legacy_1307_track.video_name : 
-            parsed_track.title,
-        "artists": [{"name": parsed_track.artist, "uri": null}].concat(parsed_track.feats.map(feat => {
-                return {"name": feat, "uri": null}
-            })),
-        "prods": parsed_track.prods,
+        "title": legacy_1307_track.video_name,
+        "artists": [{"name": legacy_1307_track.video_creator, "uri": null}],
+        // "prods": parsed_track.prods,
         "tags": [],
         "duration": legacy_1307_track.video_duration,
-        "explicit": topiced ? "NONE" : parsed_track.explicit,
-        "unreleased": topiced ? false : parsed_track.unreleased,
+        // "explicit": topiced ? "NONE" : parsed_track.explicit,
+        // "unreleased": topiced ? false : parsed_track.unreleased,
         "album": undefined,
         "plays": 0,
-        "imported_id": legacy_1307_track.imported ? UUID.v7() : "",
+        "imported_id": legacy_1307_track.imported ? <string>uuid.default.v4() : "",
         "illusi_id": "",
         "youtube_id": legacy_1307_track.video_id,
         "youtubemusic_id": "",
@@ -167,43 +131,43 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
 export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks = false): Promise<Playlist>{
     const tracks = ignore_tracks ? [] : await playlist_tracks(sql_playlist.uuid, new Set<string>(), true);
     return Object.assign(sql_playlist, {
-        "inherited_playlists": JSON.parse(sql_playlist.inherited_playlists),
-        "linked_playlists": JSON.parse(sql_playlist.linked_playlists),
+        "inherited_playlists": JSON.parse(sql_playlist.inherited_playlists!),
+        "linked_playlists": JSON.parse(sql_playlist.linked_playlists!),
         "visual_data": ignore_tracks ? {"four_track": [], "track_count": 0} : {"four_track": tracks.slice(0,4), "track_count": tracks.length},
-        "date": new Date(sql_playlist.date)
+        "date": new Date(sql_playlist.date!)
     });
 }
 
 export async function get_legacy_1307_track_data(database: SQLite.SQLiteDatabase){
-    const tracks: LegacyTypes1307.Track[] = await database.getAllAsync("SELECT * FROM tracks");
+    const tracks: LegacyTypes1307.Track[] = await database.getAllAsync(sql_select("tracks", "*"));
     return tracks;
 }
 export async function get_legacy_1307_playlists(database: SQLite.SQLiteDatabase){
-    const playlists: LegacyTypes1307.Playlist[] = await database.getAllAsync("SELECT * FROM playlists");
+    const playlists: LegacyTypes1307.Playlist[] = await database.getAllAsync(sql_select("playlists", "*"));
     return playlists;
 }
 export async function get_legacy_1307_playlist_tracks(database: SQLite.SQLiteDatabase, playlist_name: string) {
-    const tracks: LegacyTypes1307.Track[] = await database.getAllAsync(`SELECT * FROM tracks AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`);
+    const tracks: LegacyTypes1307.Track[] = await database.getAllAsync(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`);
     return tracks;
 }
 
 export async function fetch_track_data(){
-    const tracks: SQLTrack[] = await db.getAllAsync("SELECT * FROM tracks");
+    const tracks: SQLTrack[] = await db.getAllAsync(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = tracks.map(track => sql_track_to_track(track));
 }
 export async function clear_tracks(){
     await db.execAsync('DELETE FROM tracks');
 }
 export async function fetch_track_data_from_uid(uid: string): Promise<Track> {
-    const tracks: SQLTrack[] = await db.getAllAsync(`SELECT * FROM tracks WHERE uid = (?)`, uid);
+    const tracks: SQLTrack[] = await db.getAllAsync(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return tracks.map(track => sql_track_to_track(track))[0];
 }
 export async function mark_track_downloaded(uid: string, media_uri: string) {
-    await db.execAsync(`UPDATE tracks SET media_uri='${media_uri}' WHERE uid='${uid}'`);
+    await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
     await fetch_track_data();
 }
 export async function mark_track_undownloaded(uid: string) {
-    await db.execAsync(`UPDATE tracks SET media_uri='' WHERE uid='${uid}'`);
+    await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
     await fetch_track_data();
     await clean_directories();
 }
@@ -222,59 +186,78 @@ export async function track_exists(track: Track){
     return false;
 }
 export async function track_from_uid(uid: string){
-    const track = await db.getAllAsync('SELECT * FROM tracks WHERE uid = ?;', [uid]);
+    const track = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return sql_track_to_track(track[0] as SQLTrack);
 }
 export async function track_uid_exists(track: Track){
-    const count_sql = await db.runAsync('SELECT COUNT(tracks.uid) FROM tracks WHERE tracks.uid = ?;', [track.uid]);
+    const count_sql = await db.runAsync(`${sql_select_count<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
     return count_sql.changes !== 0;
 }
 
-function track_to_sqllite_insertion(track: Track): any[] {
-    const to_array: any[] = [];
-    to_array.push(track.uid ?? "");
-    to_array.push(track.title ?? "");
-    to_array.push(JSON.stringify(track.artists ?? []));
-    to_array.push(track.duration ?? 0);
-    to_array.push(track.explicit ?? false);
-    to_array.push(track.unreleased ?? false);
-    to_array.push(JSON.stringify(track.album ?? {"name": "", "uri": ""}));
-    to_array.push(track.plays ?? 0);
-    to_array.push(track.imported_id ?? "");
-    to_array.push(track.illusi_id ?? "");
-    to_array.push(track.youtube_id ?? "");
-    to_array.push(track.youtubemusic_id ?? "");
-    to_array.push(track.soundcloud_id ?? 0);
-    to_array.push(track.soundcloud_permalink ?? "");
-    to_array.push(track.spotify_id ?? "");
-    to_array.push(track.amazonmusic_id ?? "");
-    to_array.push(track.applemusic_id ?? "");
-    to_array.push(track.artwork_url ?? "");
-    to_array.push(track.thumbnail_uri ?? "");
-    to_array.push(track.media_uri ?? "");
-    to_array.push(track.lyrics_uri ?? "");
+function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
         "added_date": new Date(),
         "last_played_date": new Date(),
         "plays": 0,
     };
-    to_array.push(is_empty(track.meta) ? JSON.stringify(meta) : JSON.stringify(track.meta));
+    const to_array: SQLTrackArray = [        
+        track.uid ?? "",
+        track.title ?? "",
+        JSON.stringify(track.artists ?? []),
+        track.duration ?? 0,
+        JSON.stringify(track.prods ?? []),
+        track.genre ?? "",
+        JSON.stringify(track.tags ?? []),
+        track.explicit ?? "NONE",
+        track.unreleased ?? false,
+        JSON.stringify(track.album ?? {"name": "", "uri": ""}),
+        track.plays ?? 0,
+        track.imported_id ?? "",
+        track.illusi_id ?? "",
+        track.youtube_id ?? "",
+        track.youtubemusic_id ?? "",
+        track.soundcloud_id ?? 0,
+        track.soundcloud_permalink ?? "",
+        track.spotify_id ?? "",
+        track.amazonmusic_id ?? "",
+        track.applemusic_id ?? "",
+        track.artwork_url ?? "",
+        track.thumbnail_uri ?? "",
+        track.media_uri ?? "",
+        track.lyrics_uri ?? "",
+        is_empty(track.meta) ? JSON.stringify(meta) : JSON.stringify(track.meta),
+    ];
+    return to_array;
+}
+function playlist_to_sqllite_insertion(playlist: Playlist){
+    const to_array: SQLPlaylistArray = [
+        playlist.uuid ?? "", 
+        playlist.title ?? "", 
+        playlist.description ?? "", 
+        playlist.pinned ?? false, 
+        playlist.thumbnail_uri ?? "", 
+        playlist.sort ?? "OLDEST", 
+        playlist.public ?? false, 
+        playlist.public_uuid ?? "", 
+        JSON.stringify(playlist.inherited_playlists ?? []), 
+        JSON.stringify(playlist.linked_playlists ?? []), 
+        playlist.date?.toISOString() ?? new Date().toISOString(), 
+    ]
     return to_array;
 }
 
 export async function insert_track(track: Track) {
     if( await track_exists(track) ) return;
     if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track);
-    const sql_table = obj_to_sql_table(undefined, ExampleObj.track_example0, false);
-    await db.runAsync(`INSERT INTO tracks ${sql_table} values ${sql_table_to_query_variadics(sql_table)}`, track_to_sqllite_insertion(track));
+    await db.runAsync(`${sql_insert_values("tracks", ExampleObj.track_example0)}`, track_to_sqllite_insertion(track));
     await fetch_track_data();
 }
 export async function update_track(track_uid: string, new_track: Track){
-    await db.runAsync(`UPDATE tracks SET ${obj_to_update_sql(new_track)} WHERE uid = ?`, track_uid);
+    await db.runAsync(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track)} ${sql_where<Track>(["uid", track_uid])}`);
     await fetch_track_data();
 }
 export async function update_track_meta_data(track_uid: string, new_meta: TrackMetaData){
-    await db.runAsync(`UPDATE tracks SET meta='${JSON.stringify(new_meta)}' WHERE uid = ?`, track_uid);
+    await db.runAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
     await fetch_track_data();
 }
 
@@ -282,25 +265,24 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
     const merged_track = merge_track_with_new_track(old_track, new_track);
     await update_track(merged_track.uid, merged_track);
 }
-export async function insert_track_playlist(playlist_uid: string, track_uid: string) {
-    await db.runAsync(`INSERT INTO playlists_tracks (uid, track_uid) values (?, ?)`, [playlist_uid, track_uid]);
+export async function insert_track_playlist(playlist_uuid: string, track_uid: string) {
+    await db.runAsync(`${sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0)}`, [playlist_uuid, track_uid]);
 }
 
 export async function delete_track(uid: string) {
-    await db.runAsync(`DELETE FROM tracks WHERE uid=?`, uid);
+    await db.runAsync(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
     await clean_directories();
 }
-export async function delete_track_playlist(playlist_uid: string, track_uid: string) {
-    await db.runAsync(`DELETE FROM playlists_tracks WHERE uid = ? AND track_uid = ?`, [playlist_uid, track_uid]);
+export async function delete_track_playlist(playlist_uuid: string, track_uid: string) {
+    await db.runAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
 }
 
 export async function insert_recently_played_track(track: Track){
-    // await db.runAsync("DELETE FROM recently_played_tracks where uid = ?", [track.uid]);
-    const sql_table = obj_to_sql_table(undefined, ExampleObj.track_example0, false);
-    await db.runAsync(`INSERT INTO recently_played_tracks ${sql_table} values ${sql_table_to_query_variadics(sql_table)}`, track_to_sqllite_insertion(track));
+    await db.runAsync(`${sql_delete_from("recently_played_tracks")} ${sql_where<Track>(["uid", track.uid])}`);
+    await db.runAsync(`${sql_insert_values("recently_played_tracks", ExampleObj.track_example0)}`, track_to_sqllite_insertion(track));
 }
 export async function recently_played_tracks(): Promise<Track[]>{
-    const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync('SELECT * FROM recently_played_tracks');
+    const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("recently_played_tracks", "*"));
     let recently_played_tracks = recently_played_sql_tracks.map(track => sql_track_to_track(track));
     for(let i = 0; i < recently_played_tracks.length; i++){
         const exists = await track_uid_exists(recently_played_tracks[i]);
@@ -320,7 +302,7 @@ export async function cleanup_recently_played(){
         recently_played_data.reverse();
         recently_played_data = recently_played_data.slice(0, recently_played_max_size);
         recently_played_data.reverse();
-        await db.execAsync('DELETE FROM recently_played_tracks');
+        await db.execAsync(sql_delete_from("recently_played_tracks"));
         for(let i = 0; i < recently_played_max_size; i++){
             const track = recently_played_data[i];
             all_promises.push(
@@ -347,19 +329,19 @@ export async function cleanup_recently_played(){
     await Promise.all(all_promises);
 }
 export async function all_playlists_data() {
-    const playlists: SQLPlaylist[] = await db.getAllAsync("SELECT * FROM playlists");
+    const playlists: SQLPlaylist[] = await db.getAllAsync(sql_select<Playlist>("playlists", "*"));
     return Promise.all(playlists.map(async(playlist) => await sql_playlist_to_playlist(playlist)));
 }
 export async function all_playlists_names(): Promise<{"title": string}[]> {
-    const playlists_names = await db.getAllAsync("SELECT title FROM playlists");
+    const playlists_names = await db.getAllAsync(sql_select<Playlist>("playlists", "title"));
     return playlists_names as {"title": string}[];
 }
-export async function playlist_data(playlist_uid: string, ignore_tracks = false) {
-    const playlists: SQLPlaylist[] = await db.getAllAsync(`SELECT * FROM playlists WHERE uid = '${playlist_uid}'`);
+export async function playlist_data(playlist_uuid: string, ignore_tracks = false) {
+    const playlists: SQLPlaylist[] = await db.getAllAsync(`${sql_select<Playlist>("playlists", "*")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     return await sql_playlist_to_playlist(playlists[0], ignore_tracks);
 }
-export async function update_playlist(playlist_uid: string, new_playlist: Playlist){
-    await db.runAsync(`UPDATE playlists ${obj_to_update_sql(new_playlist)} WHERE uid = ?`, playlist_uid);
+export async function update_playlist(playlist_uuid: string, new_playlist: Playlist){
+    await db.runAsync(`${sql_update_table("playlists")} ${obj_to_update_sql(new_playlist)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function create_playlist(playlist_name: string): Promise<string> {
     const playlist_names = await all_playlists_names();
@@ -370,13 +352,15 @@ export async function create_playlist(playlist_name: string): Promise<string> {
         if(count > 0)
             playlist_name = `${playlist_name} ${count}`;
     }
-    const playlist_uid = generate_new_uid(playlist_name);
-    await db.runAsync('INSERT INTO playlists (uid, title, pinned, thumbnail_uri, sort, public, description, date, inherited_playlists, linked_playlists) Values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [playlist_uid, playlist_name, false, "", "OLDEST", false, "", new Date().toISOString(), JSON.stringify([]), JSON.stringify([])]);
-    return playlist_uid;
+    const sql_table = obj_to_sql_table(undefined, ExampleObj.playlist_example0, false);
+
+    const playlist_uuid = <string>uuid.default.v4();
+    await db.runAsync(`INSERT INTO playlists ${sql_table} values ${sql_table_to_query_variadics(sql_table)}`, playlist_to_sqllite_insertion({ uuid: playlist_uuid, title: playlist_name }));
+    return <string>uuid.default.v4();
 }
-export async function delete_playlist(playlist_uid: string) {
-    await db.execAsync(`DELETE FROM playlists WHERE uid='${playlist_uid}'`);
-    await db.execAsync(`DELETE FROM playlists_tracks WHERE uid='${playlist_uid}'`);
+export async function delete_playlist(playlist_uuid: string) {
+    await db.execAsync(`DELETE FROM playlists ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db.execAsync(`DELETE FROM playlists_tracks ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid])}`);
 }
 export async function delete_all_playlists() {
     const playlists = await all_playlists_data();
@@ -384,21 +368,21 @@ export async function delete_all_playlists() {
         await delete_playlist(playlist.uuid);
     }
 }
-export async function pin_unpin_playlist(playlist_uid: string, pin: boolean) {
+export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
     if(pin)
-        await db.runAsync(`UPDATE playlists SET pinned=true WHERE uid='${playlist_uid}'`);
+        await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", true])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     else
-        await db.execAsync(`UPDATE playlists SET pinned=false WHERE uid='${playlist_uid}'`);
+        await db.execAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
-export async function playlist_tracks(playlist_uid: string, seen_playlist_uids = new Set<string>(), skip_inheritance = false) {
-    const playlist: SQLTrack[] = await db.getAllAsync(`SELECT * FROM tracks AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uid = '${playlist_uid}' ORDER BY p.id`);
+export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids = new Set<string>(), skip_inheritance = false) {
+    const playlist: SQLTrack[] = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uuid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
     let tracks: Track[] = playlist.map(track => sql_track_to_track(track)); 
     if(skip_inheritance) return tracks;
-    const cplaylist_data = await playlist_data(playlist_uid, true);
-    for(const inherited_playlist of cplaylist_data.inherited_playlists){
-        if(!seen_playlist_uids.has(playlist_uid)){
-            seen_playlist_uids.add(playlist_uid);
-            const inherited_tracks = await playlist_tracks(inherited_playlist.uuid, seen_playlist_uids);
+    const cplaylist_data = await playlist_data(playlist_uuid, true);
+    for(const inherited_playlist of cplaylist_data.inherited_playlists!){
+        if(!seen_playlist_uuids.has(playlist_uuid)){
+            seen_playlist_uuids.add(playlist_uuid);
+            const inherited_tracks = await playlist_tracks(inherited_playlist.uuid, seen_playlist_uuids);
             switch (inherited_playlist.mode) {
                 case "INCLUDE": tracks = array_include<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
                 case "EXCLUDE": tracks = array_exclude<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
@@ -408,8 +392,8 @@ export async function playlist_tracks(playlist_uid: string, seen_playlist_uids =
     }
     return tracks;
 }
-export async function is_playlist_pinned(playlist_uid: string): Promise<boolean> {
-    const playlists: SQLPlaylist[] = await db.getAllAsync(`SELECT pinned FROM playlists WHERE uid='${playlist_uid}'`);
+export async function is_playlist_pinned(playlist_uuid: string): Promise<boolean> {
+    const playlists: SQLPlaylist[] = await db.getAllAsync(`${sql_select<Playlist>("playlists", "pinned")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     return Boolean(playlists[0].pinned);
 }
 
@@ -417,10 +401,10 @@ export async function empty_backpack(){
     await db.execAsync(`DELETE FROM backpack`);
 }
 export async function delete_from_backpack(uid: string){
-    await db.runAsync(`DELETE FROM backpack WHERE uid='${uid}'`);
+    await db.runAsync(`DELETE FROM backpack ${sql_where<Track>(["uid", uid])}`);
 }
 export async function backpack_tracks(): Promise<Track[]>{
-    const sql_tracks: SQLTrack[] = await db.getAllAsync('SELECT * FROM backpack');
+    const sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("tracks", "*"));
     const tracks: Track[] = sql_tracks.map(sql_track => sql_track_to_track(sql_track));
     for(let i = 0; i < tracks.length; i++) tracks[i].playback!.artwork = Illusive.illusi_dark_icon;
     return tracks;
@@ -469,7 +453,7 @@ export async function clean_thumbnail_cache(){
     const all_promises: Promises = [];
     for(const file of files)
         all_promises.push(FileSystem.deleteAsync(thumbnail_directory() + file, {idempotent: true}))
-    await db.execAsync('UPDATE tracks SET thumbnail_uri=""');
+    await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
     await Promise.all(all_promises);
 }
 export async function clean_directories(){
@@ -544,7 +528,7 @@ async function alter_sql(database: SQLite.SQLiteDatabase, alter: SQLAlter){
 
 export async function delete_database(database: SQLite.SQLiteDatabase, database_path: string){
     await database.closeAsync();
-    await FileSystem.deleteAsync(sqlite_directory()+database_path, {"idempotent": true});
+    await FileSystem.deleteAsync(sqlite_directory() + database_path, {"idempotent": true});
 }
 export async function delete_all_data(){
     await delete_database(db, db_path);
@@ -565,8 +549,8 @@ export async function delete_all_data(){
 }
 
 export async function recreate_all_tables(){
-    // console.log(((await db.runAsync("DROP table tracks")).changes));
-    // console.log(((await db.runAsync("DROP table playlists")).changes));
+    // console.log(((await db.runAsync( sql_drop_table("tracks") )).changes));
+    // console.log(((await db.runAsync( sql_drop_table("playlists") )).changes));
 
     await create_table("tracks",                 ExampleObj.track_example0);
     await create_table("recently_played_tracks", ExampleObj.track_example0);
@@ -594,7 +578,7 @@ export async function fix_to_new_update(){
     const legacy_1307_tracks = await get_legacy_1307_track_data(db_pre_1307);
     const legacy_1307_playlists = await get_legacy_1307_playlists(db_pre_1307);
     const all_legacy_1307_table_names = (await get_all_tables(db_pre_1307)).map(table => table.name);
-    const current_tracks = (await db.getAllAsync("SELECT * from tracks"));
+    const current_tracks = (await db.getAllAsync(sql_select<Track>("tracks", "*")));
     if(all_legacy_1307_table_names.includes("tracks") && current_tracks.length === 0){
         Alert.alert("Updating to 14.0.0 BETA");
         await move_unsorted_media_to_folders();
@@ -603,9 +587,9 @@ export async function fix_to_new_update(){
             all_promises.push( insert_track(await legacy_1307_track_to_track(legacy_1307_track)) );
         for(const legacy_1307 of legacy_1307_playlists){
             const legacy_1307_tracks = await get_legacy_1307_playlist_tracks(db_pre_1307, legacy_1307.playlist_name);
-            const playlist_uid = await create_playlist(legacy_1307.playlist_name);
+            const playlist_uuid = await create_playlist(legacy_1307.playlist_name);
             for(const legacy_1307_track of legacy_1307_tracks)
-                all_promises.push( insert_track_playlist(playlist_uid, legacy_1307_track.uid) );
+                all_promises.push( insert_track_playlist(playlist_uuid, legacy_1307_track.uid) );
         }
         await Promise.all(all_promises);
     }
