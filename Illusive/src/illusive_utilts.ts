@@ -1,6 +1,6 @@
-import { is_empty, make_topic, remove, remove_special_chars } from "../../origin/src/utils/util";
+import { is_empty, remove, remove_special_chars } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
-import { IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, MusicServiceURIPath, NamedUUID, ParsedUri, Playlist, Track } from "./types";
+import { IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Track } from "./types";
 
 export function extract_file_extension(path: string){ return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string){ return playlist_name.replace(/\s/g, '_'); }
@@ -24,7 +24,7 @@ export function duration_to_string(track_duration: number): {left: number, durat
     else if(track_duration / 60 >= 1){
         const minutes = Math.floor(track_duration / 60);
         const seconds = Math.floor(track_duration % 60);
-        return {"left": 50, "duration": `${String(minutes)}:${String(seconds).padStart(2,'0')}`}
+        return {"left": 50, "duration": `${String(minutes)}:${String(seconds).padStart(2,'0')}`};
     }
     else return {'left': 58, 'duration': String(track_duration).padStart(2,'0')};
 }
@@ -97,7 +97,7 @@ export function track_query_filter(tracks: Track[], query?: string){
 }
 export function playlist_query_filter(playlists: Playlist[], query?: string){
     if(!is_empty(query))
-        return playlists.filter(playlist => playlist.title.toLowerCase().includes(playlist.title.toLowerCase()));
+        return playlists.filter(playlist => playlist.title.toLowerCase().includes(query!.toLowerCase()));
     return playlists;
 }
 export function cycle<T>(value: T, values: T[]): T{
@@ -123,7 +123,7 @@ export function create_uri(music_service_uri: MusicServiceURI, id: string): Illu
 }
 export function spotify_uri_to_uri(spotify_uri?: string): IllusiveURI|null {
     if(spotify_uri === undefined) return null;
-    const [spotify, type, id] = spotify_uri.split(":");
+    const [, , id] = spotify_uri.split(":");
     return create_uri("spotify", id);
 }
 export function split_uri(uri: string): ParsedUri {

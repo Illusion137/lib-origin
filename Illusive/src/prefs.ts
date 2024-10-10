@@ -101,6 +101,7 @@ export namespace Prefs {
             primary: '#7400fe',
             secondary: '#fc00c9',
             background: '#0d1016',
+            primary_dark: '#1a184f',
             card: '#131213',
             title: '#d0d0d0',
             text: '#ffffff',
@@ -120,14 +121,15 @@ export namespace Prefs {
             playingSong: '#141722',
             playScreen: '#141722',
             track: '#141722',
-            highlightPressColor: '#bbaaff'
+            highlightPressColor: '#bbaaff',
+            black: "#000000"
         },
     }
 
 
     export async function try_remove_from_recent_searches(query: string){
         const recent_searches: string[] = Prefs.get_pref('recent_searches');
-        const recent_search_index = recent_searches.findIndex(search => search == query);
+        const recent_search_index = recent_searches.findIndex(search => search === query);
         if(recent_search_index !== -1){
             recent_searches.splice(recent_search_index, 1);
         }

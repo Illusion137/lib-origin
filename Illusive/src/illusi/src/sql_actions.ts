@@ -6,14 +6,13 @@ import CookieManager from '@react-native-community/cookies';
 import { Illusive } from '../../illusive';
 import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLPlaylistArray, SQLTable, SQLTables, SQLTrack, SQLTrackArray, SQLType, Track, TrackMetaData } from '../../types';
 import { array_exclude, array_include, array_mask, extract_file_extension, playlist_name_sql_friendly } from '../../illusive_utilts';
-import { generate_new_uid, is_empty } from '../../../../origin/src/utils/util';
+import { is_empty } from '../../../../origin/src/utils/util';
 import { Alert } from 'react-native';
 import { Prefs } from '../../prefs';
 import { ExampleObj } from './example_objs';
 import path from 'path';
-import { parse_youtube_title_artist } from '../../track_parser';
 import * as uuid from "react-native-uuid";
-import { obj_to_sql_table, obj_to_update_sql, sql_all, sql_create_table, sql_delete_from, sql_drop_table, sql_insert_values, sql_select, sql_select_count, sql_set, sql_table_to_query_variadics, sql_update_table, sql_where } from './sql_helper';
+import { obj_to_update_sql, sql_all, sql_create_table, sql_delete_from, sql_drop_table, sql_insert_values, sql_select, sql_select_count, sql_set, sql_update_table, sql_where } from './sql_helper';
 
 const db_pre_1307_path = "illusi-db.sqlite3";
 const db_pre_1307 = SQLite.openDatabaseSync(db_pre_1307_path); // Pre 14.0.0
@@ -25,11 +24,11 @@ export async function sql_update<T extends Record<string, any>>(table: SQLTables
     return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]))
 }
 export async function create_table<T extends Record<string, any>>(table: SQLTables, obj: T){
-    await db.execAsync(sql_create_table<T>("tracks", obj));
+    await db.execAsync(sql_create_table<T>(table, obj));
 }
 
 export async function get_all_tables(database: SQLite.SQLiteDatabase) {
-    const tables = await database.getAllAsync("SELECT * FROM sqlite_master where type='table'");
+    const tables = await database.getAllAsync(`${sql_select("sqlite_master", "*")} ${sql_where<{type: string}>(["type", "table"])}`);
     return tables as SQLTable[];
 }
 
@@ -249,7 +248,7 @@ function playlist_to_sqllite_insertion(playlist: Playlist){
 export async function insert_track(track: Track) {
     if( await track_exists(track) ) return;
     if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track);
-    await db.runAsync(`${sql_insert_values("tracks", ExampleObj.track_example0)}`, track_to_sqllite_insertion(track));
+    await db.runAsync(sql_insert_values("tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
     await fetch_track_data();
 }
 export async function update_track(track_uid: string, new_track: Track){
@@ -266,7 +265,7 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
     await update_track(merged_track.uid, merged_track);
 }
 export async function insert_track_playlist(playlist_uuid: string, track_uid: string) {
-    await db.runAsync(`${sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0)}`, [playlist_uuid, track_uid]);
+    await db.runAsync(sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0), [playlist_uuid, track_uid]);
 }
 
 export async function delete_track(uid: string) {
@@ -279,7 +278,7 @@ export async function delete_track_playlist(playlist_uuid: string, track_uid: st
 
 export async function insert_recently_played_track(track: Track){
     await db.runAsync(`${sql_delete_from("recently_played_tracks")} ${sql_where<Track>(["uid", track.uid])}`);
-    await db.runAsync(`${sql_insert_values("recently_played_tracks", ExampleObj.track_example0)}`, track_to_sqllite_insertion(track));
+    await db.runAsync(sql_insert_values("recently_played_tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
 }
 export async function recently_played_tracks(): Promise<Track[]>{
     const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("recently_played_tracks", "*"));
@@ -352,15 +351,13 @@ export async function create_playlist(playlist_name: string): Promise<string> {
         if(count > 0)
             playlist_name = `${playlist_name} ${count}`;
     }
-    const sql_table = obj_to_sql_table(undefined, ExampleObj.playlist_example0, false);
-
     const playlist_uuid = <string>uuid.default.v4();
-    await db.runAsync(`INSERT INTO playlists ${sql_table} values ${sql_table_to_query_variadics(sql_table)}`, playlist_to_sqllite_insertion({ uuid: playlist_uuid, title: playlist_name }));
-    return <string>uuid.default.v4();
+    await db.runAsync(sql_insert_values("playlists", ExampleObj.playlist_example0), playlist_to_sqllite_insertion({ uuid: playlist_uuid, title: playlist_name }));
+    return playlist_uuid;
 }
 export async function delete_playlist(playlist_uuid: string) {
-    await db.execAsync(`DELETE FROM playlists ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
-    await db.execAsync(`DELETE FROM playlists_tracks ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid])}`);
+    await db.execAsync(`${sql_delete_from("playlists")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db.execAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid])}`);
 }
 export async function delete_all_playlists() {
     const playlists = await all_playlists_data();
@@ -375,7 +372,7 @@ export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
         await db.execAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids = new Set<string>(), skip_inheritance = false) {
-    const playlist: SQLTrack[] = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uuid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
+    const playlist: SQLTrack[] = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
     let tracks: Track[] = playlist.map(track => sql_track_to_track(track)); 
     if(skip_inheritance) return tracks;
     const cplaylist_data = await playlist_data(playlist_uuid, true);
@@ -412,9 +409,8 @@ export async function backpack_tracks(): Promise<Track[]>{
 export async function add_to_backpack(uid: string){
     const track: Track = await track_from_uid(uid);
     const all_promises: Promises = [];
-    const sql_table = obj_to_sql_table(undefined, ExampleObj.track_example0, false);
     all_promises.push( delete_track(uid) );
-    all_promises.push( db.runAsync(`INSERT INTO backpack ${sql_table} values ${sql_table_to_query_variadics(sql_table)}`, track_to_sqllite_insertion(track)) );
+    all_promises.push( db.runAsync(sql_insert_values("backpack", ExampleObj.track_example0), track_to_sqllite_insertion(track)) );
 
     await Promise.all(all_promises);
 }
@@ -548,9 +544,16 @@ export async function delete_all_data(){
     GLOBALS.global_var.sql_tracks = [];
 }
 
+export async function destroy_all_tables(){
+    console.log(((await db.runAsync( sql_drop_table("tracks") )).changes));
+    console.log(((await db.runAsync( sql_drop_table("recently_played_tracks") )).changes));
+    console.log(((await db.runAsync( sql_drop_table("backpack") )).changes));
+    console.log(((await db.runAsync( sql_drop_table("playlists") )).changes));
+    console.log(((await db.runAsync( sql_drop_table("playlists_tracks") )).changes));
+}
+
 export async function recreate_all_tables(){
-    // console.log(((await db.runAsync( sql_drop_table("tracks") )).changes));
-    // console.log(((await db.runAsync( sql_drop_table("playlists") )).changes));
+    // await destroy_all_tables();
 
     await create_table("tracks",                 ExampleObj.track_example0);
     await create_table("recently_played_tracks", ExampleObj.track_example0);

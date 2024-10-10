@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { is_empty } from "../../../../origin/src/utils/util";
-import { Playlist, Primitives, SQLTables } from "../../types";
+import { Primitives, SQLTables } from "../../types";
 
 export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*"){
     return `SELECT ${String(what)} FROM ${table}`;
@@ -16,7 +16,7 @@ export function sql_insert_values<T extends Record<string, any>>(table: SQLTable
     return `${sql_insert(table)} ${sql_table} values ${sql_table_to_query_variadics(sql_table)}`;
 }
 export function sql_where<T extends Record<string, any>>(...args: [keyof T, Primitives][]){
-    return `WHERE ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}'`).join(' AND ')}`;
+    return `WHERE ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}`).join(' AND ')}`;
 }
 export function sql_set<T extends Record<string, any>>(...args: [keyof T, Primitives][]){
     return `SET ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}'`).join(' AND ')}`;
@@ -51,7 +51,7 @@ export function obj_to_sql_table(primary: string|undefined, obj: Record<string, 
 }
 export function sql_table_to_query_variadics(sql_table: string){
     const qarr: string[] = [];
-    for(const i in sql_table.split(','))
+    for(const _ in sql_table.split(','))
         qarr.push('?');
     return `(${qarr.join(', ')})`;
 }

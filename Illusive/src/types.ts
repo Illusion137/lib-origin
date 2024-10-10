@@ -3,7 +3,7 @@ import { ResponseError } from "../../origin/src/utils/types"
 
 type ArtworkCacheType = 'force-cache';
 
-export type SQLTables = "tracks" | "recently_played_tracks" | "backpack" | "playlists" | "playlists_tracks";
+export type SQLTables = "sqlite_master" | "tracks" | "recently_played_tracks" | "backpack" | "playlists" | "playlists_tracks";
 export interface ImageArtwork {
     uri: string
     cache: ArtworkCacheType
@@ -12,7 +12,6 @@ export type Artwork = ImageArtwork | number
 export type Promises = Promise<unknown>[]
 
 export type Route<T> = {"key": string, "name": string, "params": T, path: string};
-type T = Route<string>
 
 export type SQLType = "INTEGER" | "STRING" | "BOOLEAN";
 export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
@@ -310,7 +309,7 @@ export class MusicService {
         return {"map": map};
     }
     async get_rest_of_playlist(continuation_data: any){
-
+        continuation_data;
     }
     async get_full_playlist(url: string){
         const initial = await this.get_playlist(url);
