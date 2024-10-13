@@ -2,7 +2,7 @@ import * as Origin from '../../origin/src/index'
 import { ResponseError } from '../../origin/src/utils/types';
 import { Prefs } from './prefs';
 
-export async function soundcloud_download_from_id(permalink: string, quality: string): Promise<{"url":string}|ResponseError> {
+export async function soundcloud_download_from_id(permalink: string, _: string): Promise<{"url":string}|ResponseError> {
     const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     const url = await Origin.SoundCloudDL.get_download_info_from_permalink(permalink, use_cookies_on_download ? cookie_jar : undefined);

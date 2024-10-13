@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { Alert, GestureResponderEvent } from "react-native";
-import { AlphabetScroll, Track } from '../../types';
+import { AlphabetScroll } from '../../types';
 import BigList from 'react-native-big-list';
 import { alert_error } from './alert';
 
@@ -34,12 +34,12 @@ function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: st
     }
 }
 
-export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_data: string[], biglist_ref: React.MutableRefObject<BigList<any>|undefined>, event: GestureResponderEvent) {
+export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_data: string[], biglist_ref: React.MutableRefObject<BigList<any>|undefined>, event: GestureResponderEvent, offset?: number) {
     if(char_data.length === 0) return;
     if(!(char_data.length === alphabet_scroll.all_alphabet_fast_scroll_locations.length))
         populate_alphabet_scroll(alphabet_scroll, char_data);
     const target = Math.floor(event.nativeEvent.pageY);
-    const closest = closest_to(target, alphabet_scroll.all_alphabet_fast_scroll_locations);
+    const closest = closest_to(target + (offset ?? 0), alphabet_scroll.all_alphabet_fast_scroll_locations);
     if(alphabet_scroll.current_position == closest) return;
     alphabet_scroll.current_position = closest;
     (biglist_ref?.current?.scrollToLocation as any)({ animated: false, itemIndex: 0, sectionIndex: alphabet_scroll.all_alphabet_fast_scroll_locations.indexOf(closest) }); 

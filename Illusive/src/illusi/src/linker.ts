@@ -1,4 +1,3 @@
-import { Illusive } from "../../illusive";
 import { Prefs } from "../../prefs";
 import { LinkerLink } from "../../types";
 

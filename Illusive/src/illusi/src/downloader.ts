@@ -16,6 +16,9 @@ function wait_for(condition_function: () => boolean) {
     }
     return new Promise(<never>poll);
 }
+export function sort_tracks_for_download(tracks: Track[]): Track[]{
+    return tracks.sort((a, b) => a.duration - b.duration);
+}
 export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     function in_download_range(uid: string, download_queue_max_length: number) {
         for (let i = 0; i < download_queue_max_length; i++)

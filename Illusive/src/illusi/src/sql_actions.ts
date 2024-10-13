@@ -12,7 +12,7 @@ import { Prefs } from '../../prefs';
 import { ExampleObj } from './example_objs';
 import path from 'path';
 import * as uuid from "react-native-uuid";
-import { obj_to_update_sql, sql_all, sql_create_table, sql_delete_from, sql_drop_table, sql_insert_values, sql_select, sql_select_count, sql_set, sql_update_table, sql_where } from './sql_helper';
+import { obj_to_update_sql, sql_all, sql_create_table, sql_delete_from, sql_drop_table, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from './sql_helper';
 
 const db_pre_1307_path = "illusi-db.sqlite3";
 const db_pre_1307 = SQLite.openDatabaseSync(db_pre_1307_path); // Pre 14.0.0
@@ -40,10 +40,18 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]){
                 "added": false,
                 "successful": false
             }
-            track.downloading_data = {"saved": await track_exists(track), "progress": 0}
+            track.downloading_data = {"saved": await track_exists(track), "progress": 0, "playlist_saved": false}
             return track;
         })
     );
+}
+export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: string, tracks: Track[]): Promise<Track[]>{
+    return await Promise.all(
+        tracks.map(async(track) => {
+            track.downloading_data = {"saved": true, "progress": 0, "playlist_saved": await track_exists_in_playlist(playlist_uuid, track.uid)}
+            return track;
+        })
+    )
 }
 
 export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1307.Track): Promise<Track>{
@@ -90,6 +98,8 @@ export function sql_track_to_track(sql_track: SQLTrack): Track{
     return Object.assign(sql_track, {
         "artists": JSON.parse(sql_track.artists!),
         "album": JSON.parse(sql_track.album!),
+        "prods": JSON.parse(sql_track.prods!),
+        "tags": JSON.parse(sql_track.tags!),
         "explicit": Boolean(sql_track.explicit),
         "unreleased": Boolean(sql_track.unreleased),
         "meta": {
@@ -184,13 +194,33 @@ export async function track_exists(track: Track){
     }
     return false;
 }
+export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string){
+    const count = await db.getAllAsync(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
+    return count.length !== 0;
+}
+export async function track_from_service_id(ftrack: Track){
+    const potential_keys: (keyof Track)[] = ["youtube_id", "youtubemusic_id", "spotify_id", "amazonmusic_id", "applemusic_id", "soundcloud_id"];
+    let track_id: string;
+    let key: keyof Track;
+    for(const k of potential_keys){
+        if(!is_empty(ftrack[k])){
+            track_id = ftrack[k] as string;
+            key = k;
+            break;
+        }
+    }
+    if(is_empty(key!) || is_empty(track_id!)) return null;
+    const track = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>([key!, track_id!])}`);
+    if(track.length === 0) return null;
+    return sql_track_to_track(<SQLTrack>track[0]);
+}
 export async function track_from_uid(uid: string){
     const track = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
-    return sql_track_to_track(track[0] as SQLTrack);
+    return sql_track_to_track(<SQLTrack>track[0]);
 }
 export async function track_uid_exists(track: Track){
-    const count_sql = await db.runAsync(`${sql_select_count<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
-    return count_sql.changes !== 0;
+    const count_sql = await db.getAllAsync(`${sql_select<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
+    return count_sql.length !== 0;
 }
 
 function track_to_sqllite_insertion(track: Track): SQLTrackArray {

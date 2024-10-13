@@ -17,7 +17,7 @@ const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
 export async function setup_track_player(): Promise<boolean> {
     try {
-        const active_index = await TrackPlayer.getActiveTrackIndex();
+        await TrackPlayer.getActiveTrackIndex();
     } catch (error) {         
         await TrackPlayer.setupPlayer();
         await TrackPlayer.updateOptions({
@@ -56,8 +56,10 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         return 'skip';
     }
     if ("new_track_data" in url_data && url_data.new_track_data !== undefined) {
-        await SQLActions.update_track_with_new_track_data(track, url_data.new_track_data);
-        track = url_data.new_track_data!;
+        if(await SQLActions.track_exists(track)){
+            await SQLActions.update_track_with_new_track_data(track, url_data.new_track_data);
+        }
+        track = (await SQLActions.add_playback_saved_data_to_tracks([url_data.new_track_data!]))[0];
     }
     return {
         "url": url_data.url,
@@ -128,10 +130,8 @@ export async function track_player_next(){
 }
 
 export async function playback_service() {
-    TrackPlayer.addEventListener(Event.RemoteDuck, async (data) => {
-
-    });
-    TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
+    TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => {});
+    TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (_) => {
         try {
             updated_metadata_mutex = false;
             if (!initial_playback_track_changed_mutex && !changed_mutex) {
@@ -202,13 +202,9 @@ export async function playback_service() {
             }
         } catch (error) { }
     });
-    TrackPlayer.addEventListener(Event.RemotePrevious, async () => {
-        await track_player_previous();
-    });
-    TrackPlayer.addEventListener(Event.RemoteNext, async () => {
-        await track_player_next();
-    });
-    TrackPlayer.addEventListener(Event.RemotePause, async () => { await TrackPlayer.pause(); });
-    TrackPlayer.addEventListener(Event.RemotePlay, async () => { await TrackPlayer.play(); });
+    TrackPlayer.addEventListener(Event.RemotePrevious, async () => { await track_player_previous(); });
+    TrackPlayer.addEventListener(Event.RemoteNext,     async () => { await track_player_next(); });
+    TrackPlayer.addEventListener(Event.RemotePause,    async () => { await TrackPlayer.pause(); });
+    TrackPlayer.addEventListener(Event.RemotePlay,     async () => { await TrackPlayer.play(); });
     TrackPlayer.addEventListener(Event.RemoteSeek, async (data) => { await TrackPlayer.seekTo(data.position); });
 }

@@ -1,9 +1,8 @@
 import * as Origin from '../../origin/src/index'
-import { CookieJar } from '../../origin/src/utils/cookie_util';
-import { extract_string_from_pattern, generate_new_uid, url_to_id } from '../../origin/src/utils/util';
-import { create_thumbnails, create_uri, spotify_uri_to_uri, track_query_filter } from './illusive_utilts';
+import { url_to_id } from '../../origin/src/utils/util';
+import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
-import { CompactPlaylist, CompactPlaylistsResult } from './types';
+import { CompactPlaylistsResult } from './types';
 
 export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -19,6 +18,7 @@ export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResu
                 }],
                 "artwork_thumbnails": playlist.item.data.images?.items.map(item => item.sources)[0] ?? [],
                 "date": new Date(playlist.addedAt.isoString),
+                "type": spotify_uri_to_type(playlist.item.data.uri)
             }
         })
     };

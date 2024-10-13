@@ -59,6 +59,7 @@ export namespace Illusive {
         {
             'app_icon': 'https://is5-ssl.mzstatic.com/image/thumb/Purple122/v4/fc/c7/18/fcc718a6-bd55-b1aa-93e4-4073a2ad3b13/logo_youtube_color-1x_U007emarketing-0-6-0-85-220.png/350x350.png?',
             'web_view_url': 'https://m.youtube.com/',
+            'pref_cookie_jar': "youtube_cookie_jar",
             'valid_playlist_url_regex': /(https?:\/\/)(www\.)?youtube\.com\/playlist\?list=.+/i,
             'link_text': 'https://www.youtube.com/playlist?list=...',
             'required_cookie_credentials': ["LOGIN_INFO"],
@@ -79,6 +80,7 @@ export namespace Illusive {
         {
             'app_icon': 'https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/44/c6/3d/44c63da2-7a82-bd82-821d-1cd01f2b510f/AppIcon-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220-0.png/350x350.png?',
             'web_view_url': 'https://music.youtube.com/',
+            'pref_cookie_jar': "youtube_music_cookie_jar",
             'valid_playlist_url_regex': /(https?:\/\/)(www\.)?music\.youtube\.com\/playlist\?list=.+/i,
             'link_text': 'https://music.youtube.com/playlist?list=...',
             'required_cookie_credentials': ["LOGIN_INFO"],
@@ -97,6 +99,7 @@ export namespace Illusive {
         {
             'app_icon': 'https://is2-ssl.mzstatic.com/image/thumb/Purple122/v4/63/64/fa/6364fa97-398a-46da-32ac-765e8f328548/AppIcon-0-1x_U007emarketing-0-6-0-0-0-85-220-0.png/350x350.png?',
             'web_view_url': 'https://open.spotify.com/',
+            'pref_cookie_jar': "spotify_cookie_jar",
             'valid_playlist_url_regex': /(https?:\/\/)open\.spotify\.com\/(playlist|album|collection)\/.+/i,
             'link_text': 'https://open.spotify.com/playlist/... or  \n - https://open.spotify.com/album/...',
             'required_cookie_credentials': ["sp_dc"],
@@ -115,6 +118,7 @@ export namespace Illusive {
         {
             'app_icon': 'https://is4-ssl.mzstatic.com/image/thumb/Purple122/v4/fc/b8/aa/fcb8aae7-180e-7b29-7c83-255f1c86eba8/AppIcon-1x_U007emarketing-0-10-0-85-220.png/350x350.png?',
             'web_view_url': 'https://music.amazon.com/',
+            'pref_cookie_jar': "amazon_music_cookie_jar",
             'valid_playlist_url_regex': /(https?:\/\/)music\.amazon\.com\/(playlists|user-playlists)\/.+/i,
             'link_text': 'https://music.amazon.com/user-playlists/... or  \n - https://music.amazon.com/playlists/...',
             'required_cookie_credentials': ["at-main"],
@@ -132,6 +136,7 @@ export namespace Illusive {
         {
             'app_icon': 'https://is1-ssl.mzstatic.com/image/thumb/Purple122/v4/8e/18/bd/8e18bd19-1453-d9be-620d-66930b61e487/AppIcon-0-0-1x_U007emarketing-0-10-0-85-220.png/246x0w.webp',
             'web_view_url': 'https://music.apple.com/us/home',
+            'pref_cookie_jar': "apple_music_cookie_jar",
             'valid_playlist_url_regex': /(https?:\/\/)music\.apple\.com\/.+?\/playlist\/.+?/i,
             'link_text': 'https://music.apple.com/us/playlist/.../... or \n - https://music.apple.com/library/playlist/...',
             'required_cookie_credentials': ["commerce-authorization-token"],
@@ -150,6 +155,7 @@ export namespace Illusive {
         {
             'app_icon': 'https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/87/15/59/871559b2-5653-32f3-c9aa-b61a39bb8d84/AppIcon-0-0-1x_U007emarketing-0-7-0-85-220.png/246x0w.webp',
             'web_view_url': 'https://soundcloud.com/discover',
+            'pref_cookie_jar': "soundcloud_cookie_jar",
             'valid_playlist_url_regex': /(https?:\/\/)soundcloud\.com\/.+?\/(sets\/.+)?/i,
             'link_text': 'https://soundcloud.com/.../sets/... or \n - https://soundcloud.com/...',
             'required_cookie_credentials': ["sc_anonymous_id"],
@@ -189,7 +195,7 @@ export namespace Illusive {
 
     export async function convert_track(track: Track, to_music_service: MusicServiceType): Promise<Track|ResponseError>{
         if(music_service.get(to_music_service)?.search === undefined) return {"error": "can't convert to this music-service"};
-        const search_tracks = await music_service.get(to_music_service)!.search!(`${track.artists[0]} ${track.title}`);
+        const search_tracks = await music_service.get(to_music_service)!.search!(`${track.artists[0].name} ${track.title}`);
         if(search_tracks.tracks.length === 0) return {"error": "no tracks"};
         type Max = {"index": number, "value": number};
         let best: Max = {"index": 0, "value": 25};
@@ -305,7 +311,7 @@ export namespace Illusive {
                 if(start_track === undefined) return tracks;
                 const start_track_index = tracks.findIndex(track => track.uid === start_track.uid);
                 if(start_track_index === -1) return tracks;
-                return tracks.splice(0, start_track_index - 1);
+                return tracks.slice(start_track_index);
             }
             case "SHUFFLE": {
                 const shuffled = shuffle_array(tracks);

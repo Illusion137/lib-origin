@@ -25,7 +25,7 @@ export function sql_create_table<T extends Record<string, any>>(table: SQLTables
     return `CREATE TABLE IF NOT EXISTS ${table} ${obj_to_sql_table("id INTEGER PRIMARY KEY", obj, true)}`;
 }
 export function sql_delete_from(table: SQLTables){
-    return `DELTE FROM ${table}`;
+    return `DELETE FROM ${table}`;
 }
 export function sql_drop_table(table: SQLTables){
     return `DROP table ${table}`;

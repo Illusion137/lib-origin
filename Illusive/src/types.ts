@@ -1,5 +1,6 @@
 import { CookieJar } from "../../origin/src/utils/cookie_util"
 import { ResponseError } from "../../origin/src/utils/types"
+import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
 
@@ -37,7 +38,7 @@ export type Runs = {text: string, navigationEndpoint: any}[];
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
-export type ISOString = `${IntString}-${IntString}-${IntString}T00:00:00.000Z`;
+export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;
 export type Primitives = string|boolean|number;
 
 export interface AlphabetScroll {
@@ -115,6 +116,7 @@ export type Album = Basic_Album<IllusiveThumbnail[], NamedUUID[], IllusiveURI[]>
 interface TrackDownloadingData {
     progress: number
     saved: boolean
+    playlist_saved: boolean
 }
 interface TrackPlaybackData {
     added: boolean
@@ -162,6 +164,7 @@ export type SQLTrackArray = [ string, string, string, number, string, string, st
 
 export type SQLTrack = Basic_Track<string, string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[], string[]>
+export type SerializedTrack = Basic_Track<NamedUUID[], string, NamedUUID, string[], string[]>
 
 type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK";
 interface InheritedPlaylist {
@@ -196,7 +199,13 @@ export interface CompactPlaylistData {
     title: string
     four_track: Track[]
     track_count: number
+    type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>
+}
+export interface SerializedCompactPlaylistData {
+    title: string
+    tracks: SerializedTrack[]
+    type: "PLAYLIST" | "LIBRARY"
 }
 
 export interface PlaylistsTracks {
@@ -205,13 +214,15 @@ export interface PlaylistsTracks {
 }
 
 export type MaybeErrors = ResponseError[] | never;
-
+export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
 export interface CompactPlaylist {
     title: NamedUUID
     artist: NamedUUID[]
     artwork_thumbnails?: IllusiveThumbnail[]
+    thumbnail_uri?: string
     date?: Date
     explicit?: ExplicitMode
+    type?: CompactPlaylistType
 }
 
 export interface CompactArtist {
@@ -262,6 +273,7 @@ export type TrackMix = { "tracks": Track[], "error"?: string };
 export class MusicService {
     app_icon: string | number
     web_view_url?: string
+    pref_cookie_jar?: Prefs.PrefOptions
     link_text: string
     valid_playlist_url_regex: RegExp
     required_cookie_credentials: string[]
@@ -304,7 +316,13 @@ export class MusicService {
         for(const playlist of account_playlists.playlists){
             const [service, endpoint] = <[MusicServiceURI, string]>playlist.title.uri!.split(':');
             if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map};
-            map.set(playlist.title.name, service_domain_map[service] + endpoint);   
+            if(service === "spotify"){
+                if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map};
+                const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
+                map.set(playlist.title.name, `${service_domain_map[service]}${type}/${endpoint}`);
+            }
+            else
+                map.set(playlist.title.name, service_domain_map[service] + endpoint);
         }
         return {"map": map};
     }
@@ -320,6 +338,7 @@ export class MusicService {
     constructor(s: {
         app_icon: string | number,
         web_view_url?: string,
+        pref_cookie_jar?: Prefs.PrefOptions
         link_text: string,
         valid_playlist_url_regex: RegExp,
         required_cookie_credentials: string[],
@@ -338,6 +357,7 @@ export class MusicService {
     }) {
         this.app_icon = s.app_icon
         this.web_view_url = s.web_view_url;
+        this.pref_cookie_jar = s.pref_cookie_jar;
         this.valid_playlist_url_regex = s.valid_playlist_url_regex;
         this.required_cookie_credentials = s.required_cookie_credentials;
         this.link_text = s.link_text;

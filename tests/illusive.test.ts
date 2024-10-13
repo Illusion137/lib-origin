@@ -71,10 +71,10 @@ function test_user_playlists(service_names: MusicServiceType[]){ test_music_serv
 // test_user_playlists(illusive_music_services);
 
 // test_fetch_playlists("YouTube", [
-//     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
-//     "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
-//     "PLpBymDh5XkKT8RfHiXz9cnWsc6F1pa7W3",
-//     "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
+    // "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
+    // "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+    // "PLpBymDh5XkKT8RfHiXz9cnWsc6F1pa7W3",
+    // "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
 // ])
 // test_fetch_playlists("YouTube Music", [
     // "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
@@ -86,8 +86,8 @@ function test_user_playlists(service_names: MusicServiceType[]){ test_music_serv
 //     "https://open.spotify.com/collection/tracks"
 // ])
 // test_fetch_playlists("SoundCloud", [
-//     "https://soundcloud.com/primal-illusion/sets/illusno",
-//     "https://soundcloud.com/elit3xxredtiger/sets/yktvow",
+    // "https://soundcloud.com/primal-illusion/sets/illusno",
+    // "https://soundcloud.com/elit3xxredtiger/sets/yktvow",
 // ])
 // test_fetch_playlists("Amazon Music", [
 //     "https://music.amazon.com/my/playlists/a5dc1cff-2ccb-4e52-8144-d5adae28e33d"

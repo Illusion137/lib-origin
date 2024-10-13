@@ -1,9 +1,8 @@
 import * as Origin from '../../origin/src/index'
-import { MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, Track } from './types'
-import { empty_undefined, extract_string_from_pattern, generate_new_uid, get_main_key, make_topic, parse_runs, parse_time, remove_prod, url_to_id } from '../../origin/src/utils/util';
+import { MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
+import { get_main_key, make_topic, parse_runs, remove_prod, url_to_id } from '../../origin/src/utils/util';
 import * as SCSearch from '../../origin/src/soundcloud/types/Search';
 import { Prefs } from './prefs';
-import { CookieJar } from '../../origin/src/utils/cookie_util';
 import * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
 import * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
 import * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
@@ -12,10 +11,7 @@ import { parse_playlist_continuation_contents } from '../../origin/src/youtube/p
 import { YouTubeTrack } from '../../origin/src/youtube/types/PlaylistResults_1';
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
-import { AppleTrack } from '../../origin/src/apple_music/types/TrackListSection';
-import { AppleUserPlaylistTrack } from '../../origin/src/apple_music/types/UserPlaylist';
-import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists, youtube_views_number } from './illusive_utilts';
-import * as Hydration from '../../origin/src/soundcloud/types/Hydration';
+import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
 import { parse_amazon_music_playlist_track, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track, parse_musi_track, parse_soundcloud_artist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track, parse_youtube_music_album_track, parse_youtube_music_playlist_track, parse_youtube_playlist_track } from './track_parser';
 import { ResponseError } from '../../origin/src/utils/types';
 import { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
@@ -131,6 +127,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
     switch(playlist_type){
         case "playlist":   playlist_response = await Origin.Spotify.get_playlist(playlist_id, {"cookie_jar": cookie_jar, "client": client, "limit": playlist_limit}); break;
         case "album":      playlist_response = await Origin.Spotify.get_album(playlist_id, {"cookie_jar": cookie_jar, "client": client, "limit": playlist_limit}); break;
+        case "tracks":
         case "collection": playlist_response = await Origin.Spotify.get_collection({"cookie_jar": cookie_jar, "client": client, "limit": playlist_limit}); break;
         default: return {"title": "", "tracks": [], "playlist_continuation": null};
     }
@@ -139,7 +136,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
     if("playlistV2" in playlist_response.data){
         return {
             "title": playlist_response.data.playlistV2.name,
-            "creator": [{"name": make_topic(playlist_response.data.playlistV2.ownerV2.data.username), "uri": spotify_uri_to_uri(playlist_response.data.playlistV2.ownerV2.data.uri)}],
+            "creator": [{"name": playlist_response.data.playlistV2.ownerV2.data.name, "uri": spotify_uri_to_uri(playlist_response.data.playlistV2.ownerV2.data.uri)}],
             "description": playlist_response.data.playlistV2.description,
             "tracks": playlist_response.data.playlistV2.content.items.map(parse_spotify_playlist_track),
             "playlist_continuation": playlist_limit >= playlist_response.data.playlistV2.content.totalCount ? null : 

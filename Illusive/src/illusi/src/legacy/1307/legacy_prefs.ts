@@ -26,26 +26,26 @@ export async function fetch_prefs(){
     prefs = JSON.parse(await AsyncStorage.getItem("Prefs") as string);
 }
 
-export function cookies_to_json(cookies: string){
-    let cookie_json = {};
+export function cookies_to_json(cookies: string): Record<string, any>{
+    let cookie_json: Record<string, any> = {};
     let cookie_set = cookies.split('; ');
-    cookie_set.forEach(cookie => {
+    cookie_set.forEach((cookie: any) => {
         let cookie_key_value = cookie.split('=')
         cookie_json[cookie_key_value[0]] = cookie_key_value[1]
     })
     return cookie_json;
 }
 
-export function update_cookies(cookies: string, new_cookies){
+export function update_cookies(cookies: string, new_cookies: any){
     const cookies_obj = cookies_to_json(cookies);
-    new_cookies.forEach(cookie => {
+    new_cookies.forEach((cookie: any) => {
         let cookieKeyValue = cookie[0].split('=')
         cookies_obj[cookieKeyValue[0]] = cookieKeyValue[1]
     });
     return format_cookies(cookies);
 }
 
-function format_cookies(cookie_data){
+function format_cookies(cookie_data: any){
     try {
         let cookieKeys: string[] = []
         let formated_cookies = ""
@@ -72,17 +72,17 @@ function format_cookies_json(cookie_data: Record<string, any>){
 }
 export async function set_cookies_json(unformated_cookies: Record<string, any>, service: string){
     let cookies = format_cookies_json(unformated_cookies);
-    prefs.external_services[service] = cookies;
+    (<any>prefs.external_services)[service] = cookies;
     await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
 }
 export async function set_cookies(unformated_cookies: Record<string, any>, service: string){
     let cookies = format_cookies(unformated_cookies);
-    prefs.external_services[service] = cookies;
+    (<any>prefs.external_services)[service] = cookies;
     await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
 }
 
 export function get_experimental_feature_enabled(feature: string): boolean{
-    return prefs.settings.enable_experimental_features && prefs.experimental_features[feature]
+    return prefs.settings.enable_experimental_features && (<any>prefs.experimental_features)[feature]
 }
 
 export const dark_theme_default = {
@@ -150,9 +150,6 @@ function get_default_prefs(){
         }
     }
 } 
-function plain_text_to_snake_case(text: string){
-    return text.replace(/ /g, '_').toLowerCase();
-}
 export function snake_case_to_plain_text(text: string){
     text = text.replace(/_/g,' ');
     const words = text.split(" ");

@@ -1,5 +1,5 @@
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern } from "../utils/util";
+import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty } from "../utils/util";
 import { ArtistUser, Playlist, Search, SearchOf, Track, User } from "./types/Search";
 import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
 import { UserTracks } from "./types/UserTracks";
@@ -33,11 +33,13 @@ export namespace SoundCloud {
     }
     function api_method_options(cookie_jar?: CookieJar): RequestInit {
         const datadome_cookie = cookie_jar?.getCookie('datadome');
+        const oauth_cookie = cookie_jar?.getCookie('oauth_token');
         return {
             "headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
                 "accept": "application/json, text/javascript, */*; q=0.01",
                 "accept-language": "en-US,en;q=0.9",
+                "authorization": oauth_cookie !== undefined ? `OAuth ${oauth_cookie.getData().value}` : undefined as unknown as string,
                 "sec-ch-ua": "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"",
                 "sec-ch-ua-mobile": "?0",
                 "sec-ch-ua-platform": "\"Windows\"",
@@ -200,15 +202,20 @@ export namespace SoundCloud {
     export async function get_artist(mode: "REPOSTS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number })       : PromiseError<ArtistUser<Track>>
     export async function get_artist(mode: "ALBUMS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number })        : PromiseError<ArtistUser<Playlist>>
     export async function get_artist(mode: "PLAYLISTS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number })     : PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: ArtistMode = "ALL", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number }) : PromiseError<ArtistUser<Playlist|User|Track>> {
+    export async function get_artist(mode: ArtistMode = "ALL", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "depth"?: number, "limit"?: number, "offset"?: number }) : PromiseError<ArtistUser<Playlist|User|Track>> {
         try {
-            const hydration = await get_hydration(`https://soundcloud.com/${opts.artist_id}`, opts);
-            if("error" in hydration) throw hydration.error;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id; 
-            if (typeof opts.client_id === "object") throw opts.client_id.error;
-            const user_hyrdration: HydratableUser = hydration.hydration.find((hydratable) => hydratable.hydratable == "user") as HydratableUser;
+            let artist_id = opts.artist_id;
+            let user_hyrdration: HydratableUser = <never>{};
+            if(!is_empty(opts.artist_permalink)){
+                const hydration = await get_hydration(`https://soundcloud.com/${opts.artist_permalink}`, opts);
+                if("error" in hydration) throw hydration.error;
+                opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id; 
+                if (typeof opts.client_id === "object") throw opts.client_id.error;
+                user_hyrdration = hydration.hydration.find((hydratable) => hydratable.hydratable == "user") as HydratableUser;
+                artist_id = String(user_hyrdration.data.id);
+            }
             const locale_params = {
-                client_id: opts.client_id,
+                client_id: <string>opts.client_id,
                 linked_partitioning: 1,
                 app_version: app_version,
                 app_locale: "en"
@@ -220,7 +227,7 @@ export namespace SoundCloud {
             }
             const params = Object.assign(locale_params, opts_params);
             const repost_mode_str = mode === "REPOSTS" ? "stream/" : "";
-            const artist_response = await fetch(`https://api-v2.soundcloud.com/${repost_mode_str}users/${user_hyrdration.data.id}/${artist_mode_to_api_method(mode ?? "ALL")}?${encode_params(params)}`, api_method_options() );
+            const artist_response = await fetch(`https://api-v2.soundcloud.com/${repost_mode_str}users/${artist_id}/${artist_mode_to_api_method(mode ?? "ALL")}?${encode_params(params)}`, api_method_options(opts.cookie_jar) );
             if(!artist_response.ok) throw `${artist_response.status} : ${artist_response.statusText}`;
             const artist: Search = await artist_response.json() as Search;
             return {"user": user_hyrdration, "artist_data": combine_continuation(artist, await continuation(artist.next_href, locale_params, opts, opts.depth ?? 0)) as unknown as SearchOf<Playlist|User|Track>};
@@ -307,8 +314,9 @@ export namespace SoundCloud {
         });
         return response;
     }
+
     export function get_self_user_id(cookie_jar: CookieJar){
-        const ajs_user_id = cookie_jar.getCookie('ajs_anonymous_id')!.getData().value;
+        const ajs_user_id = cookie_jar.getCookie('ajs_user_id')!.getData().value;
         return decodeURIComponent(ajs_user_id).replace(/"/g,'').split(':')[2];
     }
     export async function get_all_user_playlists(opts: Opts){
@@ -337,7 +345,7 @@ export namespace SoundCloud {
         const response = await fetch(`https://api-v2.soundcloud.com/playlists/${found_playlist.id}?${encode_params(params)}`, { "headers": post_api_headers(opts.cookie_jar!), "body": JSON.stringify(payload), "method": "PUT" });
         return response;
     }
-    export async function deleteTracksToPlaylist(opts: Opts & {playlist_name: string, track_ids: number[]}){
+    export async function delete_tracks_to_playlist(opts: Opts & {playlist_name: string, track_ids: number[]}){
         const playlists = await get_all_user_playlists(opts);
         if("error" in playlists) return {ok: false};
         const found_playlist = playlists.find(playlist => playlist.permalink === opts.playlist_name)!;

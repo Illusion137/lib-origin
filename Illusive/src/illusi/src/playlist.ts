@@ -3,9 +3,11 @@ import { default_playlists } from "./default_playlists";
 
 export function sort_playlist_tracks(playlist: Playlist, tracks: Track[]): Track[]{
     switch(playlist.sort){
+        case undefined:
         case "OLDEST":       return tracks;
         case "NEWEST":       return [...tracks].reverse();
         case "ALPHABETICAL": return tracks.sort((a, b) => a.title.localeCompare(b.title) );
+        default: return [];
     }
 }
 

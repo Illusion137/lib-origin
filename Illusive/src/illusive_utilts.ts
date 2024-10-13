@@ -1,6 +1,6 @@
 import { is_empty, remove, remove_special_chars } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
-import { IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Track } from "./types";
+import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Track } from "./types";
 
 export function extract_file_extension(path: string){ return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string){ return playlist_name.replace(/\s/g, '_'); }
@@ -52,9 +52,9 @@ export function best_thumbnail(thumbnails: IllusiveThumbnail[]){
 export function pad_number_left(num: number, padding: number): IntString{
     return String(num).padStart(padding, "0") as IntString;
 }
-export function date_from(date: {year?: number, month?: number, day?: number}){
+export function date_from(date: {year?: number, month?: number, day?: number, hour?: number, minute?: number, second?: number, ms?: number}){
     const new_date = new Date();
-    const iso_string: ISOString = `${pad_number_left(date.year ?? new_date.getFullYear(), 4)}-${pad_number_left(date.month ?? new_date.getMonth(), 2)}-${pad_number_left(date.day ?? new_date.getDay(), 2)}T00:00:00.000Z`;
+    const iso_string: ISOString = `${pad_number_left(date.year ?? new_date.getFullYear(), 4)}-${pad_number_left(date.month ?? new_date.getMonth(), 2)}-${pad_number_left(date.day ?? new_date.getDay(), 2)}T${pad_number_left(date.hour ?? new_date.getHours(), 2)}:${pad_number_left(date.minute ?? new_date.getMinutes(), 2)}:${pad_number_left(date.second ?? new_date.getSeconds(), 2)}.${pad_number_left(date.ms ?? new_date.getMilliseconds(), 3)}Z`;
     return new Date(iso_string);
 }
 export function track_section_map(tracks: Track[]): { "char_data": string[], "section_map": Track[][] }{
@@ -126,8 +126,21 @@ export function spotify_uri_to_uri(spotify_uri?: string): IllusiveURI|null {
     const [, , id] = spotify_uri.split(":");
     return create_uri("spotify", id);
 }
+export function spotify_uri_to_type(spotify_uri?: string): CompactPlaylistType|undefined {
+    if(spotify_uri === undefined) return undefined;
+    const [, type, ] = spotify_uri.split(":");
+    switch(type){
+        case "playlist": return "PLAYLIST";
+        case "album": return "ALBUM";
+        case "collection": return "SAVED";
+        default: return undefined;
+    }
+}
 export function split_uri(uri: string): ParsedUri {
     return uri.split(':') as ParsedUri;
+}
+export function make_https(s: string){
+    return "https://" + s;
 }
 export function music_service_uri_to_music_service(music_service_uri: MusicServiceURI): MusicServiceType{
     switch(music_service_uri){
@@ -140,6 +153,19 @@ export function music_service_uri_to_music_service(music_service_uri: MusicServi
         case "applemusic":   return "Apple Music";
         case "soundcloud":   return "SoundCloud";
         case "api":          return "API";
+    }
+}
+export function music_service_to_music_service_uri(music_service_uri: MusicServiceType): MusicServiceURI{
+    switch(music_service_uri){
+        case "Illusi":        return "illusi";;
+        case "Musi":          return "musi";;
+        case "YouTube":       return "youtube";;
+        case "YouTube Music": return "youtubemusic";;
+        case "Spotify":       return "spotify";;
+        case "Amazon Music":  return "amazonmusic";;
+        case "Apple Music":   return "applemusic";;
+        case "SoundCloud":    return "soundcloud";;
+        case "API":           return "api";;
     }
 }
 export function youtube_views_number(views_string: string): number{

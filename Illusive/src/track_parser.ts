@@ -4,7 +4,7 @@ import { YouTubeTrack } from '../../origin/src/youtube/types/PlaylistResults_1';
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time, remove_prod, url_to_id } from '../../origin/src/utils/util'
 import { best_thumbnail, create_uri, escape_regexpresion, spotify_uri_to_uri, youtube_music_split_artists, youtube_views_number } from './illusive_utilts';
-import { ExplicitMode, Runs, Track } from './types';
+import { ExplicitMode, Runs, SerializedTrack, Track } from './types';
 import { PlaylistPanelVideoRenderer } from '../../origin/src/youtube/types/MixResults_0';
 import { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
 import { Item4 } from '../../origin/src/spotify/types/Album';
@@ -14,6 +14,13 @@ import { AppleTrack } from '../../origin/src/apple_music/types/TrackListSection'
 import { AppleUserPlaylistTrack } from '../../origin/src/apple_music/types/UserPlaylist';
 import { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
 import { AmazonSearchTrack } from '../../origin/src/amazon_music/types/SearchResult';
+
+export function serialize_track(track: Track): SerializedTrack {
+    return {...track, "meta": JSON.stringify(track.meta)};
+}
+export function deserialize_track(track: SerializedTrack): Track {
+    return {...track, "meta": JSON.parse(track.meta ?? "")};
+}
 
 export function parse_youtube_title_artist(track: Track): Track {
     const artist = track.artists.map(artist => artist.name).join(", ");
@@ -132,7 +139,7 @@ export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack
 }
 
 export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTrack): Track|undefined{
-    const artist_runs = track.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs;
+    // const artist_runs = track.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs;
     const album_runs = track.flexColumns[2].musicResponsiveListItemFlexColumnRenderer.text.runs;
     if(track.playlistItemData?.videoId === undefined) return undefined;
     return {
@@ -219,7 +226,7 @@ export function parse_amazon_music_playlist_track(track: AmazonTrack): Track{
     }
 }
 export function parse_amazon_music_search_track(track: AmazonSearchTrack): Track{
-    const album_regex = /([a-zA-Z?><{}|!@#$%^&*]+\s?[a-zA-Z?><{}|!@#$%^&*])+/;
+    // const album_regex = /([a-zA-Z?><{}|!@#$%^&*]+\s?[a-zA-Z?><{}|!@#$%^&*])+/;
     const title = typeof track.primaryText === "object" ? track.primaryText.text : track.primaryText;
     return {
         "uid": generate_new_uid(title),

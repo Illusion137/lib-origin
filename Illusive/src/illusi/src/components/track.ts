@@ -42,21 +42,22 @@ export async function download_track(track_data: Track, is_downloading: boolean,
     }
 }
 
-export async function insert_into_write_playlist(track_data: Track, write_playlist: string|undefined, playlist_saved: boolean, set_playlist_saved: SetState<boolean>) {
-    if(write_playlist === undefined) { alert_error({"error": "Track props.write_playlist is undefined"}); return; }
+export async function insert_into_write_playlist(track_data: Track, write_playlist_uuid: string|undefined, playlist_saved: boolean, set_playlist_saved: SetState<boolean>, refresh_data?: () => any) {
+    if(write_playlist_uuid === undefined) { alert_error({"error": "Track props.write_playlist is undefined"}); return; }
     if(!playlist_saved){
-        if(write_playlist === Constants.library_write_playlist) await SQLActions.insert_track(track_data);
-        else await SQLActions.insert_track_playlist(track_data.uid, write_playlist);
+        if(write_playlist_uuid === Constants.library_write_playlist) await SQLActions.insert_track(track_data);
+        else await SQLActions.insert_track_playlist(write_playlist_uuid, track_data.uid);
         set_playlist_saved(true);
-    } else if(write_playlist !== Constants.library_write_playlist){
-        await SQLActions.delete_track_playlist(write_playlist, track_data.uid);
+    } else if(write_playlist_uuid !== Constants.library_write_playlist){
+        await SQLActions.delete_track_playlist(write_playlist_uuid, track_data.uid);
         set_playlist_saved(false);
     }
+    if(refresh_data !== undefined) refresh_data();
 }
 
-export async function delete_track(track_data: Track, write_playlist: string|undefined, refresh_data: (() => void)|undefined){
+export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined, refresh_data: (() => void)|undefined){
     if(refresh_data === undefined) { alert_error({"error": "Track props.refresh_data is undefined"}); return; }
-    if(write_playlist === undefined || write_playlist === Constants.library_write_playlist){
+    if(write_playlist_uuid === undefined || write_playlist_uuid === Constants.library_write_playlist){
         const playlists = await SQLActions.all_playlists_data();
         for(let i = 0; i < playlists.length; i++){
             await SQLActions.delete_track_playlist(playlists[i].uuid, track_data.uid);
@@ -65,7 +66,7 @@ export async function delete_track(track_data: Track, write_playlist: string|und
         await SQLActions.fetch_track_data(); 
         await refresh_data();
     } else {
-        await SQLActions.delete_track_playlist(write_playlist, track_data.uid);
+        await SQLActions.delete_track_playlist(write_playlist_uuid, track_data.uid);
         await refresh_data();
     }
 }

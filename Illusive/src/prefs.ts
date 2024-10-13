@@ -15,6 +15,7 @@ export namespace Prefs {
     };
     const user_uuid = <string>uuid.default.v4();
     export const prefs = {
+        "legacy_prefs":                          {default_value: "", current_value: "", type: "STRING"} as Pref<string>,
         "youtube_cookie_jar":                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         "youtube_music_cookie_jar":              {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         "soundcloud_cookie_jar":                 {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
@@ -55,6 +56,7 @@ export namespace Prefs {
             save_pref("youtube_music_cookie_jar", CookieJar.fromString(legacy_prefs.external_services.youtube_music_cookies)),
             save_pref("spotify_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.spotify_cookies)),
             save_pref("amazon_music_cookie_jar",  CookieJar.fromString(legacy_prefs.external_services.amazon_music_cookies)),
+            save_pref("legacy_prefs",             JSON.stringify(legacy_prefs))
         ]);
         await LegacyPrefs.clear_prefs();
     }

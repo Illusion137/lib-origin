@@ -1,1 +1,0 @@
-import * as Origin from '../../origin/src/index'

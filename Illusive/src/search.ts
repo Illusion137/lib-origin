@@ -1,9 +1,8 @@
 import * as Origin from '../../origin/src/index'
-import { AmazonTrack } from '../../origin/src/amazon_music/types/ShowHomeCreateAndBindMethod';
 import { Playlist, User, Track } from '../../origin/src/soundcloud/types/Search';
-import { extract_string_from_pattern, generate_new_uid, make_topic, parse_runs, parse_time, remove_prod, url_to_id } from '../../origin/src/utils/util';
+import { generate_new_uid, make_topic, parse_runs, parse_time, remove_prod, url_to_id } from '../../origin/src/utils/util';
 import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
-import { parse_amazon_music_playlist_track, parse_amazon_music_search_track, parse_spotify_search_track } from './track_parser';
+import { parse_amazon_music_search_track, parse_spotify_search_track } from './track_parser';
 import { MusicSearchResponse } from './types';
 import { ResponseError } from '../../origin/src/utils/types';
 
@@ -171,7 +170,7 @@ export async function soundcloud_search(query: string): Promise<MusicSearchRespo
                 "duration": Math.floor(track.full_duration / 1000),
                 "soundcloud_id": track.id,
                 "soundcloud_permalink": track.permalink_url,
-                "service_thumbnail": track.artwork_url
+                "artwork_url": track.artwork_url
             }
         }),
         "playlists": playlists.map(playlist => {
