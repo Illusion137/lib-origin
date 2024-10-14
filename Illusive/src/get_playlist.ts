@@ -71,7 +71,8 @@ type YouTubeMusicPlaylistContinuation = {"ytcfg": YTMUSIC_YTCFG.YTCFG, "continua
 
 export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
-    const playlist_response = await Origin.YouTubeMusic.get_playlist({"cookie_jar": cookie_jar}, url);
+    const playlist_id = url_to_id(url, "music.youtube.com/playlist?list=");
+    const playlist_response = await Origin.YouTubeMusic.get_playlist({"cookie_jar": cookie_jar}, playlist_id);
     if("error" in playlist_response) return {"title": "", "tracks": [], "playlist_continuation": null, "error": [playlist_response as ResponseError]};
     if(url.includes("OLAK5uy_")) { // Album
         return {

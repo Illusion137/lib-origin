@@ -3,6 +3,7 @@ import { ArtistResults_0, Content4, MusicCarouselShelfRenderer, MusicShelfRender
 import { ExploreResults_0 } from "./types/ExploreResults_0";
 import { HomeResults_0 } from "./types/HomeResults_0";
 import { LibraryResults_0, ParsedLibraryResults } from "./types/LibraryResults_0";
+import { LibraryResults_1 } from "./types/LibraryResults_1";
 import { MixResults_0 } from "./types/MixResults_0";
 import { PlaylistResults_0 } from "./types/PlaylistResults_0";
 import { PlaylistResults_1 } from "./types/PlaylistResults_1";
@@ -24,7 +25,7 @@ export function parse_explore_contents(initial_data: InitialData){
     return contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.filter(item => item.musicCarouselShelfRenderer !== undefined);
 }
 export function parse_library_contents(initial_data: InitialData){
-    const contents: LibraryResults_0 = initial_data as unknown as LibraryResults_0;
+    const contents = initial_data as unknown as LibraryResults_0|LibraryResults_1;
     const playlists = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents.map(item => {
         return {
             "title": item.richItemRenderer.content.lockupViewModel.metadata.lockupMetadataViewModel.title.content,

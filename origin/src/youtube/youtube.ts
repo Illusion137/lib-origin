@@ -1,14 +1,12 @@
 import * as sha1 from 'sha1-uint8array'
-import { Cookie, CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_string_from_pattern, get_main_key, google_query, parse_runs } from "../utils/util";
+import { CookieJar } from "../utils/cookie_util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query } from "../utils/util";
 import { YTCFG } from "./types/YTCFG";
 import * as Parser from "./parser";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { ResponseError } from '../utils/types';
 import { InitialData } from './types/types';
-import { Content4, MusicCarouselShelfRenderer } from './types/ArtistResults_0';
-import { ArtistResults_1 } from './types/ArtistResults_1';
 
 export namespace YouTube {
     const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -94,7 +92,7 @@ export namespace YouTube {
             "x-youtube-bootstrap-logged-in": "true",
             "x-youtube-client-name": "67",
             "x-youtube-client-version": "1.20240717.01.00",
-            "cookie": cookie_jar?.toString() as string,
+            "Cookies": cookie_jar?.toString() as string,
             "Referer": "https://www.youtube.com",
             "Referrer-Policy": "strict-origin-when-cross-origin"
         }
@@ -113,19 +111,16 @@ export namespace YouTube {
         let extracted = extract_string_from_pattern(html, initial_data_regex0);
         if(typeof extracted === "object") {
             extracted = extract_string_from_pattern(html, initial_data_regex1);
-            let evaluated;
-            const initial_data: InitialData = eval("evaluated = " + extracted);
+            const initial_data: InitialData = eval_json(extracted as string);
             return initial_data;
         }
-        let evaluated;
-        const initial_data: string = eval("evaluated = " + extracted);
+        const initial_data: string = eval_json(extracted);
         return JSON.parse(initial_data) as InitialData;
     }
     function extract_ytcfg(html: string): YTCFG {
         const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
         const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
-        let evaluated;
-        const ytcfg: YTCFG = eval("evaluated = " + extracted);
+        const ytcfg: YTCFG = eval_json(extracted as string);
         return ytcfg;
     }
     async function get_initial_data_config(opts: Opts, url: string, tuser_agent?: string): Promise<ICFG | ResponseError> {
@@ -156,11 +151,10 @@ export namespace YouTube {
                     "service-worker-navigation-preload": "true",
                     "upgrade-insecure-requests": "1",
                     "x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQjkr84BCOW1zgEIwrbOAQjZt84BCJ66zgEInrvOARi9rs4BGJyxzgE=",
-                    "cookie": opts.cookie_jar?.toString() as string,
+                    "Cookies": opts.cookie_jar?.toString() as string,
                 },
-                "credentials": "include",
-                "referrerPolicy": "strict-origin-when-cross-origin",
                 "body": null,
+                "credentials": "include",
                 "method": "GET"
             });
             const page_html = await page_response.text();
@@ -181,28 +175,27 @@ export namespace YouTube {
         } catch (error) { return { "error": String(error) }; }
     }
     type ICFGData<T> = { icfg: ICFG, data: T };
-    type Endpoint = { "query": string, "params": string };
     export async function get_home(opts: Opts)   : Promise<ICFGData<ReturnType<typeof Parser.parse_home_contents>>>                           { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
     export async function get_explore(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_explore_contents>>>                        { return await parse_initial(opts, "https://www.youtube.com/explore", Parser.parse_explore_contents); }
     export async function get_playlist(opts: Opts, playlist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_playlist_contents>>> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_id}`, Parser.parse_playlist_contents, user_agent_windows); }
     export async function get_artist(opts: Opts, artist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_artist_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_artist_contents); }
     export async function search(opts: Opts, search_query: string): Promise<ICFGData<ReturnType<typeof Parser.parse_search_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
     export async function get_youtube_mix(opts: Opts, video_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_mix_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RD${video_id}`, Parser.parse_mix_contents); }
-    // export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError>          { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
-    export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError> { 
-        try {
-            const icfg = await get_initial_data_config(opts, "https://www.youtube.com/feed/playlists", user_agent_windows);
-            if ("error" in icfg) throw icfg.error;
-            const payload = { "browseId": "FEplaylist_aggregation" };
-            const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
-            if("error" in browse_response) throw browse_response.error;
-            const browse_data = await browse_response.json();
-            return {
-                "icfg": icfg,
-                "data": Parser.parse_library_contents(browse_data)
-            };
-        } catch (error) { return { "error": String(error) }; }
-    }
+    export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError>          { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
+    // export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError> { 
+    //     try {
+    //         const icfg = await get_initial_data_config(opts, "https://www.youtube.com/feed/playlists", user_agent_windows);
+    //         if ("error" in icfg) throw icfg.error;
+    //         const payload = { "browseId": "FEplaylist_aggregation" };
+    //         const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
+    //         if("error" in browse_response) throw browse_response.error;
+    //         const browse_data = await browse_response.json();
+    //         return {
+    //             "icfg": icfg,
+    //             "data": Parser.parse_library_contents(browse_data)
+    //         };
+    //     } catch (error) { return { "error": String(error) }; }
+    // }
     export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation) {
         try {
             // ctoken: next_con.continuationEndpoint.continuationCommand.token,
@@ -227,7 +220,7 @@ export namespace YouTube {
             const epoch = new Date();
             const merged_payload = {...payload, ...{context: get_payload_context(ytcfg, epoch)}}
             const url = `https://www.youtube.com/youtubei/v1/${path}`;
-            const response = await fetch(url, { method: "POST", credentials: "include", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload) });
+            const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload), credentials: "include" });
             return response;
         } catch (error) { return { "error": String(error) } }
     }

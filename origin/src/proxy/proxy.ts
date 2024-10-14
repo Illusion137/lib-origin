@@ -1,4 +1,4 @@
-import { ResponseError } from "./utils/types";
+import { ResponseError } from "../utils/types";
 
 export namespace Proxy {
     export type Proxy = { ip: string; port: number };

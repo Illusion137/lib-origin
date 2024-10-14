@@ -59,6 +59,7 @@ export async function default_compact_playlists(){
         "type": "LIBRARY"
     })
     for(const default_playlist of default_playlists){
+        if(default_playlist.name === "Recently Played") continue;
         const tracks = await default_playlist.track_function();
         illusi_playlists.push({
             "title": default_playlist.name,

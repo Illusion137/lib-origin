@@ -98,7 +98,7 @@ export namespace AppleMusic {
     async function api_check_response(opts: Opts, bearer: string, path: string, params: object, payload: null|object, method: "GET"|"POST"|"DELETE" = "GET") {
         try {
             if(opts.cookie_jar === undefined) throw "CookieJar is empty";
-            const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params)}`;
+            const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params as Record<string, string>)}`;
             const response = await fetch(url, { method: method, "body": payload === null ? null : JSON.stringify(payload), "credentials": "include", "referrerPolicy": "strict-origin", headers: get_api_headers(bearer, opts) });
             return response;
         } catch (error) { return { "error": String(error) } }

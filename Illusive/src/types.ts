@@ -1,5 +1,6 @@
 import { CookieJar } from "../../origin/src/utils/cookie_util"
 import { ResponseError } from "../../origin/src/utils/types"
+import { remove } from "../../origin/src/utils/util";
 import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
@@ -314,8 +315,9 @@ export class MusicService {
             "api": "",
         }
         for(const playlist of account_playlists.playlists){
-            const [service, endpoint] = <[MusicServiceURI, string]>playlist.title.uri!.split(':');
+            let [service, endpoint] = <[MusicServiceURI, string]>playlist.title.uri!.split(':');
             if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map};
+            endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify"){
                 if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";

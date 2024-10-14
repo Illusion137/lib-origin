@@ -13,11 +13,13 @@
         "jest-transform-stub": "^2.0.0"
     },
     "dependencies": {
+        "@distube/ytdl-core": "^4.14.4",
         "@react-native-async-storage/async-storage": "^2.0.0",
         "@react-native-community/cookies": "^5.0.1",
         "@types/deasync": "^0.1.5",
         "@types/react": "^18.3.11",
         "@types/uuid": "^10.0.0",
+        "axios": "^1.7.7",
         "chrome-cookie": "^1.0.6",
         "chrome-cookies-secure": "^2.1.1",
         "deasync": "^0.1.30",

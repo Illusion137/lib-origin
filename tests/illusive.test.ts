@@ -67,8 +67,10 @@ function test_playlist_cycle(service_name: MusicServiceType, tracks: Track[]){
 function test_search(service_names: MusicServiceType[], query: string){ test_music_services_list(query, service_names, ["search", [query]]); }
 function test_user_playlists(service_names: MusicServiceType[]){ test_music_services_list("library", service_names, ["user_playlists_map", []]); }
 
-// test_search(illusive_music_services, "Lelo camelot");
+test_search(illusive_music_services, "Lelo camelot");
+// test_search(["Amazon Music"], "Lelo camelot");
 // test_user_playlists(illusive_music_services);
+// test_user_playlists(["YouTube"]);
 
 // test_fetch_playlists("YouTube", [
     // "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",

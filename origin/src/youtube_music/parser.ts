@@ -4,6 +4,7 @@ import { ExploreResults_0 } from "./types/ExploreResults_0";
 import { HomeResults_0 } from "./types/HomeResults_0";
 import { LibraryResults_0, ParsedLibraryResults } from "./types/LibraryResults_0";
 import { PlaylistResults_0, YouTubeMusicPlaylistTrack } from "./types/PlaylistResults_0";
+import { PlaylistResults_2 } from "./types/PlaylistResults_2";
 import { SearchResults_0 } from "./types/SearchResults_0";
 import { TabRenderer_0 } from "./types/TabRender_0";
 import { InitialData } from "./types/types";
@@ -33,16 +34,17 @@ export function parse_library_contents(initial_data: InitialData){
     return filtered_playlists;
 }
 export function parse_playlist_contents(initial_data: InitialData[]){
-    const contents: PlaylistResults_0 = initial_data[1] as PlaylistResults_0;
+    const contents = initial_data[1] as PlaylistResults_0;
+    const inner_contents = contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0];
     const playlist_data_contents = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0];
     return {
-        "tracks": contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0].musicShelfRenderer === undefined ?
-            contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0].musicPlaylistShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) as YouTubeMusicPlaylistTrack[] :
-            contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0].musicShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) as YouTubeMusicPlaylistTrack[],
+        "tracks": inner_contents.musicShelfRenderer === undefined ?
+            inner_contents.musicPlaylistShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) as YouTubeMusicPlaylistTrack[] :
+            inner_contents.musicShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) as YouTubeMusicPlaylistTrack[],
         "playlist_data": playlist_data_contents.musicResponsiveHeaderRenderer !== undefined ? playlist_data_contents.musicResponsiveHeaderRenderer : playlist_data_contents.musicEditablePlaylistDetailHeaderRenderer.header.musicResponsiveHeaderRenderer,
-        "continuation": contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0].musicPlaylistShelfRenderer !== undefined ? 
-            contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0].musicPlaylistShelfRenderer.continuations === undefined ? null :
-                contents.contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents[0].musicPlaylistShelfRenderer.continuations : null
+        "continuation": inner_contents.musicPlaylistShelfRenderer !== undefined ? 
+            inner_contents.musicPlaylistShelfRenderer.continuations === undefined ? null :
+                inner_contents.musicPlaylistShelfRenderer.continuations : null
     }
 }
 export function parse_artist_contents(initial_data: InitialData[]){

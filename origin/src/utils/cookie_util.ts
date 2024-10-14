@@ -1,7 +1,5 @@
 import { Cookies } from "@react-native-community/cookies";
-import { get_main_key } from "./util";
 
-type ExpiredCookie = { "error": "expired" };
 type SameSite = "None" | "Lax" | "Strict" | undefined;
 
 export interface CookieData {

@@ -95,7 +95,7 @@ export namespace YouTubeMusic {
             "x-youtube-bootstrap-logged-in": "true",
             "x-youtube-client-name": "67",
             "x-youtube-client-version": "1.20240717.01.00",
-            "cookie": cookie_jar?.toString() as string,
+            "Cookies": cookie_jar?.toString() as string,
             "Referer": "https://music.youtube.com/",
             "Referrer-Policy": "strict-origin-when-cross-origin"
         }
@@ -159,10 +159,8 @@ export namespace YouTubeMusic {
                     "service-worker-navigation-preload": "true",
                     "upgrade-insecure-requests": "1",
                     "x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==",
-                    "cookie": opts.cookie_jar?.toString() as string,
+                    "Cookies": opts.cookie_jar?.toString() as string,
                 },
-                "credentials": "include",
-                "referrerPolicy": "strict-origin-when-cross-origin",
                 "body": null,
                 "method": "GET"
             });
@@ -274,7 +272,7 @@ export namespace YouTubeMusic {
             const epoch = new Date();
             const merged_payload = {...payload, ...{context: get_payload_context(ytcfg, epoch)}}
             const url = `https://music.youtube.com/youtubei/v1/${path}`;
-            const response = await fetch(url, { method: "POST", credentials: "include", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload) });
+            const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload) });
             return response;
         } catch (error) { return { "error": String(error) } }
     }
