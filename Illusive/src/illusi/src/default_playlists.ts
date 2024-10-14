@@ -19,7 +19,7 @@ export const default_playlists: DefaultPlaylist[] = [
     }) },
     { "name": "Recently Played", "track_function": (async() => {
         await SQLActions.fetch_track_data();
-        const tracks = await SQLActions.recently_played_tracks();
+        const tracks = [...await SQLActions.recently_played_tracks()].reverse();
         return tracks;
     }) },
     { "name": "Downloaded", "track_function": (async() => {

@@ -70,7 +70,8 @@ export interface ResolvedDefaultPlaylist {
 };
 
 export interface QueueTrack {
-    playback: {artwork: Artwork}, 
+    uid: string
+    playback: {artwork: Artwork}
     artists: NamedUUID[]
     title: string
 };

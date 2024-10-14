@@ -6,6 +6,7 @@ import { generate_new_uid } from '../../../../origin/src/utils/util';
 import { Alert } from 'react-native';
 import { extract_file_extension, path_to_directory } from '../../illusive_utilts';
 import { Playlist, Track } from '../..//types';
+import { Illusive } from '../../illusive';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)){} // User cancelled the picker, exit any dialogs or menus and move on
@@ -34,7 +35,7 @@ export async function upload_track_thumbnail(track: Track, callback: () => Promi
 
 export async function upload_music_files(callback: () => Promise<void>) {
     try {
-        const audio_files = await DocumentPicker.pick({type: [DocumentPicker.types.audio, DocumentPicker.types.video], copyTo: 'documentDirectory'});
+        const audio_files = await DocumentPicker.pickMultiple({type: [DocumentPicker.types.audio, DocumentPicker.types.video], copyTo: 'documentDirectory'});
 
         const all_promise_tracks: Promise<void>[] = [];
         const all_file_copy_tracks: string[] = [];
@@ -47,10 +48,10 @@ export async function upload_music_files(callback: () => Promise<void>) {
 
                 all_file_copy_tracks.push(audio_file.fileCopyUri);
                 const file_name = audio_file.name.replace(/\..+/, ''); // FILE NAME WITHOUT EXTENSION
-                const file_extension = extract_file_extension(file_name);
+                const file_extension = extract_file_extension(audio_file.name);
                 const uid = generate_new_uid(file_name);
                 const new_file_uri = encodeURI(uid + file_extension);
-                const new_file_uri_full_path = SQLActions.document_directory(new_file_uri);
+                const new_file_uri_full_path = SQLActions.document_directory("") + Illusive.media_archive_path + new_file_uri;
                 const directory = path_to_directory(audio_file.fileCopyUri);
                 await FileSystem.moveAsync({from: audio_file.fileCopyUri, to: new_file_uri_full_path});
 
@@ -78,6 +79,6 @@ export async function upload_music_files(callback: () => Promise<void>) {
         
         await Promise.all(all_promise_tracks);
         await SQLActions.fetch_track_data();
-        await callback();
+        if(callback !== undefined) await callback();
     } catch (error) { handle_document_picker_error(error); }
 }
