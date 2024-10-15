@@ -19,7 +19,7 @@ export function sql_where<T extends Record<string, any>>(...args: [keyof T, Prim
     return `WHERE ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}`).join(' AND ')}`;
 }
 export function sql_set<T extends Record<string, any>>(...args: [keyof T, Primitives][]){
-    return `SET ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}'`).join(' AND ')}`;
+    return `SET ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}`).join(' AND ')}`;
 }
 export function sql_create_table<T extends Record<string, any>>(table: SQLTables, obj: T){
     return `CREATE TABLE IF NOT EXISTS ${table} ${obj_to_sql_table("id INTEGER PRIMARY KEY", obj, true)}`;
@@ -55,13 +55,16 @@ export function sql_table_to_query_variadics(sql_table: string){
         qarr.push('?');
     return `(${qarr.join(', ')})`;
 }
-export function obj_to_update_sql(obj: Record<string, any>){
+function sql_serialize(str: string){
+    return str.replace("'", "''");
+}
+export function obj_to_update_sql(obj: Record<string, any>, serialize_strings?: boolean){
     const updation: string[] = [];
     const keys = Object.keys(obj);
     for(const key of keys){
         const value = obj[key];
         switch(typeof value){
-            case "string": updation.push(`${key}='${value}'`); break;
+            case "string": (serialize_strings ?? false) ? updation.push(`${key}='${sql_serialize(value)}'`) : updation.push(`${key}='${value}'`); break;
             case "object": updation.push(`${key}='${JSON.stringify(value)}'`); break;
             case "undefined": break;
             default: updation.push(`${key}=${value}`); break;

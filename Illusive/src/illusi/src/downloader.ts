@@ -8,6 +8,7 @@ import { Prefs } from '../../prefs';
 import { Illusive } from '../../illusive';
 import { Alert } from 'react-native';
 import { alert_error } from './alert';
+import { is_empty } from '../../../../origin/src/utils/util';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -18,6 +19,14 @@ function wait_for(condition_function: () => boolean) {
 }
 export function sort_tracks_for_download(tracks: Track[]): Track[]{
     return tracks.sort((a, b) => a.duration - b.duration);
+}
+export function sort_filter_tracks(tracks: Track[]){
+    return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri)));
+}
+export function download_track_list(tracks: Track[]){
+    for(const track of sort_filter_tracks(tracks)){
+        download_track(track);
+    }
 }
 export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     function in_download_range(uid: string, download_queue_max_length: number) {

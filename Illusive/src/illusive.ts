@@ -195,7 +195,7 @@ export namespace Illusive {
 
     export async function convert_track(track: Track, to_music_service: MusicServiceType): Promise<Track|ResponseError>{
         if(music_service.get(to_music_service)?.search === undefined) return {"error": "can't convert to this music-service"};
-        const search_tracks = await music_service.get(to_music_service)!.search!(`${track.artists[0].name} ${track.title}`);
+        const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
         if(search_tracks.tracks.length === 0) return {"error": "no tracks"};
         type Max = {"index": number, "value": number};
         let best: Max = {"index": 0, "value": 25};

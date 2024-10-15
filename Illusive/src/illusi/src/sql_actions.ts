@@ -282,7 +282,7 @@ export async function insert_track(track: Track) {
     await fetch_track_data();
 }
 export async function update_track(track_uid: string, new_track: Track){
-    await db.runAsync(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track)} ${sql_where<Track>(["uid", track_uid])}`);
+    await db.runAsync(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, true)} ${sql_where<Track>(["uid", track_uid])}`);
     await fetch_track_data();
 }
 export async function update_track_meta_data(track_uid: string, new_meta: TrackMetaData){
@@ -370,7 +370,7 @@ export async function playlist_data(playlist_uuid: string, ignore_tracks = false
     return await sql_playlist_to_playlist(playlists[0], ignore_tracks);
 }
 export async function update_playlist(playlist_uuid: string, new_playlist: Playlist){
-    await db.runAsync(`${sql_update_table("playlists")} ${obj_to_update_sql(new_playlist)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db.runAsync(`${sql_update_table("playlists")} ${obj_to_update_sql(new_playlist, true)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function create_playlist(playlist_name: string): Promise<string> {
     const playlist_names = await all_playlists_names();

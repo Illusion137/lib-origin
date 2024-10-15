@@ -8,31 +8,6 @@ import { Constants } from "../../../constants";
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 
-export function check_download_status(track_data: Track, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>, set_downloading_progress: SetState<number>, interval_loop_ms: number): React.EffectCallback {
-	let interval: number|NodeJS.Timeout;
-    const depth = Prefs.get_pref('download_queue_max_length');
-    const index = GLOBALS.downloading.slice(0, depth).findIndex(item => item?.uid === track_data.uid);
-    const is_currently_downloading = index !== -1;
-    if(is_currently_downloading){
-        set_is_downloading(true);
-        set_downloading_progress(GLOBALS.downloading[index]?.progress);
-        interval = setInterval(() => {
-            const inner_depth = Prefs.get_pref('download_queue_max_length');
-            const inner_index = GLOBALS.downloading.slice(0, inner_depth).findIndex(item => item?.uid === track_data.uid);
-            if(inner_index === -1){
-                set_is_downloading(false);
-                clearInterval(interval);
-                const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === track_data.uid);
-                if(idx !== -1 && !is_empty(GLOBALS.global_var.sql_tracks[idx].media_uri))
-                    set_is_downloaded(true);
-                return;
-            }
-            set_downloading_progress(GLOBALS.downloading[index]?.progress);
-        }, interval_loop_ms)
-    }
-    return () => clearInterval(interval);
-}
-
 export async function download_track(track_data: Track, is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>, set_downloading_progress: SetState<number>){
     const track = await SQLActions.fetch_track_data_from_uid(track_data.uid);
     set_is_downloading(true);
