@@ -3,7 +3,6 @@ import { PlaylistHeaderSection } from "./PlaylistHeaderSection"
 import { SpacerSection } from "./SpacerSection"
 import { TrackListFooterSection } from "./TrackListFooterSection"
 import { TrackListSection } from "./TrackListSection"
-import { Section } from "./type"
 
 export type Playlist = Root2[]
 

@@ -85,13 +85,18 @@ export function track_query_filter(tracks: Track[], query?: string){
         const jp_flag = query!.includes("@jp");
         const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
 
-        query = remove(query!, "@jp");
-        
-        return tracks.filter(track => (
-            track.artists[0].name.toUpperCase().includes(query!.toUpperCase()) 
-                || remove_special_chars(track.title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase()) 
-                || (jp_flag && (jp_regex.test(track.title)||jp_regex.test(track.artists[0].name))) 
-            ))
+        query = remove(query!, /@jp ?/);
+
+        return tracks.filter(track => {
+            const includes_title = remove_special_chars(track.title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
+            const includes_artist = track.artists[0].name.toUpperCase().includes(query!.toUpperCase());
+            
+            const jp_test_title = jp_regex.test(track.title);
+            const jp_test_artist = jp_regex.test(track.artists[0].name);
+            const jp_test = jp_flag && (jp_test_title||jp_test_artist);
+            
+            return !is_empty(query) && (includes_title||includes_artist) || jp_test;
+        });
     }
     return tracks;
 }
@@ -221,4 +226,20 @@ export function array_mask<T>(a: T[], b: T[], compare_same: (a: T, b: T) => bool
 }
 export function escape_regexpresion(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
+export function empty_join(vals: any[], join_with: string){
+    return vals.filter(vals => !is_empty(vals)).join(join_with);
+}
+export function empty_join_dot(vals: any[]){
+    return empty_join(vals, " • ");
+}
+//playlist_duration_to_string(tracks.map(({duration}) => duration).reduce(function(prev, cur) { return prev + cur; }, 0))
+export function track_durations(tracks: Track[]){
+    return tracks.map(({duration}) => duration);
+}
+export function sum(nums: number[]){
+    return nums.reduce((prev, cur) => prev + cur, 0);
+}
+export function tracks_duration_string(tracks: Track[]){
+    return playlist_duration_to_string( sum(track_durations(tracks)) );
 }

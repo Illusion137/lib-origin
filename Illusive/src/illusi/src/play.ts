@@ -42,13 +42,16 @@ export async function push_track_to_playing_queue(track_data: Track){
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 }
-export async function play_mix(track_data: Track, from: string){
-    if(is_empty(from)) return;
-        GLOBALS.global_var.play_tracks(track_data, [track_data], from);
+export async function play_mix(track_data: Track, from: string) {
+    if(is_empty(from)) {
+        alert_error({"error": "Play Mix: from is empty"});
+        return;
+    }
+    GLOBALS.global_var.play_tracks(track_data, [track_data], from);
     const track_mix = await Illusive.get_track_mix(track_data);
     if("error" in track_mix) {
         alert_error(track_mix);
-        return track_mix;
+        return;
     }
     GLOBALS.global_var.playing_tracks = GLOBALS.global_var.playing_tracks.concat(track_mix.tracks);
 }

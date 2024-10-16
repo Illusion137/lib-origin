@@ -13,11 +13,11 @@ export async function if_confirm(title: string, msg: string, on_press: () => Pro
 }
 
 export function catch_function_sync(func: () => any){
-    try { func(); } 
+    try { return func(); } 
     catch (error) { alert_error({"error": String(error)}); return {"error": String(error)}; }
 }
 export async function catch_function_async(func: () => Promise<any>){
-    try { await func(); } 
+    try { return await func(); } 
     catch (error) { alert_error({"error": String(error)}); return {"error": String(error)}; }
 }
 

@@ -58,7 +58,7 @@ function format_cookies(cookie_data: any){
         formated_cookies = formated_cookies.slice(0, formated_cookies.length-2)
     
         return formated_cookies;
-    } catch (error) {}
+    } catch (error) { return ""; }
 }
 function format_cookies_json(cookie_data: Record<string, any>){
     try {
@@ -68,7 +68,7 @@ function format_cookies_json(cookie_data: Record<string, any>){
             formatedCookies = formatedCookies.slice(0, formatedCookies.length-2)
         }
         return formatedCookies;
-    } catch (error) {}
+    } catch (error) { return ""; }
 }
 export async function set_cookies_json(unformated_cookies: Record<string, any>, service: string){
     let cookies = format_cookies_json(unformated_cookies);

@@ -49,7 +49,7 @@ export function url_to_id(url: string, ...remove_links: string[]){
 }
 export function make_topic(title: string){ return `${title} - Topic`; }
 export function remove_topic(title: string){ return title.replace(" - Topic", ''); }
-export function is_empty(value: unknown){ return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0); }
+export function is_empty(value: unknown){ return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 export function remove(str: string, ...rs: (string|RegExp)[]) { for(const r of rs) str = str.replace(r, ''); return str; }

@@ -1,20 +1,17 @@
-import { get_main_key, parse_runs } from "../utils/util";
-import { ArtistResults_0, Content4, MusicCarouselShelfRenderer, MusicShelfRenderer } from "./types/ArtistResults_0";
+import { ArtistResults_0, MusicCarouselShelfRenderer, MusicShelfRenderer } from "./types/ArtistResults_0";
 import { ExploreResults_0 } from "./types/ExploreResults_0";
-import { HomeResults_0 } from "./types/HomeResults_0";
-import { LibraryResults_0, ParsedLibraryResults } from "./types/LibraryResults_0";
+import { LibraryResults_0 } from "./types/LibraryResults_0";
 import { LibraryResults_1 } from "./types/LibraryResults_1";
 import { MixResults_0 } from "./types/MixResults_0";
-import { PlaylistResults_0 } from "./types/PlaylistResults_0";
 import { PlaylistResults_1 } from "./types/PlaylistResults_1";
 import { PlaylistResults_2 } from "./types/PlaylistResults_2";
 import { SearchResults_0 } from "./types/SearchResults_0";
 import { SearchResults_1 } from "./types/SearchResults_1";
-import { TabRenderer_0 } from "./types/TabRender_0";
 import { InitialData } from "./types/types";
 
 export function parse_home_contents(initial_data: InitialData){
-    const contents: HomeResults_0 = initial_data as unknown as HomeResults_0;
+    initial_data;
+    // const contents: HomeResults_0 = initial_data as unknown as HomeResults_0;
     return {
         // "contents": contents.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents,
         // "continuation": contents.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.continuations[0].nextContinuationData

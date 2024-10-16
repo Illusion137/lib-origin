@@ -280,7 +280,7 @@ export namespace Spotify {
         } catch (error) { return { "error": String(error) }; }
     }
 
-    export async function account_playlists(opts: Opts, limit: number = 10){
+    export async function account_playlists(opts: Opts & { limit?: number }){
         try {
             if(opts.cookie_jar === undefined) throw "Undefined Cookies for Spotify Account Playlists";
             const client = opts.client !== undefined ? opts.client : await get_client("https://open.spotify.com/", opts.cookie_jar);
@@ -294,7 +294,7 @@ export namespace Spotify {
                     "order":null,
                     "textFilter":"",
                     "features": ["LIKED_SONGS","YOUR_EPISODES"],
-                    "limit":10,
+                    "limit": opts.limit ?? 10,
                     "offset":0,
                     "flatten":false,
                     "expandedFolders":[],

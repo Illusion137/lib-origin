@@ -1,11 +1,11 @@
-import { PromiseResult, ResponseError } from "../utils/types";
+import { PromiseResult } from "../utils/types";
 import { CookieJar } from "../utils/cookie_util";
 import { AmznMusic } from "./types/AmznMusic";
 import { ShowHome } from "./types/ShowHome";
 import { ShowLibraryHome } from "./types/ShowLibraryHome";
 import { CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
 import { SearchResult } from "./types/SearchResult";
-import { extract_string_from_pattern, is_empty, url_to_id } from "../utils/util";
+import { extract_string_from_pattern, url_to_id } from "../utils/util";
 
 export namespace AmazonMusic {
     interface AuthHeader {
@@ -31,7 +31,7 @@ export namespace AmazonMusic {
                 "upgrade-insecure-requests": "1",
                 "cookie": opts.cookie_jar?.toString() as string
             };
-            const result = await fetch("https://music.amazon.com/", {
+            const result = await fetch(url, {
                 headers,
                 "referrerPolicy": "strict-origin-when-cross-origin",
                 "body": null,
@@ -101,18 +101,18 @@ export namespace AmazonMusic {
             const body = JSON.stringify({"deeplink": JSON.stringify(deeplink), "headers": JSON.stringify(headers)});
 
             const show_home_body = await fetch("https://na.mesk.skill.music.a2z.com/api/showHome", {'method': 'POST', 'headers': {
-                "accept": "*/*",
-                "accept-language": "en-US,en;q=0.9",
-                "content-type": "text/plain;charset=UTF-8",
-                "priority": "u=1, i",
-                "sec-ch-ua": "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": "\"Windows\"",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "cross-site",
-                "Referer": "https://music.amazon.com/",
-                "Referrer-Policy": "strict-origin-when-cross-origin"
+                    "accept": "*/*",
+                    "accept-language": "en-US,en;q=0.9",
+                    "content-type": "text/plain;charset=UTF-8",
+                    "priority": "u=1, i",
+                    "sec-ch-ua": "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": "\"Windows\"",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "cross-site",
+                    "Referer": "https://music.amazon.com/",
+                    "Referrer-Policy": "strict-origin-when-cross-origin"
                 },
                 'body': body
             });
@@ -160,7 +160,7 @@ export namespace AmazonMusic {
             "cookie": cookie_jar?.toString() as string,
         }
     }
-    export async function get_amzn_music_request_headers_default(amzn_music: AmznMusic, playlist_url: string, opts: Opts){
+    export async function get_amzn_music_request_headers_default(amzn_music: AmznMusic, playlist_url: string){
         try {
             const show_home = await get_show_home_data(amzn_music, playlist_url);
             if("error" in show_home) throw show_home.error;
@@ -209,7 +209,7 @@ export namespace AmazonMusic {
         try {
             const amzn_music = opts.client ?? await get_amzn_music_data("https://music.amazon.com/my/library", opts);
             if("error" in amzn_music) throw amzn_music.error;
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, "https://music.amazon.com/my/library", opts);
+            const request_headers = await get_amzn_music_request_headers_default(amzn_music, "https://music.amazon.com/my/library");
             if("error" in  request_headers) throw request_headers.error;
             const user_hash = get_user_hash();
             const request_payload = {'headers': JSON.stringify(request_headers), 'userHash': JSON.stringify(user_hash)};
@@ -255,7 +255,7 @@ export namespace AmazonMusic {
             if("error" in amzn_music) throw amzn_music.error;
         
             const user_hash = get_user_hash();
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, url, opts);
+            const request_headers = await get_amzn_music_request_headers_default(amzn_music, url);
             if("error" in  request_headers) throw request_headers.error;
 
             const request_payload = {
@@ -286,7 +286,7 @@ export namespace AmazonMusic {
             if("error" in amzn_music) throw amzn_music.error;
         
             const user_hash = get_user_hash();
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url, opts);
+            const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url);
             if("error" in request_headers) throw request_headers.error;
             
             const selected_ids = {
@@ -321,7 +321,7 @@ export namespace AmazonMusic {
             if("error" in playlist) throw playlist.error;
             
             const user_hash = get_user_hash();
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url, opts);
+            const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url);
             if("error" in request_headers) throw request_headers.error;
             
             let result = {"ok": true};
@@ -351,7 +351,7 @@ export namespace AmazonMusic {
         if("error" in amzn_music) throw amzn_music.error;
     
         const user_hash = get_user_hash();
-        const request_headers = await get_amzn_music_request_headers_default(amzn_music, url, opts);
+        const request_headers = await get_amzn_music_request_headers_default(amzn_music, url);
         if("error" in request_headers) throw request_headers.error;
         
         const playlist_info = { "interface":"Web.TemplatesInterface.v1_0.Touch.PlaylistTemplateInterface.PlaylistClientInformation", "name": playlist_name, "path":"/my/library" };
@@ -371,7 +371,7 @@ export namespace AmazonMusic {
         if("error" in amzn_music) throw amzn_music.error;
     
         const user_hash = get_user_hash();
-        const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url, opts);
+        const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url);
         if("error" in request_headers) throw request_headers.error;
 
         const playlist_id = playlist_url.replace("https://", "").replace("www.", "music.amazon.com/").replace("my/playlists/", "");

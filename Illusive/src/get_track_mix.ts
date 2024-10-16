@@ -1,7 +1,4 @@
 import * as Origin from '../../origin/src/index';
-import { CookieJar } from '../../origin/src/utils/cookie_util';
-import { generate_new_uid, parse_runs, parse_time } from '../../origin/src/utils/util';
-import { create_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
 import { parse_soundcloud_track, parse_youtube_mix_track } from './track_parser';
 import { Track } from './types';

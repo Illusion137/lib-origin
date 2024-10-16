@@ -257,6 +257,9 @@ export interface MusicSearchResponse {
     error?: MaybeErrors
 }
 
+export interface a {
+
+}
 export interface IllusiveExplore {
 
 }
@@ -337,6 +340,7 @@ export class MusicService {
         if("error" in initial) return initial.error;
         // while()
         initial.tracks = initial.tracks.concat()
+        return;
     }
     constructor(s: {
         app_icon: string | number,

@@ -26,11 +26,15 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: ()
         
         const directory = path_to_directory(thumbnail_uri.fileCopyUri!);
         await FileSystem.deleteAsync(SQLActions.document_directory(directory), { idempotent: true });
+        if(callback !== undefined) await callback();
     } catch (error) { handle_document_picker_error(error); }
 }
 
 export async function upload_track_thumbnail(track: Track, callback: () => Promise<void>){
-
+    try {
+        track;
+        if(callback !== undefined) await callback();
+    } catch (error) { handle_document_picker_error(error); }
 }
 
 export async function upload_music_files(callback: () => Promise<void>) {

@@ -736,7 +736,7 @@ interface AssociatedVideos {
 }
 
 interface TracksV2 {
-    items: Item15[]
+    items: SpotifySearchTrack[]
     totalCount: number
 }
 

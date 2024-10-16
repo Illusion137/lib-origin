@@ -1,4 +1,4 @@
-type ExtraSubscreens = "";
+import { OptionNav, OptionPress } from "./extras_components";
 
 interface ExtrasSection {
     options: (OptionNav|OptionPress)[]
@@ -21,9 +21,9 @@ export const extras: ExtrasSection[] = [
     },
     {
         "options": [
-            {"icon": "music-outline",   "title": "Other Playlists"},
-            {"icon": "tray-outline",    "title": "Batch Downloader"},
-            {"icon": "convert-outline", "title": "Playlist Converter"},
+            {"icon": "musical-note-outline",   "title": "Other Playlists"},
+            {"icon": "file-tray-stacked-outline",    "title": "Batch Downloader"},
+            {"icon": "list-circle-outline", "title": "Playlist Converter"},
             {"icon": "link-outline",    "title": "Linker"},
         ],
         "bottom_text": "Hard Link playlist and other data from other Music Services. Automatically fetched on app startup"
@@ -36,9 +36,9 @@ export const extras: ExtrasSection[] = [
     },
     {
         "options": [
-            {"icon": "github",            "title": "Github",              "confirm": false, "on_press": () => {}},
+            {"icon": "logo-github",            "title": "Github",              "confirm": false, "on_press": () => {}},
             {"icon": "file-tray-outline", "title": "Zip all Data",        "confirm": false, "on_press": () => {}},
-            {"icon": "reset-outline",     "title": "Reset Settings",      "confirm": true, "on_press": () => {}},
+            {"icon": "sync",     "title": "Reset Settings",      "confirm": true, "on_press": () => {}},
             {"icon": "trash-outline",     "title": "Clear Playlist Data", "confirm": true, "on_press": () => {}},
             {"icon": "trash-outline",     "title": "Clear All Data",      "confirm": true, "on_press": () => {}},
         ],
@@ -46,7 +46,7 @@ export const extras: ExtrasSection[] = [
     },
     {
         "options": [
-            {"icon": "tool-outline", "title": "Developer"},
+            {"icon": "hammer-outline", "title": "Developer"},
         ],
         "bottom_text": "Developer Tools"
     }

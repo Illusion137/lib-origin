@@ -1,26 +1,23 @@
+import { Ionicons } from '@expo/vector-icons';
+export type ExtraSubscreens = 
+    "Backup, Recover, & Transfer"|
+    "Settings"|
+    "Sleep Timer"|
+    "External Services"|
+    "Other Playlists"|
+    "Batch Downloader"|
+    "Playlist Converter"|
+    "Linker"|
+    "Backpack"|
+    "Developer";
+type IoniconsGlyphs = keyof (typeof Ionicons)["glyphMap"];
 export interface OptionNav {
-    icon: string
+    icon: IoniconsGlyphs
     title: ExtraSubscreens
 }
 export interface OptionPress {
-    icon: string
+    icon: IoniconsGlyphs
     title: string
     confirm: boolean
-    on_press: () => Promise<void>
-}
-export interface OptionNumber {
-    icon: string
-    title: string
-    callback: (value: number) => Promise<void>
-}
-export interface OptionBoolean {
-    icon: string
-    title: string
-    callback: (value: boolean) => Promise<void>
-}
-export interface OptionSlideBox {
-    icon: string
-    title: string
-    options: string[]
-    callback: (value: string) => Promise<void>
+    on_press: () => any
 }

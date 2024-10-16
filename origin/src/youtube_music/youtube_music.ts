@@ -1,13 +1,13 @@
 import * as sha1 from 'sha1-uint8array'
-import { Cookie, CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_string_from_pattern, get_main_key, google_query, parse_runs } from "../utils/util";
+import { CookieJar } from "../utils/cookie_util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query } from "../utils/util";
 import { YTCFG } from "./types/YTCFG";
 import * as Parser from "./parser";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { ResponseError } from '../utils/types';
 import { InitialData } from './types/types';
-import { Content4, MusicCarouselShelfRenderer } from './types/ArtistResults_0';
+import { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
 import { ArtistResults_1 } from './types/ArtistResults_1';
 
 export namespace YouTubeMusic {
@@ -115,12 +115,11 @@ export namespace YouTubeMusic {
         const matches = [...html.matchAll(initial_data_regex)];
         for (let i = 0; i < matches.length; i++) {
             const match = matches[i][1];
-            let evaluated;
             const route: {
                 path: string,
                 params: object,
                 data: string
-            } = eval("evaluated = " + match);
+            } = eval_json(match);
             const data: InitialData = JSON.parse(route.data);
             initial_data.push(data);
         }
@@ -129,8 +128,7 @@ export namespace YouTubeMusic {
     function extract_ytcfg(html: string): YTCFG {
         const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
         const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
-        let evaluated;
-        const ytcfg: YTCFG = eval("evaluated = " + extracted);
+        const ytcfg: YTCFG = eval_json(<string>extracted);
         return ytcfg;
     }
     async function get_initial_data_config(opts: Opts, url: string): Promise<ICFG | ResponseError> {

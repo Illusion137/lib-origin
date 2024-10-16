@@ -2,7 +2,6 @@ import { CookieJar } from "../utils/cookie_util";
 import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty } from "../utils/util";
 import { ArtistUser, Playlist, Search, SearchOf, Track, User } from "./types/Search";
 import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
-import { UserTracks } from "./types/UserTracks";
 import { ResponseError } from "../utils/types";
 
 export namespace SoundCloud {
