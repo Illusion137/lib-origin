@@ -1,8 +1,8 @@
 import * as Origin from '../../origin/src/index'
 import { Playlist, User, Track } from '../../origin/src/soundcloud/types/Search';
-import { generate_new_uid, make_topic, parse_runs, parse_time, remove_prod, url_to_id } from '../../origin/src/utils/util';
+import { generate_new_uid, make_topic, parse_runs, parse_time, url_to_id } from '../../origin/src/utils/util';
 import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
-import { parse_amazon_music_search_track, parse_spotify_search_track } from './track_parser';
+import { parse_amazon_music_search_track, parse_soundcloud_track, parse_spotify_search_track } from './track_parser';
 import { MusicSearchResponse } from './types';
 import { ResponseError } from '../../origin/src/utils/types';
 
@@ -14,7 +14,8 @@ export async function spotify_search(query: string): Promise<MusicSearchResponse
             "playlists": [],
             "albums": [],
             "artists": [],
-            "error": [search_response]
+            "error": [search_response],
+            "continuation": null
         }
     }
     return {
@@ -38,10 +39,11 @@ export async function spotify_search(query: string): Promise<MusicSearchResponse
         "artists": search_response.data.searchV2.artists.items.map(artist => {
             return {
                 "name": {"name": make_topic(artist.data.profile.name), "uri": spotify_uri_to_uri(artist.data.uri)},
-                "profile_thumbnail_uri": best_thumbnail(artist.data.visuals.avatarImage?.sources!)?.url,
+                "profile_artwork_url": best_thumbnail(artist.data.visuals.avatarImage?.sources!)?.url,
                 "is_official_artist_channel": true
             }
-        })
+        }),
+        "continuation": null
     }
 }
 
@@ -53,14 +55,16 @@ export async function amazon_music_search(query: string): Promise<MusicSearchRes
             "playlists": [],
             "albums": [],
             "artists": [],
-            "error": [search_response]
+            "error": [search_response],
+            "continuation": null
         }
     }
     return {
         "tracks": search_response.map(track => { return parse_amazon_music_search_track(track) }),
         "playlists": [],
         "albums": [],
-        "artists": []
+        "artists": [],
+        "continuation": null
     }
 }
 
@@ -72,7 +76,8 @@ export async function youtube_search(query: string): Promise<MusicSearchResponse
             "playlists": [],
             "albums": [],
             "artists": [],
-            "error": [search_response as ResponseError]
+            "error": [search_response as ResponseError],
+            "continuation": null
         }
     }
     return {
@@ -98,13 +103,13 @@ export async function youtube_search(query: string): Promise<MusicSearchResponse
                 return {
                     "title": {"name": "runs" in playlist.title ? parse_runs(playlist.title.runs) : playlist.title, "uri": create_uri("youtube", playlist.playlistId)},
                     "artist": [{"name": parse_runs(playlist.shortBylineText.runs), "uri": create_uri("youtube", playlist.shortBylineText.runs[0].navigationEndpoint?.browseEndpoint.canonicalBaseUrl ?? "")}],
-                    "thumbnail_uri": best_thumbnail(playlist.thumbnail.thumbnails)?.url,
+                    "artwork_url": best_thumbnail(playlist.thumbnail.thumbnails)?.url,
                 }
             }
             else return {
                 "title": {"name": playlist.title.simpleText, "uri": create_uri("youtube", playlist.playlistId)},
                 "artist": [{"name": playlist.longBylineText.simpleText, "uri": null}],
-                "thumbnail_uri": best_thumbnail(playlist.thumbnail.thumbnails)?.url,
+                "artwork_url": best_thumbnail(playlist.thumbnail.thumbnails)?.url,
             }
         }),
         "albums": [],
@@ -112,16 +117,17 @@ export async function youtube_search(query: string): Promise<MusicSearchResponse
             if("simpleText" in artist.title){
                 return {
                     "name": {"name": artist.title.simpleText, "uri": create_uri("youtube", artist.channelId)},
-                    "profile_thumbnail_uri": artist.thumbnail.thumbnails[0].url,
+                    "profile_artwork_url": artist.thumbnail.thumbnails[0].url,
                     "is_official_artist_channel": true
                 }
             }
             else return {
                 "name": {"name": parse_runs(artist.title.runs), "uri": create_uri("youtube", artist.channelId)},
-                "profile_thumbnail_uri": artist.thumbnail.thumbnails[0].url,
+                "profile_artwork_url": artist.thumbnail.thumbnails[0].url,
                 "is_official_artist_channel": true
             }
-        })
+        }),
+        "continuation": null
     }
 }
 
@@ -133,17 +139,20 @@ export async function youtube_music_search(query: string): Promise<MusicSearchRe
             "playlists": [],
             "albums": [],
             "artists": [],
-            "error": [search_response as ResponseError]
+            "error": [search_response as ResponseError],
+            "continuation": null
         }
     }
     return {
         "tracks": [],
         "playlists": [],
         "albums": [],
-        "artists": []
+        "artists": [],
+        "continuation": null
     }
 }
 
+type SoundcloudPlaylistContinuation = {"next_href": string|null, "client_id": string, "depth": number};
 export async function soundcloud_search(query: string): Promise<MusicSearchResponse> {
     const search_response = await Origin.SoundCloud.search("EVERYTHING", {"query": query});
     if("error" in search_response){
@@ -152,27 +161,18 @@ export async function soundcloud_search(query: string): Promise<MusicSearchRespo
             "playlists": [],
             "albums": [],
             "artists": [],
-            "error": [search_response as ResponseError]
+            "error": [search_response as ResponseError],
+            "continuation": null
         }
     }
-    const playlists_and_albums = search_response.collection.filter(item => item.kind === "playlist") as Playlist[];
+    const playlists_and_albums = search_response.data.collection.filter(item => item.kind === "playlist") as Playlist[];
     const playlists = playlists_and_albums.filter(item => item.is_album === false);
     const albums = playlists_and_albums.filter(item => item.is_album === true);
-    const users = search_response.collection.filter(item => item.kind === "user") as User[];
-    const tracks = search_response.collection.filter(item => item.kind === "track") as Track[];
+    const users = search_response.data.collection.filter(item => item.kind === "user") as User[];
+    const tracks = search_response.data.collection.filter(item => item.kind === "track") as Track[];
 
     return {
-        "tracks": tracks.map(track => {
-            return {
-                "uid": generate_new_uid(track.title),
-                "title": remove_prod(track.title),
-                "artists": [{"name": make_topic(track.user.username), "uri": create_uri("soundcloud", track.permalink)}],
-                "duration": Math.floor(track.full_duration / 1000),
-                "soundcloud_id": track.id,
-                "soundcloud_permalink": track.permalink_url,
-                "artwork_url": track.artwork_url
-            }
-        }),
+        "tracks": tracks.map(track => parse_soundcloud_track(track)),
         "playlists": playlists.map(playlist => {
             return {
                 "title": {"name": playlist.title, "uri": create_uri("soundcloud", url_to_id(playlist.permalink_url))},
@@ -183,7 +183,7 @@ export async function soundcloud_search(query: string): Promise<MusicSearchRespo
                     } 
                 }) : [{"name": make_topic(playlist.user.username), "uri": create_uri("soundcloud", playlist.user.permalink)}],
                 "year": new Date(playlist.created_at).getFullYear(),
-                "thumbnail_uri": playlist.artwork_url
+                "artwork_url": playlist.artwork_url
             }
         }),
         "albums": albums.map(album => {
@@ -196,15 +196,19 @@ export async function soundcloud_search(query: string): Promise<MusicSearchRespo
                     } 
                 }) : [{"name": make_topic(album.user.username), "uri": create_uri("soundcloud", url_to_id(album.user.permalink_url))}],
                 "year": new Date(album.created_at).getFullYear(),
-                "thumbnail_uri": album.artwork_url === null ? Array.isArray(album.user) ? album.user[0].avatar_url : album.user.avatar_url : album.artwork_url
+                "artwork_url": album.artwork_url === null ? Array.isArray(album.user) ? album.user[0].avatar_url : album.user.avatar_url : album.artwork_url
             }
         }),
         "artists": users.map(artist => {
             return {
                 "name": {"name": make_topic(artist.username), "uri": create_uri("soundcloud", url_to_id(artist.permalink_url))},
-                "profile_thumbnail_uri": artist.avatar_url,
+                "profile_artwork_url": artist.avatar_url,
                 "is_official_artist_channel": true
             }
-        })
+        }),
+        "continuation": null
     }
+}
+export async function soundcloud_continuation(){
+
 }

@@ -1,5 +1,3 @@
-import { Cookie as CK, CookieJar } from 'tough-cookie';
-
 export type Filter = 'audioandvideo' | 'videoandaudio' | 'video' | 'videoonly' | 'audio' | 'audioonly' | ((format: AVFormat) => boolean);
 
 interface GetInfoOptions {

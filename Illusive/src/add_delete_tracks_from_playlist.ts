@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index'
-import { extract_string_from_pattern, is_empty, url_to_id } from '../../origin/src/utils/util';
+import { is_empty, url_to_id } from '../../origin/src/utils/util';
 import { Constants } from './constants';
 import { Prefs } from './prefs';
 import { Track } from './types';
@@ -112,13 +112,15 @@ export async function soundcloud_add_tracks_to_playlist(tracks: Track[], playlis
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.soundcloud_id));
     const uris = tracks.map(track => track.soundcloud_id!);
-    const add_response = await Origin.SoundCloud.add_tracks_to_playlist({"cookie_jar": cookie_jar, "playlist_name": extract_string_from_pattern(url_to_id(playlist_url, "soundcloud.com/", "m.soundcloud.com/", "soundcloud.com/"), /.+?\/sets\/(.+)/) as string, "track_ids": uris});
-    return add_response.ok;
+    const add_response = await Origin.SoundCloud.add_tracks_to_playlist({"cookie_jar": cookie_jar, "playlist_name": playlist_url, "track_ids": uris});
+    if("error" in add_response) return false;
+    return add_response.data.ok;
 }
 export async function soundcloud_delete_tracks_from_playlist(tracks: Track[], playlist_url: string){
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.soundcloud_id));
     const uris = tracks.map(track => track.soundcloud_id!);
-    const deletion_response = await Origin.SoundCloud.add_tracks_to_playlist({"cookie_jar": cookie_jar, "playlist_name": extract_string_from_pattern(url_to_id(playlist_url, "soundcloud.com/", "m.soundcloud.com/", "soundcloud.com/"), /.+?\/sets\/(.+)/) as string, "track_ids": uris});
-    return deletion_response.ok;
+    const deletion_response = await Origin.SoundCloud.add_tracks_to_playlist({"cookie_jar": cookie_jar, "playlist_name": playlist_url, "track_ids": uris});
+    if("error" in deletion_response) return false;
+    return deletion_response.data.ok;
 }

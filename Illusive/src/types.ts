@@ -221,7 +221,7 @@ export interface CompactPlaylist {
     title: NamedUUID
     artist: NamedUUID[]
     artwork_thumbnails?: IllusiveThumbnail[]
-    thumbnail_uri?: string
+    artwork_url?: string
     date?: Date
     explicit?: ExplicitMode
     type?: CompactPlaylistType
@@ -229,7 +229,7 @@ export interface CompactPlaylist {
 
 export interface CompactArtist {
     name: NamedUUID
-    profile_thumbnail_uri?: string
+    profile_artwork_url?: string
     is_official_artist_channel: boolean
 }
 
@@ -238,14 +238,14 @@ export interface MusicServicePlaylist {
     title: string
     creator?: NamedUUID[]
     description?: string
-    thumbnail_uri?: string
+    artwork_url?: string
     date?: Date
-    playlist_continuation: Record<string, any> | null
+    continuation: Record<string, any> | null
     error?: MaybeErrors
 }
 export interface MusicServicePlaylistContinuation {
     tracks: Track[]
-    playlist_continuation: Record<string, any> | null
+    continuation: Record<string, any> | null
     error?: MaybeErrors
 }
 
@@ -255,6 +255,7 @@ export interface MusicSearchResponse {
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
     error?: MaybeErrors
+    continuation: Record<string, any> | null
 }
 
 export interface a {
@@ -284,6 +285,7 @@ export class MusicService {
     required_cookie_credentials: string[]
     cookie_jar_callback?: () => CookieJar
     search?: (query: string) => Promise<MusicSearchResponse>
+    search_continuation?: (query: string) => Promise<MusicSearchResponse>
     explore?: () => Promise<IllusiveExplore>
     create_playlist?: (title: string) => Promise<boolean>
     delete_playlist?: (playlist_uri: string) => Promise<boolean>
@@ -351,6 +353,7 @@ export class MusicService {
         required_cookie_credentials: string[],
         cookie_jar_callback?: () => CookieJar
         search?: (query: string) => Promise<MusicSearchResponse>
+        search_continuation?: (query: string) => Promise<MusicSearchResponse>
         explore?: () => Promise<IllusiveExplore>
         create_playlist?: (title: string) => Promise<boolean>
         delete_playlist?: (playlist_uri: string) => Promise<boolean>
@@ -370,6 +373,7 @@ export class MusicService {
         this.link_text = s.link_text;
         this.cookie_jar_callback = s.cookie_jar_callback;
         this.search = s.search;
+        this.search_continuation = s.search_continuation;
         this.explore = s.explore;
         this.create_playlist = s.create_playlist;
         this.delete_playlist = s.delete_playlist;

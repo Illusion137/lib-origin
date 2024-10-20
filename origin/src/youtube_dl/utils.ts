@@ -203,8 +203,8 @@ export const deprecate = (obj: any, prop: string, value: any, oldPath: string, n
 };
 
 // Check for updates.
-const UPDATE_INTERVAL = 1000 * 60 * 60 * 12;
-let updateWarnTimes = 0;
+// const UPDATE_INTERVAL = 1000 * 60 * 60 * 12;
+// let updateWarnTimes = 0;
 export const lastUpdateCheck = 0;
 
 /**
@@ -291,8 +291,8 @@ export const setPropInsensitive = (obj: any, prop: string, value: any) => {
     return key;
 };
 
-let oldCookieWarning = true;
-let oldDispatcherWarning = true;
+// let oldCookieWarning = true;
+// let oldDispatcherWarning = true;
 
 let oldLocalAddressWarning = true;
 

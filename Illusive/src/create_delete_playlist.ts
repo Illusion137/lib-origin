@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index'
-import { extract_string_from_pattern, url_to_id } from '../../origin/src/utils/util';
+import { url_to_id } from '../../origin/src/utils/util';
 import { Prefs } from './prefs';
 
 export async function spotify_create_playlist(playlist_name: string) {
@@ -74,10 +74,12 @@ export async function apple_music_delete_playlist(playlist_url: string){
 export async function soundcloud_create_playlist(playlist_name: string){
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     const creation_response = await Origin.SoundCloud.create_playlist({"cookie_jar": cookie_jar, "title": playlist_name, "sharing": "private", "track_uids": []});
-    return creation_response.ok;
+    if("error" in creation_response) return false;
+    return creation_response.data.ok;
 }
 export async function soundcloud_delete_playlist(playlist_url: string){
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
-    const deletion_response = await Origin.SoundCloud.delete_playlist({"cookie_jar": cookie_jar, "playlist_id": extract_string_from_pattern(url_to_id(playlist_url, "soundcloud.com/", "m.soundcloud.com/", "soundcloud.com/"), /.+?\/sets\/(.+)/) as string});
-    return deletion_response.ok;
+    const deletion_response = await Origin.SoundCloud.delete_playlist({"cookie_jar": cookie_jar, "playlist_id": playlist_url});
+    if("error" in deletion_response) return false;
+    return deletion_response.data.ok;
 }

@@ -46,29 +46,15 @@ export interface RozeOptionalMetadata {
 
 };
 
-function cleanHTMLText(text: string) {
-    return text.replace(/&#34;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\n/g, '');
-}
 function getChapterBreak(){ // 48 dashes
     return '[------------------------------------------------]\r\n';
 }
 function getSubChapterBreak(){ // 48 dashes
     return '[------------------------]\r\n';
 }
-function createImgBreak(img_uri: string){ // `[^----${img_src}----^]`
-    return `[^----${img_uri}----^]\r\n`;
-}
-function getHTMLInnerTextContent(html_line: string){
-    return html_line.trim().replace(/<.+?>/g, '');
-}
-function getHTMLImgSrc(html_line: string){
-    return (/<img src="(.+?)"/.exec(html_line) as RegExpExecArray)[1];
-}
 export class Roze {
     #roz_content: string
-    constructor(roz_content: string, metadata?: RozeOptionalMetadata) {
+    constructor(roz_content: string, _?: RozeOptionalMetadata) {
         this.#roz_content = roz_content;
     }
     /*

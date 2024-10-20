@@ -94,7 +94,7 @@ export function parse_youtube_title_artist(track: Track): Track {
 
 export function track_parsed_data(){}
 
-export function parse_musi_track(track: Origin.Musi.Track): Track {
+export function parse_musi_track(track: Origin.Musi.MusiTrack): Track {
     return {
         "uid": generate_new_uid(track.video_name),
         "title": track.video_name,

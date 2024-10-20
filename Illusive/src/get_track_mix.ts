@@ -8,7 +8,7 @@ export async function get_soundcloud_track_mix(track_id: string): Promise<{"trac
     const mix_response = await Origin.SoundCloud.get_mix({"cookie_jar": cookie_jar, "track_id": track_id});
     if("error" in mix_response) return {"tracks": [], "error": mix_response.error};
     return {
-        "tracks": mix_response.collection.map(parse_soundcloud_track)
+        "tracks": mix_response.data.collection.map(parse_soundcloud_track)
     }
 }
 

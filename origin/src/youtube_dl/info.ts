@@ -276,7 +276,7 @@ const IOS_CLIENT_VERSION = '19.28.1',
     IOS_USER_AGENT_VERSION = '17_5_1',
     IOS_OS_VERSION = '17.5.1.21F90';
 
-const fetchIosJsonPlayer = async (videoId: string, options: any) => {
+const fetchIosJsonPlayer = async (videoId: string, _: any) => {
     const payload = {
         videoId,
         cpn: utils.generateClientPlaybackNonce(16),
@@ -341,7 +341,7 @@ const ANDROID_CLIENT_VERSION = '19.30.36',
     ANDROID_SDK_VERSION = '34';
 
 
-const fetchAndroidJsonPlayer = async (videoId: string, options: any) => {
+const fetchAndroidJsonPlayer = async (videoId: string, _: any) => {
     const payload = {
         videoId,
         cpn: utils.generateClientPlaybackNonce(16),

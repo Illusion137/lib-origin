@@ -1,5 +1,6 @@
 import { Proxy } from "./proxy/proxy"
 import { Musi } from "./musi/musi"
+import { ProIP } from "./musi/ip"
 import { Spotify } from "./spotify/spotify"
 import { AmazonMusic } from "./amazon_music/amazon_music"
 import { YouTube } from "./youtube/youtube"
@@ -15,6 +16,7 @@ import { Google } from "./google/google"
 export {
     Proxy,
     Musi,
+    ProIP,
     YouTube,
     YouTubeDL,
     YouTubeMusic,

@@ -1,5 +1,10 @@
 import { HydratableUser } from "./Hydration"
 
+export interface ClientSearchOf<T>{
+    data: SearchOf<T>
+    client_id: string
+}
+
 export interface ArtistUser<T> {
     user: HydratableUser
     artist_data: SearchOf<T>
@@ -24,6 +29,31 @@ export interface Search {
 export interface Facet {
     name: string
     facets: any[]
+}
+
+export interface HistoryTrack {
+    played_at: number
+    track_id: number
+    track: Track
+}
+
+export interface LikedTrack {
+    created_at: string
+    kind: "like"
+    track: Track
+}
+
+export interface ArtistShortcut {
+    has_read: boolean
+    unread_update_at?: string
+    user: User
+    user_urn: string
+}
+
+export interface ArtistRecommendation {
+    source: "algorithm"
+    token: string
+    user: User
 }
 
 export interface User {
