@@ -5,9 +5,10 @@ import { LibraryResults_1 } from "./types/LibraryResults_1";
 import { MixResults_0 } from "./types/MixResults_0";
 import { PlaylistResults_1 } from "./types/PlaylistResults_1";
 import { PlaylistResults_2 } from "./types/PlaylistResults_2";
-import { SearchResults_0 } from "./types/SearchResults_0";
-import { SearchResults_1 } from "./types/SearchResults_1";
+import { SearchResultsW } from "./types/SearchResultsW";
+import { SearchResultsM } from "./types/SearchResultsM";
 import { InitialData } from "./types/types";
+import { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
 
 export function parse_home_contents(initial_data: InitialData){
     initial_data;
@@ -59,23 +60,40 @@ export function parse_artist_contents(initial_data: InitialData[]){
     }
 }
 export function parse_search_contents(initial_data: InitialData){
-    const contents = initial_data as unknown as SearchResults_0|SearchResults_1;
-    if("twoColumnSearchResultsRenderer" in contents.contents) 
-    return {
-        "videos": contents.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.videoRenderer !== undefined).map(item => item.videoRenderer),
-        "artists": contents.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.channelRenderer !== undefined).map(item => item.channelRenderer),
-        "playlists": contents.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.radioRenderer !== undefined).map(item => item.radioRenderer),
+    const contents = (<SearchResultsW|SearchResultsM><unknown>initial_data).contents;
+    if("twoColumnSearchResultsRenderer" in contents){
+        const items = contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+        const continuations = contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer?.contents?.[1]?.continuationItemRenderer;
+        return {
+            "videos": items.filter(item => item.videoRenderer !== undefined).map(item => item.videoRenderer),
+            "artists": items.filter(item => item.channelRenderer !== undefined).map(item => item.channelRenderer),
+            "playlists": items.filter(item => item.playlistRenderer !== undefined).map(item => item.playlistRenderer),
+            "continuation": continuations ?? null,
+        }
     }
-    else 
+    const items = contents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+    const continuations = contents.sectionListRenderer.contents?.[1]?.continuationItemRenderer;
     return {
-        "videos": contents.contents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.videoWithContextRenderer !== undefined).map(item => item.videoWithContextRenderer),
-        "artists": contents.contents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.compactChannelRenderer !== undefined).map(item => item.compactChannelRenderer),
-        "playlists": contents.contents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.compactPlaylistRenderer !== undefined).map(item => item.compactPlaylistRenderer),
+        "videos": items.filter(item => item.videoWithContextRenderer !== undefined).map(item => item.videoWithContextRenderer),
+        "artists": items.filter(item => item.compactChannelRenderer !== undefined).map(item => item.compactChannelRenderer),
+        "playlists": items.filter(item => item.compactPlaylistRenderer !== undefined).map(item => item.compactPlaylistRenderer),
+        "continuation": continuations ?? null
+    }
+}
+export function parse_search_continuation_contents(initial_data: InitialData){
+    const contents = (<SearchResultsWContinuation><unknown>initial_data).onResponseReceivedCommands[0].appendContinuationItemsAction.continuationItems;
+    const items = contents[0].itemSectionRenderer.contents;
+    const continuation = contents?.[1]?.continuationItemRenderer;
+    return {
+        "videos": items.filter(item => item.videoRenderer !== undefined).map(item => item.videoRenderer),
+        "artists": items.filter(item => item.channelRenderer !== undefined).map(item => item.channelRenderer),
+        "playlists": items.filter(item => item.playlistRenderer !== undefined).map(item => item.playlistRenderer),
+        "continuation": continuation ?? null
     }
 }
 export function parse_mix_contents(initial_data: InitialData){
-    const contents: MixResults_0 = initial_data as MixResults_0;
+    const contents = (<MixResults_0>initial_data).contents.twoColumnWatchNextResults.playlist.playlist.contents;
     return {
-        "tracks": contents.contents.twoColumnWatchNextResults.playlist.playlist.contents.map(item => item.playlistPanelVideoRenderer)
+        "tracks": contents.map(item => item.playlistPanelVideoRenderer)
     }
 }

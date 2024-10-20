@@ -2,7 +2,7 @@ import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_pl
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "./get_playlist";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "./get_user_playlist";
-import { amazon_music_search, soundcloud_search, spotify_search, youtube_music_search, youtube_search } from "./search";
+import { amazon_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
 import { Artwork, MusicService, MusicServiceType, Track } from "./types";
 import { Prefs } from "./prefs";
@@ -164,6 +164,7 @@ export namespace Illusive {
             'get_playlist_continuation': soundcloud_get_playlist_continuation,
             'cookie_jar_callback': () => Prefs.get_pref("soundcloud_cookie_jar"),
             'search': soundcloud_search,
+            'search_continuation': soundcloud_search_continuation,
             'explore': undefined,
             'create_playlist': soundcloud_create_playlist,
             'delete_playlist': soundcloud_delete_playlist,

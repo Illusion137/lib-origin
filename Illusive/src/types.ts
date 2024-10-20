@@ -285,7 +285,7 @@ export class MusicService {
     required_cookie_credentials: string[]
     cookie_jar_callback?: () => CookieJar
     search?: (query: string) => Promise<MusicSearchResponse>
-    search_continuation?: (query: string) => Promise<MusicSearchResponse>
+    search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
     explore?: () => Promise<IllusiveExplore>
     create_playlist?: (title: string) => Promise<boolean>
     delete_playlist?: (playlist_uri: string) => Promise<boolean>
@@ -353,7 +353,7 @@ export class MusicService {
         required_cookie_credentials: string[],
         cookie_jar_callback?: () => CookieJar
         search?: (query: string) => Promise<MusicSearchResponse>
-        search_continuation?: (query: string) => Promise<MusicSearchResponse>
+        search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
         explore?: () => Promise<IllusiveExplore>
         create_playlist?: (title: string) => Promise<boolean>
         delete_playlist?: (playlist_uri: string) => Promise<boolean>

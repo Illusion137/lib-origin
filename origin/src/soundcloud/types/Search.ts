@@ -12,10 +12,10 @@ export interface ArtistUser<T> {
 
 export interface SearchOf<T> {
     collection: (T)[]
-    total_results: number
-    facets: Facet[]
+    total_results?: number
+    facets?: Facet[]
     next_href: string
-    query_urn: string
+    query_urn: string|null
 }
 
 export interface Search {

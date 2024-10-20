@@ -1,4 +1,4 @@
-export interface SearchResults_0 {
+export interface SearchResultsW {
     responseContext: ResponseContext
     estimatedResults: string
     contents: Contents
@@ -78,6 +78,234 @@ export interface Content2 {
     channelRenderer: ChannelRenderer
     reelShelfRenderer: ReelShelfRenderer
     shelfRenderer: ShelfRenderer
+    playlistRenderer: PlaylistRenderer
+}
+
+export type PlaylistRenderer = {
+    playlistId: string
+    title: {
+        simpleText: string
+    }
+    thumbnails: Array<{
+        thumbnails: Array<{
+            url: string
+            width: number
+            height: number
+        }>
+    }>
+    videoCount: string
+    navigationEndpoint: {
+        clickTrackingParams: string
+        commandMetadata: {
+            webCommandMetadata: {
+                url: string
+                webPageType: string
+                rootVe: number
+            }
+        }
+        watchEndpoint: {
+            videoId: string
+            playlistId: string
+            params: string
+            loggingContext: {
+                vssLoggingContext: {
+                    serializedContextData: string
+                }
+            }
+            watchEndpointSupportedOnesieConfig: {
+                html5PlaybackOnesieConfig: {
+                    commonConfig: {
+                        url: string
+                    }
+                }
+            }
+        }
+    }
+    viewPlaylistText: {
+        runs: Array<{
+            text: string
+            navigationEndpoint: {
+                clickTrackingParams: string
+                commandMetadata: {
+                    webCommandMetadata: {
+                        url: string
+                        webPageType: string
+                        rootVe: number
+                        apiUrl: string
+                    }
+                }
+                browseEndpoint: {
+                    browseId: string
+                }
+            }
+        }>
+    }
+    shortBylineText: {
+        runs: Array<{
+            text: string
+            navigationEndpoint?: {
+                clickTrackingParams: string
+                commandMetadata: {
+                    webCommandMetadata: {
+                        url: string
+                        webPageType: string
+                        rootVe: number
+                        apiUrl: string
+                    }
+                }
+                browseEndpoint: {
+                    browseId: string
+                    canonicalBaseUrl: string
+                }
+            }
+        }>
+    }
+    videos: Array<{
+        childVideoRenderer: {
+            title: {
+                simpleText: string
+            }
+            navigationEndpoint: {
+                clickTrackingParams: string
+                commandMetadata: {
+                    webCommandMetadata: {
+                        url: string
+                        webPageType: string
+                        rootVe: number
+                    }
+                }
+                watchEndpoint: {
+                    videoId: string
+                    playlistId: string
+                    loggingContext: {
+                        vssLoggingContext: {
+                            serializedContextData: string
+                        }
+                    }
+                    watchEndpointSupportedOnesieConfig: {
+                        html5PlaybackOnesieConfig: {
+                            commonConfig: {
+                                url: string
+                            }
+                        }
+                    }
+                }
+            }
+            lengthText: {
+                accessibility: {
+                    accessibilityData: {
+                        label: string
+                    }
+                }
+                simpleText: string
+            }
+            videoId: string
+        }
+    }>
+    videoCountText: {
+        runs: Array<{
+            text: string
+        }>
+    }
+    trackingParams: string
+    thumbnailText: {
+        runs: Array<{
+            text: string
+            bold?: boolean
+        }>
+    }
+    longBylineText: {
+        runs: Array<{
+            text: string
+            navigationEndpoint?: {
+                clickTrackingParams: string
+                commandMetadata: {
+                    webCommandMetadata: {
+                        url: string
+                        webPageType: string
+                        rootVe: number
+                        apiUrl: string
+                    }
+                }
+                browseEndpoint: {
+                    browseId: string
+                    canonicalBaseUrl: string
+                }
+            }
+        }>
+    }
+    thumbnailRenderer: {
+        playlistVideoThumbnailRenderer: {
+            thumbnail: {
+                thumbnails: Array<{
+                    url: string
+                    width: number
+                    height: number
+                }>
+                sampledThumbnailColor: {
+                    red: number
+                    green: number
+                    blue: number
+                }
+                darkColorPalette: {
+                    section2Color: number
+                    iconInactiveColor: number
+                    iconDisabledColor: number
+                }
+                vibrantColorPalette: {
+                    iconInactiveColor: number
+                }
+            }
+            trackingParams: string
+        }
+    }
+    thumbnailOverlays: Array<{
+        thumbnailOverlayBottomPanelRenderer?: {
+            text: {
+                simpleText: string
+            }
+            icon: {
+                iconType: string
+            }
+        }
+        thumbnailOverlayHoverTextRenderer?: {
+            text: {
+                runs: Array<{
+                    text: string
+                }>
+            }
+            icon: {
+                iconType: string
+            }
+        }
+        thumbnailOverlayNowPlayingRenderer?: {
+            text: {
+                runs: Array<{
+                    text: string
+                }>
+            }
+        }
+    }>
+    thumbnail: {
+        thumbnails: Array<{
+            url: string
+            width: number
+            height: number
+        }>
+        sampledThumbnailColor: {
+            red: number
+            green: number
+            blue: number
+        }
+        darkColorPalette: {
+            section2Color: number
+            iconInactiveColor: number
+            iconDisabledColor: number
+        }
+        vibrantColorPalette: {
+            iconInactiveColor: number
+        }
+    }
 }
 
 export interface VideoRenderer {

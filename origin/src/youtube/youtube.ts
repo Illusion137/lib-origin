@@ -179,24 +179,10 @@ export namespace YouTube {
     export async function get_explore(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_explore_contents>>>                        { return await parse_initial(opts, "https://www.youtube.com/explore", Parser.parse_explore_contents); }
     export async function get_playlist(opts: Opts, playlist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_playlist_contents>>> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_id}`, Parser.parse_playlist_contents, user_agent_windows); }
     export async function get_artist(opts: Opts, artist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_artist_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_artist_contents); }
-    export async function search(opts: Opts, search_query: string): Promise<ICFGData<ReturnType<typeof Parser.parse_search_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
-    export async function get_youtube_mix(opts: Opts, video_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_mix_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RD${video_id}`, Parser.parse_mix_contents); }
+    export async function search(opts: Opts, search_query: string): Promise<ICFGData<ReturnType<typeof Parser.parse_search_contents>>>        { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
+    export async function get_youtube_mix(opts: Opts, video_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_mix_contents>>>      { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RD${video_id}`, Parser.parse_mix_contents); }
     export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError>          { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
-    // export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError> { 
-    //     try {
-    //         const icfg = await get_initial_data_config(opts, "https://www.youtube.com/feed/playlists", user_agent_windows);
-    //         if ("error" in icfg) throw icfg.error;
-    //         const payload = { "browseId": "FEplaylist_aggregation" };
-    //         const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
-    //         if("error" in browse_response) throw browse_response.error;
-    //         const browse_data = await browse_response.json();
-    //         return {
-    //             "icfg": icfg,
-    //             "data": Parser.parse_library_contents(browse_data)
-    //         };
-    //     } catch (error) { return { "error": String(error) }; }
-    // }
-    export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation) {
+    export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation, path?: string) {
         try {
             // ctoken: next_con.continuationEndpoint.continuationCommand.token,
             // continutation: next_con.continuationEndpoint.continuationCommand.token,
@@ -209,7 +195,7 @@ export namespace YouTube {
             const payload = {
                 continuation: next_con.continuationEndpoint.continuationCommand.token,
             };
-            const response = await post_check_response(opts, ytcfg, `browse?${encode_params(query_params)}`, payload);
+            const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload);
             if("error" in response) throw response.error;
             return (await response.json()) as ContinuedResults_0;
         } catch (error) { return { "error": String(error) } }

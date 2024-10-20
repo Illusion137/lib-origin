@@ -59,7 +59,7 @@ export async function youtube_get_playlist(url: string): Promise<MusicServicePla
         "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation} as YouTubePlaylistContinuation
     };
 }
-export async function youtube_get_continuation(opts: YouTubePlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
+export async function youtube_get_playlist_continuation(opts: YouTubePlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_continuation({"cookie_jar": cookie_jar}, opts.ytcfg, opts.continuation);
     if("error" in playlist_response) return {"tracks": [], "continuation": null, "error": [playlist_response]};
@@ -93,7 +93,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
         "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation, "type": "PLAYLIST"} as YouTubeMusicPlaylistContinuation
     };
 }
-export async function youtube_music_get_continuation(opts: YouTubeMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
+export async function youtube_music_get_playlist_continuation(opts: YouTubeMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
     const playlist_response = await Origin.YouTubeMusic.get_continuation({"cookie_jar": cookie_jar}, opts.ytcfg, opts.continuation);
     if("error" in playlist_response) return {"tracks": [], "continuation": null, "error": [playlist_response]};
@@ -168,7 +168,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
         }
     }
 }
-export async function spotify_get_continuation(opts: SpotifyPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
+export async function spotify_get_playlist_continuation(opts: SpotifyPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
     let playlist_response;
     const cookie_jar = Prefs.get_pref("spotify_cookie_jar");
     switch(opts.type){
@@ -249,9 +249,9 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
         "continuation": {"next_href": artist_response.artist_data.next_href, "client_id": client_id, "depth": 1} as SoundcloudPlaylistContinuation
     };
 }
-export async function soundcloud_get_continuation(opts: SoundcloudPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
+export async function soundcloud_get_playlist_continuation(opts: SoundcloudPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
+    if(opts.next_href === null) return {"tracks":[], "continuation": null};
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
-    if(opts.next_href === null) return {"tracks":[], "continuation": null}
     const artist_response = await Origin.SoundCloud.continuation(opts.next_href, {...opts, cookie_jar: cookie_jar}, opts.depth) as unknown as SCSearch.SearchOf<SCSearch.Track>;
     return {
         "tracks": artist_response.collection.map(track => parse_soundcloud_artist_track(track)),
@@ -295,7 +295,7 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
         };
     }
 }
-export async function apple_music_get_continuation(opts: AppleMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
+export async function apple_music_get_playlist_continuation(opts: AppleMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
     if(opts.offset >= opts.total) return { "tracks":[], "continuation": null };
     const playlist_response = await Origin.AppleMusic.get_playlist_continuation(opts.playlist_id, opts.offset, opts.authorization, {"cookie_jar": cookie_jar});

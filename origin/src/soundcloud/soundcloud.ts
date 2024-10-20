@@ -159,25 +159,20 @@ export namespace SoundCloud {
         if(!response.ok) return {"error": String(response.status)};
         return {data: response, client_id: opts.client_id, hydration: hydration};
     }
-    type SCResult = {
-        "collection": any[],
-        "next_href": string,
-        "query_urn": string|null
-    }
-    export function combine_continuation(current: SCResult, next: SCResult){
+    export function combine_continuation(current: SearchOf<unknown>, next: SearchOf<unknown>){
         return {
             "collection": current.collection.concat(next.collection),
             "next_href": next.next_href,
             "query_urn": null
         }
     }
-    export async function continuation(next_href: string, opts: Opts, depth = -1): Promise<SCResult>{
+    export async function continuation(next_href: string, opts: Opts, depth = -1): Promise<SearchOf<unknown>>{
         try {
             if(next_href === null || next_href === undefined || next_href === "" || depth === 0) throw null;
             const locale_params = get_locale_params(opts);
             const next_response = await fetch(`${next_href}&${encode_params(locale_params)}`, api_method_options());
             if(!next_response.ok) throw next_response.status;
-            const next_data: SCResult = await next_response.json();
+            const next_data: SearchOf<unknown> = await next_response.json();
             if(depth === 1) return next_data;
             const combined_data = combine_continuation(next_data, await continuation(next_data.next_href, opts, depth - 1));
             return combined_data;

@@ -1,4 +1,4 @@
-export interface SearchResults_1 {
+export interface SearchResultsM {
     responseContext: ResponseContext
     estimatedResults: string
     contents: Contents
