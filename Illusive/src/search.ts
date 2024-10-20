@@ -1,6 +1,6 @@
 import * as Origin from '../../origin/src/index'
 import { Playlist, User, Track, ClientSearchOf, SearchOf } from '../../origin/src/soundcloud/types/Search';
-import { generate_new_uid, is_empty, make_topic, parse_runs, parse_time, url_to_id } from '../../origin/src/utils/util';
+import { generate_new_uid, is_empty, make_topic, parse_runs, parse_time, urlid } from '../../origin/src/utils/util';
 import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
 import { parse_amazon_music_search_track, parse_soundcloud_track, parse_spotify_search_track } from './track_parser';
 import { MusicSearchResponse } from './types';
@@ -165,7 +165,7 @@ export function soundcloud_parse_search(search_response: ClientSearchOf<Playlist
         "tracks": tracks.map(track => parse_soundcloud_track(track)),
         "playlists": playlists.map(playlist => {
             return {
-                "title": {"name": playlist.title, "uri": create_uri("soundcloud", url_to_id(playlist.permalink_url))},
+                "title": {"name": playlist.title, "uri": create_uri("soundcloud", urlid(playlist.permalink_url))},
                 "artist": Array.isArray(playlist.user) ? playlist.user.map(user => { 
                     return {
                         "name": make_topic(user.username),
@@ -178,20 +178,20 @@ export function soundcloud_parse_search(search_response: ClientSearchOf<Playlist
         }),
         "albums": albums.map(album => {
             return {
-                "title": {"name": album.title, "uri": create_uri("soundcloud", url_to_id(album.permalink_url))},
+                "title": {"name": album.title, "uri": create_uri("soundcloud", urlid(album.permalink_url))},
                 "artist": Array.isArray(album.user) ? album.user.map(user => { 
                     return {
                         "name": make_topic(user.username),
                         "uri": create_uri("soundcloud", Array.isArray(album.user) ? album.user[0].permalink_url : album.user.permalink_url)
                     } 
-                }) : [{"name": make_topic(album.user.username), "uri": create_uri("soundcloud", url_to_id(album.user.permalink_url))}],
+                }) : [{"name": make_topic(album.user.username), "uri": create_uri("soundcloud", urlid(album.user.permalink_url))}],
                 "year": new Date(album.created_at).getFullYear(),
                 "artwork_url": album.artwork_url === null ? Array.isArray(album.user) ? album.user[0].avatar_url : album.user.avatar_url : album.artwork_url
             }
         }),
         "artists": users.map(artist => {
             return {
-                "name": {"name": make_topic(artist.username), "uri": create_uri("soundcloud", url_to_id(artist.permalink_url))},
+                "name": {"name": make_topic(artist.username), "uri": create_uri("soundcloud", urlid(artist.permalink_url))},
                 "profile_artwork_url": artist.avatar_url,
                 "is_official_artist_channel": true
             }

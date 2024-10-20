@@ -2,7 +2,7 @@ import * as Origin from '../../origin/src/index'
 import * as SCSearch from '../../origin/src/soundcloud/types/Search';
 import { YouTubeTrack } from '../../origin/src/youtube/types/PlaylistResults_1';
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
-import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time, remove_prod, url_to_id } from '../../origin/src/utils/util'
+import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time, remove_prod, urlid } from '../../origin/src/utils/util'
 import { best_thumbnail, create_uri, escape_regexpresion, spotify_uri_to_uri, youtube_music_split_artists, youtube_views_number } from './illusive_utilts';
 import { ExplicitMode, Runs, SerializedTrack, Track } from './types';
 import { PlaylistPanelVideoRenderer } from '../../origin/src/youtube/types/MixResults_0';
@@ -267,7 +267,7 @@ export function parse_soundcloud_artist_track(track: SCSearch.Track): Track{
     return {
         "uid": generate_new_uid(track.title),
         "title": remove_prod(track.title),
-        "artists": [{"name": make_topic(track.user.username), "uri": create_uri("soundcloud", url_to_id(track.user.permalink))}],
+        "artists": [{"name": make_topic(track.user.username), "uri": create_uri("soundcloud", urlid(track.user.permalink))}],
         "plays": track.playback_count,
         "duration": Math.floor(track.duration / 1000),
         "soundcloud_id": track.id,

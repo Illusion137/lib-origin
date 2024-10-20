@@ -2,6 +2,7 @@ import { Explore } from "./types/Explore";
 import { Track } from "./types/types";
 import { PlaylistResponseSuccessParsed, PlaylistSuccessData, PlaylistResponse } from "./types/Playlist";
 import { Support } from "./types/Support";
+import { urlid } from "../utils/util";
 
 // GET   /api/v4/support%@
 // GET   /api/v4/search/explore/@ld
@@ -32,7 +33,7 @@ export namespace Musi {
     }
     
     export async function get_playlist(url: string){
-        const playlist_param = url.replace('https://feelthemusi.com/playlist/', '')
+        const playlist_param = urlid(url, "feelthemusi.com/", "api/v4/playlists/fetch/", "playlist/");
         const response = await fetch(`https://feelthemusi.com/api/v4/playlists/fetch/${playlist_param}`);
         const playlist_response = <PlaylistResponse>await response.json();
         if("error" in playlist_response) return playlist_response;

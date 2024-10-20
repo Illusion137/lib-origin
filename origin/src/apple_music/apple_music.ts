@@ -1,5 +1,5 @@
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_string_from_pattern, url_to_id } from "../utils/util";
+import { encode_params, extract_string_from_pattern, urlid } from "../utils/util";
 import { MyPlaylists } from "./types/MyPlaylists";
 import { Playlist } from "./types/Playlist";
 import { SerializedServerData } from "./types/type";
@@ -7,6 +7,9 @@ import { UserPlaylist } from "./types/UserPlaylist";
 
 export namespace AppleMusic {
     type Opts = { "cookie_jar"?: CookieJar };
+    export function playlist_urlid(playlist_url: string){
+        return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
+    }
     export async function extract_serialized_server_data(html: string, opts: Opts) {
         const serialized_server_data_regex = /<script type=\"application\/json\" id=\"serialized-server-data\">(.+?)<\/script>/s;
         const extraction = extract_string_from_pattern(html, serialized_server_data_regex);
@@ -104,7 +107,7 @@ export namespace AppleMusic {
         } catch (error) { return { "error": String(error) } }
     }
     export async function get_playlist(playlist_path: string, opts: Opts) {
-        const playlist_response = await get_serialized_server_data(`https://music.apple.com/${playlist_path}`, opts);
+        const playlist_response = await get_serialized_server_data(`https://music.apple.com/${urlid(playlist_path, "music.apple.com/")}`, opts);
         if ("error" in playlist_response) return playlist_response;
         if(playlist_path.match(/us\/playlist\/.+?\/.+/)){ // Non-user playlist
             const playlist = playlist_response.data as Playlist;
@@ -128,7 +131,7 @@ export namespace AppleMusic {
                 "platform": "web",
                 "relate": "catalog"
             };
-            const playlist_id = url_to_id(playlist_path, "us/", "library/", "playlist/", "?l=en-US");
+            const playlist_id = urlid(playlist_path, "us/", "library/", "playlist/", "?l=en-US");
             const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
             if ("error" in api_playlists_response) return api_playlists_response;
             if(!api_playlists_response.ok) return {"error": String(api_playlists_response.status)};
@@ -146,7 +149,7 @@ export namespace AppleMusic {
             "include": "catalog",
             "platform": "web",
         };
-        const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_id}/tracks`, params, null);
+        const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
         if ("error" in playlists_response) return playlists_response;
         return await playlists_response.json() as UserPlaylist;
     }
@@ -180,7 +183,7 @@ export namespace AppleMusic {
         const payload = {
             "data": track_ids
         }
-        const playlists_response = await api_check_response(opts, data.authorization, `me/library/playlists/${playlist_id}/tracks`, params, payload, "POST");
+        const playlists_response = await api_check_response(opts, data.authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, payload, "POST");
         return playlists_response;
     }
     export async function remove_track_from_playlist(playlist_id: string, track_id: string, authorization: string, opts: Opts) {
@@ -189,7 +192,7 @@ export namespace AppleMusic {
             "mode": "all",
             "art%5Burl%5D": "f"
         };
-        const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_id}/tracks`, params, null, "DELETE");
+        const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null, "DELETE");
         return playlists_response;
     }
     export async function create_playlist(playlist_name: string, description: string, is_public: boolean, tracks: {"id": string, "type": "songs"}[], opts: Opts) {
@@ -216,7 +219,7 @@ export namespace AppleMusic {
         const params = {
             "art%5Burl%5D": "f"
         };
-        const playlists_response = await api_check_response(opts, data.authorization, `me/library/playlists/${playlist_id}`, params, null, "DELETE");
+        const playlists_response = await api_check_response(opts, data.authorization, `me/library/playlists/${playlist_urlid(playlist_id)}`, params, null, "DELETE");
         return playlists_response;
     }
 }

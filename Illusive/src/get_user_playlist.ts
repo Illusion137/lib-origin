@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index'
-import { url_to_id } from '../../origin/src/utils/util';
+import { urlid } from '../../origin/src/utils/util';
 import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
 import { CompactPlaylistsResult } from './types';
@@ -91,13 +91,13 @@ export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsR
     return {
         "playlists": user_playlists_response.data.map(playlist => {
             return {
-                "title": {"name": playlist.title, "uri": create_uri("soundcloud", url_to_id(playlist.permalink_url))}, 
+                "title": {"name": playlist.title, "uri": create_uri("soundcloud", urlid(playlist.permalink_url))}, 
                 "artist": Array.isArray(playlist.user) ? playlist.user.map(artist => {
                     return {
                         "name": artist.username,
-                        "uri": create_uri("soundcloud", url_to_id(artist.permalink_url))
+                        "uri": create_uri("soundcloud", urlid(artist.permalink_url))
                     }
-                }) : [{"name": playlist.user.username, "uri": create_uri("soundcloud", url_to_id(playlist.user.permalink_url))}],
+                }) : [{"name": playlist.user.username, "uri": create_uri("soundcloud", urlid(playlist.user.permalink_url))}],
                 "artwork_thumbnails": create_thumbnails(playlist.artwork_url),
                 "year": new Date(playlist.created_at),
             }

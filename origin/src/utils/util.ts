@@ -42,7 +42,7 @@ export function parse_runs(runs: ({text: string}[]) | undefined ): string {
     return runs.map(run => run.text).join(" ");
 }
 export function empty_undefined(str: string){ return is_empty(str) ? undefined : str; }
-export function url_to_id(url: string, ...remove_links: string[]){ 
+export function urlid(url: string, ...remove_links: (string|RegExp)[]){ 
     let id = url.replace("https://", "").replace("www.", "").replace("http://", '');
     for(const link of remove_links){ id = id.replace(link, ""); }
     return id;

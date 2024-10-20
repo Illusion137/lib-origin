@@ -1,6 +1,6 @@
 import * as sha1 from 'sha1-uint8array'
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, eval_json, extract_string_from_pattern, google_query } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, urlid } from "../utils/util";
 import { YTCFG } from "./types/YTCFG";
 import * as Parser from "./parser";
 import { Continuation } from "./types/Continuation";
@@ -58,8 +58,8 @@ export namespace YouTube {
             ]
         };
     }
-    export function playlist_url_to_id(playlist_url: string){
-        return playlist_url.replace("https://", "").replace("www.", "").replace("youtube.com/playlist?list=", "");
+    export function playlist_urlid(playlist_url: string){
+        return urlid(playlist_url, "youtube.com/", "playlist?list=",  /\&.+/);
     }
     export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string){
         const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
@@ -177,7 +177,7 @@ export namespace YouTube {
     type ICFGData<T> = { icfg: ICFG, data: T };
     export async function get_home(opts: Opts)   : Promise<ICFGData<ReturnType<typeof Parser.parse_home_contents>>>                           { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
     export async function get_explore(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_explore_contents>>>                        { return await parse_initial(opts, "https://www.youtube.com/explore", Parser.parse_explore_contents); }
-    export async function get_playlist(opts: Opts, playlist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_playlist_contents>>> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_id}`, Parser.parse_playlist_contents, user_agent_windows); }
+    export async function get_playlist(opts: Opts, playlist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_playlist_contents>>> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
     export async function get_artist(opts: Opts, artist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_artist_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_artist_contents); }
     export async function search(opts: Opts, search_query: string): Promise<ICFGData<ReturnType<typeof Parser.parse_search_contents>>>        { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
     export async function get_youtube_mix(opts: Opts, video_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_mix_contents>>>      { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RD${video_id}`, Parser.parse_mix_contents); }
@@ -241,17 +241,17 @@ export namespace YouTube {
     }
     export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string){
         const payload = {
-            playlistId: playlist_id
+            playlistId: playlist_urlid(playlist_id)
         }
         return await post_check_succeed(opts, ytcfg, "playlist/delete?prettyPrint=false", payload);
     }
     export async function add_tracks_to_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, video_ids: string[]){
         const actions = video_ids.map((video_id) => { return { "addedVideoId": video_id, "action": "ACTION_ADD_VIDEO", "dedupeOption": "DEDUPE_OPTION_CHECK" } });
-        return await post_edit_playlist(opts, ytcfg, playlist_id, actions);
+        return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
     }
     export async function remove_tracks_to_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, video_ids: string[]){
         const actions = video_ids.map((video_id) => { return { "removedVideoId": video_id, "action": "ACTION_REMOVE_VIDEO" } });
-        return await post_edit_playlist(opts, ytcfg, playlist_id, actions);
+        return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
     }
     export async function edit_playlist_data(opts: Opts, ytcfg: YTCFG, playlist_id: string, playlist_data: {
         name: string,
@@ -263,6 +263,6 @@ export namespace YouTube {
             { "action": "ACTION_SET_PLAYLIST_NAME",        "playlistName": playlist_data.name }, 
             { "action": "ACTION_SET_PLAYLIST_DESCRIPTION", "playlistDescription": playlist_data.description}
         ];
-        return await post_edit_playlist(opts, ytcfg, playlist_id, actions);
+        return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
     }
 }

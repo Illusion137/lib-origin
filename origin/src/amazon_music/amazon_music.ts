@@ -5,7 +5,7 @@ import { ShowHome } from "./types/ShowHome";
 import { ShowLibraryHome } from "./types/ShowLibraryHome";
 import { CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
 import { SearchResult } from "./types/SearchResult";
-import { extract_string_from_pattern, url_to_id } from "../utils/util";
+import { extract_string_from_pattern, urlid } from "../utils/util";
 
 export namespace AmazonMusic {
     interface AuthHeader {
@@ -56,7 +56,7 @@ export namespace AmazonMusic {
 
     export async function get_show_home_data(amzn_music: AmznMusic, url: string): PromiseResult<ShowHome>{
         try {
-            const trimmed_url = url_to_id(url, "music.amazon.com");
+            const trimmed_url = urlid(url, "music.amazon.com");
             const deeplink = {
                 "interface": "DeeplinkInterface.v1_0.DeeplinkClientInformation",
                 "deeplink": trimmed_url

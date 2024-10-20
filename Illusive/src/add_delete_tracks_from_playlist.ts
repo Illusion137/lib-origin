@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index'
-import { is_empty, url_to_id } from '../../origin/src/utils/util';
+import { is_empty } from '../../origin/src/utils/util';
 import { Constants } from './constants';
 import { Prefs } from './prefs';
 import { Track } from './types';
@@ -51,7 +51,7 @@ export async function youtube_add_tracks_to_playlist(tracks: Track[], playlist_u
     const uris = tracks.map(track => track.youtube_id) as string[];
     const home = await Origin.YouTube.get_home({});
     if("error" in home) return false;
-    const add_response = await Origin.YouTube.add_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, Origin.YouTube.playlist_url_to_id(playlist_url), uris);
+    const add_response = await Origin.YouTube.add_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
     return add_response;
 }
 export async function youtube_delete_tracks_from_playlist(tracks: Track[], playlist_url: string) {
@@ -60,7 +60,7 @@ export async function youtube_delete_tracks_from_playlist(tracks: Track[], playl
     const uris = tracks.map(track => track.youtube_id as string );
     const home = await Origin.YouTube.get_home({});
     if("error" in home) return false;
-    const deletion_response = await Origin.YouTube.remove_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, Origin.YouTube.playlist_url_to_id(playlist_url), uris);
+    const deletion_response = await Origin.YouTube.remove_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
     return deletion_response;
 }
 
@@ -70,7 +70,7 @@ export async function youtube_music_add_tracks_to_playlist(tracks: Track[], play
     const uris = tracks.map(track => track.youtubemusic_id) as string[];
     const home = await Origin.YouTubeMusic.get_home({"cookie_jar": cookie_jar});
     if("error" in home) return false;
-    const add_response = await Origin.YouTubeMusic.add_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, Origin.YouTubeMusic.playlist_url_to_id(playlist_url), uris);
+    const add_response = await Origin.YouTubeMusic.add_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
     return add_response;
 }
 export async function youtube_music_delete_tracks_from_playlist(tracks: Track[], playlist_url: string) {
@@ -84,14 +84,14 @@ export async function youtube_music_delete_tracks_from_playlist(tracks: Track[],
     });
     const home = await Origin.YouTubeMusic.get_home({"cookie_jar": cookie_jar});
     if("error" in home) return false;
-    const deletion_response = await Origin.YouTubeMusic.remove_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, Origin.YouTubeMusic.playlist_url_to_id(playlist_url), uris);
+    const deletion_response = await Origin.YouTubeMusic.remove_tracks_to_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
     return deletion_response;
 }
 export async function apple_music_add_tracks_to_playlist(tracks: Track[], playlist_url: string){
     const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.applemusic_id));
     const uris = tracks.map(track => { return {"id": track.applemusic_id!, "type": "songs"}});
-    const add_response = await Origin.AppleMusic.add_tracks_to_playlist(url_to_id(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US"), uris as {id: string, type: "songs"}[], {"cookie_jar": cookie_jar});
+    const add_response = await Origin.AppleMusic.add_tracks_to_playlist(playlist_url, uris as {id: string, type: "songs"}[], {"cookie_jar": cookie_jar});
     if("error" in add_response) return false;
     return add_response.ok;
 }
@@ -102,7 +102,7 @@ export async function apple_music_delete_tracks_from_playlist(tracks: Track[], p
     const data = await Origin.AppleMusic.get_serialized_server_data("https://music.apple.com/us/library/all-playlists/", {"cookie_jar": cookie_jar});
     if("error" in data) return false;
     for(const uri of uris){
-        const deletion_response = await Origin.AppleMusic.remove_track_from_playlist(url_to_id(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US"), uri, data.authorization, {"cookie_jar": cookie_jar});
+        const deletion_response = await Origin.AppleMusic.remove_track_from_playlist(playlist_url, uri, data.authorization, {"cookie_jar": cookie_jar});
         if("error" in deletion_response) return false;
         if(!deletion_response.ok) return false;
     }

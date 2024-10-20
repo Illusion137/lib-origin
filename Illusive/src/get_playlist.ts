@@ -1,6 +1,6 @@
 import * as Origin from '../../origin/src/index'
 import { MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
-import { get_main_key, make_topic, parse_runs, remove_prod, url_to_id } from '../../origin/src/utils/util';
+import { get_main_key, make_topic, parse_runs, remove_prod, urlid } from '../../origin/src/utils/util';
 import * as SCSearch from '../../origin/src/soundcloud/types/Search';
 import { Prefs } from './prefs';
 import * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
@@ -31,8 +31,7 @@ export async function musi_get_playlist(url: string): Promise<MusicServicePlayli
 type YouTubePlaylistContinuation = {"ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation};
 export async function youtube_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
-    const playlist_id = url_to_id(url, "youtube.com/playlist?list=");
-    const playlist_response = await Origin.YouTube.get_playlist({"cookie_jar": cookie_jar}, playlist_id);
+    const playlist_response = await Origin.YouTube.get_playlist({"cookie_jar": cookie_jar}, url);
     if("error" in playlist_response && typeof playlist_response.error === "string") return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response as ResponseError]};
     if(playlist_response.data.playlist_data === undefined) return {"title": "", "tracks": [], "continuation": null, "error": [{"error": "playlist_data is undefined"}]};
     if("playlistId" in playlist_response.data.playlist_data){
@@ -71,8 +70,7 @@ type YouTubeMusicPlaylistContinuation = {"ytcfg": YTMUSIC_YTCFG.YTCFG, "continua
 
 export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
-    const playlist_id = url_to_id(url, "music.youtube.com/playlist?list=");
-    const playlist_response = await Origin.YouTubeMusic.get_playlist({"cookie_jar": cookie_jar}, playlist_id);
+    const playlist_response = await Origin.YouTubeMusic.get_playlist({"cookie_jar": cookie_jar}, url);
     if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response as ResponseError]};
     if(url.includes("OLAK5uy_")) { // Album
         return {
@@ -123,8 +121,8 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
     const playlist_limit: number = Prefs.get_pref("spotify_playlist_limit");
     const client = await Origin.Spotify.get_client(url, cookie_jar);
     if("error" in client) return {"title": "", "tracks": [], "continuation": null, "error": [client]};
-    const playlist_id = url_to_id(url, "open.spotify.com/", "playlist/", "album/", "collection/");
-    const playlist_type = url_to_id(url, "open.spotify.com/").replace(/\/.+/, '');
+    const playlist_id = urlid(url, "open.spotify.com/", "playlist/", "album/", "collection/");
+    const playlist_type = urlid(url, "open.spotify.com/", /\/.+/);
     switch(playlist_type){
         case "playlist":   playlist_response = await Origin.Spotify.get_playlist(playlist_id, {"cookie_jar": cookie_jar, "client": client, "limit": playlist_limit}); break;
         case "album":      playlist_response = await Origin.Spotify.get_album(playlist_id, {"cookie_jar": cookie_jar, "client": client, "limit": playlist_limit}); break;
@@ -219,12 +217,11 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
     const playlist_limit: number = Prefs.get_pref("soundcloud_playlist_limit");
     if(url.includes("/sets/")){
-        const playlist_path = url_to_id(url, "soundcloud.com/", "m.soundcloud.com/");
-        const playlist_response = await Origin.SoundCloud.get_playlist({"cookie_jar": cookie_jar, "playlist_path": playlist_path})
+        const playlist_response = await Origin.SoundCloud.get_playlist({"cookie_jar": cookie_jar, "playlist_path": url})
         if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response]};
         return {
             "title": remove_prod(playlist_response.hydration.data.title),
-            "creator": [{"name": playlist_response.hydration.data.user.username, "uri": create_uri("soundcloud", url_to_id(playlist_response.hydration.data.user.permalink))}],
+            "creator": [{"name": playlist_response.hydration.data.user.username, "uri": create_uri("soundcloud", urlid(playlist_response.hydration.data.user.permalink))}],
             "description": playlist_response.hydration.data.description,
             "artwork_url": playlist_response.hydration.data.artwork_url,
             "date": new Date(playlist_response.hydration.data.created_at),
@@ -236,12 +233,11 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
     if("error" in hydration) return {"title": "", "tracks": [], "continuation": null, "error": [hydration as ResponseError]};
     const client_id = await Origin.SoundCloud.get_client_id(Origin.SoundCloud.asset_scripts(hydration.scripts_urls), cookie_jar);
     if(typeof client_id === "object") return {"title": "", "tracks": [], "continuation": null, "error": [client_id]};
-    const artist_id = url_to_id(url, "soundcloud.com/", "m.soundcloud.com/");
-    const artist_response = await Origin.SoundCloud.get_artist("TRACKS", {"cookie_jar": cookie_jar, "client_id": client_id, "artist_id": artist_id, "limit": playlist_limit});
+    const artist_response = await Origin.SoundCloud.get_artist("TRACKS", {"cookie_jar": cookie_jar, "client_id": client_id, "artist_id": url, "limit": playlist_limit});
     if("error" in artist_response) return {"title": "", "tracks": [], "continuation": null, "error": [artist_response]};
     return {
         "title": remove_prod(artist_response.user.data.username),
-        "creator": [{"name": artist_response.user.data.username, "uri": create_uri("soundcloud", url_to_id(artist_response.user.data.permalink))}],
+        "creator": [{"name": artist_response.user.data.username, "uri": create_uri("soundcloud", urlid(artist_response.user.data.permalink))}],
         "description": artist_response.user.data.description,
         "artwork_url": artist_response.user.data.avatar_url,
         "date": new Date( artist_response.user.data.created_at ),
@@ -262,14 +258,13 @@ export async function soundcloud_get_playlist_continuation(opts: SoundcloudPlayl
 type AppleMusicPlaylistContinuation = {"playlist_id": string, "offset": number, "total": number, "authorization": string};
 export async function apple_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
-    const playlist_path = url_to_id(url, "music.apple.com/");
-    const playlist_response = await Origin.AppleMusic.get_playlist(playlist_path, {"cookie_jar": cookie_jar});
+    const playlist_response = await Origin.AppleMusic.get_playlist(url, {"cookie_jar": cookie_jar});
     if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response]};
     if("resources" in playlist_response.data){ // User Playlist
         const playlist_data_main_key = get_main_key(playlist_response.data.resources.playlists);
         const playlist_data = playlist_response.data.resources.playlists[playlist_data_main_key];
         const playlist_songs = playlist_response.data.resources['library-songs'];
-        const playlist_id = url_to_id(playlist_path, "us/", "library/", "playlist/", "?l=en-US");
+        const playlist_id = Origin.AppleMusic.playlist_urlid(url);
         const song_keys = Object.keys(playlist_songs);
 
         const playlist_meta_main_key = get_main_key(playlist_response.data.resources["library-playlists"]);

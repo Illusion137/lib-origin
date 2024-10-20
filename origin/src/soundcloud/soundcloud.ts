@@ -1,5 +1,5 @@
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, remove, url_to_id } from "../utils/util";
+import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../utils/util";
 import { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
 import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
 import { FetchMethod, ResponseError, ResponseSuccess } from "../utils/types";
@@ -13,7 +13,7 @@ export namespace SoundCloud {
     }
     export function clean_permalink(permalink?: string){
         if(permalink === undefined) return "";
-        return remove(url_to_id(permalink), "m.soundcloud.com/", "soundcloud.com/", /\?.+/);
+        return urlid(permalink, "m.soundcloud.com/", "soundcloud.com/", /\?.+/);
     }
     function page_method_options(cookie_jar?: CookieJar): RequestInit {
         return {
