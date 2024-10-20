@@ -232,7 +232,13 @@ export interface CompactArtist {
     profile_artwork_url?: string
     is_official_artist_channel: boolean
 }
-
+export interface MusicServicePlaylistBase {
+    title: string
+    creator?: NamedUUID[]
+    description?: string
+    artwork_url?: string
+    date?: Date
+}
 export interface MusicServicePlaylist {
     tracks: Track[]
     title: string

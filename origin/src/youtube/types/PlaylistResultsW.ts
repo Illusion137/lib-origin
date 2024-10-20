@@ -1,6 +1,6 @@
 import { PageHeaderViewModel } from "./PageHeaderViewModel"
 
-export interface PlaylistResults_1 {
+export interface PlaylistResultsW {
     responseContext: ResponseContext
     contents: Contents
     header: Header2
@@ -98,11 +98,11 @@ export interface PlaylistVideoListRenderer {
 }
 
 export interface Content4 {
-    playlistVideoRenderer?: YouTubeTrack
+    playlistVideoRenderer?: PlaylistVideoRenderer
     continuationItemRenderer?: ContinuationItemRenderer
 }
 
-export interface YouTubeTrack {
+export interface PlaylistVideoRenderer {
     videoId: string
     thumbnail: Thumbnail
     title: Title

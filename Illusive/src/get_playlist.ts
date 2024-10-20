@@ -1,6 +1,6 @@
 import * as Origin from '../../origin/src/index'
 import { MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
-import { get_main_key, make_topic, parse_runs, remove_prod, urlid } from '../../origin/src/utils/util';
+import { get_main_key, make_topic, parse_runs, urlid } from '../../origin/src/utils/util';
 import * as SCSearch from '../../origin/src/soundcloud/types/Search';
 import { Prefs } from './prefs';
 import * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
@@ -8,22 +8,28 @@ import * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
 import * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
 import * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Continuation";
 import { parse_playlist_continuation_contents } from '../../origin/src/youtube/parser';
-import { YouTubeTrack } from '../../origin/src/youtube/types/PlaylistResults_1';
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
-import { parse_amazon_music_playlist_track, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track, parse_musi_track, parse_soundcloud_artist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track, parse_youtube_music_album_track, parse_youtube_music_playlist_track, parse_youtube_playlist_track } from './track_parser';
+import { parse_amazon_music_playlist_track, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track, parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './track_parser';
 import { ResponseError } from '../../origin/src/utils/types';
 import { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
 import { Album } from '../../origin/src/spotify/types/Album';
 import { Collection } from '../../origin/src/spotify/types/Collection';
+import { musi_parse_track } from './gen/musi_parser';
+import { youtube_parse_playlist_header, youtube_parse_videos } from './gen/youtube_parser';
+import { soundcloud_parse_track } from './gen/soundcloud_parser';
+
+function default_playlist(error?: ResponseError): MusicServicePlaylist{
+    return {"title": "", "tracks": [], "continuation": null, "error": error !== undefined ? [error] : undefined}
+}
 
 export async function musi_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const playlist_response = await Origin.Musi.get_playlist(url);
-    if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response]};
+    if("error" in playlist_response) return default_playlist(playlist_response);
     return {
         "title": playlist_response.success.data.title,
-        "tracks": playlist_response.success.data.data.map(parse_musi_track),
+        "tracks": playlist_response.success.data.data.map(musi_parse_track),
         "continuation": null
     };
 }
@@ -32,38 +38,20 @@ type YouTubePlaylistContinuation = {"ytcfg": YT_YTCFG.YTCFG, "continuation": YT_
 export async function youtube_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_playlist({"cookie_jar": cookie_jar}, url);
-    if("error" in playlist_response && typeof playlist_response.error === "string") return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response as ResponseError]};
-    if(playlist_response.data.playlist_data === undefined) return {"title": "", "tracks": [], "continuation": null, "error": [{"error": "playlist_data is undefined"}]};
-    if("playlistId" in playlist_response.data.playlist_data){
-        if(playlist_response.data.playlist_data?.ownerText?.runs !== undefined)
-            return {
-                "title": playlist_response.data.playlist_data.title.simpleText,
-                "creator": [{"name": parse_runs((playlist_response.data.playlist_data.ownerText.runs)), "uri": create_uri("youtube", playlist_response.data.playlist_data.ownerEndpoint.browseEndpoint.browseId)}],
-                "tracks": playlist_response.data.tracks.filter(track => track !== undefined).map(track => parse_youtube_playlist_track(track)),
-                "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation} as YouTubePlaylistContinuation
-            };
-        else
-            return {
-                "title": playlist_response.data.playlist_data.title.simpleText,
-                "creator": [],
-                "tracks": playlist_response.data.tracks.filter(track => track !== undefined).map(track => parse_youtube_playlist_track(track)),
-                "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation} as YouTubePlaylistContinuation
-            };
-    }
-    const owner = playlist_response.data.playlist_data.pageHeaderViewModel.metadata.contentMetadataViewModel.metadataRows[0].metadataParts[0]; 
+    if("error" in playlist_response && typeof playlist_response.error === "string") return default_playlist(<ResponseError>playlist_response);
+    if(playlist_response.data.playlist_data === undefined) return default_playlist({"error": "playlist_data is undefined"});
     return {
-        "title": playlist_response.data.playlist_data.pageHeaderViewModel.title.dynamicTextViewModel.text.content,
-        "creator": [{"name": owner.text?.content ?? "", "uri": null}],
-        "tracks": playlist_response.data.tracks.filter(track => track !== undefined).map(track => parse_youtube_playlist_track(track)),
+        ...youtube_parse_playlist_header(playlist_response.data.playlist_data),
+        "tracks": youtube_parse_videos(playlist_response.data.tracks),
         "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation} as YouTubePlaylistContinuation
-    };
+    }
 }
 export async function youtube_get_playlist_continuation(opts: YouTubePlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_continuation({"cookie_jar": cookie_jar}, opts.ytcfg, opts.continuation);
     if("error" in playlist_response) return {"tracks": [], "continuation": null, "error": [playlist_response]};
     const parsed_playlist = parse_playlist_continuation_contents(playlist_response);
-    return {"tracks": parsed_playlist.tracks.filter(track => track !== undefined).map(track => parse_youtube_playlist_track(track as unknown as YouTubeTrack)), "continuation": {"ytcfg": opts.ytcfg, "continuation": parsed_playlist.continuation} as YouTubePlaylistContinuation}
+    return {"tracks": youtube_parse_videos(parsed_playlist.tracks), "continuation": {"ytcfg": opts.ytcfg, "continuation": parsed_playlist.continuation} as YouTubePlaylistContinuation}
 }
 
 type YouTubeMusicPlaylistContinuation = {"ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs};
@@ -216,16 +204,26 @@ type SoundcloudPlaylistContinuation = {"next_href": string|null, "client_id": st
 export async function soundcloud_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
     const playlist_limit: number = Prefs.get_pref("soundcloud_playlist_limit");
-    if(url.includes("/sets/")){
+    if(url.includes("you/likes")){
+        const playlist_response = await Origin.SoundCloud.liked_music({"cookie_jar": cookie_jar})
+        if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response]};
+        return {
+            "title": "Liked Music",
+            "creator": [{"name": "You", "uri": null}],
+            "tracks": playlist_response.data.collection.map(({track}) => track).map(soundcloud_parse_track),
+            "continuation": null
+        };
+    }
+    else if(url.includes("/sets/")){
         const playlist_response = await Origin.SoundCloud.get_playlist({"cookie_jar": cookie_jar, "playlist_path": url})
         if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response]};
         return {
-            "title": remove_prod(playlist_response.hydration.data.title),
-            "creator": [{"name": playlist_response.hydration.data.user.username, "uri": create_uri("soundcloud", urlid(playlist_response.hydration.data.user.permalink))}],
+            "title": playlist_response.hydration.data.title,
+            "creator": [{"name": playlist_response.hydration.data.user.username, "uri": create_uri("soundcloud", playlist_response.hydration.data.user.permalink)}],
             "description": playlist_response.hydration.data.description,
             "artwork_url": playlist_response.hydration.data.artwork_url,
             "date": new Date(playlist_response.hydration.data.created_at),
-            "tracks": playlist_response.tracks.map(track => parse_soundcloud_artist_track(track)),
+            "tracks": playlist_response.tracks.map(soundcloud_parse_track),
             "continuation": null
         };
     }
@@ -236,12 +234,12 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
     const artist_response = await Origin.SoundCloud.get_artist("TRACKS", {"cookie_jar": cookie_jar, "client_id": client_id, "artist_id": url, "limit": playlist_limit});
     if("error" in artist_response) return {"title": "", "tracks": [], "continuation": null, "error": [artist_response]};
     return {
-        "title": remove_prod(artist_response.user.data.username),
-        "creator": [{"name": artist_response.user.data.username, "uri": create_uri("soundcloud", urlid(artist_response.user.data.permalink))}],
+        "title": artist_response.user.data.username,
+        "creator": [{"name": artist_response.user.data.username, "uri": create_uri("soundcloud", artist_response.user.data.permalink)}],
         "description": artist_response.user.data.description,
         "artwork_url": artist_response.user.data.avatar_url,
         "date": new Date( artist_response.user.data.created_at ),
-        "tracks": artist_response.artist_data.collection.map(track => parse_soundcloud_artist_track(track)),
+        "tracks": artist_response.artist_data.collection.map(soundcloud_parse_track),
         "continuation": {"next_href": artist_response.artist_data.next_href, "client_id": client_id, "depth": 1} as SoundcloudPlaylistContinuation
     };
 }
@@ -250,7 +248,7 @@ export async function soundcloud_get_playlist_continuation(opts: SoundcloudPlayl
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
     const artist_response = await Origin.SoundCloud.continuation(opts.next_href, {...opts, cookie_jar: cookie_jar}, opts.depth) as unknown as SCSearch.SearchOf<SCSearch.Track>;
     return {
-        "tracks": artist_response.collection.map(track => parse_soundcloud_artist_track(track)),
+        "tracks": artist_response.collection.map(soundcloud_parse_track),
         "continuation": {"next_href": artist_response.next_href, "client_id": opts.client_id, "depth": 1} as SoundcloudPlaylistContinuation
     };
 }

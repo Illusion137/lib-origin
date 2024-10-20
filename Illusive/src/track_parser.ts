@@ -1,9 +1,7 @@
 import * as Origin from '../../origin/src/index'
-import * as SCSearch from '../../origin/src/soundcloud/types/Search';
-import { YouTubeTrack } from '../../origin/src/youtube/types/PlaylistResults_1';
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
-import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time, remove_prod, urlid } from '../../origin/src/utils/util'
-import { best_thumbnail, create_uri, escape_regexpresion, spotify_uri_to_uri, youtube_music_split_artists, youtube_views_number } from './illusive_utilts';
+import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time } from '../../origin/src/utils/util'
+import { best_thumbnail, create_uri, escape_regexpresion, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
 import { ExplicitMode, Runs, SerializedTrack, Track } from './types';
 import { PlaylistPanelVideoRenderer } from '../../origin/src/youtube/types/MixResults_0';
 import { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
@@ -102,17 +100,6 @@ export function parse_musi_track(track: Origin.Musi.MusiTrack): Track {
         "duration": track.video_duration,
         "youtube_id": track.video_id
     }
-}
-
-export function parse_youtube_playlist_track(track: YouTubeTrack): Track {
-    return {
-        "uid": generate_new_uid(parse_runs(track.title.runs)),
-        "title": parse_runs(track.title.runs),
-        "artists": [{"name": parse_runs(track.shortBylineText.runs), "uri": track.shortBylineText.runs[0]?.navigationEndpoint === undefined ? null : create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId)}],
-        "duration": parseInt(track.lengthSeconds),
-        "plays": youtube_views_number(track.videoInfo?.runs?.[0]?.text),
-        "youtube_id": track.videoId,
-    };
 }
 
 export function parse_youtube_mix_track(track: PlaylistPanelVideoRenderer): Track {
@@ -261,30 +248,4 @@ export function parse_apple_music_user_playlist_track(track: AppleUserPlaylistTr
         "explicit": track.attributes.contentRating !== undefined && track.attributes.contentRating === "explicit" ? "EXPLICIT": "NONE",
         "applemusic_id": track.id
     };
-}
-
-export function parse_soundcloud_artist_track(track: SCSearch.Track): Track{
-    return {
-        "uid": generate_new_uid(track.title),
-        "title": remove_prod(track.title),
-        "artists": [{"name": make_topic(track.user.username), "uri": create_uri("soundcloud", urlid(track.user.permalink))}],
-        "plays": track.playback_count,
-        "duration": Math.floor(track.duration / 1000),
-        "soundcloud_id": track.id,
-        "soundcloud_permalink": track.permalink_url,
-        "artwork_url": track.artwork_url?.replace("t200x200.jpg", "t500x500.jpg")
-    }
-}
-
-export function parse_soundcloud_track(track: SCSearch.Track): Track{
-    return {
-        "uid": generate_new_uid(track.title),
-        "title": track.title,
-        "artists": [{"name": track.user.username, "uri": create_uri("soundcloud", String(track.user.id))}],
-        "plays": track.playback_count,
-        "duration": Math.floor(track.duration / 1000),
-        "soundcloud_id": track.id,
-        "soundcloud_permalink": track.permalink_url,
-        "artwork_url": track.artwork_url!.replace("t200x200.jpg", "t500x500.jpg")
-    }
 }

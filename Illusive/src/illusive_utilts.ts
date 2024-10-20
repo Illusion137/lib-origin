@@ -1,4 +1,4 @@
-import { is_empty, remove, remove_special_chars } from "../../origin/src/utils/util";
+import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Track } from "./types";
 
@@ -124,7 +124,7 @@ export function time_to_timestamp(time_seconds: number): string{
 }
 export function path_to_directory(path: string){ return path.split("/").slice(0,-1).join("/"); }
 export function create_uri(music_service_uri: MusicServiceURI, id: string): IllusiveURI {
-    return `${music_service_uri}:${id}`;
+    return `${music_service_uri}:${urlid(id)}`;
 }
 export function spotify_uri_to_uri(spotify_uri?: string): IllusiveURI|null {
     if(spotify_uri === undefined) return null;

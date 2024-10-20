@@ -4,7 +4,7 @@ export interface ParsedLibraryResults {
     "endpoint": string
 }
 
-export interface LibraryResults_0 {
+export interface LibraryResultsW {
     responseContext: ResponseContext
     contents: Contents
     header: Header2

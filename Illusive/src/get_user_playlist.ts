@@ -2,7 +2,7 @@ import * as Origin from '../../origin/src/index'
 import { urlid } from '../../origin/src/utils/util';
 import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
-import { CompactPlaylistsResult } from './types';
+import { CompactPlaylist, CompactPlaylistsResult } from './types';
 
 export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -88,8 +88,12 @@ export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsR
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     const user_playlists_response = await Origin.SoundCloud.get_all_user_playlists({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
+    const liked_music_playlist: CompactPlaylist[] = [{
+        "title": {"name": "Liked Music", "uri": create_uri("soundcloud", "https://soundcloud.com/you/likes")}, 
+        "artist": [{"name": "You", "uri": null}]
+    }];
     return {
-        "playlists": user_playlists_response.data.map(playlist => {
+        "playlists": liked_music_playlist.concat(user_playlists_response.data.map(playlist => {
             return {
                 "title": {"name": playlist.title, "uri": create_uri("soundcloud", urlid(playlist.permalink_url))}, 
                 "artist": Array.isArray(playlist.user) ? playlist.user.map(artist => {
@@ -101,6 +105,6 @@ export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsR
                 "artwork_thumbnails": create_thumbnails(playlist.artwork_url),
                 "year": new Date(playlist.created_at),
             }
-        })
+        }))
     };
 }

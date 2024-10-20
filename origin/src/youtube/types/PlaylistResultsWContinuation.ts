@@ -1,4 +1,4 @@
-export interface PlaylistResults_2 {
+export interface PlaylistResultsWContinuation {
     responseContext: ResponseContext
     contents: Contents
     alerts: Alert[]
