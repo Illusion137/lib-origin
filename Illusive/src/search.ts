@@ -17,12 +17,12 @@ import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_use
 
 function default_search(error?: ResponseError): MusicSearchResponse{
     return {
+        ...(error !== undefined ? {"error": [error]} : {}),
         "tracks": [],
         "playlists": [],
         "albums": [],
         "artists": [],
-        "error": error !== undefined ? [error] : undefined,
-        "continuation": null
+        "continuation": null,
     }
 }
 function get_cookie_jar(pref_opt: Prefs.PrefOptions){
@@ -76,6 +76,7 @@ export async function amazon_music_search(query: string): Promise<MusicSearchRes
 }
 type YouTubeSearchContinuation = {"ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation};
 function youtube_parse_search(search_response: Awaited<ReturnType<typeof Origin.YouTube.search>>){
+    if("error" in search_response) return default_search(search_response);
     return {
         "tracks": youtube_parse_videos(search_response.data.videos),
         "playlists": youtube_parse_playlists(search_response.data.playlists),
@@ -87,13 +88,12 @@ function youtube_parse_search(search_response: Awaited<ReturnType<typeof Origin.
 export async function youtube_search(query: string): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('youtube_cookie_jar');
     const search_response = await Origin.YouTube.search({cookie_jar: cookie_jar}, query);
-    if("error" in search_response) return default_search(search_response as ResponseError);
     return youtube_parse_search(search_response);
 }
 export async function youtube_search_continuation(opts: YouTubeSearchContinuation): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar("youtube_cookie_jar");
     const search_response = await Origin.YouTube.get_continuation({"cookie_jar": cookie_jar}, opts.ytcfg, opts.continuation);
-    if("error" in search_response) return default_search(<ResponseError>search_response);
+    if("error" in search_response) return default_search(search_response);
     const parsed_search = parse_search_continuation_contents(search_response);
     return youtube_parse_search(<Awaited<ReturnType<typeof Origin.YouTube.search>>><unknown>({data: parsed_search, icfg: {ytcfg: opts.ytcfg}}))
 }
@@ -101,7 +101,7 @@ export async function youtube_search_continuation(opts: YouTubeSearchContinuatio
 export async function youtube_music_search(query: string): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
     const search_response = await Origin.YouTubeMusic.search({cookie_jar: cookie_jar}, query);
-    if("error" in search_response) return default_search(search_response as ResponseError);
+    if("error" in search_response) return default_search(search_response);
     return default_search();
 }
 

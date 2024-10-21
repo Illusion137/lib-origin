@@ -1,11 +1,10 @@
-import * as sha1 from 'sha1-uint8array'
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, eval_json, extract_string_from_pattern, google_query, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
 import { YTCFG } from "./types/YTCFG";
 import * as Parser from "./parser";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
-import { ResponseError } from '../utils/types';
+import { ResponseError, PromiseResult } from '../utils/types';
 import { InitialData } from './types/types';
 
 export namespace YouTube {
@@ -19,20 +18,10 @@ export namespace YouTube {
     };
 
     export function get_sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN = 'https://www.youtube.com') {
-        const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
-        const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
-        const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
-        const sha_digest = sha1.createHash().update(data).digest("hex");
-        const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest}`
-        return SAPISIDHASH;
+        return sapisid_hash_auth0(SAPISID, epoch, ORIGIN);
     }
     export function get_sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN = 'https://www.youtube.com') {
-        const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
-        const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
-        const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
-        const sha_digest = sha1.createHash().update(data).digest("hex");
-        const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}`
-        return SAPISIDHASH;
+        return sapisid_hash_auth1(SAPISID, epoch, ORIGIN);
     }
 
     export function get_ad_signal_params(epoch: Date) {
@@ -175,12 +164,13 @@ export namespace YouTube {
         } catch (error) { return { "error": String(error) }; }
     }
     type ICFGData<T> = { icfg: ICFG, data: T };
-    export async function get_home(opts: Opts)   : Promise<ICFGData<ReturnType<typeof Parser.parse_home_contents>>>                           { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
-    export async function get_playlist(opts: Opts, playlist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_playlist_contents>>> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
-    export async function get_artist(opts: Opts, artist_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_channel_contents>>>       { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_channel_contents); }
-    export async function search(opts: Opts, search_query: string): Promise<ICFGData<ReturnType<typeof Parser.parse_search_contents>>>        { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
-    export async function get_youtube_mix(opts: Opts, video_id: string): Promise<ICFGData<ReturnType<typeof Parser.parse_mix_contents>>>      { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RD${video_id}`, Parser.parse_mix_contents); }
-    export async function get_library(opts: Opts): Promise<ICFGData<ReturnType<typeof Parser.parse_library_contents>>|ResponseError>          { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
+    type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
+    export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents>                              { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
+    export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
+    export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_channel_contents>      { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_channel_contents); }
+    export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents>        { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
+    export async function get_youtube_mix(opts: Opts, video_id: string): PromiseICFGData<typeof Parser.parse_mix_contents>      { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RD${video_id}`, Parser.parse_mix_contents); }
+    export async function get_library(opts: Opts): Promise<ICFGData<typeof Parser.parse_library_contents>>                      { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
     export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation, path?: string) {
         try {
             // ctoken: next_con.continuationEndpoint.continuationCommand.token,

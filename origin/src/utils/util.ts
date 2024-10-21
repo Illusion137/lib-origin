@@ -1,3 +1,5 @@
+import * as sha1 from 'sha1-uint8array'
+
 export function decode_hex(hex: string) {
 	return hex.replace(/\\x22/g, '"').replace(/\\x7b/g, '{').replace(/\\x7d/g, '}').replace(/\\x5b/g, '[').replace(/\\x5d/g, ']').replace(/\\x3b/g, ';').replace(/\\x3d/g, '=').replace(/\\x27/g, '\'').replace(/\\\\/g, 'doubleAntiSlash').replace(/\\/g, '').replace(/doubleAntiSlash/g, '\\')
 }
@@ -63,4 +65,21 @@ export function eval_json(json: string){
     const result = eval("evaluated = " + json);
     evaluated;
     return result;
+}
+
+export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
+	const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
+	const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
+	const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
+	const sha_digest = sha1.createHash().update(data).digest("hex");
+	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest}`
+	return SAPISIDHASH;
+}
+export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string) {
+	const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
+	const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
+	const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
+	const sha_digest = sha1.createHash().update(data).digest("hex");
+	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}`
+	return SAPISIDHASH;
 }

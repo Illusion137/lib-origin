@@ -21,7 +21,7 @@ import { youtube_parse_playlist_header, youtube_parse_videos } from './gen/youtu
 import { soundcloud_parse_track } from './gen/soundcloud_parser';
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist{
-    return {"title": "", "tracks": [], "continuation": null, "error": error !== undefined ? [error] : undefined}
+    return {...(error !== undefined ? {"error": [error]} : {}), "title": "", "tracks": [], "continuation": null}
 }
 
 export async function musi_get_playlist(url: string): Promise<MusicServicePlaylist> {
@@ -38,7 +38,7 @@ type YouTubePlaylistContinuation = {"ytcfg": YT_YTCFG.YTCFG, "continuation": YT_
 export async function youtube_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_playlist({"cookie_jar": cookie_jar}, url);
-    if("error" in playlist_response && typeof playlist_response.error === "string") return default_playlist(<ResponseError>playlist_response);
+    if("error" in playlist_response) return default_playlist(playlist_response);
     if(playlist_response.data.playlist_data === undefined) return default_playlist({"error": "playlist_data is undefined"});
     return {
         ...youtube_parse_playlist_header(playlist_response.data.playlist_data),
