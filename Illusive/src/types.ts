@@ -290,7 +290,7 @@ export class MusicService {
     valid_playlist_url_regex: RegExp
     required_cookie_credentials: string[]
     cookie_jar_callback?: () => CookieJar
-    search?: (query: string) => Promise<MusicSearchResponse>
+    search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
     search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
     explore?: () => Promise<IllusiveExplore>
     create_playlist?: (title: string) => Promise<boolean>
@@ -358,7 +358,7 @@ export class MusicService {
         valid_playlist_url_regex: RegExp,
         required_cookie_credentials: string[],
         cookie_jar_callback?: () => CookieJar
-        search?: (query: string) => Promise<MusicSearchResponse>
+        search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
         search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
         explore?: () => Promise<IllusiveExplore>
         create_playlist?: (title: string) => Promise<boolean>

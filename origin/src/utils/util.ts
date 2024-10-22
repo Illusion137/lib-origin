@@ -1,4 +1,5 @@
 import * as sha1 from 'sha1-uint8array'
+import { ResponseError } from './types';
 
 export function decode_hex(hex: string) {
 	return hex.replace(/\\x22/g, '"').replace(/\\x7b/g, '{').replace(/\\x7d/g, '}').replace(/\\x5b/g, '[').replace(/\\x5d/g, ']').replace(/\\x3b/g, ';').replace(/\\x3d/g, '=').replace(/\\x27/g, '\'').replace(/\\\\/g, 'doubleAntiSlash').replace(/\\/g, '').replace(/doubleAntiSlash/g, '\\')
@@ -82,4 +83,13 @@ export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string)
 	const sha_digest = sha1.createHash().update(data).digest("hex");
 	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}`
 	return SAPISIDHASH;
+}
+export function try_json_parse<T>(json_string: string): T|ResponseError {
+	try { return <T>JSON.parse(json_string); }
+	catch (error) { return { "error": String(error) }; }
+}
+export function clean_html_text(text: string) {
+	return text.replace(/&#34;/g, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/\n/g, '');
 }
