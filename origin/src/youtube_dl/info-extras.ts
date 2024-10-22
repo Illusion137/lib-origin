@@ -185,6 +185,7 @@ const parseRelatedVideo = (details: any, rvsParams: any) => {
         return video;
     } catch (err) {
         // Skip.
+        return;
     }
 };
 

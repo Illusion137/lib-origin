@@ -294,7 +294,7 @@ export const setPropInsensitive = (obj: any, prop: string, value: any) => {
 // let oldCookieWarning = true;
 // let oldDispatcherWarning = true;
 
-let oldLocalAddressWarning = true;
+// let oldLocalAddressWarning = true;
 
 let oldIpRotationsWarning = true;
 export const applyIPv6Rotations = (options: any) => {
@@ -304,7 +304,7 @@ export const applyIPv6Rotations = (options: any) => {
         });
         if (oldIpRotationsWarning) {
             oldIpRotationsWarning = false;
-            oldLocalAddressWarning = false;
+            // oldLocalAddressWarning = false;
             console.warn(
                 '\x1b[33mWARNING:\x1B[0m IPv6Block option is deprecated, ' +
                 'please create your own ip rotation instead. (https://github.com/distubejs/ytdl-core#ip-rotation)',

@@ -264,8 +264,14 @@ export interface MusicSearchResponse {
     continuation: Record<string, any> | null
 }
 
-export interface a {
-
+export interface MusicServiceArtist {
+    name: string
+    tracks: Track[]
+    tracks_continuation: () => Track[]
+    playlists: CompactPlaylist[]
+    albums: CompactPlaylist[]
+    background_artwork_url?: string
+    profile_artwork_url?: string
 }
 export interface IllusiveExplore {
 

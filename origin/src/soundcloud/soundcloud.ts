@@ -210,7 +210,7 @@ export namespace SoundCloud {
             ...get_locale_params(opts),
             q: opts.query,
             variant_ids: "",
-            facet: "model",
+            facet: search_type === "EVERYTHING" ? "model" : "genre", // TODO: COULD ALSO BE "genre" 
             user_id: anonymous_hydration?.data,
             limit: opts.limit ?? 20,
             offset: opts.offset ?? 0,

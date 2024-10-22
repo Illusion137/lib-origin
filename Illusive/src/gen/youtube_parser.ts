@@ -47,7 +47,7 @@ export function youtube_parse_playlists(playlists: {playlist_renderer: PlaylistR
             return {
                 "title": {"name": playlist.title.simpleText, "uri": create_uri("youtube", playlist.playlistId)},
                 "artist": [{"name": playlist.longBylineText.runs[0].text, "uri": null}],
-                "artwork_url": best_thumbnail(playlist.thumbnail.thumbnails)?.url,
+                "artwork_url": best_thumbnail(playlist?.thumbnail?.thumbnails)?.url,
             }
         });
     }
@@ -55,7 +55,7 @@ export function youtube_parse_playlists(playlists: {playlist_renderer: PlaylistR
         return {
             "title": {"name": "runs" in playlist.title ? parse_runs(playlist.title.runs) : playlist.title, "uri": create_uri("youtube", playlist.playlistId)},
             "artist": [{"name": parse_runs(playlist.shortBylineText.runs), "uri": create_uri("youtube", playlist.shortBylineText.runs[0].navigationEndpoint?.browseEndpoint.canonicalBaseUrl ?? "")}],
-            "artwork_url": best_thumbnail(playlist.thumbnail.thumbnails)?.url,
+            "artwork_url": best_thumbnail(playlist?.thumbnail?.thumbnails)?.url,
         }
     });
 }
@@ -65,7 +65,7 @@ export function youtube_parse_channels(channels: {channel_renderer: ChannelRende
         return channels.channel_renderer.map(channel => {
             return {
                 "name": {"name": channel.title.simpleText, "uri": create_uri("youtube", channel.channelId)},
-                "profile_artwork_url": channel.thumbnail.thumbnails[0].url,
+                "profile_artwork_url": channel?.thumbnail?.thumbnails?.[0].url,
                 "is_official_artist_channel": true
             }
         });
@@ -73,7 +73,7 @@ export function youtube_parse_channels(channels: {channel_renderer: ChannelRende
     return channels.compact_channel_renderer.map(channel => {
         return {
             "name": {"name": parse_runs(channel.title.runs), "uri": create_uri("youtube", channel.channelId)},
-            "profile_artwork_url": channel.thumbnail.thumbnails[0].url,
+            "profile_artwork_url": channel?.thumbnail?.thumbnails?.[0]?.url,
             "is_official_artist_channel": true
         }
     });
