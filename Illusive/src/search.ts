@@ -29,9 +29,9 @@ function get_cookie_jar(pref_opt: Prefs.PrefOptions){
     return Prefs.get_pref('use_cookies_on_search') ? <CookieJar>Prefs.get_pref(pref_opt) : new CookieJar([]);
 }
 
-export async function spotify_search(query: string): Promise<MusicSearchResponse>{
+export async function spotify_search(query: string, limit?: number): Promise<MusicSearchResponse>{
     const cookie_jar = get_cookie_jar('spotify_cookie_jar');
-    const search_response = await Origin.Spotify.search(query, {cookie_jar: cookie_jar});
+    const search_response = await Origin.Spotify.search(query, {cookie_jar: cookie_jar, limit: limit});
     if("error" in search_response) return default_search(search_response);
     return {
         "tracks": search_response.data.searchV2.tracksV2.items.map(parse_spotify_search_track),
@@ -62,7 +62,7 @@ export async function spotify_search(query: string): Promise<MusicSearchResponse
     }
 }
 
-export async function amazon_music_search(query: string): Promise<MusicSearchResponse> {
+export async function amazon_music_search(query: string, _?: number): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('amazon_music_cookie_jar');
     const search_response = await Origin.AmazonMusic.search(query, {cookie_jar: cookie_jar});
     if("error" in search_response) return default_search(search_response);
@@ -85,7 +85,7 @@ function youtube_parse_search(search_response: Awaited<ReturnType<typeof Origin.
         "continuation": is_empty(search_response.data.continuation) ? null : {ytcfg: search_response.icfg.ytcfg, continuation: search_response.data.continuation} as YouTubeSearchContinuation
     }
 }
-export async function youtube_search(query: string): Promise<MusicSearchResponse> {
+export async function youtube_search(query: string, _?: number): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('youtube_cookie_jar');
     const search_response = await Origin.YouTube.search({cookie_jar: cookie_jar}, query);
     return youtube_parse_search(search_response);
@@ -98,7 +98,7 @@ export async function youtube_search_continuation(opts: YouTubeSearchContinuatio
     return youtube_parse_search(<Awaited<ReturnType<typeof Origin.YouTube.search>>><unknown>({data: parsed_search, icfg: {ytcfg: opts.ytcfg}}))
 }
 
-export async function youtube_music_search(query: string): Promise<MusicSearchResponse> {
+export async function youtube_music_search(query: string, _?: number): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
     const search_response = await Origin.YouTubeMusic.search({cookie_jar: cookie_jar}, query);
     if("error" in search_response) return default_search(search_response);
@@ -120,9 +120,9 @@ export function soundcloud_parse_search(search_response: ClientSearchOf<Playlist
         "continuation": {"next_href": search_response.data.next_href, "client_id": search_response.client_id, "depth": 1} as SoundcloudSearchContinuation
     }
 }
-export async function soundcloud_search(query: string): Promise<MusicSearchResponse> {
+export async function soundcloud_search(query: string, limit?: number): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('soundcloud_cookie_jar');
-    const search_response = await Origin.SoundCloud.search("EVERYTHING", {"query": query, "cookie_jar": cookie_jar});
+    const search_response = await Origin.SoundCloud.search("EVERYTHING", {"query": query, "cookie_jar": cookie_jar, "limit": limit});
     if("error" in search_response) return default_search(search_response);
     return soundcloud_parse_search(search_response);
 }
