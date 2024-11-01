@@ -9,6 +9,8 @@ import { Illusive } from '../../illusive';
 import { Alert } from 'react-native';
 import { alert_error } from './alert';
 import { is_empty } from '../../../../origin/src/utils/util';
+import { number_epsilon_distance } from '../../illusive_utilts';
+import { Constants } from '../../constants';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -28,6 +30,15 @@ export function download_track_list(tracks: Track[]){
         download_track(track);
     }
 }
+
+function download_error_callback(title: string, error: string, track: Track, start_download?: SetState): "ERROR" {
+    if (start_download !== undefined) start_download(false);
+    if( !is_empty(error) ) alert_error({"error": title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error});
+    const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
+    GLOBALS.downloading.splice(item_index, 1);
+    return "ERROR";
+}
+
 export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     function in_download_range(uid: string, download_queue_max_length: number) {
         for (let i = 0; i < download_queue_max_length; i++)
@@ -44,35 +55,33 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             if ("error" in download_uri) {
                 if (download_uri.error.includes("Video unavailable"))
                     SQLActions.add_to_backpack(track.uid);
-                if (start_download != undefined)
-                    start_download(false);
-                const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-                GLOBALS.downloading.splice(item_index, 1);
-                Alert.alert("Coudln't find the file", `${track.uid} : ${download_uri.error}`);
-                return "ERROR";
+                return download_error_callback("Coudln't find the file", download_uri.error, track, start_download);
             }
             if ("new_track_data" in download_uri && download_uri.new_track_data !== undefined) {
                 await SQLActions.update_track_with_new_track_data(track, download_uri.new_track_data);
                 track = SQLActions.merge_track_with_new_track(track, download_uri.new_track_data!);
             }
             if("url" in download_uri && download_uri.url.includes("file://")) {
-                const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-                GLOBALS.downloading.splice(item_index, 1);
-                return "ERROR";
+                return download_error_callback("", "", track, start_download);
             }
             try {
                 if (start_download !== undefined) start_download(true);
                 const new_uri = SQLActions.media_directory() + track.uid + '.m4a';
-                ffmpeg.RNFFmpeg.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async () => {
+                ffmpeg.RNFFmpeg.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
                     try {
+                        if(execution.returnCode !== Constants.ffmpeg_retcode_success)
+                            throw `FFMPEG return status code: ${execution.returnCode};\n Execution ID: ${execution.executionId}`
                         const sound_temp = new Audio.Sound();
                         await sound_temp.loadAsync({ uri: new_uri });
                         const meta_data = await sound_temp.getStatusAsync();
                         await sound_temp.unloadAsync();
                         if (meta_data.isLoaded === false)
-                            throw new Error('No load');
-                        if (Math.round((meta_data.durationMillis ?? 0) / 1000) < 3)
-                            throw new Error('Invalid Duration');
+                            throw 'No load';
+                        const downloaded_duration = (meta_data.durationMillis ?? 0) / 1000;
+                        if (Math.round(downloaded_duration) < 3)
+                            throw `Invalid Duration: ${downloaded_duration}`;
+                        else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))
+                            throw `Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`;
 
                         await SQLActions.mark_track_downloaded(track.uid, track.uid + '.m4a');
 
@@ -86,22 +95,15 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                         if (start_download !== undefined)          start_download(false);
                         if (set_finished_downloaded !== undefined) set_finished_downloaded(true);
                     } catch (error) {
-                        if (start_download !== undefined) start_download(false);
-                        alert_error({"error": "Failed To Download: " + JSON.stringify(track) + ":\n" + error});
-                        const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-                        GLOBALS.downloading.splice(item_index, 1)
+                        download_error_callback("Failed To Download:", String(error), track, start_download);
                     }
                 }).then(execution_id => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
                         GLOBALS.downloading[item_index].execution_id = execution_id;
                 })
-            } catch (e) {
-                if (start_download != undefined)
-                    start_download(false)
-                alert_error({"error": "Failed To Download: " + JSON.stringify(track) + ":\n" + e});
-                const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-                GLOBALS.downloading.splice(item_index, 1);
+            } catch (error) {
+                return download_error_callback("Failed To Download:", String(error), track, start_download);
             }
             return "GOOD";
         });

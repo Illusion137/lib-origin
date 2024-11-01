@@ -1,4 +1,6 @@
 export namespace Constants {
     export const library_write_playlist = "LIBRARY";
     export const illusi_mix_from = "Illusi Mix";
+    export const download_duration_epsilon = 5;
+    export const ffmpeg_retcode_success = 0;
 }

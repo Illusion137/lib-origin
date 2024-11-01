@@ -3,10 +3,12 @@ import * as formatUtils from './format-utils';
 import * as urlUtils from './url-utils';
 import { downloadOptions } from '@distube/ytdl-core';
 import { AVFormat } from './types';
+import { urlid } from '../utils/util';
 
 export namespace YouTubeDL {
     export async function ytdl (link: string, options: downloadOptions): Promise<AVFormat> {
-        const info = await ytdl.getInfo(link, options);
+        const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=");
+        const info = await ytdl.getInfo(video_id, options);
         const format = ytdl.chooseFormat(info.formats, options);
         return format;
     };

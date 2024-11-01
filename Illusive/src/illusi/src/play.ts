@@ -53,7 +53,8 @@ export async function play_mix(track_data: Track, from: string) {
         alert_error(track_mix);
         return;
     }
-    GLOBALS.global_var.playing_tracks = GLOBALS.global_var.playing_tracks.concat(track_mix.tracks);
+    track_mix.tracks = await SQLActions.add_playback_saved_data_to_tracks(track_mix.tracks);
+    GLOBALS.global_var.playing_tracks = GLOBALS.global_var.playing_tracks.concat(track_mix.tracks.slice(1));
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[]) {
     if(from === Constants.illusi_mix_from) await play_mix(track_data, from);

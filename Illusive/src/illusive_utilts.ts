@@ -243,3 +243,7 @@ export function sum(nums: number[]){
 export function tracks_duration_string(tracks: Track[]){
     return playlist_duration_to_string( sum(track_durations(tracks)) );
 }
+export function number_epsilon_distance(num: number, expected: number, plus_minus = 0){
+    const distance = Math.abs(num - expected);
+    return distance <= plus_minus;
+}

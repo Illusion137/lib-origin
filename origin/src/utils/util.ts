@@ -61,7 +61,7 @@ export function remove_special_chars(str: string) {
     for(const char of special_characters) str = remove(str, char);
     return str;
 }
-export function eval_json(json: string){
+export function eval_json<T>(json: string): T{
     let evaluated;
     const result = eval("evaluated = " + json);
     evaluated;

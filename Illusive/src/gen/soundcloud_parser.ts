@@ -2,6 +2,10 @@ import { Track, User, Playlist } from "../../../origin/src/soundcloud/types/Sear
 import { generate_new_uid, make_topic, remove_prod } from "../../../origin/src/utils/util";
 import { create_uri } from "../illusive_utilts";
 
+function highest_artwork(artwork_url: string){
+    return artwork_url?.replace("t200x200", "t500x500")?.replace("large", "t500x500");
+}
+
 export function soundcloud_parse_track(track: Track){
     return {
         "uid": generate_new_uid(track.title),
@@ -11,7 +15,7 @@ export function soundcloud_parse_track(track: Track){
         "duration": Math.floor(track.duration / 1000),
         "soundcloud_id": track.id,
         "soundcloud_permalink": track.permalink_url,
-        "artwork_url": track.artwork_url?.replace("t200x200.jpg", "t500x500.jpg")
+        "artwork_url": highest_artwork(track.artwork_url)
     }
 }
 export function soundcloud_parse_user(user: User){
@@ -31,6 +35,6 @@ export function soundcloud_parse_playlist(playlist: Playlist){
             } 
         }) : [{"name": make_topic(playlist.user.username), "uri": create_uri("soundcloud", playlist.user.permalink)}],
         "year": new Date(playlist.created_at).getFullYear(),
-        "artwork_url": playlist.artwork_url
+        "artwork_url": highest_artwork(playlist.artwork_url)
     }
 }

@@ -1,14 +1,14 @@
 import { CompactArtist, CompactPlaylist, MusicServicePlaylistBase, Track } from "../types";
 import { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
 import { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "../../../origin/src/youtube/types/SearchResultsW";
-import { generate_new_uid, parse_runs, parse_time } from "../../../origin/src/utils/util";
+import { generate_new_uid, is_empty, parse_runs, parse_time } from "../../../origin/src/utils/util";
 import { best_thumbnail, create_uri, youtube_views_number } from "../illusive_utilts";
 import { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
 import { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
 
 export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[]{
     if("video_renderer" in videos){
-        return videos.video_renderer.map(track => {
+        return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
             return <Track>{
                 "uid": generate_new_uid(parse_runs(track.title.runs)),
                 "title": parse_runs(track.title.runs),
@@ -19,7 +19,7 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
         })
     }
     else if("compact_video_renderer" in videos){
-        return videos.compact_video_renderer.map(track => {
+        return videos.compact_video_renderer.filter(track => !is_empty(track?.lengthText?.runs)).map(track => {
             return <Track>{
                 "uid": generate_new_uid(parse_runs(track?.headline.runs)),
                 "title": parse_runs(track?.headline.runs),
@@ -29,7 +29,7 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
             };
         });
     }
-    else return videos.playlist_video_renderer.map(track => {
+    else return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
         return {
             "uid": generate_new_uid(parse_runs(track.title.runs)),
             "title": parse_runs(track.title.runs),
