@@ -50,7 +50,7 @@ export interface AlphabetScroll {
 
 interface Basic_LinkerLink<T extends MusicServiceType, F extends MusicServiceType> {
     from_playlist_url: F extends "Illusi" ? never : string
-    from_depth: F extends "Illusi" ? never : string
+    from_depth: number
     from_service: F
     to_service: T
     mode: "LIBRARY" | "PLAYLIST"

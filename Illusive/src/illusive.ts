@@ -13,6 +13,9 @@ import { ResponseError } from "../../origin/src/utils/types";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "./get_track_mix";
 
 export namespace Illusive {
+    // export const illusi_icon: number = 0;
+    // export const illusi_dark_icon: number = 0;
+    // export const imported_thumbnail: number = 0;
     export const illusi_icon: number = require('./assets/illusi_icon.png');
     export const illusi_dark_icon: number = require('./assets/illusi_dark_icon.png');
     export const imported_thumbnail: number = require('./assets/imported_thumbnail.png');
@@ -194,8 +197,9 @@ export namespace Illusive {
         ["API", api],
     ]);
 
-    export async function convert_track(track: Track, to_music_service: MusicServiceType): Promise<Track|ResponseError>{
-        if(music_service.get(to_music_service)?.search === undefined) return {"error": "can't convert to this music-service"};
+    export async function convert_track(track: Track, to_music_service: MusicServiceType, possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError>{
+        if(music_service.get(to_music_service)?.search === undefined) return {"error": "Can't convert to this music-service"};
+        possible_services = possible_services.filter(service => service !== to_music_service);
         const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
         if(search_tracks.tracks.length === 0) return {"error": "no tracks"};
         type Max = {"index": number, "value": number};
@@ -222,7 +226,11 @@ export namespace Illusive {
             if(current.value > 0) all_negative_values = false;
             if(current.value > best.value) best = current;
         }
-        if(all_negative_values) return {"error": "Unable to find good conversion"};
+        if(all_negative_values) {
+            if(possible_services.length === 0)
+                return {"error": "Unable to find good conversion"};
+            else return convert_track(track, possible_services[0], possible_services);
+        }
         const best_match: Track = search_tracks.tracks[best.index];
         return best_match;
     }

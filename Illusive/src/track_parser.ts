@@ -238,6 +238,9 @@ export function parse_apple_music_playlist_track(track: AppleTrack): Track{
         "applemusic_id": track.id
     }
 }
+export function parse_apple_music_artwork(url: string, size: number = 200){
+    return url.replace("{w}x{h}bb.{f}", `${size}x${size}bb.webp`)
+}
 export function parse_apple_music_user_playlist_track(track: AppleUserPlaylistTrack): Track{
     return {
         "uid": generate_new_uid(track.attributes.name),
@@ -246,6 +249,7 @@ export function parse_apple_music_user_playlist_track(track: AppleUserPlaylistTr
         "album": {"name": track.attributes.albumName, "uri": null},
         "duration": Math.floor(track.attributes.durationInMillis / 1000),
         "explicit": track.attributes.contentRating !== undefined && track.attributes.contentRating === "explicit" ? "EXPLICIT": "NONE",
+        "artwork_url": parse_apple_music_artwork(track.attributes.artwork.url),
         "applemusic_id": track.id
     };
 }

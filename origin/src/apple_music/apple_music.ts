@@ -1,5 +1,5 @@
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_string_from_pattern, urlid } from "../utils/util";
+import { encode_params, extract_string_from_pattern, try_json_parse, urlid } from "../utils/util";
 import { MyPlaylists } from "./types/MyPlaylists";
 import { Playlist } from "./types/Playlist";
 import { SerializedServerData } from "./types/type";
@@ -11,14 +11,17 @@ export namespace AppleMusic {
         return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
     }
     export async function extract_serialized_server_data(html: string, opts: Opts) {
-        const serialized_server_data_regex = /<script type=\"application\/json\" id=\"serialized-server-data\">(.+?)<\/script>/s;
+        const serialized_server_data_regex = /<script type=\"application\/json\".+?id=\"serialized-server-data\">(.+?)<\/script>/s;
         const extraction = extract_string_from_pattern(html, serialized_server_data_regex);
         if (typeof extraction === "object") return extraction;
+        const data = try_json_parse<SerializedServerData>(extraction);
+        if("error" in data) return data;
         const bearer_path = extract_string_from_pattern(html, /<script type=\"module\" crossorigin src=\"(.+?)\"><\/script>/);
         if (typeof bearer_path === "object") return bearer_path;
         const bearer = await get_bearer(bearer_path, opts);
         if(typeof bearer === "object") return bearer;
-        return {"data": JSON.parse(extraction) as SerializedServerData, "authorization": bearer};
+
+        return {"data": data as SerializedServerData, "authorization": bearer};
     }
     async function get_response(url: string, opts: Opts) {
         const response = await fetch(url, {
@@ -95,7 +98,7 @@ export namespace AppleMusic {
         });
         if (!response.ok) return { "error": String(response.status) };
         const js = await response.text();
-        const bearer = extract_string_from_pattern(js, /const .+? ?= ?["'`]([a-zA-Z0-9-.]{200,})["'`]/i);
+        const bearer = extract_string_from_pattern(js, /const .+? ?= ?["'`]([a-zA-Z0-9-._]{200,})["'`]/i);
         return bearer;
     }
     async function api_check_response(opts: Opts, bearer: string, path: string, params: object, payload: null|object, method: "GET"|"POST"|"DELETE" = "GET") {
@@ -131,7 +134,7 @@ export namespace AppleMusic {
                 "platform": "web",
                 "relate": "catalog"
             };
-            const playlist_id = urlid(playlist_path, "us/", "library/", "playlist/", "?l=en-US");
+            const playlist_id = urlid(playlist_path, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
             const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
             if ("error" in api_playlists_response) return api_playlists_response;
             if(!api_playlists_response.ok) return {"error": String(api_playlists_response.status)};

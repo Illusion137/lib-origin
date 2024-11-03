@@ -11,7 +11,7 @@ import { parse_playlist_continuation_contents } from '../../origin/src/youtube/p
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
-import { parse_amazon_music_playlist_track, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track, parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './track_parser';
+import { parse_amazon_music_playlist_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track, parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './track_parser';
 import { ResponseError } from '../../origin/src/utils/types';
 import { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
 import { Album } from '../../origin/src/spotify/types/Album';
@@ -269,7 +269,7 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
         return {
             "title": playlist_data.attributes.name,
             "creator": [{"name": playlist_data.attributes.curatorName, "uri": null}],
-            "artwork_url": playlist_data.attributes?.artwork?.url,
+            "artwork_url": parse_apple_music_artwork(playlist_data.attributes?.artwork?.url),
             "description": playlist_data.attributes.description.standard,
             "date": new Date(playlist_data.attributes.lastModifiedDate),
             "tracks": song_keys.map(key => parse_apple_music_user_playlist_track(playlist_songs[key])), 
