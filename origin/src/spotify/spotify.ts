@@ -33,6 +33,10 @@ export namespace Spotify {
     }
 
     type Opts = { cookie_jar?: CookieJar, client?: Client };
+    let client_cache = {client: <Client|null>null, enabled: true};
+
+    export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
+    export function client_cache_full(){ return client_cache.enabled && client_cache.client !== null}
 
     export const valid_playlist_regex = /(https?:\/\/)open\.spotify\.com\/(playlist)\/.+/i
     export const valid_album_regex = /(https?:\/\/)open\.spotify\.com\/(album)\/.+/i
@@ -72,6 +76,7 @@ export namespace Spotify {
 
     export async function get_client(url: string, cookie_jar: (CookieJar | undefined) = undefined) : Promise< Client|ResponseError >{
         try {
+            if(client_cache_full()) return client_cache.client!;
             const page = await fetch(url, {
                 "headers": {
                   "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -121,7 +126,9 @@ export namespace Spotify {
                 "method": "POST"
             });
 
-            return { 'session': session, 'client_token': await client_token.json() as ClientToken };
+            const client = { 'session': session, 'client_token': <ClientToken>await client_token.json() };
+            if(client_cache.enabled) client_cache.client = client;
+            return client;
         } catch (error) { return { "error": String(error) }; }
     }
     export function uri_to_id(uri: string){
