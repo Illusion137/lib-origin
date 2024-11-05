@@ -16,6 +16,10 @@ export namespace YouTube {
         initial_data: InitialData,
         ytcfg: YTCFG
     };
+    
+    // let client_cache = {client: {ytcfg: null}, enabled: true};
+    // export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
+    // export function client_cache_full(){ return client_cache.enabled && client_cache.client.ytcfg !== null}
 
     export function get_sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN = 'https://www.youtube.com') {
         return sapisid_hash_auth0(SAPISID, epoch, ORIGIN);

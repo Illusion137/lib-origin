@@ -318,9 +318,9 @@ export class MusicService {
     }
     async user_playlists_map(){
         const map = new Map<MusicServicePlaylistTitle, MusicServicePlaylistURL>();
-        if(this.get_user_playlists === undefined) return {"error": [{"error": "get_user_playlist is undefined"}], "map": map};
+        if(this.get_user_playlists === undefined) return {"error": [{"error": "get_user_playlist is undefined"}], "map": map, "extracted": []};
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {"error": [account_playlists as ResponseError], "map": map};
+        if("error" in account_playlists) return {"error": [account_playlists as ResponseError], "map": map, "extracted": []};
         const service_domain_map: Record<MusicServiceURI, string> = {
             "illusi": "",
             "musi": "",
@@ -331,20 +331,20 @@ export class MusicService {
             "applemusic": "https://music.apple.com/library/playlist/",
             "soundcloud": "https://soundcloud.com/",
             "api": "",
-        }
+        };
         for(const playlist of account_playlists.playlists){
             let [service, endpoint] = <[MusicServiceURI, string]>playlist.title.uri!.split(':');
-            if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map};
+            if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map, "extracted": []};
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify"){
-                if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map};
+                if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map, "extracted": []};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
                 map.set(playlist.title.name, `${service_domain_map[service]}${type}/${endpoint}`);
             }
             else
                 map.set(playlist.title.name, service_domain_map[service] + endpoint);
         }
-        return {"map": map};
+        return {"map": map, "extracted": account_playlists};
     }
     async get_rest_of_playlist(continuation_data: any){
         continuation_data;

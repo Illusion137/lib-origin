@@ -7,6 +7,12 @@ import { FetchMethod, ResponseError, ResponseSuccess } from "../utils/types";
 export namespace SoundCloud {
     type Opts = { cookie_jar?: CookieJar, client_id?: (string|ResponseError) }
     let app_version = 1727431820;
+    let client_cache = {client: {client_id: <null|string>null, user_id: <null|string>null}, enabled: true};
+
+    export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
+    export function client_cache_full(){ return client_cache.enabled && client_cache.client.client_id !== null; }
+    export function client_cache_user_full(){ return client_cache.enabled && !client_cache.client.user_id !== null; }
+
     function requires_cookies(opts: Opts): ResponseError | ResponseSuccess{
         if(opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return {"error": "No cookies supplied"};
         return {"success": true};
@@ -82,8 +88,9 @@ export namespace SoundCloud {
             "Referrer-Policy": "origin"
         }
     }
-    export async function get_client_id(asset_scripts: string[], cookie_jar?: CookieJar) {
-        for(const asset_script of asset_scripts){
+    export async function get_client_id(scripts: string[], cookie_jar?: CookieJar) {
+        if(client_cache_full()) return client_cache.client!.client_id!;
+        for(const asset_script of asset_scripts(scripts)){
             const response = await fetch(asset_script, api_method_options(cookie_jar));
             if(!response.ok) continue;
             const extracted = extract_string_from_pattern(await response.text(), /client_id: ?"(.+?)"/si);
@@ -132,7 +139,7 @@ export namespace SoundCloud {
         if(opts.client_id === undefined){
             hydration = await get_hydration(opts.hydration_url ?? `https://soundcloud.com/`, opts);
             if("error" in hydration) return hydration;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id;
+            opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
         }
         const params = {
             ...opts.params,
@@ -149,7 +156,7 @@ export namespace SoundCloud {
         if(opts.client_id === undefined){
             hydration = await get_hydration(opts.hydration_url ?? `https://soundcloud.com/`, opts);
             if("error" in hydration) return hydration;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id;
+            opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
         }
         const params = {
             ...opts.params,
@@ -195,23 +202,37 @@ export namespace SoundCloud {
         }
     }
     type PromiseError<T>  = Promise<T|ResponseError>;
+    export async function try_user_id(url: string, opts: Opts){
+        if(client_cache_user_full()) return [client_cache.client!.client_id, client_cache.client!.user_id!];
+        const hydration = await get_hydration(url, opts);
+        if("error" in hydration) return hydration;
+        const anonymous_hydration = hydration.hydration.find(item => item.hydratable === "anonymousId");
+        const res: [string|undefined|ResponseError, string|undefined] = [opts.client_id ?? (client_cache.client?.client_id ?? await get_client_id(hydration.scripts_urls, opts.cookie_jar)), anonymous_hydration?.data];
+        if(typeof res[0] === "object") return res[0];
+        if(client_cache.enabled) {
+            if(res[0] !== undefined)
+                client_cache.client!.client_id = res[0];
+            if(res[1] !== undefined)
+                client_cache.client!.user_id = res[1];
+        }
+        return res; 
+    }
     export async function search(search_type: "TRACKS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Track>>
     export async function search(search_type: "PEOPLE", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<User>>
     export async function search(search_type: "ALBUMS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
     export async function search(search_type: "PLAYLISTS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
     export async function search(search_type: "EVERYTHING", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist|Track|User>>
     export async function search(search_type: SearchType, opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist|Track|User>> {
-        const hydration = await get_hydration(`https://soundcloud.com/search?${encode_params({q: opts.query})}`, opts);
+        const hydration = await try_user_id(`https://soundcloud.com/search?${encode_params({q: opts.query})}`, opts);
         if("error" in hydration) return hydration;
-        opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id;
-        const anonymous_hydration = hydration.hydration.find(item => item.hydratable === "anonymousId");
+        opts.client_id = hydration[0]!;
         if (typeof opts.client_id === "object") return opts.client_id;
         const params = {
             ...get_locale_params(opts),
             q: opts.query,
             variant_ids: "",
             facet: search_type === "EVERYTHING" ? "model" : "genre", // TODO: COULD ALSO BE "genre" 
-            user_id: anonymous_hydration?.data,
+            user_id: hydration[1],
             limit: opts.limit ?? 20,
             offset: opts.offset ?? 0,
         }
@@ -243,7 +264,7 @@ export namespace SoundCloud {
         if(!is_empty(opts.artist_permalink)){
             const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.artist_permalink)}`, opts);
             if("error" in hydration) return hydration;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id; 
+            opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id; 
             if (typeof opts.client_id === "object") return opts.client_id;
             user_hyrdration = hydration.hydration.find((hydratable) => hydratable.hydratable == "user") as HydratableUser;
             artist_id = String(user_hyrdration.data.id);
@@ -263,7 +284,7 @@ export namespace SoundCloud {
     export async function get_playlist(opts: Opts & ({ playlist_path: string })) {
         const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.playlist_path)}`, opts);
         if("error" in hydration) return hydration;
-        opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id;
+        opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
         if (typeof opts.client_id === "object") return opts.client_id;
         const playlist_hyrdration: HydratablePlaylist = hydration.hydration.find((hydratable) => hydratable.hydratable == "playlist") as HydratablePlaylist;
 
@@ -337,7 +358,7 @@ export namespace SoundCloud {
         if("error" in has_cookies) return has_cookies;
         const hydration = await get_hydration(`https://soundcloud.com/`, opts);
         if("error" in hydration) return hydration;
-        opts.client_id = opts.client_id === undefined ? await get_client_id(asset_scripts(hydration.scripts_urls), opts.cookie_jar) : opts.client_id;
+        opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
         if (typeof opts.client_id === "object") return opts.client_id;
         const user_playlists = await get_artist("PLAYLISTS", {...opts, client_id: opts.client_id, artist_id: get_self_user_id(opts.cookie_jar!)});
         if("error" in user_playlists) return user_playlists;

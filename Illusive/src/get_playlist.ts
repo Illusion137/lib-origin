@@ -229,7 +229,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
     }
     const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {"cookie_jar": cookie_jar});
     if("error" in hydration) return {"title": "", "tracks": [], "continuation": null, "error": [hydration as ResponseError]};
-    const client_id = await Origin.SoundCloud.get_client_id(Origin.SoundCloud.asset_scripts(hydration.scripts_urls), cookie_jar);
+    const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);
     if(typeof client_id === "object") return {"title": "", "tracks": [], "continuation": null, "error": [client_id]};
     const artist_response = await Origin.SoundCloud.get_artist("TRACKS", {"cookie_jar": cookie_jar, "client_id": client_id, "artist_id": url, "limit": playlist_limit});
     if("error" in artist_response) return {"title": "", "tracks": [], "continuation": null, "error": [artist_response]};

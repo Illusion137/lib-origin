@@ -9,7 +9,7 @@ export namespace SoundCloudDL {
         if(!permalink.match(/(https:\/\/)?soundcloud\.com\/.+?\/.+/)) return {"error": "Permalink-url doesn't match regex"};
         const hydration = await SoundCloud.get_hydration(permalink, {"cookie_jar": cookie_jar});
         if ("error" in hydration) return hydration as ResponseError;
-        const client_id = await SoundCloud.get_client_id(SoundCloud.asset_scripts(hydration.scripts_urls), cookie_jar);
+        const client_id = await SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);
         if (typeof client_id === "object") return client_id;
         const sound_hyrdration: HydratableSound = hydration.hydration.find((hydratable) => hydratable.hydratable === "sound") as HydratableSound;
         if (sound_hyrdration.data.media.transcodings.length === 0) return { "error": "No transcodings available" };

@@ -7,6 +7,10 @@ import { UserPlaylist } from "./types/UserPlaylist";
 
 export namespace AppleMusic {
     type Opts = { "cookie_jar"?: CookieJar };
+    let client_cache = {client: {authorization: <string|null>null}, enabled: true};
+
+    export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
+    export function client_cache_full(){ return client_cache.enabled && client_cache.client !== null}
     export function playlist_urlid(playlist_url: string){
         return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
     }
@@ -16,6 +20,9 @@ export namespace AppleMusic {
         if (typeof extraction === "object") return extraction;
         const data = try_json_parse<SerializedServerData>(extraction);
         if("error" in data) return data;
+        if(client_cache_full()){
+            return {...client_cache.client!, "data": data as SerializedServerData};
+        }
         const bearer_path = extract_string_from_pattern(html, /<script type=\"module\" crossorigin src=\"(.+?)\"><\/script>/);
         if (typeof bearer_path === "object") return bearer_path;
         const bearer = await get_bearer(bearer_path, opts);
@@ -109,6 +116,10 @@ export namespace AppleMusic {
             return response;
         } catch (error) { return { "error": String(error) } }
     }
+    export async function try_cached_client(url: string, opts: Opts){
+        if(client_cache_full()) return client_cache.client;
+        else return await get_serialized_server_data(url, opts);
+    }
     export async function get_playlist(playlist_path: string, opts: Opts) {
         const playlist_response = await get_serialized_server_data(`https://music.apple.com/${urlid(playlist_path, "music.apple.com/")}`, opts);
         if ("error" in playlist_response) return playlist_response;
@@ -135,7 +146,7 @@ export namespace AppleMusic {
                 "relate": "catalog"
             };
             const playlist_id = urlid(playlist_path, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
-            const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
+            const api_playlists_response = await api_check_response(opts, playlist_response.authorization!, `me/library/playlists/${playlist_id}`, params, null);
             if ("error" in api_playlists_response) return api_playlists_response;
             if(!api_playlists_response.ok) return {"error": String(api_playlists_response.status)};
             const user_playlist: UserPlaylist = await api_playlists_response.json();
@@ -157,7 +168,7 @@ export namespace AppleMusic {
         return await playlists_response.json() as UserPlaylist;
     }
     export async function account_playlists(opts: Opts) {
-        const data = await get_serialized_server_data("https://music.apple.com/us/library/all-playlists/", opts);
+        const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
         if("error" in data) return data;
         const params = {
             "art%5Burl%5D": "f",
@@ -171,12 +182,12 @@ export namespace AppleMusic {
             "omit%5Bresource%5D": "autos",
             "platform": "web"
         }
-        const playlists_response = await api_check_response(opts, data.authorization, "me/library/playlist-folders/p.playlistsroot/children", params, null);
+        const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlist-folders/p.playlistsroot/children", params, null);
         if ("error" in playlists_response) return playlists_response;
         return await playlists_response.json() as MyPlaylists;
     }
     export async function add_tracks_to_playlist(playlist_id: string, track_ids: {id: string, type: "songs"}[], opts: Opts) {
-        const data = await get_serialized_server_data("https://music.apple.com/us/library/all-playlists/", opts);
+        const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
         if("error" in data) return data;
         const params = {
             "art%5Burl%5D": "f",
@@ -186,7 +197,7 @@ export namespace AppleMusic {
         const payload = {
             "data": track_ids
         }
-        const playlists_response = await api_check_response(opts, data.authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, payload, "POST");
+        const playlists_response = await api_check_response(opts, data.authorization!, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, payload, "POST");
         return playlists_response;
     }
     export async function remove_track_from_playlist(playlist_id: string, track_id: string, authorization: string, opts: Opts) {
@@ -199,7 +210,7 @@ export namespace AppleMusic {
         return playlists_response;
     }
     export async function create_playlist(playlist_name: string, description: string, is_public: boolean, tracks: {"id": string, "type": "songs"}[], opts: Opts) {
-        const data = await get_serialized_server_data("https://music.apple.com/us/library/all-playlists/", opts);
+        const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
         if("error" in data) return data;
         const params = {
             "art%5Burl%5D": "f",
@@ -213,16 +224,16 @@ export namespace AppleMusic {
             },
             "relationships": { "tracks": { "data": tracks } }
         };
-        const playlists_response = await api_check_response(opts, data.authorization, "me/library/playlists", params, payload, "POST");
+        const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlists", params, payload, "POST");
         return playlists_response;
     }
     export async function delete_playlist(playlist_id: string, opts: Opts) {
-        const data = await get_serialized_server_data("https://music.apple.com/us/library/all-playlists/", opts);
+        const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
         if("error" in data) return data;
         const params = {
             "art%5Burl%5D": "f"
         };
-        const playlists_response = await api_check_response(opts, data.authorization, `me/library/playlists/${playlist_urlid(playlist_id)}`, params, null, "DELETE");
+        const playlists_response = await api_check_response(opts, data.authorization!, `me/library/playlists/${playlist_urlid(playlist_id)}`, params, null, "DELETE");
         return playlists_response;
     }
 }
