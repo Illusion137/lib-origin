@@ -63,8 +63,9 @@ function test_search(service_names: MusicServiceType[], query: string){ test_mus
 function test_user_playlists(service_names: MusicServiceType[]){ test_music_services_list("library", service_names, ["user_playlists_map", []]); } test_user_playlists;
 
 // test_search(illusive_music_services, "Lelo camelot");
+// test_search(illusive_music_services, "Stanwill");
 // test_user_playlists(illusive_music_services);
-test_user_playlists(["Apple Music"]);
+// test_user_playlists(["Apple Music"]);
 
 // test_fetch_playlists("YouTube", [
 //     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",

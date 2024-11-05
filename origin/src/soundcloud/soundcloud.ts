@@ -11,7 +11,7 @@ export namespace SoundCloud {
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
     export function client_cache_full(){ return client_cache.enabled && client_cache.client.client_id !== null; }
-    export function client_cache_user_full(){ return client_cache.enabled && !client_cache.client.user_id !== null; }
+    export function client_cache_user_full(){ return client_cache.enabled && client_cache.client.user_id !== null; }
 
     function requires_cookies(opts: Opts): ResponseError | ResponseSuccess{
         if(opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return {"error": "No cookies supplied"};
@@ -208,12 +208,12 @@ export namespace SoundCloud {
         if("error" in hydration) return hydration;
         const anonymous_hydration = hydration.hydration.find(item => item.hydratable === "anonymousId");
         const res: [string|undefined|ResponseError, string|undefined] = [opts.client_id ?? (client_cache.client?.client_id ?? await get_client_id(hydration.scripts_urls, opts.cookie_jar)), anonymous_hydration?.data];
-        if(typeof res[0] === "object") return res[0];
+        if(typeof res[0] === "object" && !is_empty(res) ) return res[0];
         if(client_cache.enabled) {
-            if(res[0] !== undefined)
-                client_cache.client!.client_id = res[0];
-            if(res[1] !== undefined)
-                client_cache.client!.user_id = res[1];
+            if(!is_empty(res[0]))
+                client_cache.client!.client_id = <string>res[0];
+            if(!is_empty(res[1]))
+                client_cache.client!.user_id = res[1]!;
         }
         return res; 
     }
