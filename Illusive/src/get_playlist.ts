@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index'
-import { MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
+import { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
 import { get_main_key, make_topic, parse_runs, urlid } from '../../origin/src/utils/util';
 import * as SCSearch from '../../origin/src/soundcloud/types/Search';
 import { Prefs } from './prefs';
@@ -65,7 +65,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
             "title": parse_runs(playlist_response.data.playlist_data.title.runs),
             "creator": youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
             "artwork_url": playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
-            "date": date_from({"year": parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}),
+            "date": <ISOString>date_from({"year": parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString(),
             "tracks": playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs)),
             "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation, "type": "ALBUM", "artist": playlist_response.data.playlist_data.straplineTextOne.runs, "album": playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
         };
@@ -74,7 +74,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
         "title": parse_runs(playlist_response.data.playlist_data.title.runs),
         "creator": youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
         "artwork_url": playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
-        "date": date_from({"year": parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}),
+        "date": <ISOString>date_from({"year": parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString(),
         "tracks": playlist_response.data.tracks.map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
         "continuation": playlist_response.data.continuation === null ? null : {"ytcfg": playlist_response.icfg.ytcfg, "continuation": playlist_response.data.continuation, "type": "PLAYLIST"} as YouTubeMusicPlaylistContinuation
     };
@@ -139,7 +139,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
                 return {"name": make_topic(artist.profile.name), "uri": spotify_uri_to_uri(artist.uri)}
             }),
             "artwork_url": playlist_response.data.albumUnion.coverArt.sources[0].url,
-            "date": new Date(playlist_response.data.albumUnion.date.isoString),
+            "date": <ISOString>playlist_response.data.albumUnion.date.isoString,
             "tracks": playlist_response.data.albumUnion.tracks.items.map(track => parse_spotify_album_track(track, {"name": album_union.name, "uri": album_union.uri}, artwork?.url)),
             "continuation": playlist_limit >= playlist_response.data.albumUnion.tracks.totalCount ? null : 
                 {"client": client, "id": playlist_id, "current": playlist_limit, "total": playlist_response.data.albumUnion.tracks.totalCount, "limit": playlist_limit, "type": "ALBUM" } as SpotifyPlaylistContinuation
@@ -222,7 +222,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
             "creator": [{"name": playlist_response.hydration.data.user.username, "uri": create_uri("soundcloud", playlist_response.hydration.data.user.permalink)}],
             "description": playlist_response.hydration.data.description,
             "artwork_url": playlist_response.hydration.data.artwork_url,
-            "date": new Date(playlist_response.hydration.data.created_at),
+            "date": <ISOString>playlist_response.hydration.data.created_at,
             "tracks": playlist_response.tracks.map(soundcloud_parse_track),
             "continuation": null
         };
@@ -238,7 +238,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
         "creator": [{"name": artist_response.user.data.username, "uri": create_uri("soundcloud", artist_response.user.data.permalink)}],
         "description": artist_response.user.data.description,
         "artwork_url": artist_response.user.data.avatar_url,
-        "date": new Date( artist_response.user.data.created_at ),
+        "date": <ISOString> artist_response.user.data.created_at ,
         "tracks": artist_response.artist_data.collection.map(soundcloud_parse_track),
         "continuation": {"next_href": artist_response.artist_data.next_href, "client_id": client_id, "depth": 1} as SoundcloudPlaylistContinuation
     };
@@ -271,7 +271,7 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
             "creator": [{"name": playlist_data.attributes.curatorName, "uri": null}],
             "artwork_url": parse_apple_music_artwork(playlist_data.attributes?.artwork?.url),
             "description": playlist_data.attributes.description.standard,
-            "date": new Date(playlist_data.attributes.lastModifiedDate),
+            "date": <ISOString>playlist_data.attributes.lastModifiedDate,
             "tracks": song_keys.map(key => parse_apple_music_user_playlist_track(playlist_songs[key])), 
             "continuation": {"playlist_id": playlist_id, "offset": 0 + song_keys.length, "total": playlist_response.data.resources["library-playlists"][playlist_meta_main_key].relationships.tracks.meta.total, "authorization": playlist_response.authorization} as AppleMusicPlaylistContinuation
         };

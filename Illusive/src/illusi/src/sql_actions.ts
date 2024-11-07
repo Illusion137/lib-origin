@@ -4,7 +4,7 @@ import * as GLOBALS from './globals';
 import * as LegacyTypes1307 from './legacy/1307/legacy_types';
 import CookieManager from '@react-native-community/cookies';
 import { Illusive } from '../../illusive';
-import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLPlaylistArray, SQLTable, SQLTables, SQLTrack, SQLTrackArray, SQLType, Track, TrackMetaData } from '../../types';
+import { ISOString, Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLPlaylistArray, SQLTable, SQLTables, SQLTrack, SQLTrackArray, SQLType, Track, TrackMetaData } from '../../types';
 import { array_exclude, array_include, array_mask, extract_file_extension, playlist_name_sql_friendly } from '../../illusive_utilts';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Alert } from 'react-native';
@@ -56,7 +56,8 @@ export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: str
 
 export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1307.Track): Promise<Track>{
     const media_info = is_empty(legacy_1307_track.media_uri) ? null : await FileSystem.getInfoAsync(media_directory() + legacy_1307_track.media_uri);
-    const download_date = media_info !== null && media_info.exists && media_info.isDirectory === false ? new Date(media_info.modificationTime) : new Date(0);
+    const zero_iso = <ISOString>new Date(0).toISOString();
+    const download_date: ISOString = media_info !== null && media_info.exists && media_info.isDirectory === false ? <ISOString>new Date(media_info.modificationTime).toISOString() : zero_iso;
     // const parsed_track = parse_youtube_title_artist({title: legacy_1307_track.video_name, artists: [{"name": legacy_1307_track.video_creator. }]});
     
     // const topiced = legacy_1307_track.video_creator.includes(" - Topic");
@@ -88,8 +89,8 @@ export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1
         "meta": {
             "plays": 0,
             "downloaded_date": download_date,
-            "last_played_date": new Date(0),
-            "added_date": download_date.getTime() === 0 ? new Date() : download_date
+            "last_played_date": zero_iso,
+            "added_date": new Date(download_date).getTime() === 0 ? <ISOString>new Date().toISOString() : download_date
         },
     }
 }
@@ -225,8 +226,8 @@ export async function track_uid_exists(track: Track){
 
 function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
-        "added_date": new Date(),
-        "last_played_date": new Date(),
+        "added_date": <ISOString>new Date().toISOString(),
+        "last_played_date": <ISOString>new Date().toISOString(),
         "plays": 0,
     };
     const to_array: SQLTrackArray = [        

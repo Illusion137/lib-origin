@@ -2,7 +2,7 @@ import * as Origin from '../../origin/src/index'
 import { urlid } from '../../origin/src/utils/util';
 import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
-import { CompactPlaylist, CompactPlaylistsResult } from './types';
+import { CompactPlaylist, CompactPlaylistsResult, ISOString } from './types';
 
 export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -17,7 +17,7 @@ export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResu
                     "uri": spotify_uri_to_uri(playlist.item.data.ownerV2?.data.uri)
                 }],
                 "artwork_thumbnails": playlist.item.data.images?.items.map(item => item.sources)[0] ?? [],
-                "date": new Date(playlist.addedAt.isoString),
+                "date": <ISOString>playlist.addedAt.isoString,
                 "type": spotify_uri_to_type(playlist.item.data.uri)
             }
         })
@@ -78,7 +78,7 @@ export async function apple_music_get_user_playlists(): Promise<CompactPlaylists
             return {
                 "title": {"name": playlist.attributes.name, "uri": create_uri("applemusic", playlist.id)}, 
                 "artist": [],
-                "year": new Date(playlist.attributes.dateAdded),
+                "date": <ISOString>playlist.attributes.dateAdded
             }
         })
     };
@@ -103,7 +103,7 @@ export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsR
                     }
                 }) : [{"name": playlist.user.username, "uri": create_uri("soundcloud", urlid(playlist.user.permalink_url))}],
                 "artwork_thumbnails": create_thumbnails(playlist.artwork_url),
-                "year": new Date(playlist.created_at),
+                "date": <ISOString>playlist.created_at,
             }
         }))
     };

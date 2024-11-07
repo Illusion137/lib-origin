@@ -6,7 +6,7 @@ import * as urlUtils from './url-utils';
 import * as extras from './info-extras';
 import * as sig from './sig';
 import Cache from './cache';
-import { AVFormat, DownloadOptions } from './types';
+import { AVFormat, DownloadOptions, VideoInfo } from './types';
 
 const BASE_URL = 'https://www.youtube.com/watch?v=';
 
@@ -20,6 +20,86 @@ const AGE_RESTRICTED_URLS = [
     'youtube.com/t/community_guidelines',
 ];
 
+const LOCALE = { "hl": "en", "timeZone": "UTC", "utcOffsetMinutes": 0 },
+    CHECK_FLAGS = { contentCheckOk: true, racyCheckOk: true };
+
+const WEB_CREATOR_CONTEXT = {
+    client: {
+        clientName: "WEB_CREATOR",
+        clientVersion: "1.20240723.03.00",
+        ...LOCALE
+    }
+};
+
+const getPlaybackContext = async (html5player: string, options: DownloadOptions) => {
+    const body = await utils.request(html5player, options);
+    let mo = body.match(/signatureTimestamp:(\d+)/);
+
+    return {
+        contentPlaybackContext: {
+            html5Preference: "HTML5_PREF_WANTS",
+            signatureTimestamp: mo ? mo[1] : undefined
+        }
+    };
+}
+
+const parseAdditionalManifests = (player_response: VideoInfo["player_response"], options: DownloadOptions = {}) => {
+    let streamingData = player_response && player_response.streamingData,
+        manifests = [];
+    if (streamingData) {
+        if (streamingData.dashManifestUrl) {
+            manifests.push(getDashManifest(streamingData.dashManifestUrl, options));
+        }
+        if (streamingData.hlsManifestUrl) {
+            manifests.push(getM3U8(streamingData.hlsManifestUrl, options));
+        }
+    }
+    return manifests;
+}
+const fetchWebCreatorPlayer = async (videoId: string, html5player: string, options: DownloadOptions) => {
+
+    const payload = {
+        context: WEB_CREATOR_CONTEXT,
+        videoId,
+        playbackContext: await getPlaybackContext(html5player, options),
+        ...CHECK_FLAGS
+    };
+
+    return await playerAPI(videoId, payload, undefined, options);
+}
+const playerAPI = async (videoId: string, payload: object, userAgent: string | undefined, options: any) => {
+
+    const { jar, dispatcher } = options.agent;
+    const opts = {
+        requestOptions: {
+            method: 'POST',
+            dispatcher,
+            query: {
+                prettyPrint: false,
+                t: utils.generateClientPlaybackNonce(12),
+                id: videoId,
+            },
+            headers: {
+                'Content-Type': 'application/json',
+                cookie: jar.getCookieStringSync('https://www.youtube.com'),
+                'User-Agent': userAgent,
+                'X-Goog-Api-Format-Version': '2',
+            },
+            body: JSON.stringify(payload),
+        },
+    };
+    const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts);
+    const playErr = utils.playError(response);
+    if (playErr) throw playErr;
+    if (!response.videoDetails || videoId !== response.videoDetails.videoId) {
+        const err: any = new Error('Malformed response from YouTube');
+        err.response = response;
+        throw err;
+    }
+    return response;
+}
+
+
 /**
  * Gets info from a video without getting additional formats.
  *
@@ -27,20 +107,19 @@ const AGE_RESTRICTED_URLS = [
  * @param {Object} options
  * @returns {Promise<Object>}
  */
-export const getBasicInfo = async (id: string, options: DownloadOptions) => {
+export const getBasicInfo = async (id: string, options: DownloadOptions): Promise<VideoInfo> => {
     // utils.applyIPv6Rotations(options);
     utils.applyDefaultHeaders(options);
-    const retryOptions = Object.assign({}, options.requestOptions);
+    // const retryOptions = Object.assign({}, options.requestOptions);
     // const { jar, dispatcher } = options.agent;
     // utils.setPropInsensitive(
-        // options.requestOptions.headers, 'cookie', jar.getCookieStringSync('https://www.youtube.com'),
+    // options.requestOptions.headers, 'cookie', jar.getCookieStringSync('https://www.youtube.com'),
     // );
     // options.requestOptions.dispatcher = dispatcher;
-    const info = await retryFunc(getWatchHTMLPage, [id, options], retryOptions);
+    const info = await retryFunc(getWatchHTMLPage, [id, options], options);
 
     const playErr = utils.playError(info.player_response);
     if (playErr) throw playErr;
-
 
     Object.assign(info, {
         // Replace with formats from iosPlayerResponse
@@ -210,56 +289,45 @@ const parseFormats = (player_response: any) => {
  * @param {Object} options
  * @returns {Promise<Object>}
  */
-export const getInfo = async (id: string, options: any) => {
+export const getInfo = async (id: string, options: DownloadOptions): Promise<VideoInfo> => {
     // utils.applyIPv6Rotations(options);
     utils.applyDefaultHeaders(options);
     const info = await getBasicInfo(id, options);
-    let funcs: any[] = [];
+    let funcs: Promise<any>[] = [];
+
+    // Fill in HTML5 player URL
+    info.html5player = info.html5player ||
+        getHTML5player(await getWatchHTMLPageBody(id, options)) || getHTML5player(await getEmbedPageBody(id, options))!;
+
+    if (!info.html5player) {
+        throw Error('Unable to find html5player file');
+    }
+
+    const html5player = new URL(info.html5player, BASE_URL).toString();
+
     try {
         if (info.videoDetails.age_restricted) throw Error('Cannot download age restricted videos with mobile clients');
-        const [iosPlayerResponse, androidPlayerResponse] = await Promise.all([
+        const responses = await Promise.allSettled([
+            fetchWebCreatorPlayer(id, html5player, options),
             fetchIosJsonPlayer(id, options),
-            fetchAndroidJsonPlayer(id, options),
+            fetchAndroidJsonPlayer(id, options)
         ]);
-        info.formats = parseFormats(androidPlayerResponse).concat(parseFormats(iosPlayerResponse));
-        if (info.formats.length) {
-            funcs.push(info.formats);
-        }
-        if (androidPlayerResponse && androidPlayerResponse.streamingData) {
-            if (androidPlayerResponse.streamingData.dashManifestUrl) {
-                funcs.push(getDashManifest(androidPlayerResponse.streamingData.dashManifestUrl, options));
-            }
-            if (androidPlayerResponse.streamingData.hlsManifestUrl) {
-                funcs.push(getM3U8(androidPlayerResponse.streamingData.hlsManifestUrl, options));
-            }
-        }
-        if (iosPlayerResponse && iosPlayerResponse.streamingData) {
-            if (iosPlayerResponse.streamingData.dashManifestUrl) {
-                funcs.push(getDashManifest(iosPlayerResponse.streamingData.dashManifestUrl, options));
-            }
-            if (iosPlayerResponse.streamingData.hlsManifestUrl) {
-                funcs.push(getM3U8(iosPlayerResponse.streamingData.hlsManifestUrl, options));
+        info.formats = (<AVFormat[]>[]).concat(...responses.map((r: any) => parseFormats(r.value)));
+        if (info.formats.length === 0) throw new Error('Player JSON API failed');
+
+        funcs.push(sig.decipherFormats(info.formats, html5player, options));
+
+        for (let resp of responses) {
+            if(resp.status !== "fulfilled") continue;
+            if (resp.value) {
+                funcs.push(...parseAdditionalManifests(resp.value, options));
             }
         }
     } catch (_) {
+        console.warn('error in player API; falling back to web-scraping')
         // Bring back web-scraping for now. TODO: tv client
-        info.html5player = info.html5player ||
-            getHTML5player(await getWatchHTMLPageBody(id, options)) || getHTML5player(await getEmbedPageBody(id, options));
-        if (!info.html5player) {
-            throw Error('Unable to find html5player file');
-        }
-        const html5player = new URL(info.html5player, BASE_URL).toString();
         funcs.push(sig.decipherFormats(parseFormats(info.player_response), html5player, options));
-        if (info.player_response && info.player_response.streamingData) {
-            if (info.player_response.streamingData.dashManifestUrl) {
-                let url = info.player_response.streamingData.dashManifestUrl;
-                funcs.push(getDashManifest(url, options));
-            }
-            if (info.player_response.streamingData.hlsManifestUrl) {
-                let url = info.player_response.streamingData.hlsManifestUrl;
-                funcs.push(getM3U8(url, options));
-            }
-        }
+        funcs.push(...parseAdditionalManifests(info.player_response));
     }
 
     let results = await Promise.all(funcs);
@@ -276,7 +344,7 @@ const IOS_CLIENT_VERSION = '19.28.1',
     IOS_USER_AGENT_VERSION = '17_5_1',
     IOS_OS_VERSION = '17.5.1.21F90';
 
-const fetchIosJsonPlayer = async (videoId: string, _: any) => {
+const fetchIosJsonPlayer = async (videoId: string, _: DownloadOptions) => {
     const payload = {
         videoId,
         cpn: utils.generateClientPlaybackNonce(16),
@@ -341,7 +409,7 @@ const ANDROID_CLIENT_VERSION = '19.30.36',
     ANDROID_SDK_VERSION = '34';
 
 
-const fetchAndroidJsonPlayer = async (videoId: string, _: any) => {
+const fetchAndroidJsonPlayer = async (videoId: string, _: DownloadOptions) => {
     const payload = {
         videoId,
         cpn: utils.generateClientPlaybackNonce(16),
@@ -408,18 +476,18 @@ const fetchAndroidJsonPlayer = async (videoId: string, _: any) => {
  * @param {Object} options
  * @returns {Promise<Array.<Object>>}
  */
-const getDashManifest = (url: string, options: any) => new Promise((resolve, reject) => {
-    let formats: Record<string, any> = {};
+const getDashManifest = (url: string, options: DownloadOptions): Promise<Record<string, AVFormat>> => new Promise((resolve, reject) => {
+    let formats: Record<string, AVFormat> = {};
     const parser = sax.parser(false);
     parser.onerror = reject;
     let adaptationSet: any;
-    parser.onopentag = (node: any)=> {
+    parser.onopentag = (node: any) => {
         if (node.name === 'ADAPTATIONSET') {
             adaptationSet = node.attributes;
         } else if (node.name === 'REPRESENTATION') {
             const itag = parseInt(node.attributes.ID);
             if (!isNaN(itag)) {
-                formats[url] = Object.assign({
+                formats[url] = <AVFormat>Object.assign({
                     itag,
                     url,
                     bitrate: parseInt(node.attributes.BANDWIDTH),
@@ -451,15 +519,14 @@ const getDashManifest = (url: string, options: any) => new Promise((resolve, rej
  * @param {Object} options
  * @returns {Promise<Array.<Object>>}
  */
-const getM3U8 = async (url_: string, options: any) => {
+const getM3U8 = async (url_: string, options: DownloadOptions) => {
     const url = new URL(url_, BASE_URL);
     const body: string = await utils.request(url.toString(), options);
     let formats: Record<string, any> = {};
-    body
-        .split('\n')
+    body.split('\n')
         .filter(line => /^https?:\/\//.test(line))
         .forEach(line => {
-            const itag = parseInt((line.match(/\/itag\/(\d+)\//)??[])[1]);
+            const itag = parseInt((line.match(/\/itag\/(\d+)\//) ?? [])[1]);
             formats[line] = { itag, url: line };
         });
     return formats;

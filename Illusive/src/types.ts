@@ -127,9 +127,9 @@ interface TrackPlaybackData {
 }
 export interface TrackMetaData {
     plays: number
-    added_date: Date
-    last_played_date: Date
-    downloaded_date?: Date
+    added_date: ISOString
+    last_played_date: ISOString
+    downloaded_date?: ISOString
 }
 //Regex
 //\s+.+?: (.+?)\n
@@ -222,11 +222,10 @@ export interface CompactPlaylist {
     artist: NamedUUID[]
     artwork_thumbnails?: IllusiveThumbnail[]
     artwork_url?: string
-    date?: Date
+    date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType
 }
-
 export interface CompactArtist {
     name: NamedUUID
     profile_artwork_url?: string
@@ -237,7 +236,7 @@ export interface MusicServicePlaylistBase {
     creator?: NamedUUID[]
     description?: string
     artwork_url?: string
-    date?: Date
+    date?: ISOString
 }
 export interface MusicServicePlaylist {
     tracks: Track[]
@@ -245,7 +244,7 @@ export interface MusicServicePlaylist {
     creator?: NamedUUID[]
     description?: string
     artwork_url?: string
-    date?: Date
+    date?: ISOString
     continuation: Record<string, any> | null
     error?: MaybeErrors
 }
@@ -288,6 +287,8 @@ export type MusicServicePlaylistURL = string;
 export type CompactPlaylistsResult = {"playlists": CompactPlaylist[], "error"?: string};
 export type TrackMix = { "tracks": Track[], "error"?: string };
 
+export type MusicServiceMappedPlaylist = {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist};
+
 export class MusicService {
     app_icon: string | number
     web_view_url?: string
@@ -316,11 +317,11 @@ export class MusicService {
         }
         return true;
     }
-    async user_playlists_map(){
-        const map = new Map<MusicServicePlaylistTitle, MusicServicePlaylistURL>();
-        if(this.get_user_playlists === undefined) return {"error": [{"error": "get_user_playlist is undefined"}], "map": map, "extracted": []};
+    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}>{
+        const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
+        if(this.get_user_playlists === undefined) return {"error": [{"error": "get_user_playlist is undefined"}], "map": map};
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {"error": [account_playlists as ResponseError], "map": map, "extracted": []};
+        if("error" in account_playlists) return {"error": [account_playlists as ResponseError], "map": map};
         const service_domain_map: Record<MusicServiceURI, string> = {
             "illusi": "",
             "musi": "",
@@ -334,17 +335,17 @@ export class MusicService {
         };
         for(const playlist of account_playlists.playlists){
             let [service, endpoint] = <[MusicServiceURI, string]>playlist.title.uri!.split(':');
-            if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map, "extracted": []};
+            if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map};
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify"){
-                if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map, "extracted": []};
+                if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
-                map.set(playlist.title.name, `${service_domain_map[service]}${type}/${endpoint}`);
+                map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
             }
             else
-                map.set(playlist.title.name, service_domain_map[service] + endpoint);
+                map.set(playlist.title.name, {url: service_domain_map[service] + endpoint, compact_playlist: playlist});
         }
-        return {"map": map, "extracted": account_playlists};
+        return {"map": map};
     }
     async get_rest_of_playlist(continuation_data: any){
         continuation_data;
@@ -424,9 +425,9 @@ export class PQueue<T> {
 }
 
 export class TimedCache<K, V> {
-    lifespan_milliseconds: number
+    lifespan_milliseconds?: number
     store: { created_at: Date, key: K, value: V }[]
-    constructor(lifespan_seconds: number){
+    constructor(lifespan_seconds?: number){
         this.lifespan_milliseconds = lifespan_seconds;
         this.store = [];
     }
@@ -445,6 +446,6 @@ export class TimedCache<K, V> {
         this.store[i].value = value;
     }
     clear_expired(){
-        this.store = this.store.filter(item => item.created_at.getTime() + this.lifespan_milliseconds > new Date().getTime())
+        this.store = this.store.filter(item => item.created_at.getTime() + (this.lifespan_milliseconds ?? Prefs.get_pref('playlist_cache_seconds')) > new Date().getTime())
     }
 }

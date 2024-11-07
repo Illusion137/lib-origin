@@ -14,7 +14,7 @@ export const default_playlists: DefaultPlaylist[] = [
     { "name": "Formerly Played", "track_function": (async() => {
         await SQLActions.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-        const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => a.meta!.last_played_date.getTime() - b.meta!.last_played_date.getTime()).slice(0, default_playlist_max_size);;
+        const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);;
         return tracks;
     }) },
     { "name": "Recently Played", "track_function": (async() => {

@@ -2,6 +2,7 @@ import * as LegacyPrefs from './illusi/src/legacy/1307/legacy_prefs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CookieJar } from "../../origin/src/utils/cookie_util";
 import * as uuid from "react-native-uuid";
+import { Constants } from './constants';
 
 export namespace Prefs {
     type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING";
@@ -32,6 +33,7 @@ export namespace Prefs {
         "recent_search_limit":                   {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true}         as Pref<number>,
         "soundcloud_playlist_limit":             {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true}         as Pref<number>,
         "spotify_playlist_limit":                {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true}       as Pref<number>,
+        "playlist_cache_seconds":                {default_value: Constants.playlist_cache_duration_seconds, current_value: Constants.playlist_cache_duration_seconds, type: "NUMBER", show_in_settings: true}       as Pref<number>,
         "edit_mode_disables_playing":            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "full_queue_disables_playing":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "show_track_duration":                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,

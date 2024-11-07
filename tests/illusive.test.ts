@@ -9,12 +9,12 @@ const timeout_ms = 15000;
 
 const gcc_mode: ("dotenv"|"gcc") = "dotenv";
 
-Prefs.prefs.youtube_cookie_jar.current_value       = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'youtube_cookie_jar'));
-Prefs.prefs.youtube_music_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'youtube_music_cookie_jar'));
-Prefs.prefs.spotify_cookie_jar.current_value       = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'spotify_cookie_jar'))
-Prefs.prefs.soundcloud_cookie_jar.current_value    = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'soundcloud_cookie_jar'));
-Prefs.prefs.amazon_music_cookie_jar.current_value  = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'amazon_music_cookie_jar'));
-Prefs.prefs.apple_music_cookie_jar.current_value   = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'apple_music_cookie_jar'));
+Prefs.prefs.youtube_cookie_jar.current_value       = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'YOUTUBE_COOKIE_JAR'));
+Prefs.prefs.youtube_music_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'YOUTUBE_MUSIC_COOKIE_JAR'));
+Prefs.prefs.spotify_cookie_jar.current_value       = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'SPOTIFY_COOKIE_JAR'))
+Prefs.prefs.soundcloud_cookie_jar.current_value    = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'SOUNDCLOUD_COOKIE_JAR'));
+Prefs.prefs.amazon_music_cookie_jar.current_value  = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'AMAZON_MUSIC_COOKIE_JAR'));
+Prefs.prefs.apple_music_cookie_jar.current_value   = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'APPLE_MUSIC_COOKIE_JAR'));
 
 function is_okay(result: any){
     const ok_object = typeof result === "object" && result !== null && !("error" in result);

@@ -21,7 +21,7 @@ export namespace AppleMusic {
         const data = try_json_parse<SerializedServerData>(extraction);
         if("error" in data) return data;
         if(client_cache_full()){
-            return {...client_cache.client!, "data": data as SerializedServerData};
+            return {"authorization": client_cache.client.authorization!, "data": data as SerializedServerData};
         }
         const bearer_path = extract_string_from_pattern(html, /<script type=\"module\" crossorigin src=\"(.+?)\"><\/script>/);
         if (typeof bearer_path === "object") return bearer_path;

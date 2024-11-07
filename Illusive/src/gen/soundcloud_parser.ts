@@ -1,6 +1,7 @@
 import { Track, User, Playlist } from "../../../origin/src/soundcloud/types/Search";
 import { generate_new_uid, make_topic, remove_prod } from "../../../origin/src/utils/util";
 import { create_uri } from "../illusive_utilts";
+import { ISOString } from "../types";
 
 function highest_artwork(artwork_url: string){
     return artwork_url?.replace("t200x200", "t500x500")?.replace("large", "t500x500");
@@ -34,7 +35,7 @@ export function soundcloud_parse_playlist(playlist: Playlist){
                 "uri": create_uri("soundcloud", String(user.id))
             } 
         }) : [{"name": make_topic(playlist.user.username), "uri": create_uri("soundcloud", playlist.user.permalink)}],
-        "year": new Date(playlist.created_at).getFullYear(),
+        "date": <ISOString>playlist.created_at,
         "artwork_url": highest_artwork(playlist.artwork_url)
     }
 }

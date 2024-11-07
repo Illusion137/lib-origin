@@ -92,7 +92,7 @@ export const sortFormats = (a: AVFormat, b: AVFormat) => sortFormatsBy(a, b, [
  * @returns {Object}
  * @throws {Error} when no format matches the filter/format rules
  */
-export const chooseFormat = (formats: AVFormat[], options: DownloadOptions) => {
+export const chooseFormat = (formats: AVFormat[], options: DownloadOptions): AVFormat|never => {
     if (typeof options.format === 'object') {
         if (!options.format.url) {
             throw Error('Invalid format given, did you use `ytdl.getInfo()`?');

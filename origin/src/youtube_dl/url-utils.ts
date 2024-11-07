@@ -36,7 +36,7 @@ export function getURLVideoID(link: string) {
     throw Error(`No video id found: "${link}"`);
   }
   id = id.substring(0, 11);
-  if (!exports.validateID(id)) {
+  if (!validateID(id)) {
     throw TypeError(`Video id (${id}) does not match expected ` +
       `format (${idRegex.toString()})`);
   }
@@ -55,10 +55,10 @@ export function getURLVideoID(link: string) {
  */
 const urlRegex = /^https?:\/\//;
 export function getVideoID(str: string) {
-  if (exports.validateID(str)) {
+  if (validateID(str)) {
     return str;
   } else if (urlRegex.test(str.trim())) {
-    return exports.getURLVideoID(str);
+    return getURLVideoID(str);
   } else {
     throw Error(`No video id found: ${str}`);
   }
@@ -83,7 +83,7 @@ export const validateID = (id: string) => idRegex.test(id.trim());
  */
 export const validateURL = (str: string) => {
   try {
-    exports.getURLVideoID(str);
+    getURLVideoID(str);
     return true;
   } catch (e) {
     return false;

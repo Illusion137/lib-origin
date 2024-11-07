@@ -1,3 +1,6 @@
+// import { sapisid_hash_auth0 } from "../utils/util";
+import { DownloadOptions } from "./types";
+
 /**
  * Extract string inbetween another.
  *
@@ -168,13 +171,18 @@ export const playError = (player_response: any) => {
 };
 
 // Undici request
-export const request = async (url: string, options: any = {}): Promise<string | any> => {
+// import * as fs from 'fs';
+// let i = 0;
+export const request = async (url: string, options: DownloadOptions = {}): Promise<string | any> => {
     const { requestOptions } = options;
+    // console.log(url, requestOptions);
     const req = await fetch(url, requestOptions);
     if (typeof options.requestCallback === 'function') options.requestCallback(req);
     if (req.status.toString().startsWith('2')){
         if (req.headers.get('content-type')?.includes('application/json')) return await req.json();
-        return await req.text();
+        const text = await req.text();
+        // fs.writeFileSync("ignore/" + i++, text);
+        return text;
     }
     if (req.status.toString().startsWith('3')){
         return await request(req.headers.get('location') ?? "");
@@ -317,7 +325,7 @@ export const applyDefaultHeaders = (options: any) => {
     options.requestOptions = Object.assign({}, options.requestOptions);
     options.requestOptions.headers = Object.assign({}, {
         // eslint-disable-next-line max-len
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.101 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
     }, options.requestOptions.headers);
 };
 

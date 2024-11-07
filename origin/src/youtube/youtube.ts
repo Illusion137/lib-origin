@@ -1,5 +1,5 @@
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, urlid } from "../utils/util";
 import { YTCFG } from "./types/YTCFG";
 import * as Parser from "./parser";
 import { Continuation } from "./types/Continuation";
@@ -20,13 +20,6 @@ export namespace YouTube {
     // let client_cache = {client: {ytcfg: null}, enabled: true};
     // export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
     // export function client_cache_full(){ return client_cache.enabled && client_cache.client.ytcfg !== null}
-
-    export function get_sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN = 'https://www.youtube.com') {
-        return sapisid_hash_auth0(SAPISID, epoch, ORIGIN);
-    }
-    export function get_sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN = 'https://www.youtube.com') {
-        return sapisid_hash_auth1(SAPISID, epoch, ORIGIN);
-    }
 
     export function get_ad_signal_params(epoch: Date) {
         return {
@@ -61,7 +54,7 @@ export namespace YouTube {
             "User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
             "accept": "*/*",
             "accept-language": "en-US,en;q=0.9",
-            "authorization": get_sapisid_hash_auth0(SAPISID, epoch),
+            "authorization": sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com'),
             "content-type": "application/json",
             "priority": "u=1, i",
             "sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",

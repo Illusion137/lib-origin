@@ -9,7 +9,7 @@ import TrackPlayer, {
 } from 'react-native-track-player';
 import * as GLOBALS from './globals';
 import * as SQLActions from './sql_actions';
-import { Track } from '../..//types';
+import { ISOString, Track } from '../..//types';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Illusive } from '../../illusive';
 
@@ -175,7 +175,7 @@ export async function playback_service() {
             if (progress.position / progress.duration >= .75 && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLActions.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid);
-                current_track.meta!.last_played_date = new Date();
+                current_track.meta!.last_played_date = <ISOString>new Date().toISOString();
                 current_track.meta!.plays++;
                 await SQLActions.update_track_meta_data(current_track.uid, current_track.meta!);
             }

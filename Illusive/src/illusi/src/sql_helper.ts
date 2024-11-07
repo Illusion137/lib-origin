@@ -65,7 +65,7 @@ export function obj_to_update_sql(obj: Record<string, any>, serialize_strings?: 
         const value = obj[key];
         switch(typeof value){
             case "string": (serialize_strings ?? false) ? updation.push(`${key}='${sql_serialize(value)}'`) : updation.push(`${key}='${value}'`); break;
-            case "object": updation.push(`${key}='${JSON.stringify(value)}'`); break;
+            case "object": updation.push(`${key}='${sql_serialize(JSON.stringify(value))}'`); break;
             case "undefined": break;
             default: updation.push(`${key}=${value}`); break;
         }

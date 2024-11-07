@@ -15,7 +15,7 @@
         "typescript": "^5.6.3"
     },
     "dependencies": {
-        "@distube/ytdl-core": "^4.14.4",
+        "@distube/ytdl-core": "^4.15.1",
         "@expo/vector-icons": "^14.0.4",
         "@react-native-async-storage/async-storage": "^2.0.0",
         "@react-native-community/cookies": "^5.0.1",
@@ -37,6 +37,7 @@
         "expo-haptics": "^13.0.1",
         "expo-sharing": "^12.0.1",
         "expo-sqlite": "^14.0.6",
+        "jsdom-jscore-rn": "^0.1.9",
         "node-sync": "^0.5.6",
         "react": "^18.3.1",
         "react-native": "^0.75.3",

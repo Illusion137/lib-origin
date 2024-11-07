@@ -1,6 +1,7 @@
 // Merging from Archived Proj. https://github.com/Illusion137/gomovies/
-import { JSDOM } from 'jsdom-jscore-rn';
-import { Country, Genre, Path, MonoPath, GoMovie_Display_Content, GoMovieTab, GoMovieSearchPage, GoMovieFilters, GoMovieMovie, HrefString, GoMovieSourceData, GoMovieAjaxSource } from './GoMovie';
+const { JSDOM } = require('jsdom-jscore-rn');
+import axios from 'axios';
+import { Country, Genre, Path, MonoPath, GoMovie_Display_Content, GoMovieTab, GoMovieSearchPage, GoMovieFilters, GoMovieMovie, HrefString, GoMovieSourceData, GoMovieAjaxSource } from './types/types';
 
 export namespace GoMovies {
     const BASE_URL = "https://gomovies.sx/";
@@ -47,7 +48,7 @@ export namespace GoMovies {
             "title":            content_html.querySelector(".film-name")?.firstElementChild?.innerHTML, 
             "thumbnail_url":    content_html.querySelectorAll(".film-poster-img")[0]?.getAttribute("data-src"), 
             "quality":          content_html.querySelector(".film-poster-quality")?.innerHTML,
-            "href":             trim_start_slash(content_html.querySelector("a")?.href), 
+            "href":             trim_start_slash(content_html.querySelector("a")?.href!), 
             "left_data":        left_right_data[0]?.innerHTML,
             "right_data":       left_right_data[1]?.innerHTML
         }
@@ -108,7 +109,7 @@ export namespace GoMovies {
     }
     export async function search_autocomplete(search_query : string) : Promise<GoMovie_Display_Content[]> {
         search_query = search_query.trim().replace(/[^a-zA-Z0-9 ,]/g,'').trim();
-        if(search_query == '') return null;
+        if(search_query == '') return [];
         const search_autocomplete_ajax_html_data = (await axios.post("search", `keyword=${search_query.replace(' ', '+')}`, {"baseURL": BASE_AJAX_URL,"headers": DEFAULT_AJAX_HEADERS,}) ).data;
         const { window } = new JSDOM(search_autocomplete_ajax_html_data);
         const contents = window.document.querySelectorAll('a');
@@ -139,7 +140,7 @@ export namespace GoMovies {
     }
     export async function search_by_query(search_query : string, page = 1) : Promise< GoMovieSearchPage > {
         search_query = search_query.trim().replace(/[^a-zA-Z0-9 ,]/g,'').trim();
-        if(search_query == '') return null;
+        if(search_query == '') return <any>null;
         return await get_page(`search/${search_query.replace(/ /g, '-')}`, page);
     }
     export async function search_path(path : Path, data : Genre | Country | string, page = 0) : Promise< GoMovieSearchPage > {
@@ -173,7 +174,7 @@ export namespace GoMovies {
     export async function search_filters(filters : GoMovieFilters, page = 1) : Promise< GoMovieSearchPage > {
         let query_string = filters_to_query_string(filters, page);
         console.log(query_string)
-        if(!query_string) return null;
+        if(!query_string) return <any>null;
         return await get_page(query_string);
     }
     function parse_watch_page_genres(row_line : Element) : string[] {
@@ -217,7 +218,7 @@ export namespace GoMovies {
         const ajax_sources_data = (await axios.get(`episode/list/${movie_id}`, {"baseURL": BASE_AJAX_URL, "headers": DEFAULT_AJAX_HEADERS})).data;
         const { window } = new JSDOM(ajax_sources_data);
         const sources_and_titles : GoMovieSourceData[] = [];
-        window.document.querySelectorAll(".btn-sm").forEach(source => {sources_and_titles.push(
+        window.document.querySelectorAll(".btn-sm").forEach((source: any) => {sources_and_titles.push(
             {"host": source?.getAttribute("title"), "data_linkid": source?.getAttribute("data-linkid")}
         )});
         return sources_and_titles;
@@ -255,7 +256,8 @@ export namespace GoMovies {
     export async function data_linkid_to_source(data_linkid : string){
         const ajax_sources_json : GoMovieAjaxSource = (await axios.get(`sources/${data_linkid}`, {"baseURL": BASE_AJAX_URL, "headers": DEFAULT_AJAX_HEADERS})).data;
         const vidcloud_data_id_regex = /(.+?\/)+(.+?)\?/;
-        const vidcloud_data_id = vidcloud_data_id_regex.exec(ajax_sources_json.link)[2];
+        const vidcloud_data_id = vidcloud_data_id_regex.exec(ajax_sources_json.link)![2];
+        return vidcloud_data_id;
     }
     export async function watch_tv_show(){}
 }
