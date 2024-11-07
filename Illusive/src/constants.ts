@@ -3,4 +3,5 @@ export namespace Constants {
     export const illusi_mix_from = "Illusi Mix";
     export const download_duration_epsilon = 5;
     export const ffmpeg_retcode_success = 0;
+    export const fastpack_track_threshold = 4;
 }

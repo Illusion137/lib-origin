@@ -197,7 +197,7 @@ export namespace Illusive {
         ["API", api],
     ]);
 
-    export async function convert_track(track: Track, to_music_service: MusicServiceType, possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError>{
+    export async function convert_track(track: Track, to_music_service: MusicServiceType, proxies?: Origin.Proxy.Proxy[], possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError>{
         if(music_service.get(to_music_service)?.search === undefined) return {"error": "Can't convert to this music-service"};
         possible_services = possible_services.filter(service => service !== to_music_service);
         const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
@@ -229,7 +229,7 @@ export namespace Illusive {
         if(all_negative_values) {
             if(possible_services.length === 0)
                 return {"error": "Unable to find good conversion"};
-            else return convert_track(track, possible_services[0], possible_services);
+            else return convert_track(track, possible_services[0], proxies, possible_services);
         }
         const best_match: Track = search_tracks.tracks[best.index];
         return best_match;
