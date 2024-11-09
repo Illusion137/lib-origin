@@ -11,9 +11,17 @@ export async function soundcloud_download_from_id(permalink: string, _: string):
 }
 export async function youtube_download_from_id(video_id: string, quality: string): Promise<{"url":string}|ResponseError> {
     try {
-        const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
-        const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
-        const format = await Origin.YouTubeDL.ytdl(video_id, {"quality": quality, "requestOptions": use_cookies_on_download ? {"headers": {"cookie": cookie_jar.toString()}} : {}});
-        return {"url": format.url};
+        try {            
+            const format = await Origin.YouTubeDL.ytdl(video_id, {"quality": quality});
+            if("error" in format) throw format.error;
+            return {"url": format.url};
+        } catch (error) {
+            const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
+            if(!use_cookies_on_download) throw error;
+            const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
+            const format = await Origin.YouTubeDL.ytdl(video_id, {"quality": quality, "requestOptions": use_cookies_on_download ? {"headers": {"cookie": cookie_jar.toString()}} : {}});
+            if("error" in format) throw format.error;
+            return {"url": format.url};
+        }
     } catch (error) { return { "error": String(error) }; }
 }

@@ -25,7 +25,7 @@ export function sort_tracks_for_download(tracks: Track[]): Track[]{
 export function sort_filter_tracks(tracks: Track[]){
     return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri)));
 }
-export function download_track_list(tracks: Track[]){
+export async function download_track_list(tracks: Track[]){
     for(const track of sort_filter_tracks(tracks)){
         download_track(track);
     }

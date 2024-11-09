@@ -195,7 +195,7 @@ interface Basic_Playlist<T, U, V, X> {
 export type SQLPlaylistArray = [ string, string, string, boolean, string, SortType, boolean, string, string, string, string ];
 
 export type SQLPlaylist = Basic_Playlist<string, string, string, string>
-export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], PlaylistVisualData, Date>
+export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], PlaylistVisualData, string>
 
 export interface CompactPlaylistData {
     title: string
@@ -348,14 +348,20 @@ export class MusicService {
         return {"map": map};
     }
     async get_rest_of_playlist(continuation_data: any){
-        continuation_data;
+        const continued_tracks: Track[] = [];
+        while(continuation_data !== null){
+            const continuation = await this.get_playlist_continuation!(continuation_data);
+            if("error" in continuation) break;
+            continued_tracks.push(...continuation.tracks);
+            continuation_data = continuation.continuation;
+        }
+        return continued_tracks;
     }
     async get_full_playlist(url: string){
         const initial = await this.get_playlist(url);
-        if("error" in initial) return initial.error;
-        // while()
-        initial.tracks = initial.tracks.concat()
-        return;
+        if("error" in initial) return initial;
+        initial.tracks.push(...await this.get_rest_of_playlist(initial.continuation));
+        return initial;
     }
     constructor(s: {
         app_icon: string | number,
