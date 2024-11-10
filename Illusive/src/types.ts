@@ -47,18 +47,13 @@ export interface AlphabetScroll {
     current_position: number,
     top_scroll: number
 }
-
-interface Basic_LinkerLink<T extends MusicServiceType, F extends MusicServiceType> {
-    from_playlist_url: F extends "Illusi" ? never : string
-    from_depth: number
-    from_service: F
-    to_service: T
-    mode: "LIBRARY" | "PLAYLIST"
+export type ConvertTo = { uuid_uri: string } | { title: string };
+export interface LinkerLink {
+    uuid_uri: string;
+    full_sample: boolean;
+    to_service: MusicServiceType;
+    to: ConvertTo;
 }
-type LinkerLink_ToIllusi = Basic_LinkerLink<"Illusi", MusicServiceType>;
-type LinkerLink_FromIllusi = Basic_LinkerLink<MusicServiceType, "Illusi">;
-
-export type LinkerLink = LinkerLink_ToIllusi | LinkerLink_FromIllusi;
 
 export interface DefaultPlaylist {
     name: string
@@ -130,6 +125,9 @@ export interface TrackMetaData {
     added_date: ISOString
     last_played_date: ISOString
     downloaded_date?: ISOString
+    begdur?: number
+    enddur?: number
+    nsplit?: number
 }
 //Regex
 //\s+.+?: (.+?)\n
@@ -300,7 +298,7 @@ export class MusicService {
     search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
     search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
     explore?: () => Promise<IllusiveExplore>
-    create_playlist?: (title: string) => Promise<boolean>
+    create_playlist?: (title: string) => Promise<string>
     delete_playlist?: (playlist_uri: string) => Promise<boolean>
     add_tracks_to_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
     delete_tracks_from_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
@@ -374,7 +372,7 @@ export class MusicService {
         search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
         search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
         explore?: () => Promise<IllusiveExplore>
-        create_playlist?: (title: string) => Promise<boolean>
+        create_playlist?: (title: string) => Promise<string>
         delete_playlist?: (playlist_uri: string) => Promise<boolean>
         add_tracks_to_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
         delete_tracks_from_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>

@@ -8,6 +8,7 @@ import { PromiseResult, ResponseError } from '../utils/types';
 import { InitialData } from './types/types';
 import { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
 import { ArtistResults_1 } from './types/ArtistResults_1';
+import { CreatePlaylist } from "../youtube/types/CreatePlaylist";
 
 export namespace YouTubeMusic {
     // const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -277,7 +278,10 @@ export namespace YouTubeMusic {
             title: title,
             privacyStatus: privacy
         }
-        return await post_check_succeed(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
+        const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
+        if("error" in response) return response;
+        if(!response.ok) return {"error": `Failed to create playlist with status code ${response.status}`};
+        return <CreatePlaylist>await response.json();
     }
     export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string){
         const payload = {

@@ -455,8 +455,9 @@ export namespace Spotify {
             const payload = {
                 "ops": [ { "kind": 6, "updateListAttributes": { "newAttributes": { "values": { "name": opts.playlist_name, "formatAttributes": [], "pictureSize": [] }, "noValue": [] } } } ]
             }
-            const result = ( await fetch(`https://spclient.wg.spotify.com/playlist/v2/playlist`, 
+            const response = ( await fetch(`https://spclient.wg.spotify.com/playlist/v2/playlist`, 
                 { 'method': "POST", headers, body: JSON.stringify(payload) }) );
+            const result: ResponseError|{uri: string, revision: string} = await response.json();
             return result;
         } catch (error) { return { "error": String(error) }; }
     }

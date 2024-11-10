@@ -89,7 +89,7 @@ export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsR
     const user_playlists_response = await Origin.SoundCloud.get_all_user_playlists({"cookie_jar": cookie_jar});
     if("error" in user_playlists_response) return {"playlists": [], "error": user_playlists_response.error};
     const liked_music_playlist: CompactPlaylist[] = [{
-        "title": {"name": "Liked Music", "uri": create_uri("soundcloud", "https://soundcloud.com/you/likes")}, 
+        "title": {"name": "Liked Music", "uri": create_uri("soundcloud", "soundcloud.com/you/likes")}, 
         "artist": [{"name": "You", "uri": null}]
     }];
     return {

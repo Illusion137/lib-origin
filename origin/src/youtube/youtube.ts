@@ -6,6 +6,7 @@ import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { ResponseError, PromiseResult } from '../utils/types';
 import { InitialData } from './types/types';
+import { CreatePlaylist } from "./types/CreatePlaylist";
 
 export namespace YouTube {
     const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -223,7 +224,10 @@ export namespace YouTube {
             privacyStatus: privacy,
             videoIds: []
         }
-        return await post_check_succeed(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
+        const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
+        if("error" in response) return response;
+        if(!response.ok) return {"error": `Failed to create playlist with status code ${response.status}`};
+        return <CreatePlaylist> await response.json();
     }
     export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string){
         const payload = {

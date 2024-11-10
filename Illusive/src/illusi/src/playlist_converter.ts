@@ -1,18 +1,19 @@
-import { Illusive } from "../../illusive";
-import { MusicServicePlaylist, MusicServiceType, Track } from "../../types";
-import { ResponseError } from "../../../../origin/src/utils/types";
-import { is_empty } from "../../../../origin/src/utils/util";
 import * as SQLActions from './sql_actions';
+import * as GLOBALS from './globals';
 import * as Origin from '../../../../origin/src/index';
+import { Illusive } from "../../illusive";
+import { ConvertTo, MusicServiceType, Track } from "../../types";
+import { is_empty } from "../../../../origin/src/utils/util";
+import { Logger } from "./logger";
+import { Prefs } from "../../prefs";
+import { music_service_uri_to_music_service, random_of, shuffle_array, split_uri } from "../../illusive_utilts";
+import { PromiseResult } from "../../../../origin/src/utils/types";
+import { Wifi } from "./wifi_utils";
 
-type ConvertPlaylistBase = {
-    furl: string;
-    to: { playlist_name: string } | { url: string };
-    callback?: () => any;
+type ConvertPlaylistOpts = {
+    to: ConvertTo;
+    full_sample: boolean;
 };
-type ConvertPlaylistSample = { full_sample: true; fast_convert: boolean; }
-    | { full_sample: false; };
-type ConvertPlaylistOpts = ConvertPlaylistSample & ConvertPlaylistBase;
 
 export function loggedin_services(){
     const services: MusicServiceType[] = [];
@@ -32,53 +33,88 @@ export function track_intersection(f: Track, t: Track): boolean{
     if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
     return false;
 }
-export async function sample_track(tracks: Track[]){
-
+export async function playlist_tracks(uuid_uri: string){
+    const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
+    const is_uuid = uuidv4_regex.test(uuid_uri);
+    if(is_uuid) return await SQLActions.playlist_tracks(uuid_uri);
+    const [service, id] = split_uri(uuid_uri);
+    const playlist_tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
+    if("error" in playlist_tracks) return [];
+    return playlist_tracks.tracks;
 }
-export async function convert_playlist<T extends MusicServiceType>(from: T, to: Exclude<MusicServiceType, T>, opts: ConvertPlaylistOpts){
-    const from_service = Illusive.music_service.get(from)!;
-    const to_service = Illusive.music_service.get(to)!;
-    const from_ok = from_service.cookie_jar_callback === undefined || from_service.has_credentials();
-    const to_ok = to_service.create_playlist !== undefined && to_service.add_tracks_to_playlist !== undefined;
-    if(!from_ok) return {"error": `Unable to access playlist from ${from_service}`};
-    if(!to_ok) return {"error": `Unable to create/modify playlist from ${to_service}`};
-    if(opts.full_sample && to_service.search === undefined) return {"error": `Unable to sample tracks to ${to_service}; Missing search function`};
-    
-    const from_playlist: ResponseError|MusicServicePlaylist = await from_service.get_full_playlist(opts.furl);
-    // TODO Remove line below
-    if("error" in from_playlist) return from_playlist;
-    if(opts.full_sample){
-        const proxies: Origin.Proxy.Proxy[] = [];
-        if(opts.fast_convert){
-            const proxy_list = await Origin.Proxy.get_proxy_list();
-            if(!("error" in proxy_list))
-                proxies.push(...proxy_list);
+export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_uri: string){
+    const ptracks = await playlist_tracks(uuid_uri);
+    return tracks.filter((f) => {
+        for(const t of ptracks)
+            if(track_intersection(f, t)) false;    
+        return true;
+    });
+}
+export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[]){
+    if("title" in to) {
+        if(to_service === "Illusi"){
+            const playlist_uuid = await SQLActions.create_playlist(to.title);
+            await SQLActions.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
+            return {"ok": true};
         }
-        const updated_tracks: Track[] = [];
-        for(const track of from_playlist.tracks){
-            if(track.imported_id) continue;
-            const conversion_track = await Illusive.convert_track(track, to, proxies, [to]);
-            if("error" in conversion_track) { 
-                Logger.log_error(conversion_track); 
-                continue;
-            }
-            updated_tracks.push(await SQLActions.merge_track_with_new_track(track, conversion_track););
-        }
-        from_playlist.tracks = updated_tracks;
-    }
-    if("playlist_name" in opts.to){
-        // const created_playlist = await to_service.create_playlist!(opts.to.playlist_name);
+        const service = Illusive.music_service.get(to_service)!;
+        const [, playlist_id] = split_uri(await service.create_playlist!(to.title));
+        return await service.add_tracks_to_playlist!(tracks, playlist_id);
     }
     else {
-        const to_playlist: ResponseError|MusicServicePlaylist = await to_service.get_full_playlist(opts.to.url);
-        if("error" in to_playlist) return to_playlist;
-        from_playlist.tracks = from_playlist.tracks.filter((f) => {
-            for(const t of to_playlist.tracks)
-                if(track_intersection(f, t)) false;    
-            return true;
-        });
-        const insertion = await to_service.add_tracks_to_playlist!(from_playlist.tracks, opts.to.url);
-        if(!insertion) return {"error": `Failed to add tracks to playlist; url: ${opts.to.url}`};
+        if(to_service === "Illusi") {
+            await SQLActions.insert_all_tracks_playlist(to.uuid_uri, tracks.map(({uid}) => uid)); 
+            return {"ok": true};
+        }
+        const service = Illusive.music_service.get(to_service)!;
+        const [_, playlist_id] = split_uri(to.uuid_uri);
+        return await service.add_tracks_to_playlist!(await playlist_tracks_excluding_playlist(tracks, to.uuid_uri), playlist_id);
     }
+}
+export function unsampled_tracks(service: MusicServiceType, tracks: Track[]){
+    switch(service){
+        case "YouTube Music":
+        case "YouTube":      return tracks.filter(track => is_empty(track.youtube_id));
+        case "Amazon Music": return tracks.filter(track => is_empty(track.amazonmusic_id));
+        case "Apple Music":  return tracks.filter(track => is_empty(track.applemusic_id));
+        case "SoundCloud":   return tracks.filter(track => is_empty(track.soundcloud_id));
+        case "Spotify":      return tracks.filter(track => is_empty(track.spotify_id));
+        default: return [];
+    }
+}
+export async function next_sample_tracks(ingore_services: MusicServiceType[] = []){
+    const possible_services = loggedin_services().filter(item => ingore_services.includes(item));
+    if(possible_services.length === 0) return [];
+    const service = random_of(possible_services);
+    let tracks: Track[] = unsampled_tracks(service, GLOBALS.global_var.sql_tracks);
+    if(tracks.length === 0) return next_sample_tracks(ingore_services.concat([service]));
+    return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
+}
+export async function sample_tracks(stracks: Track[], to: MusicServiceType){
+    const proxies: Origin.Proxy.Proxy[] = [];
+    if(Prefs.get_pref("fastpack")){
+        const proxy_list = await Origin.Proxy.get_proxy_list();
+        if(!("error" in proxy_list)) proxies.push(...proxy_list);
+    }
+    const updated_tracks: Track[] = [];
+    for(const track of stracks){
+        if(track.imported_id) continue;
+        const conversion_track = await Illusive.convert_track(track, to, proxies, [to]);
+        if("error" in conversion_track) { 
+            Logger.log_error(conversion_track); 
+            continue;
+        }
+        updated_tracks.push(await SQLActions.update_track_with_new_track_data(track, conversion_track));
+    }
+    return updated_tracks;
+}
+export async function convert_playlist(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts): PromiseResult<{"ok": true}>{
+    if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {"error": "Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']"};
+    const to_service = Illusive.music_service.get(to)!;
+    const to_ok = to_service.create_playlist !== undefined && to_service.add_tracks_to_playlist !== undefined;
+    if(!to_ok) return {"error": `Unable to create/modify playlist from ${to_service}`};
+    if(opts.full_sample && to_service.search === undefined) return {"error": `Unable to sample tracks to ${to_service}; Missing search function`};
+    if(opts.full_sample) from_tracks = await sample_tracks(from_tracks, to);
+    await mutilate_playlist(to, opts.to, from_tracks);
     return {"ok": true};
 }

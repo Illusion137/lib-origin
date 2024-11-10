@@ -341,7 +341,9 @@ export namespace SoundCloud {
                 "_resource_type": "playlist"
             }
         }
-        return await apipost({...opts, path: `playlists`, params: {}, payload: payload});
+        const post = await apipost({...opts, path: `playlists`, params: {}, payload: payload});
+        if("error" in post) return post;
+        return <Playlist>await post.data.json();
     }
     export async function delete_playlist(opts: Opts & {playlist_id: string}){
         const playlist_id = extract_playlist_name( opts.playlist_id);

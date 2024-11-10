@@ -5,7 +5,7 @@ import { CookieJar } from "../origin/src/utils/cookie_util";
 import * as fs from 'fs';
 
 const threshold = 72;
-const cookie_jar = CookieJar.fromString(gcc.dotenv_of('instragram_cookie_jar'));
+const cookie_jar = CookieJar.fromString(gcc.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
 const cat_posters_usernames: string[] = ["maoxiaosi_219", "brownsugar_ddang", "sasuke.0116"];
 const cat_regex = /(cat)|(kitty)/ig;
 

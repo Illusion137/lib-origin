@@ -247,3 +247,7 @@ export function number_epsilon_distance(num: number, expected: number, plus_minu
     const distance = Math.abs(num - expected);
     return distance <= plus_minus;
 }
+export function random_of<T>(arr: T[]): T{
+    const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
+    return arr[randidx];
+}

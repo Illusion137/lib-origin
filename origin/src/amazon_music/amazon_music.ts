@@ -6,6 +6,7 @@ import { CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
 import { SearchResult } from "./types/SearchResult";
 import { urlid } from "../utils/util";
 import { Config } from "./types/Config";
+import { CreatePlaylist } from "./types/CreatePlaylist";
 
 export namespace AmazonMusic {
     interface AuthHeader {
@@ -361,7 +362,9 @@ export namespace AmazonMusic {
             'method': 'POST', 'headers': get_amzn_music_headers(opts.cookie_jar),
             'body': JSON.stringify(request_payload)
         });
-        return response;
+        //https://na.mesk.skill.music.a2z.com/api/addTracksToPlaylist?playlistId=df292c92-5c59-4a76-aa65-e893f7fbdf48&playlistTitle=Lafou&version=1&rejectDuplicate=false&userHash=%7B%22level%22%3A%22SONIC_RUSH_MEMBER%22%7D
+        if(!response.ok) return {"error": `Failed to create playlist with status code: ${response.status}`};
+        return <CreatePlaylist>await response.json();
     }
     export async function delete_playlist(playlist_url: string, opts: Opts) {
         const amzn_music = opts.client ?? await get_amzn_music_data(opts);

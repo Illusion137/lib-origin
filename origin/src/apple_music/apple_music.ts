@@ -1,5 +1,6 @@
 import { CookieJar } from "../utils/cookie_util";
 import { encode_params, extract_string_from_pattern, try_json_parse, urlid } from "../utils/util";
+import { CreatePlaylist } from "./types/CreatePlaylist";
 import { MyPlaylists } from "./types/MyPlaylists";
 import { Playlist } from "./types/Playlist";
 import { SerializedServerData } from "./types/type";
@@ -225,7 +226,9 @@ export namespace AppleMusic {
             "relationships": { "tracks": { "data": tracks } }
         };
         const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlists", params, payload, "POST");
-        return playlists_response;
+        if("error" in playlists_response) return playlists_response;
+        if(!playlists_response.ok) return {"error": `Failed to create playlist with status code: ${playlists_response.status}`};
+        return <CreatePlaylist>await playlists_response.json();
     }
     export async function delete_playlist(playlist_id: string, opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);

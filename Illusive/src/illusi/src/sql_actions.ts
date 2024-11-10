@@ -271,11 +271,16 @@ function playlist_to_sqllite_insertion(playlist: Playlist){
         playlist.public_uuid ?? "", 
         JSON.stringify(playlist.inherited_playlists ?? []), 
         JSON.stringify(playlist.linked_playlists ?? []), 
-        playlist.date?.toISOString() ?? new Date().toISOString(), 
+        playlist.date ?? new Date().toISOString(), 
     ]
     return to_array;
 }
-
+export async function insert_all_tracks(tracks: Track[]){
+    const promise_tracks: Promises = [];
+    for(const track of tracks)
+        promise_tracks.push(insert_track(track));
+    await Promise.all(promise_tracks);
+}
 export async function insert_track(track: Track) {
     if( await track_exists(track) ) return;
     if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track);
@@ -294,8 +299,16 @@ export async function update_track_meta_data(track_uid: string, new_meta: TrackM
 export async function update_track_with_new_track_data(old_track: Track, new_track: Track){
     const merged_track = merge_track_with_new_track(old_track, new_track);
     await update_track(merged_track.uid, merged_track);
+    return merged_track;
+}
+export async function insert_all_tracks_playlist(playlist_uuid: string, track_uids: string[]){
+    const promise_tracks: Promises = [];
+    for(const track_uid of track_uids)
+        promise_tracks.push(insert_track_playlist(playlist_uuid, track_uid));
+    await Promise.all(promise_tracks);
 }
 export async function insert_track_playlist(playlist_uuid: string, track_uid: string) {
+    if(await track_exists_in_playlist(playlist_uuid, track_uid)) return;
     await db.runAsync(sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0), [playlist_uuid, track_uid]);
 }
 
@@ -373,17 +386,17 @@ export async function playlist_data(playlist_uuid: string, ignore_tracks = false
 export async function update_playlist(playlist_uuid: string, new_playlist: Playlist){
     await db.runAsync(`${sql_update_table("playlists")} ${obj_to_update_sql(new_playlist, true)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
-export async function create_playlist(playlist_name: string): Promise<string> {
+export async function create_playlist(title: string): Promise<string> {
     const playlist_names = await all_playlists_names();
     let count = 2;
-    if(playlist_names.findIndex((item) => item.title == playlist_name) != -1){
-        while(playlist_names.findIndex((item) => item.title == `${playlist_name} ${count}`) != -1 && count <= 100)
+    if(playlist_names.findIndex((item) => item.title == title) != -1){
+        while(playlist_names.findIndex((item) => item.title == `${title} ${count}`) != -1 && count <= 100)
             count++;
         if(count > 0)
-            playlist_name = `${playlist_name} ${count}`;
+            title = `${title} ${count}`;
     }
     const playlist_uuid = <string>uuid.default.v4();
-    await db.runAsync(sql_insert_values("playlists", ExampleObj.playlist_example0), playlist_to_sqllite_insertion({ uuid: playlist_uuid, title: playlist_name }));
+    await db.runAsync(sql_insert_values("playlists", ExampleObj.playlist_example0), playlist_to_sqllite_insertion({ uuid: playlist_uuid, title: title }));
     return playlist_uuid;
 }
 export async function delete_playlist(playlist_uuid: string) {

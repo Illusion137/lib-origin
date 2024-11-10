@@ -14,12 +14,12 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
         GLOBALS.global_var.download_track = download_track;
         ffmpeg.RNFFmpegConfig.setLogLevel(ffmpeg.LogLevel.AV_LOG_QUIET);
         const statistics_callback = (statistics: ffmpeg.Statistics) => {
-            const index = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.executionId);
-            if (index === -1) return;
-            const progress = Math.floor(statistics.time / 1000) / GLOBALS.downloading[index].duration;
-            GLOBALS.downloading[index].progress = Math.floor(progress * 100);
-            if (GLOBALS.downloading[index].progress_updater !== undefined) {
-                GLOBALS.downloading[index].progress_updater(GLOBALS.downloading[index].progress);
+            const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.executionId);
+            if (dlidx === -1) return;
+            const progress = Math.floor(statistics.time / 1000) / GLOBALS.downloading[dlidx].duration;
+            GLOBALS.downloading[dlidx].progress = Math.floor(progress * 100);
+            if (GLOBALS.downloading[dlidx].progress_updater !== undefined) {
+                GLOBALS.downloading[dlidx].progress_updater(GLOBALS.downloading[dlidx].progress);
             }
         };
         ffmpeg.RNFFmpegConfig.enableStatisticsCallback(statistics_callback);

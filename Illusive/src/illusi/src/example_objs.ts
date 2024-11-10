@@ -45,7 +45,7 @@ export namespace ExampleObj {
         "inherited_playlists": [],
         "linked_playlists": [],
         "visual_data": <never>undefined,
-        "date": new Date(),
+        "date": "",
     }
     export const playlists_tracks_example0: PlaylistsTracks = {
         "uuid": "",

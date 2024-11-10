@@ -1,11 +1,15 @@
 import * as Origin from '../../origin/src/index'
+import { remove } from '../../origin/src/utils/util';
+import { create_uri, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
 
 export async function spotify_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     const creation_response = await Origin.Spotify.create_playlist({"cookie_jar": cookie_jar, "playlist_name": playlist_name});
-    if("error" in creation_response) return false;
-    return creation_response.ok;
+    if("error" in creation_response) return "";
+    const uri = spotify_uri_to_uri(creation_response.uri);
+    if(uri === null) return "";
+    return uri;
 }
 export async function spotify_delete_playlist(playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -17,8 +21,8 @@ export async function spotify_delete_playlist(playlist_uri: string) {
 export async function amazon_music_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('amazon_music_cookie_jar');
     const creation_response = await Origin.AmazonMusic.create_playlist(playlist_name, {"cookie_jar": cookie_jar});
-    if("error" in creation_response) return false;
-    return creation_response.ok;
+    if("error" in creation_response) return "";
+    return create_uri("amazonmusic", remove(creation_response.methods[0].url!, "https://na.mesk.skill.music.a2z.com/api/addTracksToPlaylist?", "playlistId=", /&.+/));
 }
 export async function amazon_music_delete_playlist(playlist_url: string) {
     const cookie_jar = Prefs.get_pref('amazon_music_cookie_jar');
@@ -30,9 +34,10 @@ export async function amazon_music_delete_playlist(playlist_url: string) {
 export async function youtube_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
     const home = await Origin.YouTube.get_home({});
-    if("error" in home) return false;
+    if("error" in home) return "";
     const creation_response = await Origin.YouTube.create_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_name, "UNLISTED");
-    return creation_response;
+    if("error" in creation_response) return "";
+    return create_uri("youtube", creation_response.playlistId);
 }
 export async function youtube_delete_playlist(playlist_url: string) {
     const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
@@ -45,9 +50,10 @@ export async function youtube_delete_playlist(playlist_url: string) {
 export async function youtube_music_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
     const home = await Origin.YouTubeMusic.get_home({});
-    if("error" in home) return false;
+    if("error" in home) return "";
     const creation_response = await Origin.YouTubeMusic.create_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_name, "UNLISTED");
-    return creation_response;
+    if("error" in creation_response) return "";
+    return create_uri("youtubemusic", creation_response.playlistId);
 }
 export async function youtube_music_delete_playlist(playlist_url: string) {
     const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
@@ -59,8 +65,8 @@ export async function youtube_music_delete_playlist(playlist_url: string) {
 export async function apple_music_create_playlist(playlist_name: string){
     const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
     const creation_response = await Origin.AppleMusic.create_playlist(playlist_name, "", false, [], {"cookie_jar": cookie_jar});
-    if("error" in creation_response) return false;
-    return creation_response.ok;
+    if("error" in creation_response) return "";
+    return create_uri("applemusic", creation_response.data[0].id);
 }
 export async function apple_music_delete_playlist(playlist_url: string){
     const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
@@ -71,8 +77,8 @@ export async function apple_music_delete_playlist(playlist_url: string){
 export async function soundcloud_create_playlist(playlist_name: string){
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     const creation_response = await Origin.SoundCloud.create_playlist({"cookie_jar": cookie_jar, "title": playlist_name, "sharing": "private", "track_uids": []});
-    if("error" in creation_response) return false;
-    return creation_response.data.ok;
+    if("error" in creation_response) return "";
+    return create_uri("soundcloud", creation_response.permalink);
 }
 export async function soundcloud_delete_playlist(playlist_url: string){
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
