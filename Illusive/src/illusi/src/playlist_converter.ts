@@ -9,6 +9,7 @@ import { Prefs } from "../../prefs";
 import { music_service_uri_to_music_service, random_of, shuffle_array, split_uri } from "../../illusive_utilts";
 import { PromiseResult } from "../../../../origin/src/utils/types";
 import { Wifi } from "./wifi_utils";
+import { Constants } from '../../constants';
 
 type ConvertPlaylistOpts = {
     to: ConvertTo;
@@ -34,6 +35,10 @@ export function track_intersection(f: Track, t: Track): boolean{
     return false;
 }
 export async function playlist_tracks(uuid_uri: string){
+    if(uuid_uri === Constants.library_write_playlist){
+        await SQLActions.fetch_track_data();
+        return [...GLOBALS.global_var.sql_tracks];
+    }
     const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
     const is_uuid = uuidv4_regex.test(uuid_uri);
     if(is_uuid) return await SQLActions.playlist_tracks(uuid_uri);

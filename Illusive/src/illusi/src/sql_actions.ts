@@ -497,6 +497,7 @@ export async function clean_thumbnail_cache(){
     await Promise.all(all_promises);
 }
 export async function clean_directories(){
+    if(!Prefs.get_pref('can_clean_directories')) return;
     await fetch_track_data();
     const thumbnail_files = await FileSystem.readDirectoryAsync(thumbnail_directory());
     const media_files     = await FileSystem.readDirectoryAsync(media_directory());

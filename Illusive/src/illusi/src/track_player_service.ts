@@ -12,6 +12,7 @@ import * as SQLActions from './sql_actions';
 import { ISOString, Track } from '../..//types';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Illusive } from '../../illusive';
+// import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
@@ -50,9 +51,8 @@ export async function setup_track_player(): Promise<boolean> {
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLActions.document_directory(""), track, "18");
     if ("error" in url_data) {
-        if (url_data.error.includes("Video unavailable")) {
+        if (url_data.error.includes("Video unavailable"))
             await SQLActions.add_to_backpack(track.uid);
-        }
         return 'skip';
     }
     if ("new_track_data" in url_data && url_data.new_track_data !== undefined) {
@@ -61,6 +61,8 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         }
         track = (await SQLActions.add_playback_saved_data_to_tracks([url_data.new_track_data!]))[0];
     }
+    // if(url_data.url.includes("googlevideo.com")){}
+        // url_data.url = await ffcache_yt(url_data.url, track);
     return {
         "url": url_data.url,
         "title": track.title,
@@ -131,8 +133,12 @@ export async function track_player_next(){
 
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => {});
-    TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (_) => {
+    TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
+            if(data.index !== undefined){
+                const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
+                if(illusi_track.meta?.begdur !== undefined) { TrackPlayer.seekTo(illusi_track.meta.begdur) };
+            }
             updated_metadata_mutex = false;
             if (!initial_playback_track_changed_mutex && !changed_mutex) {
                 changed_mutex = true;
@@ -168,6 +174,7 @@ export async function playback_service() {
         try {
             const tp_track = await TrackPlayer.getTrack(data.track);
             if (tp_track === undefined) return;
+            const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
 
             const next_track_index = data.track + 1;
             const next_track = GLOBALS.global_var.playing_tracks[next_track_index];
@@ -179,6 +186,7 @@ export async function playback_service() {
                 current_track.meta!.plays++;
                 await SQLActions.update_track_meta_data(current_track.uid, current_track.meta!);
             }
+            if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) track_player_next();
             if (next_track.playback!.added === false && next_track.playback!.successful === false && !next_track_into_queue_mutex) {
                 next_track.playback!["added"] = true;
 

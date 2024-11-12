@@ -8,10 +8,11 @@ import { Track } from '../../types';
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
 import { catch_function_async } from './illusi_utils';
 
-export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void) {
+export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
     await catch_function_async(async() => {
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
+        GLOBALS.global_var.set_theme = set_theme;
         ffmpeg.RNFFmpegConfig.setLogLevel(ffmpeg.LogLevel.AV_LOG_QUIET);
         const statistics_callback = (statistics: ffmpeg.Statistics) => {
             const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.executionId);
@@ -35,5 +36,6 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             SQLActions.cleanup_recently_played(),
             activateKeepAwakeAsync()
         ]);
+        if(Prefs.get_pref('auto_clean_directories')) SQLActions.clean_directories();
     })
 }

@@ -39,6 +39,8 @@ export namespace Prefs {
         "full_queue_disables_playing":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "show_track_duration":                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "auto_cache_thumbnails":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "auto_clean_directories":                {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "can_clean_directories":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "use_cookies_on_download":               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "use_cookies_on_search":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "only_play_downloaded":                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
@@ -102,38 +104,6 @@ export namespace Prefs {
         await load_prefs();
     }
 
-    export const dark_theme = {
-        dark: true,
-        colors: {
-            primary: '#7400fe',
-            secondary: '#fc00c9',
-            background: '#0d1016',
-            primary_dark: '#1a184f',
-            card: '#131213',
-            title: '#d0d0d0',
-            text: '#ffffff',
-            subtext: '#8c939d',
-            deeptext: '#606060',
-            border: '#222222',
-            notification: '#1313ff',
-            shelf: '#161B22',
-            tabInactive: '#cad1d8',
-            line: '#303040',
-            searchInput: '#404254',
-            searchPlaceholder: '#8080a0',
-            inactive: '#8080a0',
-            red: '#FF0000',
-            green: '#00FF00',
-            orange: '#FF7F50',
-            playingSong: '#141722',
-            playScreen: '#141722',
-            track: '#141722',
-            highlightPressColor: '#bbaaff',
-            black: "#000000"
-        },
-    }
-
-
     export async function try_remove_from_recent_searches(query: string){
         const recent_searches: string[] = Prefs.get_pref('recent_searches');
         const recent_search_index = recent_searches.findIndex(search => search === query);
@@ -167,5 +137,103 @@ export namespace Prefs {
     }
     export async function set_settings_dropdown(){
         await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
+    }
+
+    export type Theme = {
+        dark: boolean;
+        colors: {
+            primary: string;
+            secondary: string;
+            background: string;
+            primary_dark: string;
+            card: string;
+            title: string;
+            text: string;
+            subtext: string;
+            deeptext: string;
+            border: string;
+            notification: string;
+            shelf: string;
+            tabInactive: string;
+            line: string;
+            searchInput: string;
+            searchPlaceholder: string;
+            inactive: string;
+            red: string;
+            green: string;
+            orange: string;
+            playingSong: string;
+            playScreen: string;
+            track: string;
+            highlightPressColor: string;
+            black: string;
+        }
+    }
+
+    export const dark_theme: Theme = {
+        dark: true,
+        colors: {
+            primary: '#7400fe',
+            secondary: '#fc00c9',
+            background: '#0d1016',
+            primary_dark: '#1a184f',
+            card: '#131213',
+            title: '#d0d0d0',
+            text: '#ffffff',
+            subtext: '#8c939d',
+            deeptext: '#606060',
+            border: '#222222',
+            notification: '#1313ff',
+            shelf: '#161B22',
+            tabInactive: '#cad1d8',
+            line: '#303040',
+            searchInput: '#404254',
+            searchPlaceholder: '#8080a0',
+            inactive: '#8080a0',
+            red: '#FF0000',
+            green: '#00FF00',
+            orange: '#FF7F50',
+            playingSong: '#141722',
+            playScreen: '#141722',
+            track: '#141722',
+            highlightPressColor: '#bbaaff',
+            black: "#000000"
+        },
+    }
+
+    export const oled_theme: Theme = {
+        dark: true,
+        colors: {
+            primary: '#7400fe',
+            secondary: '#fc00c9',
+            background: '#000000',
+            primary_dark: '#1a184f',
+            card: '#000000',
+            title: '#d0d0d0',
+            text: '#ffffff',
+            subtext: '#8c939d',
+            deeptext: '#606060',
+            border: '#222222',
+            notification: '#1313ff',
+            shelf: '#000000',
+            tabInactive: '#cad1d8',
+            line: '#303040',
+            searchInput: '#404254',
+            searchPlaceholder: '#8080a0',
+            inactive: '#8080a0',
+            red: '#FF0000',
+            green: '#00FF00',
+            orange: '#FF7F50',
+            playingSong: '#000000',
+            playScreen: '#000000',
+            track: '#000000',
+            highlightPressColor: '#bbaaff',
+            black: "#000000"
+        },
+    }
+
+    export const all_themes = {
+        dark_theme,
+        oled_theme
     }
 }

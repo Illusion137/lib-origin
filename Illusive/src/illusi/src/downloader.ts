@@ -2,6 +2,7 @@ import * as SQLActions from './sql_actions';
 import * as GLOBALS from './globals';
 import * as ffmpeg from 'react-native-ffmpeg';
 import * as Haptics from 'expo-haptics';
+import * as fs from 'expo-file-system';
 import { Audio } from 'expo-av';
 import { Track, SetState, DownloadTrackResult } from "../../types";
 import { Prefs } from '../../prefs';
@@ -11,6 +12,7 @@ import { alert_error } from './alert';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { number_epsilon_distance } from '../../illusive_utilts';
 import { Constants } from '../../constants';
+import { playlist_tracks } from './playlist_converter';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -26,9 +28,12 @@ export function sort_filter_tracks(tracks: Track[]){
     return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri)));
 }
 export async function download_track_list(tracks: Track[]){
-    for(const track of sort_filter_tracks(tracks)){
+    for(const track of sort_filter_tracks(tracks))
         download_track(track);
-    }
+}
+
+export async function batch_download(key: string){
+    return await download_track_list(await playlist_tracks(key));
 }
 
 function download_error_callback(title: string, error: string, track: Track, start_download?: SetState): "ERROR" {
@@ -108,4 +113,12 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             return "GOOD";
         });
     return "GOOD";
+}
+
+export async function ffcache_yt(url: string, track: Track){
+    const hls_out_uri = fs.cacheDirectory + `playlist_${track.youtube_id}.m3u8`;
+    const hls_segments = fs.cacheDirectory + `file_${track.youtube_id}__%d.m4a`;
+    const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
+    ffmpeg.RNFFmpeg.executeAsync(cmd, async (execution) => {execution});
+    return hls_out_uri;
 }

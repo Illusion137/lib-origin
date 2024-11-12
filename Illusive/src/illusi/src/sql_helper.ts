@@ -39,8 +39,8 @@ export function obj_to_sql_table(primary: string|undefined, obj: Record<string, 
     for(const key of Object.keys(obj)){
         if(types === true)
             switch(typeof obj[key]){
-                case "object": key_values.push(`${key} STRING`); break;
-                case "string": key_values.push(`${key} STRING`); break;
+                case "object": key_values.push(`${key} TEXT`); break;
+                case "string": key_values.push(`${key} TEXT`); break;
                 case "number": key_values.push(`${key} INTEGER`); break;
                 case "boolean": key_values.push(`${key} BOOLEAN`); break;
                 default: break;
