@@ -16,7 +16,17 @@ import { Illusive } from '../../illusive';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
+let setup_calls = 0;
 export async function setup_track_player(): Promise<boolean> {
+    if(GLOBALS.global_var.past_playing_tracks.length === 0) 
+        GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
+    if(setup_calls % 2 == 0) 
+        GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
+    setup_calls++;
+    // Q0[aaa]; PQ0[aaa];
+    // Q1[bbb]; PQ1[aaa];
+    // Q2[ccc]; PQ2[bbb];
+    // Q3[ddd]; PQ3[ccc];
     try {
         await TrackPlayer.getActiveTrackIndex();
     } catch (error) {         

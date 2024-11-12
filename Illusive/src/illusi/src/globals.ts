@@ -9,6 +9,7 @@ export let global_var = {
     "is_playing": false,
     "playing_tracks": <Track[]>[],
     "playing_track_index": 0,
+    "past_playing_tracks": <Track[]>[],
     "playing_queue": new PQueue<Track>(),
     "can_play_again_mutex": false,
     "play_tracks": (first_track: Track, tracks: Track[], playlist_name: string) => {first_track; tracks; playlist_name;},
