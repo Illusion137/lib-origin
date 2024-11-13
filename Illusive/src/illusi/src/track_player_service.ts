@@ -18,10 +18,14 @@ const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
 let setup_calls = 0;
 export async function setup_track_player(): Promise<boolean> {
-    if(GLOBALS.global_var.past_playing_tracks.length === 0) 
+    if(setup_calls % 2 == 0){
         GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
-    if(setup_calls % 2 == 0) 
-        GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
+        let index = 0;
+        try {
+            index = await TrackPlayer.getActiveTrackIndex() ?? 0;
+        } catch (error) {}
+        GLOBALS.global_var.past_track_index = index;
+    }
     setup_calls++;
     // Q0[aaa]; PQ0[aaa];
     // Q1[bbb]; PQ1[aaa];

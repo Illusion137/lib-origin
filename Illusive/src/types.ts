@@ -56,12 +56,14 @@ export interface LinkerLink {
 }
 
 export interface DefaultPlaylist {
-    name: string
-    track_function: () => Promise<Track[]>
+    name: string;
+    force_order?: boolean;
+    track_function: () => Promise<Track[]>;
 };
 export interface ResolvedDefaultPlaylist {
-    name: string
-    tracks: Track[]
+    name: string;
+    force_order?: boolean;
+    tracks: Track[];
 };
 
 export interface QueueTrack {

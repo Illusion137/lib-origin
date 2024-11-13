@@ -5,6 +5,7 @@ import * as uuid from "react-native-uuid";
 import { Constants } from './constants';
 
 export namespace Prefs {
+    export type PossibleThemes = keyof typeof themes;
     type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING";
     export interface Pref<T> {
         default_value: T
@@ -26,6 +27,7 @@ export namespace Prefs {
         "user_uuid":                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as Pref<string>,
         "recent_searches":                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as Pref<string[]>,
         "last_sleep_timer_ms":                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as Pref<number>,
+        "theme":                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as Pref<PossibleThemes>,
 
         "default_playlist_max_size":             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true}       as Pref<number>,
         "recently_played_max_size":              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true}       as Pref<number>,
@@ -232,8 +234,17 @@ export namespace Prefs {
         },
     }
 
-    export const all_themes = {
-        dark_theme,
-        oled_theme
+    const themes = {
+        dark: dark_theme,
+        oled: oled_theme,
+    }
+
+    export function get_theme(key: PossibleThemes){
+        const fallback_theme = dark_theme;
+        if(key in themes) return themes[key];
+        return fallback_theme;
+    }
+    export function all_themes(){
+        return Object.keys(themes);
     }
 }

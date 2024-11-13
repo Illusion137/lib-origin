@@ -11,10 +11,9 @@ export const default_playlists: DefaultPlaylist[] = [
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().slice(0, default_playlist_max_size);
         return tracks;
     }) },
-    { "name": "Formerly Played", "track_function": (async() => {
+    { "name": "Past Queue", "force_order": true, "track_function": (async() => {
         await SQLActions.fetch_track_data();
-		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-        const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);;
+        const tracks = [...GLOBALS.global_var.past_playing_tracks];
         return tracks;
     }) },
     { "name": "Recently Played", "track_function": (async() => {
@@ -22,15 +21,16 @@ export const default_playlists: DefaultPlaylist[] = [
         const tracks = [...await SQLActions.recently_played_tracks()].reverse();
         return tracks;
     }) },
+    { "name": "Formerly Played", "track_function": (async() => {
+        await SQLActions.fetch_track_data();
+		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
+        const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);;
+        return tracks;
+    }) },
     { "name": "Imported", "track_function": (async() => {
         await SQLActions.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().filter(track => !is_empty(track.imported_id)).slice(0, default_playlist_max_size);
-        return tracks;
-    }) },
-    { "name": "Past Queue", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
-        const tracks = [...GLOBALS.global_var.past_playing_tracks];
         return tracks;
     }) },
     { "name": "Downloaded", "track_function": (async() => {

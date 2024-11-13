@@ -37,5 +37,6 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             activateKeepAwakeAsync()
         ]);
         if(Prefs.get_pref('auto_clean_directories')) SQLActions.clean_directories();
+        set_theme(Prefs.get_theme(Prefs.get_pref('theme')));
     })
 }

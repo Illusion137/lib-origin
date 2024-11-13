@@ -26,6 +26,7 @@ export async function resolved_default_playlists(){
     return await Promise.all(default_playlists.map(async(p) => {
         return {
             "name": p.name,
+            "force_order": p.force_order,
             "tracks": (await p.track_function()).slice(0,4)
         };
     }));
