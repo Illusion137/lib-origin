@@ -29,7 +29,7 @@ export function sort_filter_tracks(tracks: Track[]){
 }
 export async function download_track_list(tracks: Track[]){
     for(const track of sort_filter_tracks(tracks))
-        download_track(track);
+        GLOBALS.global_var.download_track(track);
 }
 
 export async function batch_download(key: string){
