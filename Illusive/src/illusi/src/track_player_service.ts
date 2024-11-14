@@ -8,8 +8,11 @@ import TrackPlayer, {
     TrackType
 } from 'react-native-track-player';
 import * as GLOBALS from './globals';
-import * as SQLActions from './sql_actions';
-import { ISOString, Track } from '../..//types';
+import * as SQLfs from './sql/sql_fs';
+import * as SQLBackpack from './sql/sql_backpack';
+import * as SQLTracks from './sql/sql_tracks';
+import * as SQLRecentlyPlayed from './sql/sql_recently_played';
+import { ISOString, Track } from '../../types';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Illusive } from '../../illusive';
 // import { ffcache_yt } from './downloader';
@@ -63,17 +66,17 @@ export async function setup_track_player(): Promise<boolean> {
 }
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
-    const url_data = await Illusive.get_download_url(SQLActions.document_directory(""), track, "18");
+    const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
     if ("error" in url_data) {
         if (url_data.error.includes("Video unavailable"))
-            await SQLActions.add_to_backpack(track.uid);
+            await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
     }
     if ("new_track_data" in url_data && url_data.new_track_data !== undefined) {
-        if(await SQLActions.track_exists(track)){
-            await SQLActions.update_track_with_new_track_data(track, url_data.new_track_data);
+        if(await SQLTracks.track_exists(track)){
+            await SQLTracks.update_track_with_new_track_data(track, url_data.new_track_data);
         }
-        track = (await SQLActions.add_playback_saved_data_to_tracks([url_data.new_track_data!]))[0];
+        track = (await SQLTracks.add_playback_saved_data_to_tracks([url_data.new_track_data!]))[0];
     }
     // if(url_data.url.includes("googlevideo.com")){}
         // url_data.url = await ffcache_yt(url_data.url, track);
@@ -177,7 +180,7 @@ export async function playback_service() {
                 }
                 index = await TrackPlayer.getActiveTrackIndex() ?? 0;
 
-                await SQLActions.insert_recently_played_track(GLOBALS.global_var.playing_tracks[index]);
+                await SQLRecentlyPlayed.insert_recently_played_track(GLOBALS.global_var.playing_tracks[index]);
             } else {
                 initial_playback_track_changed_mutex = false;
             }
@@ -195,10 +198,10 @@ export async function playback_service() {
             const progress = await TrackPlayer.getProgress();
             if (progress.position / progress.duration >= .75 && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
-                const current_track = await SQLActions.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid);
+                const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid);
                 current_track.meta!.last_played_date = <ISOString>new Date().toISOString();
                 current_track.meta!.plays++;
-                await SQLActions.update_track_meta_data(current_track.uid, current_track.meta!);
+                await SQLTracks.update_track_meta_data(current_track.uid, current_track.meta!);
             }
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) track_player_next();
             if (next_track.playback!.added === false && next_track.playback!.successful === false && !next_track_into_queue_mutex) {

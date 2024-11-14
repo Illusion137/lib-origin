@@ -1,4 +1,6 @@
-import * as SQLActions from './sql_actions';
+import * as SQLTracks from './sql/sql_tracks';
+import * as SQLPlaylists from './sql/sql_playlists';
+import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as GLOBALS from './globals';
 import { CompactPlaylistData, DefaultPlaylist } from "../../types";
 import { Prefs } from '../../prefs';
@@ -6,47 +8,47 @@ import { is_empty } from '../../../../origin/src/utils/util';
 
 export const default_playlists: DefaultPlaylist[] = [
     { "name": "Recently Added", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().slice(0, default_playlist_max_size);
         return tracks;
     }) },
     { "name": "Past Queue", "force_order": true, "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
         const tracks = [...GLOBALS.global_var.past_playing_tracks];
         return tracks;
     }) },
     { "name": "Recently Played", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
-        const tracks = [...await SQLActions.recently_played_tracks()].reverse();
+        await SQLTracks.fetch_track_data();
+        const tracks = [...await SQLRecentlyPlayed.recently_played_tracks()].reverse();
         return tracks;
     }) },
     { "name": "Formerly Played", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);;
         return tracks;
     }) },
     { "name": "Imported", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().filter(track => !is_empty(track.imported_id)).slice(0, default_playlist_max_size);
         return tracks;
     }) },
     { "name": "Downloaded", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().filter(track => !is_empty(track.media_uri) && is_empty(track.imported_id)).slice(0, default_playlist_max_size);
         return tracks;
     }) },
     { "name": "Most Played", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => b.meta!.plays - a.meta!.plays).slice(0, default_playlist_max_size);
         return tracks;
     }) },
     { "name": "Least Played", "track_function": (async() => {
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => a.meta!.plays - b.meta!.plays).slice(0, default_playlist_max_size);
         return tracks;
@@ -79,12 +81,12 @@ export async function default_compact_playlists(){
 
 export async function compact_playlists(){
     const playlists: CompactPlaylistData[] = [];
-    for(const playlist of await SQLActions.all_playlists_data()){
+    for(const playlist of await SQLPlaylists.all_playlists_data()){
         playlists.push({
             "title": playlist.title,
             "four_track": playlist.visual_data!.four_track!,
             "track_count": playlist.visual_data!.track_count!,
-            "track_callback": async() => { return await SQLActions.playlist_tracks(playlist.uuid) },
+            "track_callback": async() => { return await SQLPlaylists.playlist_tracks(playlist.uuid) },
             "type": "PLAYLIST"
         })
     }

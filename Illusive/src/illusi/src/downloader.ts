@@ -1,4 +1,6 @@
-import * as SQLActions from './sql_actions';
+import * as SQLfs from './sql/sql_fs';
+import * as SQLTracks from './sql/sql_tracks';
+import * as SQLBackpack from './sql/sql_backpack';
 import * as GLOBALS from './globals';
 import * as ffmpeg from 'react-native-ffmpeg';
 import * as Haptics from 'expo-haptics';
@@ -56,22 +58,22 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
-            const download_uri = await Illusive.get_download_url(SQLActions.document_directory(""), track);
+            const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track);
             if ("error" in download_uri) {
                 if (download_uri.error.includes("Video unavailable"))
-                    SQLActions.add_to_backpack(track.uid);
+                    SQLBackpack.add_to_backpack(track.uid);
                 return download_error_callback("Coudln't find the file", download_uri.error, track, start_download);
             }
             if ("new_track_data" in download_uri && download_uri.new_track_data !== undefined) {
-                await SQLActions.update_track_with_new_track_data(track, download_uri.new_track_data);
-                track = SQLActions.merge_track_with_new_track(track, download_uri.new_track_data!);
+                await SQLTracks.update_track_with_new_track_data(track, download_uri.new_track_data);
+                track = SQLTracks.merge_track_with_new_track(track, download_uri.new_track_data!);
             }
             if("url" in download_uri && download_uri.url.includes("file://")) {
                 return download_error_callback("", "", track, start_download);
             }
             try {
                 if (start_download !== undefined) start_download(true);
-                const new_uri = SQLActions.media_directory() + track.uid + '.m4a';
+                const new_uri = SQLfs.media_directory() + track.uid + '.m4a';
                 ffmpeg.RNFFmpeg.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
                     try {
                         if(execution.returnCode !== Constants.ffmpeg_retcode_success)
@@ -88,7 +90,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                         else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))
                             throw `Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`;
 
-                        await SQLActions.mark_track_downloaded(track.uid, track.uid + '.m4a');
+                        await SQLTracks.mark_track_downloaded(track.uid, track.uid + '.m4a');
 
                         const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                         GLOBALS.downloading.splice(item_index, 1);

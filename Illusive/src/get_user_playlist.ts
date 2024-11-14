@@ -13,7 +13,7 @@ export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResu
             return {
                 "title": {"name": playlist.item.data.name!, "uri": spotify_uri_to_uri(playlist.item.data.uri)}, 
                 "artist": [{
-                    "name": playlist.item.data.ownerV2?.data.username ?? "",
+                    "name": playlist.item.data.ownerV2?.data.name ?? "",
                     "uri": spotify_uri_to_uri(playlist.item.data.ownerV2?.data.uri)
                 }],
                 "artwork_thumbnails": playlist.item.data.images?.items.map(item => item.sources)[0] ?? [],

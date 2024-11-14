@@ -1,4 +1,6 @@
-import * as SQLActions from './sql_actions'
+import * as SQLfs from './sql/sql_fs'
+import * as SQLTracks from './sql/sql_tracks'
+import * as SQLPlaylists from './sql/sql_playlists'
 import * as DocumentPicker from 'react-native-document-picker'
 import * as FileSystem from 'expo-file-system'
 import { Audio } from 'expo-av';
@@ -19,13 +21,13 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: ()
         const thumbnail_uri = await DocumentPicker.pickSingle({type: [DocumentPicker.types.images], copyTo: 'documentDirectory'});
         if("copyError" in thumbnail_uri) throw thumbnail_uri.copyError;
         
-        await FileSystem.moveAsync({from: thumbnail_uri.fileCopyUri!, to: SQLActions.thumbnail_directory() + thumbnail_uri.name});
+        await FileSystem.moveAsync({from: thumbnail_uri.fileCopyUri!, to: SQLfs.thumbnail_directory() + thumbnail_uri.name});
         
         playlist.thumbnail_uri = thumbnail_uri.name!;
-        await SQLActions.update_playlist(playlist.uuid, playlist);
+        await SQLPlaylists.update_playlist(playlist.uuid, playlist);
         
         const directory = path_to_directory(thumbnail_uri.fileCopyUri!);
-        await FileSystem.deleteAsync(SQLActions.document_directory(directory), { idempotent: true });
+        await FileSystem.deleteAsync(SQLfs.document_directory(directory), { idempotent: true });
         if(callback !== undefined) await callback();
     } catch (error) { handle_document_picker_error(error); }
 }
@@ -55,7 +57,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 const file_extension = extract_file_extension(audio_file.name);
                 const uid = generate_new_uid(file_name);
                 const new_file_uri = encodeURI(uid + file_extension);
-                const new_file_uri_full_path = SQLActions.document_directory("") + Illusive.media_archive_path + new_file_uri;
+                const new_file_uri_full_path = SQLfs.document_directory("") + Illusive.media_archive_path + new_file_uri;
                 const directory = path_to_directory(audio_file.fileCopyUri);
                 await FileSystem.moveAsync({from: audio_file.fileCopyUri, to: new_file_uri_full_path});
 
@@ -68,7 +70,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 if(meta_data.durationMillis === undefined) throw "Unable to access audio metadata duration";
 
                 all_promise_tracks.push(
-                    SQLActions.insert_track({
+                    SQLTracks.insert_track({
                         "uid": uid,
                         "title": file_name,
                         "artists": [{"name": "Sudo", "uri": null}],
@@ -77,12 +79,12 @@ export async function upload_music_files(callback: () => Promise<void>) {
                         "imported_id": uid,
                     })
                 );
-                all_promise_tracks.push(FileSystem.deleteAsync(SQLActions.document_directory(directory), { idempotent: true }));
+                all_promise_tracks.push(FileSystem.deleteAsync(SQLfs.document_directory(directory), { idempotent: true }));
             } catch (error) { Alert.alert("Document Error", String(error)); }
         }
         
         await Promise.all(all_promise_tracks);
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
         if(callback !== undefined) await callback();
     } catch (error) { handle_document_picker_error(error); }
 }

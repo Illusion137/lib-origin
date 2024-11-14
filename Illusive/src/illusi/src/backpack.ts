@@ -6,16 +6,6 @@ import { Track } from "../../types";
 import { alert_error } from './alert';
 import { Logger } from './logger';
 import { Wifi } from './wifi_utils';
-import * as SQLActions from './sql_actions';
-
-export async function backpack_tracks(){
-    return await SQLActions.backpack_tracks();
-}
-
-export async function toss_backpack_track(replacement_track: Track){
-    await SQLActions.insert_track(replacement_track);
-    await SQLActions.delete_from_backpack(replacement_track.uid);
-}
 
 export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track[]>{
     if(Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()){

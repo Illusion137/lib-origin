@@ -174,7 +174,7 @@ interface InheritedPlaylist {
     mode: PlaylistInheritanceMode
 }
 interface InheritedSearch {
-    search: string
+    query: string
     mode: PlaylistInheritanceMode
 }
 type LinkedPlaylist = { max_depth: number, uri: IllusiveURI, uuid?: never } | { max_depth: number, uri?: never, uuid: string };
@@ -197,7 +197,7 @@ interface Basic_Playlist<T, U, V, X> {
     visual_data?: V
     date?: string
 }
-export type SQLPlaylistArray = [ string, string, string, boolean, string, SortType, boolean, string, string, string, string ];
+export type SQLPlaylistArray = [ string, string, string, boolean, string, SortType, boolean, string, string, string, string, string ];
 
 export type SQLPlaylist = Basic_Playlist<string, string, string, string>
 export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], PlaylistVisualData, InheritedSearch[]>

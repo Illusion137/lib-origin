@@ -1,6 +1,6 @@
 import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
-import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Track } from "./types";
+import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string){ return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string){ return playlist_name.replace(/\s/g, '_'); }
@@ -250,4 +250,7 @@ export function number_epsilon_distance(num: number, expected: number, plus_minu
 export function random_of<T>(arr: T[]): T{
     const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
     return arr[randidx];
+}
+export async function all_promises(promises: Promises){
+    return await Promise.all(promises);
 }

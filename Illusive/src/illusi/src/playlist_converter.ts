@@ -1,4 +1,5 @@
-import * as SQLActions from './sql_actions';
+import * as SQLTracks from './sql/sql_tracks';
+import * as SQLPlaylists from './sql/sql_playlists';
 import * as GLOBALS from './globals';
 import * as Origin from '../../../../origin/src/index';
 import { Illusive } from "../../illusive";
@@ -36,12 +37,12 @@ export function track_intersection(f: Track, t: Track): boolean{
 }
 export async function playlist_tracks(uuid_uri: string){
     if(uuid_uri === Constants.library_write_playlist){
-        await SQLActions.fetch_track_data();
+        await SQLTracks.fetch_track_data();
         return [...GLOBALS.global_var.sql_tracks];
     }
     const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
     const is_uuid = uuidv4_regex.test(uuid_uri);
-    if(is_uuid) return await SQLActions.playlist_tracks(uuid_uri);
+    if(is_uuid) return await SQLPlaylists.playlist_tracks(uuid_uri);
     const [service, id] = split_uri(uuid_uri);
     const playlist_tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
     if("error" in playlist_tracks) return [];
@@ -58,8 +59,8 @@ export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_u
 export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[]){
     if("title" in to) {
         if(to_service === "Illusi"){
-            const playlist_uuid = await SQLActions.create_playlist(to.title);
-            await SQLActions.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
+            const playlist_uuid = await SQLPlaylists.create_playlist(to.title);
+            await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
             return {"ok": true};
         }
         const service = Illusive.music_service.get(to_service)!;
@@ -68,7 +69,7 @@ export async function mutilate_playlist(to_service: MusicServiceType, to: Conver
     }
     else {
         if(to_service === "Illusi") {
-            await SQLActions.insert_all_tracks_playlist(to.uuid_uri, tracks.map(({uid}) => uid)); 
+            await SQLPlaylists.insert_all_tracks_playlist(to.uuid_uri, tracks.map(({uid}) => uid)); 
             return {"ok": true};
         }
         const service = Illusive.music_service.get(to_service)!;
@@ -109,7 +110,7 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType){
             Logger.log_error(conversion_track); 
             continue;
         }
-        updated_tracks.push(await SQLActions.update_track_with_new_track_data(track, conversion_track));
+        updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track));
     }
     return updated_tracks;
 }

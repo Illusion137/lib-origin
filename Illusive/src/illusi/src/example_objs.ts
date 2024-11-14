@@ -43,6 +43,7 @@ export namespace ExampleObj {
         "public_uuid": "",
         "sort": "NEWEST",
         "inherited_playlists": [],
+        "inherited_searchs": [],
         "linked_playlists": [],
         "visual_data": <never>undefined,
         "date": "",

@@ -1,5 +1,8 @@
 import * as GLOBALS from './globals';
-import * as SQLActions from './sql_actions';
+import * as SQLTracks from './sql/sql_tracks';
+import * as SQLUtils from './sql/sql_utils';
+import * as SQLUpdate from './sql/sql_update';
+import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as ffmpeg from 'react-native-ffmpeg';
 import * as LegacyPrefs from './legacy/1307/legacy_prefs';
 import { Prefs } from '../../prefs';
@@ -25,18 +28,18 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
         };
         ffmpeg.RNFFmpegConfig.enableStatisticsCallback(statistics_callback);
         
-        await SQLActions.recreate_all_tables();
+        await SQLUtils.recreate_all_tables();
 
         const legacy_prefs = LegacyPrefs.get_legacy_prefs();
         await Prefs.load_prefs();
         if(legacy_prefs === null) await Prefs.load_legacy_prefs(legacy_prefs);
-        await SQLActions.fix_to_new_update();
-        await SQLActions.fetch_track_data();
+        await SQLUpdate.fix_to_new_update();
+        await SQLTracks.fetch_track_data();
         await Promise.all([
-            SQLActions.cleanup_recently_played(),
+            SQLRecentlyPlayed.cleanup_recently_played(),
             activateKeepAwakeAsync()
         ]);
-        if(Prefs.get_pref('auto_clean_directories')) SQLActions.clean_directories();
+        if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories();
         set_theme(Prefs.get_theme(Prefs.get_pref('theme')));
     })
 }

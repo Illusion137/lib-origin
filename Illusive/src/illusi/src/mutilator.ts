@@ -1,10 +1,10 @@
 // import * as ffmpeg from 'react-native-ffmpeg';
-import * as SQLActions from './sql_actions';
+import * as SQLTracks from './sql/sql_tracks';
 import { Track } from '../../types';
 
 export namespace Mutilator {
     export async function trim(track: Track, trimdur: {begdur?: number, enddur?: number}){
-        await SQLActions.update_track_meta_data(track.uid, {...track.meta!, ...trimdur});
+        await SQLTracks.update_track_meta_data(track.uid, {...track.meta!, ...trimdur});
     }
     export async function split(track: Track, split_points: number[]){
         track;
