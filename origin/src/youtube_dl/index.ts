@@ -6,11 +6,11 @@ import { AVFormat } from './types';
 import { urlid } from '../utils/util';
 
 export namespace YouTubeDL {
-    export async function ytdl (link: string, options: downloadOptions): Promise<AVFormat> {
+    export async function ytdl (link: string, options: downloadOptions) {
         const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=");
         const info = await ytdl.getInfo(video_id, options);
         const format = ytdl.chooseFormat(info.formats, options);
-        return format;
+        return {av: format, info};
     };
     
     ytdl.getBasicInfo = getInfo.getBasicInfo;
