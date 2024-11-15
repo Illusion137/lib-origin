@@ -1,3 +1,4 @@
+import { YTDLResponse } from './types/response';
 export type Filter = 'audioandvideo' | 'videoandaudio' | 'video' | 'videoonly' | 'audio' | 'audioonly' | ((format: AVFormat) => boolean);
 
 interface GetInfoOptions {
@@ -588,6 +589,7 @@ export interface VideoInfo {
         };
     };
     videoDetails: MoreVideoDetails;
+    response: YTDLResponse
 }
 
 export interface RelatedVideo {

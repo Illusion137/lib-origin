@@ -286,20 +286,38 @@ export namespace Illusive {
             return imported_thumbnail;
         if(!is_empty(track.thumbnail_uri))
             return {"uri": track.thumbnail_uri!, "cache": 'force-cache'};
-        if(!is_empty(track.youtube_id))
-            return {"uri": await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), "cache": 'force-cache'};
-        if(!is_empty(track.artwork_url))
-            return {"uri": track.artwork_url!, "cache": 'force-cache'};
+        if(Prefs.get_pref('prioritize_youtube_thumbnail')){
+            if(!is_empty(track.youtube_id))
+                return {"uri": await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), "cache": 'force-cache'};
+            if(!is_empty(track.artwork_url))
+                return {"uri": track.artwork_url!, "cache": 'force-cache'};
+        }
+        else {
+            if(!is_empty(track.artwork_url))
+                return {"uri": track.artwork_url!, "cache": 'force-cache'};
+            if(!is_empty(track.youtube_id))
+                return {"uri": await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), "cache": 'force-cache'};
+        }
         return illusi_dark_icon;
     }
 
     export function get_track_artwork(track: Track): Artwork {
         if(!is_empty(track.imported_id))
             return imported_thumbnail;
-        if(!is_empty(track.artwork_url))
-            return {"uri": track.artwork_url!, "cache": 'force-cache'};
-        if(!is_empty(track.youtube_id))
-            return {"uri": `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, "cache": 'force-cache'};
+        if(!is_empty(track.thumbnail_uri))
+            return {"uri": track.thumbnail_uri!, "cache": 'force-cache'};
+        if(Prefs.get_pref('prioritize_youtube_thumbnail')){
+            if(!is_empty(track.youtube_id))
+                return {"uri": `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, "cache": 'force-cache'};
+            if(!is_empty(track.artwork_url))
+                return {"uri": track.artwork_url!, "cache": 'force-cache'};
+        }
+        else {
+            if(!is_empty(track.artwork_url))
+                return {"uri": track.artwork_url!, "cache": 'force-cache'};
+            if(!is_empty(track.youtube_id))
+                return {"uri": `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, "cache": 'force-cache'};
+        }
         return illusi_dark_icon;
     }
 

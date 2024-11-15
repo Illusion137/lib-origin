@@ -1,17 +1,34 @@
-import { CompactArtist, CompactPlaylist, ExplicitMode, MusicServicePlaylistBase, Track } from "../types";
+import { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "../types";
 import { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
 import { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "../../../origin/src/youtube/types/SearchResultsW";
 import { extract_string_from_pattern, generate_new_uid, is_empty, parse_runs, parse_time } from "../../../origin/src/utils/util";
 import { best_thumbnail, create_uri, youtube_views_number } from "../illusive_utilts";
 import { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
 import { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
-import { MoreVideoDetails } from "../../../origin/src/youtube_dl/types";
+import { VideoInfo } from "../../../origin/src/youtube_dl/types";
 
-export function youtube_info_metadata(info: MoreVideoDetails) {
+export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
+    const engagement_panels = info.response.engagementPanels.map(panel => panel.engagementPanelSectionListRenderer);
+    const structured_description_panel = engagement_panels.find(panel => panel.targetId === "engagement-panel-structured-description");
+    let songs;
+    if(structured_description_panel !== undefined){
+        const music_renderer = structured_description_panel.content.structuredDescriptionContentRenderer.items.find(item => item.horizontalCardListRenderer !== undefined && item.horizontalCardListRenderer.footerButton.buttonViewModel.iconName === "MUSIC")?.horizontalCardListRenderer!;
+        if(music_renderer !== undefined) {
+            songs = music_renderer.cards.map(item => {
+                return {
+                    "artwork_url": item.videoAttributeViewModel.image.sources?.[0]?.url,
+                    "title": item.videoAttributeViewModel.title,
+                    "artist": item.videoAttributeViewModel.subtitle,
+                    "album": <string|undefined>item.videoAttributeViewModel?.secondarySubtitle?.content,
+                };
+            });
+        }
+    }   
     return {
-        artist_id: info.channelId,
-        age_restricted: info.age_restricted,
-        chapters: info.chapters
+        artist_id: info.videoDetails.channelId,
+        age_restricted: info.videoDetails.age_restricted,
+        chapters: info.videoDetails.chapters,
+        songs: songs
     };
 }
 

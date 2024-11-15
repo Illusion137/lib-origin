@@ -279,13 +279,19 @@ export interface MusicServiceArtist {
     background_artwork_url?: string
     profile_artwork_url?: string
 }
-
+export interface YTDescriptionSong {
+    artwork_url: string,
+    title: string,
+    artist: string,
+    album?: string,
+}
 export interface DownloadFromIdResult {
     url: string;
     metadata?: {
         artist_id: string;
         age_restricted: boolean;
         chapters: Chapter[];
+        songs?: YTDescriptionSong[]
     };
 }
 

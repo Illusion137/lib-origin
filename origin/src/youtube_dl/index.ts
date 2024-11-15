@@ -2,7 +2,6 @@ import * as getInfo from './info';
 import * as formatUtils from './format-utils';
 import * as urlUtils from './url-utils';
 import { downloadOptions } from '@distube/ytdl-core';
-import { AVFormat } from './types';
 import { urlid } from '../utils/util';
 
 export namespace YouTubeDL {
