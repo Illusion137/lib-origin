@@ -133,6 +133,7 @@ export interface TrackMetaData {
     nsplit?: number;
     age_restricted?: boolean;
     chapters?: Chapter[];
+    songs?: YTDescriptionSong[];
 }
 //Regex
 //\s+.+?: (.+?)\n

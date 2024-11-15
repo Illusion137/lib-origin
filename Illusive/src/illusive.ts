@@ -4,7 +4,7 @@ import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, 
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "./get_user_playlist";
 import { amazon_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
-import { Artwork, MusicService, MusicServiceType, Track } from "./types";
+import { Artwork, DownloadFromIdResult, MusicService, MusicServiceType, Track } from "./types";
 import { Prefs } from "./prefs";
 import * as Origin from '../../origin/src/index'
 import { shuffle_array } from "./illusive_utilts";
@@ -235,8 +235,8 @@ export namespace Illusive {
         return best_match;
     }
 
-    type ExportTrack = {"url": string, "new_track_data"?: Track}
-    export async function get_download_url(document_directory: string, track: Track, quality?: string): Promise<ExportTrack|ResponseError>{
+    type ExportTrack = {"new_track_data"?: Track}
+    export async function get_download_url(document_directory: string, track: Track, quality?: string): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError>{
         if(!is_empty(track.media_uri) || !is_empty(track.imported_id))
             return { "url": document_directory + media_archive_path + track.media_uri! };
         else if(!is_empty(track.youtube_id))
@@ -245,9 +245,9 @@ export namespace Illusive {
             return await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!);
         const new_track_data = await convert_track(track, "YouTube");
         if("error" in new_track_data) return new_track_data;
-        const youtube_dl_response = await music_service.get("YouTube")!.download_from_id!(new_track_data.youtube_id!, quality ?? "highestaudio");
-        if("error" in youtube_dl_response) return youtube_dl_response;
-        return { "url": youtube_dl_response.url, "new_track_data": new_track_data };
+        const ytdl_response = await music_service.get("YouTube")!.download_from_id!(new_track_data.youtube_id!, quality ?? "highestaudio");
+        if("error" in ytdl_response) return ytdl_response;
+        return { "url": ytdl_response.url, "metadata": ytdl_response.metadata, "new_track_data": new_track_data };
     }
 
     type ExportMix = {"tracks": Track[], "new_track_data"?: Track}

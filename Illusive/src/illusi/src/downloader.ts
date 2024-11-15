@@ -6,13 +6,13 @@ import * as ffmpeg from 'react-native-ffmpeg';
 import * as Haptics from 'expo-haptics';
 import * as fs from 'expo-file-system';
 import { Audio } from 'expo-av';
-import { Track, SetState, DownloadTrackResult } from "../../types";
+import { Track, SetState, DownloadTrackResult, TrackMetaData, NamedUUID, DownloadFromIdResult } from "../../types";
 import { Prefs } from '../../prefs';
 import { Illusive } from '../../illusive';
 import { Alert } from 'react-native';
 import { alert_error } from './alert';
 import { is_empty } from '../../../../origin/src/utils/util';
-import { number_epsilon_distance } from '../../illusive_utilts';
+import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
 import { Constants } from '../../constants';
 import { playlist_tracks } from './playlist_converter';
 
@@ -45,7 +45,41 @@ function download_error_callback(title: string, error: string, track: Track, sta
     GLOBALS.downloading.splice(item_index, 1);
     return "ERROR";
 }
-
+export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata']){
+    if(metadata === undefined) return;
+    if(track.artists[0].uri === null) {
+        await SQLTracks.update_track(track.uid, 
+            {
+                ...track, 
+                "artists": [
+                    <NamedUUID>{"name": track.artists[0].name, "uri": create_uri("youtube", metadata.artist_id)}
+                ].concat(...track.artists.slice(1))
+            });
+    }
+    const new_metadata: TrackMetaData = {
+        ...track.meta!,
+        "age_restricted": metadata.age_restricted,
+        "chapters": metadata.chapters,
+        "songs": metadata.songs,
+    }
+    track.meta = new_metadata;
+    await SQLTracks.update_track_meta_data(track.uid, new_metadata);
+}
+export async function handle_new_track_data(track: Track, dl_uri: Awaited<ReturnType<typeof Illusive.get_download_url>>){
+    if("error" in dl_uri) return dl_uri;
+    if(!await SQLTracks.track_exists(track)) 
+        return (await SQLTracks.add_playback_saved_data_to_tracks([
+            SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data!)
+        ]))[0];
+    if ("new_track_data" in dl_uri && dl_uri.new_track_data !== undefined) {
+        await SQLTracks.update_track_with_new_track_data(track, dl_uri.new_track_data);
+        track = SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data!);
+    }
+    if("metadata" in dl_uri){
+        await handle_track_meta_data(track, dl_uri.metadata);
+    }
+    return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
+}
 export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     function in_download_range(uid: string, download_queue_max_length: number) {
         for (let i = 0; i < download_queue_max_length; i++)
@@ -60,17 +94,15 @@ export async function download_track(track: Track, progress_updater?: SetState, 
         .then(async () => {
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track);
             if ("error" in download_uri) {
-                if (download_uri.error.includes("Video unavailable"))
+                if (download_uri.error.toLowerCase().includes("unavailable"))
                     SQLBackpack.add_to_backpack(track.uid);
                 return download_error_callback("Coudln't find the file", download_uri.error, track, start_download);
-            }
-            if ("new_track_data" in download_uri && download_uri.new_track_data !== undefined) {
-                await SQLTracks.update_track_with_new_track_data(track, download_uri.new_track_data);
-                track = SQLTracks.merge_track_with_new_track(track, download_uri.new_track_data!);
             }
             if("url" in download_uri && download_uri.url.includes("file://")) {
                 return download_error_callback("", "", track, start_download);
             }
+            const nt_handle = await handle_new_track_data(track, download_uri);
+            if(!("error" in nt_handle)) track = nt_handle;
             try {
                 if (start_download !== undefined) start_download(true);
                 const new_uri = SQLfs.media_directory() + track.uid + '.m4a';

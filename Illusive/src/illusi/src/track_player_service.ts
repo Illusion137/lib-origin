@@ -15,6 +15,7 @@ import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import { ISOString, Track } from '../../types';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Illusive } from '../../illusive';
+import { handle_new_track_data } from './downloader';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -72,12 +73,8 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
     }
-    if ("new_track_data" in url_data && url_data.new_track_data !== undefined) {
-        if(await SQLTracks.track_exists(track)){
-            await SQLTracks.update_track_with_new_track_data(track, url_data.new_track_data);
-        }
-        track = (await SQLTracks.add_playback_saved_data_to_tracks([url_data.new_track_data!]))[0];
-    }
+    const nt_response = await handle_new_track_data(track, url_data);
+    if(!("error" in nt_response)) track = nt_response;
     // if(url_data.url.includes("googlevideo.com")){}
         // url_data.url = await ffcache_yt(url_data.url, track);
     return {
