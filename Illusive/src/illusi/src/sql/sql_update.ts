@@ -7,7 +7,7 @@ import { Promises, SQLAlter, SQLTable, SQLType, Track } from '../../../types';
 import { move_unsorted_media_to_folders, sql_select, sql_where } from '../sql/sql_utils';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 
-async function get_all_tables(database: SQLite.SQLiteDatabase) {
+export async function get_all_tables(database: SQLite.SQLiteDatabase) {
     const tables = await database.getAllAsync(`${sql_select("sqlite_master", "*")} ${sql_where<{type: string}>(["type", "table"])}`);
     return tables as SQLTable[];
 }

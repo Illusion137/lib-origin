@@ -166,7 +166,6 @@ export type SQLTrackArray = [ string, string, string, number, string, string, st
 
 export type SQLTrack = Basic_Track<string, string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[], string[]>
-export type SerializedTrack = Basic_Track<NamedUUID[], string, NamedUUID, string[], string[]>
 
 type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK";
 interface InheritedPlaylist {
@@ -210,9 +209,9 @@ export interface CompactPlaylistData {
     track_callback: () => Promise<Track[]>
 }
 export interface SerializedCompactPlaylistData {
-    title: string
-    tracks: SerializedTrack[]
-    type: "PLAYLIST" | "LIBRARY"
+    title: string;
+    tracks: Track[];
+    type: "PLAYLIST" | "LIBRARY";
 }
 
 export interface PlaylistsTracks {
