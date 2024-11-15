@@ -1,6 +1,7 @@
 import { CookieJar } from "../../origin/src/utils/cookie_util"
 import { ResponseError } from "../../origin/src/utils/types"
 import { remove } from "../../origin/src/utils/util";
+import { Chapter } from "../../origin/src/youtube_dl/types";
 import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
@@ -123,22 +124,24 @@ interface TrackPlaybackData {
     artwork: Artwork
 }
 export interface TrackMetaData {
-    plays: number
-    added_date: ISOString
-    last_played_date: ISOString
-    downloaded_date?: ISOString
-    begdur?: number
-    enddur?: number
-    nsplit?: number
+    plays: number;
+    added_date: ISOString;
+    last_played_date: ISOString;
+    downloaded_date?: ISOString;
+    begdur?: number;
+    enddur?: number;
+    nsplit?: number;
+    age_restricted?: boolean;
+    chapters?: Chapter[];
 }
 //Regex
 //\s+.+?: (.+?)\n
-interface Basic_Track<T, U, V, W, X> {
+interface Basic_Track<T, U, V, X> {
     uid: string
     title: string
     artists: T
     duration: number
-    prods?: W
+    prods?: string
     genre?: string
     tags?: X
     explicit?: ExplicitMode
@@ -164,8 +167,8 @@ interface Basic_Track<T, U, V, W, X> {
 }
 export type SQLTrackArray = [ string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
 
-export type SQLTrack = Basic_Track<string, string, string, string, string>
-export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[], string[]>
+export type SQLTrack = Basic_Track<string, string, string, string>
+export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
 type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK";
 interface InheritedPlaylist {
@@ -276,6 +279,16 @@ export interface MusicServiceArtist {
     background_artwork_url?: string
     profile_artwork_url?: string
 }
+
+export interface DownloadFromIdResult {
+    url: string;
+    metadata?: {
+        artist_id: string;
+        age_restricted: boolean;
+        chapters: Chapter[];
+    };
+}
+
 export interface IllusiveExplore {
 
 }
@@ -311,7 +324,7 @@ export class MusicService {
     get_user_playlists?: () => Promise<CompactPlaylistsResult>
     get_playlist: (url: string) => Promise<MusicServicePlaylist>
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
-    download_from_id?: (id: string, quality: string) => Promise<{ "url": string } | ResponseError>
+    download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;
@@ -385,7 +398,7 @@ export class MusicService {
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
         get_playlist: (url: string) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
-        download_from_id?: (id: string, quality: string) => Promise<{ "url": string } | ResponseError>
+        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
         get_track_mix?: (id: string) => Promise<TrackMix>
     }) {
         this.app_icon = s.app_icon

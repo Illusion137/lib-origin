@@ -1,8 +1,8 @@
 import * as Origin from '../../origin/src/index'
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time } from '../../origin/src/utils/util'
-import { best_thumbnail, create_uri, escape_regexpresion, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
-import { ExplicitMode, Runs, Track } from './types';
+import { best_thumbnail, create_uri, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
+import { Runs, Track } from './types';
 import { PlaylistPanelVideoRenderer } from '../../origin/src/youtube/types/MixResults_0';
 import { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
 import { Item4 } from '../../origin/src/spotify/types/Album';
@@ -12,76 +12,6 @@ import { AppleTrack } from '../../origin/src/apple_music/types/TrackListSection'
 import { AppleUserPlaylistTrack } from '../../origin/src/apple_music/types/UserPlaylist';
 import { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
 import { AmazonSearchTrack } from '../../origin/src/amazon_music/types/SearchResult';
-
-export function parse_youtube_title_artist(track: Track): Track {
-    const artist = track.artists.map(artist => artist.name).join(", ");
-    const new_title_pre = track.title.replace(new RegExp(escape_regexpresion(`${artist} - `), "i"), '')
-    .replace(new RegExp(escape_regexpresion(` - ${artist}`), "i"), '')
-    .replace(/ ?full song ?/ig, '')
-    .replace(/ ?[\(\[] ?prod\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?dir\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?ft\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?feat\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?w\/.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?unreleased ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?explicit ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?explicit version ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?legendado ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?full video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?video version ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?music ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?audio ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?lyrics? ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?lyrics? video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official audio ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official visual ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official lyrics? ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official lyrics? video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?exclusive music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?official music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?visualizer ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?visualiser ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official visualizer ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official mv ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?reupload ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?bass boosted ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?sped up.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?HD ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?HQ ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?remix ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?ost ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?fanmade ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?extended ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?tik tok ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?tiktok ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?amv ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?full ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?full song ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?best version ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?best ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?only.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?remix.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?clean.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?by.*?[\)\]]/ig, '')
-    // .replace(/[\(\[].+?[\)\]]/ig, '')
-    .replace(/unreleased/ig, '');
-    const new_title = new_title_pre.replace(/.+? - /i, '');
-    const new_artist = new_title !== new_title_pre ? new_title_pre.replace(/ - .+?/i, ''): artist;
-    return {
-        ...track,
-        title: new_title,
-        artists: [{"name": new_artist, "uri": null}].concat([]),
-        explicit: (/ ?[\(\[] ?explicit ?[\)\]]/ig.test(track.title) || / ?[\(\[] ?explicit version ?[\)\]]/ig.test(track.title) ? "EXPLICIT" : 
-            / ?[\(\[].*?clean.*?[\)\]]/ig.test(track.title) ? "CLEAN" : "NONE") as ExplicitMode,
-        unreleased: / ?[\(\[].*?unreleased.*?[\)\]]/ig.test(track.title) || / unreleased/ig.test(track.title),
-        prods: [],
-    }
-}
 
 export function track_parsed_data(){}
 

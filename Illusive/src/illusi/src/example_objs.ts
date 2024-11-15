@@ -7,7 +7,7 @@ export namespace ExampleObj {
         "title": "",
         "artists": [],
         "duration": 0,
-        "prods": [],
+        "prods": "",
         "genre": "",
         "tags": [],
         "explicit": "NONE",
