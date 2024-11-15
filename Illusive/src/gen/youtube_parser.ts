@@ -8,22 +8,24 @@ import { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeade
 import { VideoInfo } from "../../../origin/src/youtube_dl/types";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
-    const engagement_panels = info.response.engagementPanels.map(panel => panel.engagementPanelSectionListRenderer);
-    const structured_description_panel = engagement_panels.find(panel => panel.targetId === "engagement-panel-structured-description");
     let songs;
-    if(structured_description_panel !== undefined){
-        const music_renderer = structured_description_panel.content.structuredDescriptionContentRenderer.items.find(item => item.horizontalCardListRenderer !== undefined && item.horizontalCardListRenderer.footerButton.buttonViewModel.iconName === "MUSIC")?.horizontalCardListRenderer!;
-        if(music_renderer !== undefined) {
-            songs = music_renderer.cards.map(item => {
-                return {
-                    "artwork_url": item.videoAttributeViewModel.image.sources?.[0]?.url,
-                    "title": item.videoAttributeViewModel.title,
-                    "artist": item.videoAttributeViewModel.subtitle,
-                    "album": <string|undefined>item.videoAttributeViewModel?.secondarySubtitle?.content,
-                };
-            });
+    const engagement_panels = info?.response?.engagementPanels?.map(panel => panel?.engagementPanelSectionListRenderer);
+    if(engagement_panels !== undefined && Array.isArray(engagement_panels) && engagement_panels.filter(item => item !== undefined).length > 0){
+        const structured_description_panel = engagement_panels.find(panel => panel.targetId === "engagement-panel-structured-description");
+        if(structured_description_panel !== undefined){
+            const music_renderer = structured_description_panel.content.structuredDescriptionContentRenderer.items.find(item => item.horizontalCardListRenderer !== undefined && item.horizontalCardListRenderer.footerButton.buttonViewModel.iconName === "MUSIC")?.horizontalCardListRenderer!;
+            if(music_renderer !== undefined) {
+                songs = music_renderer.cards.map(item => {
+                    return {
+                        "artwork_url": item.videoAttributeViewModel.image.sources?.[0]?.url,
+                        "title": item.videoAttributeViewModel.title,
+                        "artist": item.videoAttributeViewModel.subtitle,
+                        "album": <string|undefined>item.videoAttributeViewModel?.secondarySubtitle?.content,
+                    };
+                });
+            }
         }
-    }   
+    }
     return {
         artist_id: info.videoDetails.channelId,
         age_restricted: info.videoDetails.age_restricted,
