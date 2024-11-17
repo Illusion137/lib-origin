@@ -1,6 +1,6 @@
 import * as uuid from "react-native-uuid";
 import * as GLOBALS from "../globals";
-import { Playlist, PlaylistsTracks, Promises, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
+import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { ExampleObj } from "../example_objs";
 import { all_promises, array_exclude, array_include, array_mask, track_query_filter } from "../../../illusive_utilts";
@@ -145,4 +145,13 @@ export async function update_playlist_title(playlist_uuid: string, title: string
 }
 export async function update_playlist_description(playlist_uuid: string, description: string){
     await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["description", description])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+}
+export async function update_playlist_sort_mode(playlist_uuid: string, sort_mode: SortType){
+    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["sort", sort_mode])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+}
+export async function update_playlist_inherited_playlists(playlist_uuid: string, inherited_playlists: InheritedPlaylist[]){
+    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_playlists", JSON.stringify(inherited_playlists)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+}
+export async function update_playlist_inherited_searchs(playlist_uuid: string, inherited_searchs: InheritedSearch[]){
+    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_searchs", JSON.stringify(inherited_searchs)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }

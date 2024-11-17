@@ -84,6 +84,7 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
     return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
 }
 export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
+    if(GLOBALS.downloading.find(item => item.uid === track.uid)) return "GOOD";
     function in_download_range(uid: string, download_queue_max_length: number) {
         for (let i = 0; i < download_queue_max_length; i++)
             if (GLOBALS.downloading[i].uid === uid)
@@ -98,7 +99,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track);
             if ("error" in download_uri) {
                 if (download_uri.error.toLowerCase().includes("unavailable"))
-                    SQLBackpack.add_to_backpack(track.uid);
+                    await SQLBackpack.add_to_backpack(track.uid);
                 return download_error_callback("Couldn't find the file", download_uri.error, track, start_download);
             }
             if("url" in download_uri && download_uri.url.includes("file://")) {
@@ -106,6 +107,9 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             }
             const nt_handle = await handle_new_track_data(track, download_uri);
             if(!("error" in nt_handle)) track = nt_handle;
+            else {
+                return download_error_callback("New Track Error", nt_handle.error, track, start_download);
+            }
             try {
                 if (start_download !== undefined) start_download(true);
                 const new_uri = SQLfs.media_directory() + track.uid + '.m4a';

@@ -186,16 +186,17 @@ export namespace Illusive {
         });
 
     export const music_service: Map<MusicServiceType, MusicService> = new Map<MusicServiceType, MusicService>([
-        ["Illusi", illusi],
-        ["Musi", musi],
         ["YouTube", youtube],
         ["YouTube Music", youtube_music],
         ["Spotify", spotify],
-        ["Amazon Music", amazon_music],
         ["SoundCloud", soundcloud],
         ["Apple Music", apple_music],
+        ["Amazon Music", amazon_music],
+        ["Illusi", illusi],
+        ["Musi", musi],
         ["API", api],
     ]);
+    export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "SoundCloud"];
 
     export async function convert_track(track: Track, to_music_service: MusicServiceType, proxies?: Origin.Proxy.Proxy[], possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError>{
         if(music_service.get(to_music_service)?.search === undefined) return {"error": "Can't convert to this music-service"};

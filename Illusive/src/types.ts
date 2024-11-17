@@ -173,11 +173,11 @@ export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
 type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK";
-interface InheritedPlaylist {
+export interface InheritedPlaylist {
     uuid: string
     mode: PlaylistInheritanceMode
 }
-interface InheritedSearch {
+export interface InheritedSearch {
     query: string
     mode: PlaylistInheritanceMode
 }

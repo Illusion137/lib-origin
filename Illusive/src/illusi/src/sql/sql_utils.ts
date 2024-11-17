@@ -36,7 +36,7 @@ export function sql_where<T extends Record<string, any>>(...args: [keyof T, Prim
     return `WHERE ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}`).join(' AND ')}`;
 }
 export function sql_set<T extends Record<string, any>>(...args: [keyof T, Primitives][]){
-    return `SET ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${arg[1]}'`: arg[1]}`).join(' AND ')}`;
+    return `SET ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${sql_serialize(arg[1])}'`: arg[1]}`).join(' AND ')}`;
 }
 export function sql_create_table<T extends Record<string, any>>(table: SQLTables, obj: T){
     return `CREATE TABLE IF NOT EXISTS ${table} ${obj_to_sql_table("id INTEGER PRIMARY KEY", obj, true)}`;
