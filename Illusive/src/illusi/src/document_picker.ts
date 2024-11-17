@@ -16,6 +16,15 @@ function handle_document_picker_error(error: unknown) {
     else throw error;
 }
 
+export async function upload_sqlite_db(){
+    try {
+        return await DocumentPicker.pickSingle({copyTo: 'cachesDirectory'});
+    } catch (error) {
+        handle_document_picker_error(error);
+        return {"error": String(error)};
+    }
+}
+
 export async function upload_playlist_thumbnail(playlist: Playlist, callback: () => Promise<void>){
     try {
         const thumbnail_uri = await DocumentPicker.pickSingle({type: [DocumentPicker.types.images], copyTo: 'documentDirectory'});

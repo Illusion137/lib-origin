@@ -53,7 +53,7 @@ export function extract_youtube_title_info(track: Track){
     }   
 }
 export function parse_youtube_title_artist(track: Track): Track {
-    const new_title = track.title
+    const new_title = String(track.title)
         .replace(/ ?full song ?/ig, '')
         .replace(/ ?[\(\[] ?prod\.?.+?[\)\]]/ig, '')
         .replace(/ ?[\(\[] ?dir\.?.+?[\)\]]/ig, '')

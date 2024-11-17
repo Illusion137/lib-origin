@@ -13,7 +13,7 @@ export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1
     const media_info = is_empty(legacy_1307_track.media_uri) ? null : await FileSystem.getInfoAsync(media_directory() + legacy_1307_track.media_uri);
     const zero_iso = <ISOString>new Date(0).toISOString();
     const download_date: ISOString = media_info !== null && media_info.exists && media_info.isDirectory === false ? <ISOString>new Date(media_info.modificationTime).toISOString() : zero_iso;
-    const parsed_track = parse_youtube_title_artist({uid: "", duration: 0, title: legacy_1307_track.video_name, artists: [{"name": legacy_1307_track.video_creator, "uri": null }]});
+    const parsed_track = parse_youtube_title_artist({uid: legacy_1307_track.uid, duration: 0, title: String(legacy_1307_track.video_name), artists: [{"name": String(legacy_1307_track.video_creator), "uri": null }]});
     const topiced = legacy_1307_track.video_creator.includes(" - Topic");
     return {
         ...parsed_track,
