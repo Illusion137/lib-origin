@@ -1,4 +1,5 @@
 import * as Origin from '../../../../origin/src/index';
+import * as SQLTracks from '../../../../Illusive/src/illusi/src/sql/sql_tracks';
 import { Constants } from '../../constants';
 import { Illusive } from "../../illusive";
 import { Prefs } from "../../prefs";
@@ -42,5 +43,5 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
         track.uid = utrack.uid;
         tracks.push(track);
     }
-    return tracks;
+    return await SQLTracks.add_playback_saved_data_to_tracks(tracks);
 }

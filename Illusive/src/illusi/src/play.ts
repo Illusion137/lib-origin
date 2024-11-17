@@ -54,7 +54,7 @@ export async function play_mix(track_data: Track, from: string) {
         return;
     }
     track_mix.tracks = await SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
-    GLOBALS.global_var.playing_tracks = GLOBALS.global_var.playing_tracks.concat(track_mix.tracks.slice(1));
+    GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[]) {
     if(from === Constants.illusi_mix_from) await play_mix(track_data, from);

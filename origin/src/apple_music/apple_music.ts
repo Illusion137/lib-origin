@@ -11,7 +11,7 @@ export namespace AppleMusic {
     let client_cache = {client: {authorization: <string|null>null}, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
-    export function client_cache_full(){ return client_cache.enabled && client_cache.client !== null}
+    export function client_cache_full(){ return client_cache.enabled && client_cache.client.authorization !== null}
     export function playlist_urlid(playlist_url: string){
         return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
     }

@@ -14,13 +14,14 @@ export const cache = new Cache(1);
  * @param {Object} options
  * @returns {Promise<Array.<string>>}
  */
-export const getFunctions = (html5playerfile: string, options: DownloadOptions): Promise<[vmScript, vmScript]> => 
-cache.getOrSet(html5playerfile, async () => {
-    const body = await utils.request(html5playerfile, options);
-    const functions = extractFunctions(body);
-    cache.set(html5playerfile, functions);
-    return functions;
-});
+export const getFunctions = (html5playerfile: string, options: DownloadOptions): Promise<[vmScript, vmScript]> => {
+    return cache.getOrSet(html5playerfile, async () => {
+        const body = await utils.request(html5playerfile, options);
+        const functions = extractFunctions(body);
+        cache.set(html5playerfile, functions);
+        return functions;
+    });
+}
 
 // NewPipeExtractor regexps
 const DECIPHER_NAME_REGEXPS = [
@@ -162,7 +163,7 @@ const extractDecipher = (body: string) => {
       " file on https://github.com/distubejs/ytdl-core/issues.\nStream URL will be missing.`);
         decipherWarning = true;
     }
-    return decipherFunc;
+    return decipherFunc!;
 };
 
 const N_TRANSFORM_FUNC_NAME = 'DisTubeNTransformFunc';
@@ -201,7 +202,7 @@ const extractNTransform = (body: string) => {
       " file on https://github.com/distubejs/ytdl-core/issues.`);
         nTransformWarning = true;
     }
-    return nTransformFunc;
+    return nTransformFunc!;
 };
 
 /**

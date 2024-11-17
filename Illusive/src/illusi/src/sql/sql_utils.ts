@@ -95,8 +95,8 @@ export async function sql_all(db: SQLite.SQLiteDatabase, ...args: string[]){
 }
 
 export async function download_thumbnail(track: Track){
-    const best_artwork = await Illusive.get_best_track_artwork(track);
-    if(typeof best_artwork === "object" && !best_artwork.uri.includes("file://")) {
+    const best_artwork = await Illusive.get_best_track_artwork(document_directory(""), track);
+    if(typeof best_artwork === "object" && is_empty(track.thumbnail_uri)) {
         const ext = extract_file_extension(best_artwork.uri);
         const thumbnail_download = FileSystem.createDownloadResumable(best_artwork.uri, `${thumbnail_directory()}${track.uid}${ext}`);
         await thumbnail_download.downloadAsync();

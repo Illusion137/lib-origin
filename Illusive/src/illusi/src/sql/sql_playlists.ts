@@ -38,11 +38,11 @@ export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: str
 export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks = false): Promise<Playlist>{
     const tracks = ignore_tracks ? [] : await playlist_tracks(sql_playlist.uuid, new Set<string>(), true);
     return Object.assign(sql_playlist, {
-        "inherited_playlists": JSON.parse(sql_playlist.inherited_playlists!),
-        "linked_playlists": JSON.parse(sql_playlist.linked_playlists!),
-        "inherited_searchs": JSON.parse(sql_playlist.inherited_searchs!),
+        "inherited_playlists": JSON.parse(sql_playlist.inherited_playlists ?? "[]"),
+        "linked_playlists": JSON.parse(sql_playlist.linked_playlists ?? "[]"),
+        "inherited_searchs": JSON.parse(sql_playlist.inherited_searchs ?? "[]"),
         "visual_data": ignore_tracks ? {"four_track": [], "track_count": 0} : {"four_track": tracks.slice(0,4), "track_count": tracks.length},
-        "date": new Date(sql_playlist.date!)
+        "date": new Date(sql_playlist.date!).toISOString()
     });
 }
 

@@ -47,6 +47,7 @@ function download_error_callback(title: string, error: string, track: Track, sta
 }
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata']){
     if(metadata === undefined) return;
+    if(!await SQLTracks.track_exists(track)) return;
     if(track.artists[0].uri === null) {
         await SQLTracks.update_track(track.uid, 
             {
@@ -57,7 +58,7 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             });
     }
     const new_metadata: TrackMetaData = {
-        ...track.meta!,
+        ...track.meta ?? <any>{},
         "age_restricted": metadata.age_restricted,
         "chapters": metadata.chapters,
         "songs": metadata.songs,
@@ -67,10 +68,12 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
 }
 export async function handle_new_track_data(track: Track, dl_uri: Awaited<ReturnType<typeof Illusive.get_download_url>>){
     if("error" in dl_uri) return dl_uri;
-    if(!await SQLTracks.track_exists(track)) 
-        return (await SQLTracks.add_playback_saved_data_to_tracks([
-            SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data!)
-        ]))[0];
+    if(!await SQLTracks.track_exists(track))
+        if(dl_uri.new_track_data !== undefined)
+            return (await SQLTracks.add_playback_saved_data_to_tracks([
+                SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data)
+            ]))[0];
+        else return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
     if ("new_track_data" in dl_uri && dl_uri.new_track_data !== undefined) {
         await SQLTracks.update_track_with_new_track_data(track, dl_uri.new_track_data);
         track = SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data!);
@@ -96,7 +99,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             if ("error" in download_uri) {
                 if (download_uri.error.toLowerCase().includes("unavailable"))
                     SQLBackpack.add_to_backpack(track.uid);
-                return download_error_callback("Coudln't find the file", download_uri.error, track, start_download);
+                return download_error_callback("Couldn't find the file", download_uri.error, track, start_download);
             }
             if("url" in download_uri && download_uri.url.includes("file://")) {
                 return download_error_callback("", "", track, start_download);

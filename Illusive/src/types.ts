@@ -2,6 +2,7 @@ import { CookieJar } from "../../origin/src/utils/cookie_util"
 import { ResponseError } from "../../origin/src/utils/types"
 import { remove } from "../../origin/src/utils/util";
 import { Chapter } from "../../origin/src/youtube_dl/types";
+import { Constants } from "./constants";
 import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
@@ -373,7 +374,8 @@ export class MusicService {
     }
     async get_rest_of_playlist(continuation_data: any){
         const continued_tracks: Track[] = [];
-        while(continuation_data !== null){
+        let i = 0;
+        while(i++ <= Constants.safe_max_fetch_continues && continuation_data !== null){
             const continuation = await this.get_playlist_continuation!(continuation_data);
             if("error" in continuation) break;
             continued_tracks.push(...continuation.tracks);

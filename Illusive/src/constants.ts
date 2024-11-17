@@ -6,4 +6,5 @@ export namespace Constants {
     export const playlist_cache_duration_seconds = 60 * 30;
     export const fastpack_track_threshold = 4;
     export const safe_max_fetch_continues = 20;
+    export const previous_restart_threshold = 0.10;
 }

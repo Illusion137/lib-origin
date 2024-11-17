@@ -7,7 +7,7 @@ import { download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_valu
 import { Prefs } from "../../../prefs";
 import { ExampleObj } from "../example_objs";
 import { db } from './database';
-import { lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
+import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
@@ -48,7 +48,7 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]){
     return await Promise.all(
         tracks.map(async(track) => {
             track.playback = {
-                "artwork": Illusive.get_track_artwork(track),
+                "artwork": Illusive.get_track_artwork(document_directory(""), track),
                 "added": false,
                 "successful": false
             }
@@ -94,10 +94,10 @@ export function sql_track_to_track(sql_track: SQLTrack): Track{
         "unreleased": Boolean(sql_track.unreleased),
         "meta": {
             "plays": meta.plays,
-            "added_date": new Date(meta.added_date),
-            "last_played_date": new Date(meta.last_played_date)
+            "added_date": meta.added_date,
+            "last_played_date": meta.last_played_date
         },
-        "playback": {"artwork": Illusive.get_track_artwork(sql_track as unknown as Track), "added": false, "successful": false},
+        "playback": {"artwork": Illusive.get_track_artwork(document_directory(""), sql_track as unknown as Track), "added": false, "successful": false},
         "downloading": {}
     });
 }
@@ -112,7 +112,6 @@ export async function mark_track_undownloaded(uid: string) {
     await clean_directories();
 }
 export async function track_exists(track: Track){
-    await fetch_track_data();
     for(const t of GLOBALS.global_var.sql_tracks){
         if(!is_empty(t.illusi_id) && !is_empty(track.illusi_id) && t.illusi_id === track.illusi_id) return true;
         if(!is_empty(t.youtube_id) && !is_empty(track.youtube_id) && t.youtube_id === track.youtube_id) return true;
@@ -162,6 +161,7 @@ export async function fetch_track_data_from_uid(uid: string): Promise<Track> {
 }
 
 export async function insert_all_tracks(tracks: Track[]){
+    await fetch_track_data();
     const promise_tracks: Promises = [];
     for(const track of tracks)
         promise_tracks.push(insert_track(track));
@@ -171,7 +171,7 @@ export async function insert_track(track: Track) {
     if( await track_exists(track) ) return;
     if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track);
     await db.runAsync(sql_insert_values("tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
-    await fetch_track_data();
+    GLOBALS.global_var.sql_tracks.push(track);
     if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track);
 }
 export async function update_track(track_uid: string, new_track: Track){

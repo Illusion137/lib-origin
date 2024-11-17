@@ -5,23 +5,20 @@ export default class Cache extends Map {
         super();
         this.timeout = timeout;
     }
-    setC(key: any, value: any) {
-        if (this.has(key)) {
-            clearTimeout(super.get(key).tid);
-        }
-        super.set(key, {
-            tid: setTimeout(this.delete.bind(this, key), this.timeout).unref(),
+    set(key: string, value: any): this {
+        return super.set(key, {
+            tid: new Date().getTime(),
             value,
         });
     }
-    get(key: any) {
+    get(key: string) {
         let entry = super.get(key);
         if (entry) {
             return entry.value;
         }
         return null;
     }
-    getOrSet(key: any, fn: () => any) {
+    getOrSet(key: string, fn: () => any) {
         if (this.has(key)) {
             return this.get(key);
         } else {
@@ -37,17 +34,20 @@ export default class Cache extends Map {
             return value;
         }
     }
-    deleteC(key: any) {
+    delete(key: string): boolean {
         let entry = super.get(key);
         if (entry) {
-            clearTimeout(entry.tid);
-            super.delete(key);
+            return super.delete(key);
         }
+        return false;
     }
     clear() {
-        for (let entry of this.values()) {
-            clearTimeout(entry.tid);
-        }
         super.clear();
+    }
+    clear_expired(){
+        for (const entry of this.entries()) {
+            if(entry[1].tid + this.timeout > new Date().getTime())
+                this.delete(entry[0]);
+        }
     }
 };

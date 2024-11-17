@@ -16,13 +16,14 @@ import { ISOString, Track } from '../../types';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Illusive } from '../../illusive';
 import { handle_new_track_data } from './downloader';
+import { Constants } from '../../constants';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
 let setup_calls = 0;
 export async function setup_track_player(): Promise<boolean> {
-    if(setup_calls % 2 == 0){
+    if(setup_calls % 2 == 1){
         GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
         let index = 0;
         try {
@@ -104,6 +105,12 @@ export async function track_player_previous(){
         previous_next_mutex = true;
         const active_index = await TrackPlayer.getActiveTrackIndex();
         if (active_index === undefined) return;
+        const progress = await TrackPlayer.getProgress();
+        if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
+            await TrackPlayer.seekTo(0);
+            previous_next_mutex = false;
+            return;
+        }
         if (GLOBALS.global_var.playing_tracks[active_index - 1].playback!.successful === false) {
             await TrackPlayer.skipToPrevious();
             await TrackPlayer.skipToPrevious();

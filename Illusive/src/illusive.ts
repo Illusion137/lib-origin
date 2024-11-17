@@ -237,7 +237,7 @@ export namespace Illusive {
 
     type ExportTrack = {"new_track_data"?: Track}
     export async function get_download_url(document_directory: string, track: Track, quality?: string): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError>{
-        if(!is_empty(track.media_uri) || !is_empty(track.imported_id))
+        if(!is_empty(track.media_uri))
             return { "url": document_directory + media_archive_path + track.media_uri! };
         else if(!is_empty(track.youtube_id))
             return await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio");
@@ -281,11 +281,11 @@ export namespace Illusive {
         return `https://img.youtube.com/vi/${video_id}/0.jpg`;
     }
 
-    export async function get_best_track_artwork(track: Track): Promise<Artwork> {
+    export async function get_best_track_artwork(document_directory: string, track: Track): Promise<Artwork> {
         if(!is_empty(track.imported_id))
             return imported_thumbnail;
         if(!is_empty(track.thumbnail_uri))
-            return {"uri": track.thumbnail_uri!, "cache": 'force-cache'};
+            return {"uri": document_directory + thumbnail_archive_path + track.thumbnail_uri!, "cache": 'force-cache'};
         if(Prefs.get_pref('prioritize_youtube_thumbnail')){
             if(!is_empty(track.youtube_id))
                 return {"uri": await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), "cache": 'force-cache'};
@@ -301,11 +301,11 @@ export namespace Illusive {
         return illusi_dark_icon;
     }
 
-    export function get_track_artwork(track: Track): Artwork {
+    export function get_track_artwork(document_directory: string, track: Track): Artwork {
         if(!is_empty(track.imported_id))
             return imported_thumbnail;
         if(!is_empty(track.thumbnail_uri))
-            return {"uri": track.thumbnail_uri!, "cache": 'force-cache'};
+            return {"uri": document_directory + thumbnail_archive_path + track.thumbnail_uri!, "cache": 'force-cache'};
         if(Prefs.get_pref('prioritize_youtube_thumbnail')){
             if(!is_empty(track.youtube_id))
                 return {"uri": `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, "cache": 'force-cache'};
