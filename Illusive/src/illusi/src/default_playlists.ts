@@ -6,52 +6,66 @@ import { CompactPlaylistData, DefaultPlaylist } from "../../types";
 import { Prefs } from '../../prefs';
 import { is_empty } from '../../../../origin/src/utils/util';
 
+//call await SQLTracks.fetch_track_data(); before track_function prolly
 export const default_playlists: DefaultPlaylist[] = [
     { "name": "Recently Added", "track_function": (async() => {
-        await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-        const tracks = [...GLOBALS.global_var.sql_tracks].reverse().slice(0, default_playlist_max_size);
+        const tracks = [...GLOBALS.global_var.sql_tracks.slice(-default_playlist_max_size)].reverse();
         return tracks;
+    }), "four_track_function": (async() => {
+        return GLOBALS.global_var.sql_tracks.slice(-4).reverse();
     }) },
     { "name": "Past Queue", "force_order": true, "track_function": (async() => {
-        await SQLTracks.fetch_track_data();
-        const tracks = [...GLOBALS.global_var.past_playing_tracks];
+        const tracks = GLOBALS.global_var.past_playing_tracks;
         return tracks;
+    }), "four_track_function": (async() => {
+        return GLOBALS.global_var.past_playing_tracks.slice(0, 4);
     }) },
     { "name": "Recently Played", "track_function": (async() => {
-        await SQLTracks.fetch_track_data();
-        const tracks = [...await SQLRecentlyPlayed.recently_played_tracks()].reverse();
+        const tracks = await SQLRecentlyPlayed.recently_played_tracks();
         return tracks;
+    }), "four_track_function": (async() => {
+        return await SQLRecentlyPlayed.recently_played_tracks(4);
     }) },
     { "name": "Formerly Played", "track_function": (async() => {
         await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);;
         return tracks;
+    }), "four_track_function": (async() => {
+        return [];
     }) },
     { "name": "Imported", "track_function": (async() => {
         await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().filter(track => !is_empty(track.imported_id)).slice(0, default_playlist_max_size);
         return tracks;
+    }), "four_track_function": (async() => {
+        return [];
     }) },
     { "name": "Downloaded", "track_function": (async() => {
         await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].reverse().filter(track => !is_empty(track.media_uri) && is_empty(track.imported_id)).slice(0, default_playlist_max_size);
         return tracks;
+    }), "four_track_function": (async() => {
+        return [];
     }) },
     { "name": "Most Played", "track_function": (async() => {
         await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => b.meta!.plays - a.meta!.plays).slice(0, default_playlist_max_size);
         return tracks;
+    }), "four_track_function": (async() => {
+        return [];
     }) },
     { "name": "Least Played", "track_function": (async() => {
         await SQLTracks.fetch_track_data();
 		const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
         const tracks = [...GLOBALS.global_var.sql_tracks].sort((a,b) => a.meta!.plays - b.meta!.plays).slice(0, default_playlist_max_size);
         return tracks;
+    }), "four_track_function": (async() => {
+        return [];
     }) },
 ];
 

@@ -11,8 +11,8 @@ export async function insert_recently_played_track(track: Track){
     await db.runAsync(`${sql_delete_from("recently_played_tracks")} ${sql_where<Track>(["uid", track.uid])}`);
     await db.runAsync(sql_insert_values("recently_played_tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
 }
-export async function recently_played_tracks(): Promise<Track[]>{
-    const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("recently_played_tracks", "*"));
+export async function recently_played_tracks(count?: number): Promise<Track[]>{
+    const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("recently_played_tracks", "*", count) + " order by rowid desc");
     const recently_played_tracks = recently_played_sql_tracks.map(track => sql_track_to_track(track));
     for(let i = 0; i < recently_played_tracks.length; i++){
         const exists = await track_uid_exists(recently_played_tracks[i]);

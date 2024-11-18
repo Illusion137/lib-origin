@@ -61,11 +61,12 @@ export interface DefaultPlaylist {
     name: string;
     force_order?: boolean;
     track_function: () => Promise<Track[]>;
+    four_track_function: () => Promise<Track[]>
 };
 export interface ResolvedDefaultPlaylist {
     name: string;
     force_order?: boolean;
-    tracks: Track[];
+    four_track: Track[];
 };
 
 export interface QueueTrack {
