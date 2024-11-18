@@ -40,6 +40,7 @@
         "expo-network": "^6.0.1",
         "expo-sharing": "^12.0.1",
         "expo-sqlite": "^14.0.6",
+        "fast-xml-parser": "^4.5.0",
         "i": "^0.3.7",
         "jsdom-jscore-rn": "^0.1.9",
         "node-sync": "^0.5.6",

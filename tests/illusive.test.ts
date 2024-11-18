@@ -64,7 +64,7 @@ function test_user_playlists(service_names: MusicServiceType[]){ test_music_serv
 
 // test_search(illusive_music_services, "Lelo camelot");
 // test_user_playlists(illusive_music_services);
-test_user_playlists(["Apple Music"]);
+// test_user_playlists(["Apple Music"]);
 
 // test_fetch_playlists("YouTube", [
 //     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
@@ -72,10 +72,10 @@ test_user_playlists(["Apple Music"]);
 //     "PLpBymDh5XkKT8RfHiXz9cnWsc6F1pa7W3",
 //     "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
 // ])
-// test_fetch_playlists("YouTube Music", [
-//     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
-//     "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA"
-// ])
+test_fetch_playlists("YouTube Music", [
+    "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
+    "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+])
 // test_fetch_playlists("Spotify", [
 //     "https://open.spotify.com/playlist/4uNs2lqeO0Ec43d2Sp3yp4",
 //     "https://open.spotify.com/album/7zezk3hbEWlOooKBLuLJKp",

@@ -53,7 +53,7 @@ export namespace GoMovies {
             "right_data":       left_right_data[1]?.innerHTML
         }
     }
-    function flw_items_to_display_contents(document : Document) : GoMovie_Display_Content[]{
+    function flw_items_to_display_contents(document: Document) : GoMovie_Display_Content[]{
         const flw_items = document.querySelectorAll(".flw-item");
         const display_contents : GoMovie_Display_Content[] = [];
         for(let i = 0; i < flw_items.length; i++)

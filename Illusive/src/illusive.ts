@@ -202,7 +202,7 @@ export namespace Illusive {
         if(music_service.get(to_music_service)?.search === undefined) return {"error": "Can't convert to this music-service"};
         possible_services = possible_services.filter(service => service !== to_music_service);
         const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
-        if(search_tracks.tracks.length === 0) return {"error": "no tracks"};
+        if(search_tracks.tracks.length === 0) return {"error": "Unable to convert track"};
         type Max = {"index": number, "value": number};
         let best: Max = {"index": 0, "value": 25};
         let all_negative_values = true;
