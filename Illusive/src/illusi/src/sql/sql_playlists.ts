@@ -154,3 +154,11 @@ export async function update_playlist_inherited_playlists(playlist_uuid: string,
 export async function update_playlist_inherited_searchs(playlist_uuid: string, inherited_searchs: InheritedSearch[]){
     await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_searchs", JSON.stringify(inherited_searchs)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
+export function inherited_playlists_action(inherited_playlists: InheritedPlaylist[], new_iplaylist: InheritedPlaylist, action: "ADD"|"REMOVE"): InheritedPlaylist[] {
+    if(action === "ADD") return inherited_playlists.concat(new_iplaylist);
+    else return inherited_playlists.filter(item => !(item.uuid === new_iplaylist.uuid && item.mode === new_iplaylist.mode));
+}
+export function inherited_searches_action(inherited_searches: InheritedSearch[], new_isearch: InheritedSearch, action: "ADD"|"REMOVE"): InheritedSearch[] {
+    if(action === "ADD") return inherited_searches.concat(new_isearch);
+    else return inherited_searches.filter(item => !(item.query === new_isearch.query && item.mode === new_isearch.mode));
+}

@@ -14,6 +14,8 @@ export namespace Prefs {
         show_in_settings?: boolean
         range?: {"start": number, "end": number}
         options?: string[]
+        description?: string
+        experimental?: boolean
     };
     const user_uuid = <string>uuid.default.v4();
     export const prefs = {
@@ -31,33 +33,34 @@ export namespace Prefs {
 
         "default_playlist_max_size":             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true}       as Pref<number>,
         "recently_played_max_size":              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true}       as Pref<number>,
-        "download_queue_max_length":             {default_value: 5, current_value: 5, type: "NUMBER", show_in_settings: true}           as Pref<number>,
-        "recent_search_limit":                   {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true}         as Pref<number>,
+        "download_queue_max_length":             {default_value: 5, current_value: 5, type: "NUMBER", range: {start: 1, end: 10}, show_in_settings: true}           as Pref<number>,
+        "recent_search_limit":                   {default_value: 20, current_value: 20, type: "NUMBER", range: {start: 1, end: 30}, show_in_settings: true}         as Pref<number>,
         "soundcloud_playlist_limit":             {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true}         as Pref<number>,
         "spotify_playlist_limit":                {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true}       as Pref<number>,
-        "tracks_per_sample":                     {default_value: 10, current_value: 10, type: "NUMBER", show_in_settings: true}         as Pref<number>,
+        "tracks_per_sample":                     {default_value: 10, current_value: 10, type: "NUMBER", range: {start: 1, end: 10}, show_in_settings: true}         as Pref<number>,
         "playlist_cache_seconds":                {default_value: Constants.playlist_cache_duration_seconds, current_value: Constants.playlist_cache_duration_seconds, type: "NUMBER", show_in_settings: true}       as Pref<number>,
         "edit_mode_disables_playing":            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "full_queue_disables_playing":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "show_track_duration":                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "auto_cache_thumbnails":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "auto_clean_directories":                {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "can_clean_directories":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "use_cookies_on_download":               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "use_cookies_on_search":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "only_play_downloaded":                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "auto_download":                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "disable_linker":                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "always_shuffle":                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean> ,
         "get_account_playlists_in_get_playlist": {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "fastpack":                              {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "expensive_wifi_only":                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "prioritize_youtube_thumbnail":          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "simple_tags":                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
-        "hide_errors":                           {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
-        "track_player_file_searching":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+        "hide_errors":                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "keep_prefs":                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
-        "dev_mode":                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
+
+        "enable_linker":                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
+        "fastpack":                              {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, experimental: true}    as Pref<boolean>,
+        "auto_clean_directories":                {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
+        "can_clean_directories":                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
+        "track_player_file_searching":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
+        "dev_mode":                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
     };
     const user_uuid_key: PrefOptions = "user_uuid";
 
