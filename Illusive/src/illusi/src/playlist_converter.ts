@@ -38,7 +38,7 @@ export function track_intersection(f: Track, t: Track): boolean{
 export async function playlist_tracks(uuid_uri: string){
     if(uuid_uri === Constants.library_write_playlist){
         await SQLTracks.fetch_track_data();
-        return [...GLOBALS.global_var.sql_tracks];
+        return GLOBALS.global_var.sql_tracks.slice();
     }
     const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
     const is_uuid = uuidv4_regex.test(uuid_uri);

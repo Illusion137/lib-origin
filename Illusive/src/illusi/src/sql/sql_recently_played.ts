@@ -11,20 +11,20 @@ export async function insert_recently_played_track(track: Track){
     await db.runAsync(`${sql_delete_from("recently_played_tracks")} ${sql_where<Track>(["uid", track.uid])}`);
     await db.runAsync(sql_insert_values("recently_played_tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
 }
-export async function recently_played_tracks(count?: number): Promise<Track[]>{
-    const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("recently_played_tracks", "*", count) + " order by rowid desc");
+export async function recently_played_tracks(limit?: number): Promise<Track[]>{
+    const recently_played_sql_tracks: SQLTrack[] = await db.getAllAsync(sql_select<Track>("recently_played_tracks", "*", limit, "DESC"));
     const recently_played_tracks = recently_played_sql_tracks.map(track => sql_track_to_track(track));
     for(let i = 0; i < recently_played_tracks.length; i++){
         const exists = await track_uid_exists(recently_played_tracks[i]);
         if(exists)
             recently_played_tracks[i] = await track_from_uid(recently_played_tracks[i].uid);
-        else if(!is_empty(recently_played_tracks[i].imported_id)) recently_played_tracks.slice(i, 1);
+        else if(!is_empty(recently_played_tracks[i].imported_id)) recently_played_tracks.splice(i, 1);
     }
     return recently_played_tracks;
 }
 export async function cleanup_recently_played(){
     const recently_played_max_size = Prefs.get_pref('recently_played_max_size');
-    const recently_played_data = (await recently_played_tracks()).slice(-recently_played_max_size);
+    const recently_played_data = (await recently_played_tracks()).slice(0, recently_played_max_size);
     
     if(recently_played_data.length === recently_played_max_size){
         await db.execAsync(sql_delete_from("recently_played_tracks"));

@@ -66,7 +66,7 @@ export interface DefaultPlaylist {
 export interface ResolvedDefaultPlaylist {
     name: string;
     force_order?: boolean;
-    four_track: Track[];
+    four_tracks: Track[];
 };
 
 export interface QueueTrack {

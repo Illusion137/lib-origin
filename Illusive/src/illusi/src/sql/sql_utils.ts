@@ -19,8 +19,8 @@ export async function create_table<T extends Record<string, any>>(table: SQLTabl
     await db.execAsync(sql_create_table<T>(table, obj));
 }
 
-export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*", limit?: number){
-    return `SELECT ${String(what)} FROM ${table} LIMIT ${limit ?? "*"}`;
+export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*", limit?: number, order_by?: "ASC"|"DESC"){
+    return `SELECT ${String(what)} FROM ${table}` + (order_by ? ` ORDER BY id ${order_by}` : "") + (limit ? ` LIMIT ${limit}` : "");
 }
 export function sql_select_count<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*"){
     return `SELECT COUNT(${table}.${String(what)}) FROM ${table}`;

@@ -7,6 +7,7 @@ import TrackPlayer, {
     PitchAlgorithm,
     TrackType
 } from 'react-native-track-player';
+import * as fs from 'expo-file-system';
 import * as GLOBALS from './globals';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLBackpack from './sql/sql_backpack';
@@ -17,6 +18,8 @@ import { is_empty } from '../../../../origin/src/utils/util';
 import { Illusive } from '../../illusive';
 import { handle_new_track_data } from './downloader';
 import { Constants } from '../../constants';
+import { alert_error, alert_info } from './alert';
+import { Prefs } from '../../prefs';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -73,6 +76,24 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         if (url_data.error.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
+    }
+    else if(url_data.url.includes("file://") && Prefs.get_pref('track_player_file_searching')){
+        const info = await fs.getInfoAsync(url_data.url);
+        if(!info.exists) {
+            const docs = await fs.readDirectoryAsync(fs.documentDirectory!);
+            for(const doc of docs) {
+                if(doc.includes(track.uid)) {
+                    try {                        
+                        alert_info("FOUND MISSING FILE -> moving it to media_directory");
+                        await fs.moveAsync({"from": fs.documentDirectory! + doc, "to": SQLfs.media_directory()});
+                        break;
+                    } catch (error) {
+                        alert_error(String(error));
+                        break;
+                    }
+                }
+            }
+        }
     }
     const nt_response = await handle_new_track_data(track, url_data);
     if(!("error" in nt_response)) track = nt_response;

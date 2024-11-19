@@ -46,13 +46,8 @@ function test_fetch_playlists(service_name: MusicServiceType, playlist_ids: stri
         const music_service = Illusive.music_service.get(service_name)!;
         for(let i = 0; i < playlist_ids.length; i++){
             test.concurrent(`${playlist_ids[i]}-${i}`, async() => {
-                let result: any = await music_service.get_playlist(playlist_ids[i]);
-                let ok = <boolean><unknown>illusive_expect_ok(result);
-                while(ok && result !== null && result?.playlist_continuation !== null){
-                    result = await music_service.get_playlist_continuation!(result.playlist_continuation);
-                    if(result.playlist_continuation === null) break;
-                    ok = <boolean><unknown>illusive_expect_ok(result);
-                }
+                let result: any = await music_service.get_full_playlist(playlist_ids[i]);
+                <boolean><unknown>illusive_expect_ok(result);
             }, timeout_ms);
         }
     });
@@ -72,10 +67,10 @@ function test_user_playlists(service_names: MusicServiceType[]){ test_music_serv
 //     "PLpBymDh5XkKT8RfHiXz9cnWsc6F1pa7W3",
 //     "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
 // ])
-test_fetch_playlists("YouTube Music", [
-    "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
-    "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
-])
+// test_fetch_playlists("YouTube Music", [
+//     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
+//     "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+// ])
 // test_fetch_playlists("Spotify", [
 //     "https://open.spotify.com/playlist/4uNs2lqeO0Ec43d2Sp3yp4",
 //     "https://open.spotify.com/album/7zezk3hbEWlOooKBLuLJKp",
@@ -88,7 +83,8 @@ test_fetch_playlists("YouTube Music", [
 // test_fetch_playlists("Amazon Music", [
 //     "https://music.amazon.com/my/playlists/a5dc1cff-2ccb-4e52-8144-d5adae28e33d"
 // ])
-// test_fetch_playlists("Apple Music", [
-//     "https://music.apple.com/us/library/playlist/p.7Pkeq4PcVPLK7Ae?l=en-US",
-//     "https://music.apple.com/us/library/playlist/p.B0A8O2Jie4KpRZA?l=en-US"
-// ])
+test_fetch_playlists("Apple Music", [
+    // "https://music.apple.com/us/library/playlist/p.7Pkeq4PcVPLK7Ae?l=en-US",
+    // "https://music.apple.com/us/library/playlist/p.B0A8O2Jie4KpRZA?l=en-US",
+    "https://music.apple.com/us/library/playlist/p.EYWrOa3FzYvagQD?l=en-US"
+])

@@ -104,11 +104,13 @@ export function sql_track_to_track(sql_track: SQLTrack): Track{
 
 export async function mark_track_downloaded(uid: string, media_uri: string) {
     await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
-    await fetch_track_data();
+    const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
+    if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = media_uri;
 }
 export async function mark_track_undownloaded(uid: string) {
     await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
-    await fetch_track_data();
+    const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
+    if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = "";
     await clean_directories();
 }
 export async function track_exists(track: Track){
@@ -176,11 +178,9 @@ export async function insert_track(track: Track) {
 }
 export async function update_track(track_uid: string, new_track: Track){
     await db.runAsync(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, true)} ${sql_where<Track>(["uid", track_uid])}`);
-    await fetch_track_data();
 }
 export async function update_track_meta_data(track_uid: string, new_meta: TrackMetaData){
     await db.runAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
-    await fetch_track_data();
 }
 
 export async function update_track_with_new_track_data(old_track: Track, new_track: Track){

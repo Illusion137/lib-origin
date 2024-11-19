@@ -38,7 +38,8 @@ export async function delete_track(track_data: Track, write_playlist_uuid: strin
             await SQLPlaylists.delete_track_playlist(playlists[i].uuid, track_data.uid);
         }
         await SQLTracks.delete_track(track_data.uid);
-        await SQLTracks.fetch_track_data(); 
+        const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === track_data.uid);
+        if(idx !== -1) GLOBALS.global_var.sql_tracks.splice(idx, 1);
         await refresh_data();
     } else {
         await SQLPlaylists.delete_track_playlist(write_playlist_uuid, track_data.uid);

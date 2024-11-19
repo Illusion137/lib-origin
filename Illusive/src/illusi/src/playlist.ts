@@ -1,8 +1,8 @@
-import { Playlist, Track } from "../../types";
+import { Playlist, SortType, Track } from "../../types";
 import { default_playlists } from "./default_playlists";
 
-export function sort_playlist_tracks(playlist: Playlist, tracks: Track[]): Track[]{
-    switch(playlist.sort){
+export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Track[]{
+    switch(sort_mode){
         case undefined:
         case "OLDEST":       return tracks;
         case "NEWEST":       return [...tracks].reverse();
@@ -27,7 +27,7 @@ export async function resolved_default_playlists(){
         return {
             "name": p.name,
             "force_order": p.force_order,
-            "tracks": (await p.track_function()).slice(0,4)
+            "four_tracks": await p.four_track_function()
         };
     }));
 }

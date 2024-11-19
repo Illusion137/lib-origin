@@ -266,14 +266,15 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
         const song_keys = Object.keys(playlist_songs);
 
         const playlist_meta_main_key = get_main_key(playlist_response.data.resources["library-playlists"]);
+        const total_songs = playlist_response.data.resources["library-playlists"][playlist_meta_main_key].relationships.tracks.meta.total;
         return {
             "title": playlist_data.attributes.name,
             "creator": [{"name": playlist_data.attributes.curatorName, "uri": null}],
             "artwork_url": parse_apple_music_artwork(playlist_data.attributes?.artwork?.url),
-            "description": playlist_data.attributes.description.standard,
+            "description": playlist_data.attributes?.description?.standard,
             "date": <ISOString>playlist_data.attributes.lastModifiedDate,
             "tracks": song_keys.map(key => parse_apple_music_user_playlist_track(playlist_songs[key])), 
-            "continuation": {"playlist_id": playlist_id, "offset": 0 + song_keys.length, "total": playlist_response.data.resources["library-playlists"][playlist_meta_main_key].relationships.tracks.meta.total, "authorization": playlist_response.authorization} as AppleMusicPlaylistContinuation
+            "continuation": 0 + song_keys.length >= total_songs ? null : {"playlist_id": playlist_id, "offset": 0 + song_keys.length, "total": playlist_response.data.resources["library-playlists"][playlist_meta_main_key].relationships.tracks.meta.total, "authorization": playlist_response.authorization} as AppleMusicPlaylistContinuation
         };
     }
     else {
@@ -290,7 +291,7 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
 }
 export async function apple_music_get_playlist_continuation(opts: AppleMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation>{
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
-    if(opts.offset >= opts.total) return { "tracks":[], "continuation": null };
+    if(opts === undefined || opts.offset >= opts.total) return { "tracks":[], "continuation": null };
     const playlist_response = await Origin.AppleMusic.get_playlist_continuation(opts.playlist_id, opts.offset, opts.authorization, {"cookie_jar": cookie_jar});
     if("error" in playlist_response) return { "tracks":[], "continuation": null, "error": [playlist_response] };
     const playlist_songs = playlist_response.resources['library-songs'];

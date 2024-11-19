@@ -4,7 +4,7 @@ import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises
 import { obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { ExampleObj } from "../example_objs";
 import { all_promises, array_exclude, array_include, array_mask, track_query_filter } from "../../../illusive_utilts";
-import { fetch_track_data, sql_track_to_track } from "./sql_tracks";
+import { sql_track_to_track } from "./sql_tracks";
 import { db } from "./database";
 
 function playlist_to_sqllite_insertion(playlist: Playlist){
@@ -63,9 +63,8 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
         }
     }
     if(cplaylist_data.inherited_searchs!.length === 0) return tracks;
-    await fetch_track_data();
     for(const inherited_search of cplaylist_data.inherited_searchs!){
-        const inherited_tracks = track_query_filter([...GLOBALS.global_var.sql_tracks], inherited_search.query);
+        const inherited_tracks = track_query_filter(GLOBALS.global_var.sql_tracks, inherited_search.query);
         switch (inherited_search.mode) {
             case "INCLUDE": tracks = array_include<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
             case "EXCLUDE": tracks = array_exclude<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
