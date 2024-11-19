@@ -20,6 +20,7 @@ import { handle_new_track_data } from './downloader';
 import { Constants } from '../../constants';
 import { alert_error, alert_info } from './alert';
 import { Prefs } from '../../prefs';
+import path from 'path';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -85,7 +86,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
                 if(doc.includes(track.uid)) {
                     try {                        
                         alert_info("FOUND MISSING FILE -> moving it to media_directory");
-                        await fs.moveAsync({"from": fs.documentDirectory! + doc, "to": SQLfs.media_directory()});
+                        await fs.moveAsync({"from": fs.documentDirectory! + doc, "to": SQLfs.media_directory() + "/" + path.basename(doc)});
                         break;
                     } catch (error) {
                         alert_error(String(error));

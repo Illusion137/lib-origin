@@ -55,7 +55,7 @@ export namespace Prefs {
         "prioritize_youtube_thumbnail":          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "simple_tags":                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "hide_errors":                           {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
-        "track_player_file_searching":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
+        "track_player_file_searching":           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
         "keep_prefs":                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         "dev_mode":                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}  as Pref<boolean>,
     };
