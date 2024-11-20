@@ -1,5 +1,5 @@
 import * as GLOBALS from '../globals';
-import * as FileSystem from 'expo-file-system';
+import * as SQLfs from './sql_fs';
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Illusive } from "../../../illusive";
 import { ISOString, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
@@ -202,10 +202,10 @@ export async function restore_thumbnail_cache(){
 
 export async function clean_thumbnail_cache(){
     await fetch_track_data();
-    const files = await FileSystem.readDirectoryAsync(thumbnail_directory());
+    const files = await SQLfs.read_directory(thumbnail_directory(""));
     const all_promises: Promises = [];
     for(const file of files)
-        all_promises.push(FileSystem.deleteAsync(thumbnail_directory() + file, {idempotent: true}))
+        all_promises.push(SQLfs.delete_item(thumbnail_directory(file)))
     await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
     await Promise.all(all_promises);
 }
@@ -213,9 +213,9 @@ export async function clean_thumbnail_cache(){
 export async function clean_directories(){
     if(!Prefs.get_pref('can_clean_directories')) return;
     await fetch_track_data();
-    const thumbnail_files = await FileSystem.readDirectoryAsync(thumbnail_directory());
-    const media_files     = await FileSystem.readDirectoryAsync(media_directory());
-    const lyrics_files    = await FileSystem.readDirectoryAsync(lyrics_directory());
+    const thumbnail_files = await SQLfs.read_directory(thumbnail_directory(""));
+    const media_files     = await SQLfs.read_directory(media_directory(""));
+    const lyrics_files    = await SQLfs.read_directory(lyrics_directory(""));
 
     const thumbnail_uris = GLOBALS.global_var.sql_tracks.map(({thumbnail_uri}) => thumbnail_uri).filter(item => item !== undefined);
     const media_uris = GLOBALS.global_var.sql_tracks.map(({media_uri}) => media_uri).filter(item => item !== undefined);
@@ -225,12 +225,12 @@ export async function clean_directories(){
 
     for(const file of thumbnail_files)
         if(!thumbnail_uris.includes(file))
-            files_to_delete.push(FileSystem.deleteAsync(thumbnail_directory() + file, {"idempotent": true}));
+            files_to_delete.push(SQLfs.delete_item(thumbnail_directory(file)));
     for(const file of media_files)
         if(!media_uris.includes(file))
-            files_to_delete.push(FileSystem.deleteAsync(media_directory() + file, {"idempotent": true}));
+            files_to_delete.push(SQLfs.delete_item(media_directory(file)));
     for(const file of lyrics_files)
         if(!lyrics_uris.includes(file))
-            files_to_delete.push(FileSystem.deleteAsync(lyrics_directory() + file, {"idempotent": true}));
+            files_to_delete.push(SQLfs.delete_item(lyrics_directory(file)));
     await Promise.all(files_to_delete);
 }

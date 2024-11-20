@@ -254,3 +254,9 @@ export function random_of<T>(arr: T[]): T{
 export async function all_promises(promises: Promises){
     return await Promise.all(promises);
 }
+export function all_words(str: string){
+    return str.split(" ").map(word => remove(word, /[^a-zA-Z\d\s:]/g));
+}
+export function str_or_include(str1: string, str2: string){
+    return str1.includes(str2) || str2.includes(str1);
+}

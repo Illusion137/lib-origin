@@ -4,7 +4,6 @@ import * as SQLBackpack from './sql/sql_backpack';
 import * as GLOBALS from './globals';
 import * as ffmpeg from 'react-native-ffmpeg';
 import * as Haptics from 'expo-haptics';
-import * as fs from 'expo-file-system';
 import { Audio } from 'expo-av';
 import { Track, SetState, DownloadTrackResult, TrackMetaData, NamedUUID, DownloadFromIdResult } from "../../types";
 import { Prefs } from '../../prefs';
@@ -112,7 +111,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             }
             try {
                 if (start_download !== undefined) start_download(true);
-                const new_uri = SQLfs.media_directory() + track.uid + '.m4a';
+                const new_uri = SQLfs.media_directory(track.uid + '.m4a');
                 ffmpeg.RNFFmpeg.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
                     try {
                         if(execution.returnCode !== Constants.ffmpeg_retcode_success)
@@ -157,8 +156,8 @@ export async function download_track(track: Track, progress_updater?: SetState, 
 }
 
 export async function ffcache_yt(url: string, track: Track){
-    const hls_out_uri = fs.cacheDirectory + `playlist_${track.youtube_id}.m3u8`;
-    const hls_segments = fs.cacheDirectory + `file_${track.youtube_id}__%d.m4a`;
+    const hls_out_uri = SQLfs.cache_directory(`playlist_${track.youtube_id}.m3u8`);
+    const hls_segments = SQLfs.cache_directory(`file_${track.youtube_id}__%d.m4a`);
     const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
     ffmpeg.RNFFmpeg.executeAsync(cmd, async (execution) => {execution});
     return hls_out_uri;

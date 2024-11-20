@@ -72,7 +72,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
     }
     return { //Playlist
         "title": parse_runs(playlist_response.data.playlist_data.title.runs),
-        "creator": youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
+        "creator": youtube_music_split_artists(playlist_response.data.playlist_data?.subtitle?.runs as Runs),
         "artwork_url": playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
         "date": <ISOString>date_from({"year": parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString(),
         "tracks": playlist_response.data.tracks.map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
@@ -204,6 +204,12 @@ type SoundcloudPlaylistContinuation = {"next_href": string|null, "client_id": st
 export async function soundcloud_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
     const playlist_limit: number = Prefs.get_pref("soundcloud_playlist_limit");
+
+    const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {"cookie_jar": cookie_jar});
+    if("error" in hydration) return {"title": "", "tracks": [], "continuation": null, "error": [hydration as ResponseError]};
+    const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);
+    if(typeof client_id === "object") return {"title": "", "tracks": [], "continuation": null, "error": [client_id]};
+
     if(url.includes("you/likes")){
         const playlist_response = await Origin.SoundCloud.liked_music({"cookie_jar": cookie_jar})
         if("error" in playlist_response) return {"title": "", "tracks": [], "continuation": null, "error": [playlist_response]};
@@ -211,7 +217,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
             "title": "Liked Music",
             "creator": [{"name": "You", "uri": null}],
             "tracks": playlist_response.data.collection.map(({track}) => track).map(soundcloud_parse_track),
-            "continuation": null
+            "continuation": {"next_href": playlist_response.data.next_href, "client_id": client_id, "depth": 1} as SoundcloudPlaylistContinuation
         };
     }
     else if(url.includes("/sets/")){
@@ -227,10 +233,6 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
             "continuation": null
         };
     }
-    const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {"cookie_jar": cookie_jar});
-    if("error" in hydration) return {"title": "", "tracks": [], "continuation": null, "error": [hydration as ResponseError]};
-    const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);
-    if(typeof client_id === "object") return {"title": "", "tracks": [], "continuation": null, "error": [client_id]};
     const artist_response = await Origin.SoundCloud.get_artist("TRACKS", {"cookie_jar": cookie_jar, "client_id": client_id, "artist_id": url, "limit": playlist_limit});
     if("error" in artist_response) return {"title": "", "tracks": [], "continuation": null, "error": [artist_response]};
     return {

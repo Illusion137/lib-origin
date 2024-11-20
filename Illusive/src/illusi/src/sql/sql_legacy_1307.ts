@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import * as SQLfs from './sql_fs';
 import * as LegacyTypes1307 from '../legacy/1307/legacy_types';
 import * as uuid from "react-native-uuid";
 import { is_empty } from "../../../../../origin/src/utils/util";
@@ -10,7 +10,7 @@ import { media_directory } from './sql_fs';
 import { parse_youtube_title_artist } from '../../../gen/youtube_parser';
 
 export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1307.Track): Promise<Track>{
-    const media_info = is_empty(legacy_1307_track.media_uri) ? null : await FileSystem.getInfoAsync(media_directory() + legacy_1307_track.media_uri);
+    const media_info = is_empty(legacy_1307_track.media_uri) ? null : await SQLfs.info(media_directory(legacy_1307_track.media_uri));
     const zero_iso = <ISOString>new Date(0).toISOString();
     const download_date: ISOString = media_info !== null && media_info.exists && media_info.isDirectory === false ? <ISOString>new Date(media_info.modificationTime).toISOString() : zero_iso;
     const parsed_track = parse_youtube_title_artist({uid: legacy_1307_track.uid, duration: 0, title: String(legacy_1307_track.video_name), artists: [{"name": String(legacy_1307_track.video_creator), "uri": null }]});

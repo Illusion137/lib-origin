@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import * as SQLfs from './sql_fs';
 import * as GLOBALS from '../globals';
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Primitives, SQLTables, Track } from "../../../types";
@@ -8,8 +8,7 @@ import { extract_file_extension } from '../../../illusive_utilts';
 import CookieManager from '@react-native-community/cookies';
 import { Prefs } from '../../../prefs';
 import { ExampleObj } from '../example_objs';
-import path from 'path';
-import { document_directory, media_directory, sqlite_directory, thumbnail_directory } from './sql_fs';
+import { document_directory, sqlite_directory, thumbnail_directory } from './sql_fs';
 import { db, db_path, reasign_db } from './database';
 
 export async function sql_update<T extends Record<string, any>>(table: SQLTables, item: {uid: string}, key: keyof T, value: any){
@@ -98,39 +97,39 @@ export async function download_thumbnail(track: Track){
     const best_artwork = await Illusive.get_best_track_artwork(document_directory(""), track);
     if(typeof best_artwork === "object" && is_empty(track.thumbnail_uri)) {
         const ext = extract_file_extension(best_artwork.uri);
-        const thumbnail_download = FileSystem.createDownloadResumable(best_artwork.uri, `${thumbnail_directory()}${track.uid}${ext}`);
+        const thumbnail_download = SQLfs.create_download_resumeable(best_artwork.uri, thumbnail_directory(track.uid + ext));
         await thumbnail_download.downloadAsync();
         await sql_update<Track>("tracks", track, "thumbnail_uri", track.uid + ext);
     }
 }
 
 export async function move_unsorted_media_to_folders(){
-    for(const file of await FileSystem.readDirectoryAsync(document_directory(""))){
-        let info = await FileSystem.getInfoAsync(document_directory(file));
+    for(const file of await SQLfs.read_directory(document_directory(""))){
+        let info = await SQLfs.info(document_directory(file));
         if(!info.isDirectory && info.exists){
             if(info.uri.includes(".mp4") || info.uri.includes(".mp3") || info.uri.includes(".m4a"))
-                await FileSystem.moveAsync({"from": info.uri, "to": media_directory() + path.basename(info.uri) });
+                await SQLfs.move_to_media_directory(info.uri);
         }
     }
-    for(const file of await FileSystem.readDirectoryAsync(document_directory("CachedThumbnails"))){
-        let info = await FileSystem.getInfoAsync(document_directory("CachedThumbnails") + file);
+    for(const file of await SQLfs.read_directory(document_directory("CachedThumbnails"))){
+        let info = await SQLfs.info(document_directory("CachedThumbnails") + file);
         if(!info.isDirectory && info.exists){
             if(info.uri.includes(".webp") || info.uri.includes(".png") || info.uri.includes(".jpg"))
-                await FileSystem.moveAsync({"from": info.uri, "to": thumbnail_directory() + path.basename(info.uri) });
+                await SQLfs.move_to_thumbnail_directory(info.uri);
         }
     }
 }
 
 export async function delete_database(database: SQLite.SQLiteDatabase, database_path: string){
     await database.closeAsync();
-    await FileSystem.deleteAsync(sqlite_directory() + database_path, {"idempotent": true});
+    await SQLfs.delete_item(sqlite_directory(database_path));
 }
 export async function delete_all_data(){
     await delete_database(db, db_path);
-    for(const file of await FileSystem.readDirectoryAsync(document_directory(""))){
+    for(const file of await SQLfs.read_directory(document_directory(""))){
         try {
             if(!(file.includes("RCTAsyncLocalStorage") || file == 'RCTAsyncLocalStorage_V1'))
-                await FileSystem.deleteAsync(document_directory(file), {idempotent:true});
+                await SQLfs.delete_item(document_directory(file));
         } catch (error) {}
     }
     reasign_db(await SQLite.openDatabaseAsync(db_path));
@@ -146,8 +145,8 @@ export async function delete_all_data(){
 
 export async function create_default_directories(){
     for(const directory of Illusive.default_directories)
-        if(!(await FileSystem.getInfoAsync(document_directory(directory))).exists)
-            await FileSystem.makeDirectoryAsync(document_directory(directory))
+        if(!(await SQLfs.info(document_directory(directory))).exists)
+            await SQLfs.mkdir(document_directory(directory))
 }
 
 export async function destroy_all_tables(){

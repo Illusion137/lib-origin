@@ -7,7 +7,6 @@ import TrackPlayer, {
     PitchAlgorithm,
     TrackType
 } from 'react-native-track-player';
-import * as fs from 'expo-file-system';
 import * as GLOBALS from './globals';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLBackpack from './sql/sql_backpack';
@@ -20,7 +19,6 @@ import { handle_new_track_data } from './downloader';
 import { Constants } from '../../constants';
 import { alert_error, alert_info } from './alert';
 import { Prefs } from '../../prefs';
-import path from 'path';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -79,14 +77,14 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         return 'skip';
     }
     else if(url_data.url.includes("file://") && Prefs.get_pref('track_player_file_searching')){
-        const info = await fs.getInfoAsync(url_data.url);
+        const info = await SQLfs.info(url_data.url);
         if(!info.exists) {
-            const docs = await fs.readDirectoryAsync(fs.documentDirectory!);
+            const docs = await SQLfs.read_directory(SQLfs.document_directory(""));
             for(const doc of docs) {
                 if(doc.includes(track.uid)) {
                     try {                        
                         alert_info("FOUND MISSING FILE -> moving it to media_directory");
-                        await fs.moveAsync({"from": fs.documentDirectory! + doc, "to": SQLfs.media_directory() + "/" + path.basename(doc)});
+                        await SQLfs.move_to_media_directory(SQLfs.document_directory(doc));
                         break;
                     } catch (error) {
                         alert_error(String(error));
@@ -131,6 +129,7 @@ export async function track_player_previous(){
         if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
             await TrackPlayer.seekTo(0);
             previous_next_mutex = false;
+            updated_metadata_mutex = false;
             return;
         }
         if (GLOBALS.global_var.playing_tracks[active_index - 1].playback!.successful === false) {

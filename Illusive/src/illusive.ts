@@ -7,7 +7,7 @@ import { soundcloud_download_from_id, youtube_download_from_id } from "./downloa
 import { Artwork, DownloadFromIdResult, MusicService, MusicServiceType, Track } from "./types";
 import { Prefs } from "./prefs";
 import * as Origin from '../../origin/src/index'
-import { shuffle_array } from "./illusive_utilts";
+import { all_words, shuffle_array, str_or_include } from "./illusive_utilts";
 import { is_empty, remove_topic } from "../../origin/src/utils/util";
 import { ResponseError } from "../../origin/src/utils/types";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "./get_track_mix";
@@ -204,29 +204,42 @@ export namespace Illusive {
         const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
         if(search_tracks.tracks.length === 0) return {"error": "Unable to convert track"};
         type Max = {"index": number, "value": number};
-        let best: Max = {"index": 0, "value": 25};
+        let best: Max = {"index": 0, "value": 30};
         let all_negative_values = true;
         const ttitle = track.title.toLowerCase();
-        const tartist = track.artists[0].name.toLowerCase();
+        const tartist = remove_topic(track.artists[0].name.toLowerCase());
+        const twords = all_words(ttitle);
         for(let i = 0; i < search_tracks.tracks.length; i++){
             const current: Max = {"index": i, "value": 0};
             const ctrack = search_tracks.tracks[i];
             const ctitle = ctrack.title.toLowerCase();
             const cartist = ctrack.artists[0].name.toLowerCase();
-            if(ctitle.includes(ttitle)) current.value += 30;
-            if(ctitle.includes(ttitle) && ctitle.includes(remove_topic(tartist))) current.value += 40;
-            if(ctitle.includes(ttitle) && cartist.includes(remove_topic(tartist))) current.value += 55;
-            if(cartist.includes(remove_topic(tartist))) current.value += 15;
-            if(cartist.includes(" - Topic")) current.value += 15;
+            const cwords = all_words(ctitle);
+
+            if(!twords.includes("instrumental") && cwords.includes("instrumental")) current.value -= 50;
+            if(twords.includes("instrumental") && !cwords.includes("instrumental")) current.value -= 50;
+            if(!twords.includes("spedup") && cwords.includes("spedup")) current.value -= 50;
+            if(twords.includes("spedup") && !cwords.includes("spedup")) current.value -= 50;
+            if(!twords.includes("sped up") && cwords.includes("sped up")) current.value -= 50;
+            if(twords.includes("sped up") && !cwords.includes("sped up")) current.value -= 50;
+
+            if(str_or_include(ctitle, ttitle)) current.value += 30;
+            if(str_or_include(ctitle, ttitle) && str_or_include(ctitle, tartist)) current.value += 40;
+            if(str_or_include(ctitle, ttitle) && str_or_include(cartist, tartist)) current.value += 55;
+            if(str_or_include(cartist, remove_topic(tartist))) current.value += 15;
+            if(to_music_service === "YouTube" && cartist.includes(" - Topic")) current.value += 15;
             if(ctitle.includes("Official Audio")) current.index += 10;
             if(ctitle.includes("Official Music Video")) current.index += 8;
             if(ctitle.includes("Music Video")) current.index += 5;
             if(!isNaN(track.duration) && ! isNaN(ctrack.duration))
-                current.value += (15 - Math.abs(ctrack.duration - track.duration)) * 4;
+                current.value += (6 - Math.abs(ctrack.duration - track.duration)) * 4;
 
-            if(current.value > 0) all_negative_values = false;
+            // console.log({ctitle, cartist});
+            // console.log(current);
+            if(current.value > 30) all_negative_values = false;
             if(current.value > best.value) best = current;
         }
+        // console.log(best)
         if(all_negative_values) {
             if(possible_services.length === 0)
                 return {"error": "Unable to find good conversion"};

@@ -2,13 +2,11 @@ import * as SQLfs from './sql/sql_fs'
 import * as SQLTracks from './sql/sql_tracks'
 import * as SQLPlaylists from './sql/sql_playlists'
 import * as DocumentPicker from 'react-native-document-picker'
-import * as FileSystem from 'expo-file-system'
 import { Audio } from 'expo-av';
 import { generate_new_uid } from '../../../../origin/src/utils/util';
 import { Alert } from 'react-native';
-import { extract_file_extension, path_to_directory } from '../../illusive_utilts';
-import { Playlist, Track } from '../..//types';
-import { Illusive } from '../../illusive';
+import { extract_file_extension } from '../../illusive_utilts';
+import { Playlist, Promises, Track } from '../..//types';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)){} // User cancelled the picker, exit any dialogs or menus and move on
@@ -29,14 +27,14 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: ()
     try {
         const thumbnail_uri = await DocumentPicker.pickSingle({type: [DocumentPicker.types.images], copyTo: 'documentDirectory'});
         if("copyError" in thumbnail_uri) throw thumbnail_uri.copyError;
-        
-        await FileSystem.moveAsync({from: thumbnail_uri.fileCopyUri!, to: SQLfs.thumbnail_directory() + thumbnail_uri.name});
+        if(thumbnail_uri.fileCopyUri === null) throw {"error": "fileCopyUri is null"};
+        if(thumbnail_uri.name === null) throw {"error": "name is null"};
+        await SQLfs.move_to_thumbnail_directory(thumbnail_uri.fileCopyUri, thumbnail_uri.name);
         
         playlist.thumbnail_uri = thumbnail_uri.name!;
         await SQLPlaylists.update_playlist(playlist.uuid, playlist);
         
-        const directory = path_to_directory(thumbnail_uri.fileCopyUri!);
-        await FileSystem.deleteAsync(SQLfs.document_directory(directory), { idempotent: true });
+        await SQLfs.delete_folder_of_file(thumbnail_uri.fileCopyUri);
         if(callback !== undefined) await callback();
     } catch (error) { handle_document_picker_error(error); }
 }
@@ -52,7 +50,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
     try {
         const audio_files = await DocumentPicker.pickMultiple({type: [DocumentPicker.types.audio, DocumentPicker.types.video], copyTo: 'documentDirectory'});
 
-        const all_promise_tracks: Promise<void>[] = [];
+        const all_promise_tracks: Promises = [];
         const all_file_copy_tracks: string[] = [];
 
         for(const audio_file of audio_files){
@@ -66,9 +64,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 const file_extension = extract_file_extension(audio_file.name);
                 const uid = generate_new_uid(file_name);
                 const new_file_uri = encodeURI(uid + file_extension);
-                const new_file_uri_full_path = SQLfs.document_directory("") + Illusive.media_archive_path + new_file_uri;
-                const directory = path_to_directory(audio_file.fileCopyUri);
-                await FileSystem.moveAsync({from: audio_file.fileCopyUri, to: new_file_uri_full_path});
+                const new_file_uri_full_path = await SQLfs.move_to_media_directory(audio_file.fileCopyUri, new_file_uri);
 
                 const sound_temp = new Audio.Sound();
                 await sound_temp.loadAsync({uri: new_file_uri_full_path});
@@ -88,7 +84,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                         "imported_id": uid,
                     })
                 );
-                all_promise_tracks.push(FileSystem.deleteAsync(SQLfs.document_directory(directory), { idempotent: true }));
+                all_promise_tracks.push(SQLfs.delete_folder_of_file(audio_file.fileCopyUri));
             } catch (error) { Alert.alert("Document Error", String(error)); }
         }
         

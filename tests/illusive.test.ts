@@ -57,34 +57,34 @@ function test_fetch_playlists(service_name: MusicServiceType, playlist_ids: stri
 function test_search(service_names: MusicServiceType[], query: string){ test_music_services_list(query, service_names, ["search", [query]]); } test_search;
 function test_user_playlists(service_names: MusicServiceType[]){ test_music_services_list("library", service_names, ["user_playlists_map", []]); } test_user_playlists;
 
-// test_search(illusive_music_services, "Lelo camelot");
-// test_user_playlists(illusive_music_services);
-// test_user_playlists(["Apple Music"]);
+test_search(illusive_music_services, "Lelo camelot");
+test_user_playlists(illusive_music_services);
 
-// test_fetch_playlists("YouTube", [
+test_fetch_playlists("YouTube", [
 //     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
 //     "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
 //     "PLpBymDh5XkKT8RfHiXz9cnWsc6F1pa7W3",
 //     "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
-// ])
-// test_fetch_playlists("YouTube Music", [
-//     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
-//     "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
-// ])
-// test_fetch_playlists("Spotify", [
-//     "https://open.spotify.com/playlist/4uNs2lqeO0Ec43d2Sp3yp4",
-//     "https://open.spotify.com/album/7zezk3hbEWlOooKBLuLJKp",
-//     "https://open.spotify.com/collection/tracks"
-// ])
-// test_fetch_playlists("SoundCloud", [
-//     "https://soundcloud.com/primal-illusion/sets/illusno",
-//     "https://soundcloud.com/elit3xxredtiger/sets/yktvow",
-// ])
-// test_fetch_playlists("Amazon Music", [
-//     "https://music.amazon.com/my/playlists/a5dc1cff-2ccb-4e52-8144-d5adae28e33d"
-// ])
+])
+test_fetch_playlists("YouTube Music", [
+    "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
+    // "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+])
+test_fetch_playlists("Spotify", [
+    "https://open.spotify.com/playlist/4uNs2lqeO0Ec43d2Sp3yp4",
+    "https://open.spotify.com/album/7zezk3hbEWlOooKBLuLJKp",
+    "https://open.spotify.com/collection/tracks"
+])
+test_fetch_playlists("SoundCloud", [
+    "https://soundcloud.com/you/likes",
+    "https://soundcloud.com/primal-illusion/sets/illusno",
+    "https://soundcloud.com/elit3xxredtiger/sets/yktvow",
+])
+test_fetch_playlists("Amazon Music", [
+    "https://music.amazon.com/my/playlists/a5dc1cff-2ccb-4e52-8144-d5adae28e33d"
+])
 test_fetch_playlists("Apple Music", [
-    // "https://music.apple.com/us/library/playlist/p.7Pkeq4PcVPLK7Ae?l=en-US",
-    // "https://music.apple.com/us/library/playlist/p.B0A8O2Jie4KpRZA?l=en-US",
+    "https://music.apple.com/us/library/playlist/p.7Pkeq4PcVPLK7Ae?l=en-US",
+    "https://music.apple.com/us/library/playlist/p.B0A8O2Jie4KpRZA?l=en-US",
     "https://music.apple.com/us/library/playlist/p.EYWrOa3FzYvagQD?l=en-US"
 ])
