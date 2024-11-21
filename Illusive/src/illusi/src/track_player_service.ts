@@ -229,6 +229,7 @@ export async function playback_service() {
                 await SQLTracks.update_track_meta_data(current_track.uid, current_track.meta!);
             }
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) track_player_next();
+            if (next_track === undefined) return;
             if (next_track.playback!.added === false && next_track.playback!.successful === false && !next_track_into_queue_mutex) {
                 next_track.playback!["added"] = true;
 
