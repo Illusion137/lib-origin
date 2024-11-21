@@ -12,7 +12,6 @@ const lang_from: LangCode = "ja";
 const lang_to: LangCode = "en";
 const from_to = `${lang_from}_${lang_to}`;
 
-
 // /cns/vz-d/home/snaskar/nmt_train/jaen_MR1_220902/00015-SampleSentencesPhase/src-data-00000-of-00005
 // /cns/vz-d/home/snaskar/nmt_train/jaen_MR1_220902/00015-SampleSentencesPhase/src-data-00001-of-00005
 // /cns/vz-d/home/snaskar/nmt_train/jaen_MR1_220902/00015-SampleSentencesPhase/src-data-00002-of-00005
@@ -21,12 +20,12 @@ const from_to = `${lang_from}_${lang_to}`;
 // /cns/vz-d/home/snaskar/nmt_train/jaen_MR1_220902/00016-TrainSPMPhase/src/wpm
 // /cns/vz-d/home/snaskar/nmt_train/jaen_MR1_220902/FILES/13348390333383989358.spm_normalization_rule.tsv
 
-//ja
-//en
-//b2a
-//lc
-//PreprocB2A/b2a:mode=tokenize
-//PreprocLowercaser/lc:activate_languages
+// ja
+// en
+// b2a
+// lc
+// PreprocB2A/b2a:mode=tokenize
+// PreprocLowercaser/lc:activate_languages
 
 //d2a3359f-afa3-4c6a-9dab-12ad1aa8e0c1
 

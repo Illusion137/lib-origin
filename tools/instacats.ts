@@ -88,7 +88,6 @@ async function editstuff(){
 
     // await new Promise(resolve => setTimeout(resolve, 1000)); // 3 sec
 
-    
     for(let i = 8; (i+1) < (ids.length/30); i++){        
         const sliced = ids.slice(i*30, (i+1)*30);
         await Instagram.edit_collection({cookie_jar, collections_id: cats_collection_id, add_media_ids: sliced});
@@ -104,24 +103,24 @@ async function editstuff(){
 } editstuff; 
 // editstuff();
 
-//ISAIAH
-//4798
+// ISAIAH
+// 4798
 
-//SETH
-//12961
+// SETH
+// 12961
 
-//DANIEL
-//8534
+// DANIEL
+// 8534
 
-//TOTAL
-//7087
+// TOTAL
+// 7087
 
 async function how_many_cats(){
     let count = 0;
     const cats_collection_id = "17877414743861513";
     let max_id: string|undefined = undefined;
     do {
-        const posts = await Instagram.collection_posts({cookie_jar, collection_id: cats_collection_id, max_id: max_id});
+        const posts = await Instagram.collection_posts({cookie_jar, collection_id: cats_collection_id, max_id});
         if("error" in posts) break;
         count += posts.items.length;
         if(!posts.more_available) break;

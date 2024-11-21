@@ -144,12 +144,12 @@ export namespace JNovel {
         if("error" in reader_init) return reader_init;
         if("error" in contents) return contents;
         return {
-            "title": reader_init.title,
-            "volume_img_uri": reader_init.volume_img_uri,
-            "content": contents,
-            "part": reader_init.part,
-            "serie": reader_init.serie,
-            "toc": reader_init.toc
+            title: reader_init.title,
+            volume_img_uri: reader_init.volume_img_uri,
+            content: contents,
+            part: reader_init.part,
+            serie: reader_init.serie,
+            toc: reader_init.toc
         }
     }
     export async function reader_volume(opts: Opts & {legacy_id: string}): PromiseResult<JNovel_Reader[]>{

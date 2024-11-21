@@ -23,7 +23,7 @@ function is_okay(result: any){
     return ok;
 }
 function illusive_expect_ok(result: any): void{
-    let ok = is_okay(result);
+    const ok = is_okay(result);
     if(!ok) console.log(typeof result === "object" ? result?.error : result);
     expect(ok).toBe(true);
     return ok as unknown as void;

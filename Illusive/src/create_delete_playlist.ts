@@ -62,7 +62,7 @@ export async function youtube_music_delete_playlist(playlist_url: string) {
     const deletion_response = await Origin.YouTubeMusic.delete_playlist({"cookie_jar": cookie_jar}, home.icfg.ytcfg, playlist_url);
     return deletion_response;
 }
-export async function apple_music_create_playlist(playlist_name: string){
+export async function apple_music_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
     const creation_response = await Origin.AppleMusic.create_playlist(playlist_name, "", false, [], {"cookie_jar": cookie_jar});
     if("error" in creation_response) return "";

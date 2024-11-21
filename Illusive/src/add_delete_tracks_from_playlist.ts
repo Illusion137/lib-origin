@@ -90,8 +90,8 @@ export async function youtube_music_delete_tracks_from_playlist(tracks: Track[],
 export async function apple_music_add_tracks_to_playlist(tracks: Track[], playlist_url: string){
     const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.applemusic_id));
-    const uris = tracks.map(track => { return {"id": track.applemusic_id!, "type": "songs"}});
-    const add_response = await Origin.AppleMusic.add_tracks_to_playlist(playlist_url, uris as {id: string, type: "songs"}[], {"cookie_jar": cookie_jar});
+    const uris = tracks.map(track => ({"id": track.applemusic_id!, "type": "songs"}));
+    const add_response = await Origin.AppleMusic.add_tracks_to_playlist(playlist_url, uris as Array<{id: string, type: "songs"}>, {"cookie_jar": cookie_jar});
     if("error" in add_response) return false;
     return add_response.ok;
 }

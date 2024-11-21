@@ -32,7 +32,7 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
         artist_id: info.videoDetails.channelId,
         age_restricted: info.videoDetails.age_restricted,
         chapters: info.videoDetails.chapters,
-        songs: songs
+        songs
     };
 }
 
