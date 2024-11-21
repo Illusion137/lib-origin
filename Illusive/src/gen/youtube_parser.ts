@@ -123,12 +123,13 @@ export function parse_youtube_title_artist(track: Track): Track {
 export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[]{
     if("video_renderer" in videos){
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
-            return parse_youtube_title_artist(<Track>{
+            return parse_youtube_title_artist(<Track> {
                 "uid": generate_new_uid(parse_runs(track.title.runs)),
                 "title": parse_runs(track.title.runs),
                 "artists": [{"name": parse_runs(track?.shortBylineText.runs), "uri": create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
                 "duration": parse_time(track.lengthText.simpleText),
                 "youtube_id": track.videoId,
+                "plays": youtube_views_number(track?.shortViewCountText?.simpleText)
             })
         })
     }
@@ -140,6 +141,7 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
                 "artists": [{"name": parse_runs(track?.shortBylineText.runs), "uri": create_uri("youtube", track!.shortBylineText!.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
                 "duration": parse_time(parse_runs(track.lengthText.runs)),
                 "youtube_id": track.videoId,
+                "plays": youtube_views_number(parse_runs(track?.shortViewCountText?.runs ?? []))
             });
         });
     }

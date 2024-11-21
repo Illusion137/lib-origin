@@ -207,10 +207,11 @@ export function array_include<T>(a: T[], b: T[], compare_same: (a: T, b: T) => b
 }
 export function array_exclude<T>(a: T[], b: T[], compare_same: (a: T, b: T) => boolean){
     const array: T[] = [...a];
-    for(let b0i = 0; b0i < b.length; b0i++)
-        for(let a0i = 0; a0i < array.length; a0i++)
-            if(compare_same(array[a0i], b[b0i])) { array.splice(b0i, 1); break; };
-    return array;
+    return array.filter(a => {
+        for(let b0i = 0; b0i < b.length; b0i++)
+            if(compare_same(a, b[b0i])) return false;
+        return true;
+    })
 }
 export function array_mask<T>(a: T[], b: T[], compare_same: (a: T, b: T) => boolean){
     const array: T[] = [...a];

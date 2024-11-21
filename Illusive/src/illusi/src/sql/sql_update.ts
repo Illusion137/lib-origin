@@ -2,9 +2,9 @@ import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
 import { insert_track } from './sql_tracks';
 import { db, db_pre_1307 } from './database';
-import { create_playlist, insert_track_playlist } from './sql_playlists';
+import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
 import { Promises, SQLAlter, SQLTable, SQLType, Track } from '../../../types';
-import { move_unsorted_media_to_folders, sql_select, sql_where } from '../sql/sql_utils';
+import { move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_where } from '../sql/sql_utils';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 
 export async function get_all_tables(database: SQLite.SQLiteDatabase) {
@@ -77,4 +77,19 @@ export async function fix_to_new_update(){
             await Promise.all(all_promises);
         }
     } catch (error) {}
+
+    // UPDATE 14.1.4 BETA
+    const all_1403_playlist_data = await all_playlists_data();
+    if(all_1403_playlist_data.length > 0 && all_1403_playlist_data.every((playlist) => playlist.public_uuid === "0" && <any>playlist.public === "OLDEST")){
+        await db.runAsync( sql_drop_table("playlists") );
+        await recreate_all_tables();
+        for(const playlist of all_1403_playlist_data){
+            delete (<any>playlist).id;
+            delete (<any>playlist).uuid;
+            delete (<any>playlist).visual_data;
+            const playlist_uuid = await create_playlist(playlist.title);
+            await update_playlist(playlist_uuid, playlist);
+        }
+        Alert.alert("Updated Playlists to 14.1.4 BETA");
+    }
 }

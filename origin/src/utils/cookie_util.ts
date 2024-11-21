@@ -106,6 +106,7 @@ export class CookieJar{
         this.merge(CookieJar.fromStrings(set_cookies));
     }
     static fromString(cstring: string): CookieJar {
+        cstring = cstring ?? "";
         const jar: Cookie[] = cstring.split('; ').map(cstr => Cookie.fromString(cstr));
         return new CookieJar(jar.filter(cookie => !cookie.hasExpired()));
     }

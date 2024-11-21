@@ -209,6 +209,7 @@ export namespace Illusive {
         const ttitle = track.title.toLowerCase();
         const tartist = remove_topic(track.artists[0].name.toLowerCase());
         const twords = all_words(ttitle);
+        search_tracks.tracks.sort((a,b) => (a.plays ?? 0) - (b.plays ?? 0));
         for(let i = 0; i < search_tracks.tracks.length; i++){
             const current: Max = {"index": i, "value": 0};
             const ctrack = search_tracks.tracks[i];
@@ -236,6 +237,7 @@ export namespace Illusive {
 
             // console.log({ctitle, cartist});
             // console.log(current);
+            if(current.value > 35) current.value += 5 * i;
             if(current.value > 30) all_negative_values = false;
             if(current.value > best.value) best = current;
         }

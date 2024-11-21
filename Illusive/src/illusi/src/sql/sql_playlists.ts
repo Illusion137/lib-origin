@@ -16,7 +16,7 @@ function playlist_to_sqllite_insertion(playlist: Playlist){
         playlist.thumbnail_uri ?? "", 
         playlist.sort ?? "OLDEST", 
         playlist.public ?? false, 
-        playlist.public_uuid ?? "", 
+        playlist.public_uuid ?? <string>uuid.default.v4(), 
         JSON.stringify(playlist.inherited_playlists ?? []), 
         JSON.stringify(playlist.inherited_searchs ?? []), 
         JSON.stringify(playlist.linked_playlists ?? []), 
@@ -50,10 +50,10 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
     const playlist: SQLTrack[] = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
     let tracks: Track[] = playlist.map(track => sql_track_to_track(track)); 
     if(skip_inheritance) return tracks;
+    seen_playlist_uuids.add(playlist_uuid);
     const cplaylist_data = await playlist_data(playlist_uuid, true);
     for(const inherited_playlist of cplaylist_data.inherited_playlists!){
-        if(!seen_playlist_uuids.has(playlist_uuid)){
-            seen_playlist_uuids.add(playlist_uuid);
+        if(!seen_playlist_uuids.has(inherited_playlist.uuid)){
             const inherited_tracks = await playlist_tracks(inherited_playlist.uuid, seen_playlist_uuids);
             switch (inherited_playlist.mode) {
                 case "INCLUDE": tracks = array_include<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
@@ -99,12 +99,19 @@ export async function all_playlists_names(): Promise<{"title": string}[]> {
     const playlists_names = await db.getAllAsync(sql_select<Playlist>("playlists", "title"));
     return <{"title": string}[]>playlists_names;
 }
+const playlist_name_sync_memo: Record<string, string> = {};
+export function playlist_name_sync(playlist_uuid: string) {
+    const title = <{"title": string}[]>db.getAllSync(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    if(title.length === 0) return null;
+    playlist_name_sync_memo[playlist_uuid] = title[0].title;
+    return title[0].title;
+}
 export async function playlist_data(playlist_uuid: string, ignore_tracks = false) {
     const playlists: SQLPlaylist[] = await db.getAllAsync(`${sql_select<Playlist>("playlists", "*")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     return await sql_playlist_to_playlist(playlists[0], ignore_tracks);
 }
 export async function update_playlist(playlist_uuid: string, new_playlist: Playlist){
-    await db.runAsync(`${sql_update_table("playlists")} ${obj_to_update_sql(new_playlist, true)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db.runAsync(`${sql_update_table("playlists")} SET ${obj_to_update_sql(new_playlist, true)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function create_playlist(title: string): Promise<string> {
     const playlist_names = await all_playlists_names();
