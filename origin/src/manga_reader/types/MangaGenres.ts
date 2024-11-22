@@ -46,4 +46,3 @@ export enum MangaGenres {
     "Yaoi" = "/genre/yaoi",
     "Yuri" = "/genre/yuri"
 }
-export type MangaListTypes = MangaTypes | MangaGenres;

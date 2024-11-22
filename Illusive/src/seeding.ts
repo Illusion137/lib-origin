@@ -21,6 +21,6 @@ function cyrb128(str: string) {
     return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
 }
 
-export function generate_new_illusi_id(title: string, artists: string[], duration: number, album?: string){
+export function generate_new_illusi_id(title: string, artists: string[], duration: number, album?: string) {
     return String(cyrb128(String(duration) + title + artists.map(artist => artist) + (is_empty(album) ? "-1" : album))[0])
 }

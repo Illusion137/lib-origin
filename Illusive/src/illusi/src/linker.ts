@@ -4,10 +4,10 @@ import { CompactPlaylist, LinkerLink } from "../../types";
 import { convert_playlist, playlist_tracks } from "./playlist_converter";
 import { Wifi } from "./wifi_utils";
 
-export function isdefault_playlist(compact_playlist: CompactPlaylist){
+export function isdefault_playlist(compact_playlist: CompactPlaylist) {
     if(compact_playlist.title.uri === undefined) return false;
     const [service, id] = split_uri(compact_playlist.title.uri!);
-    switch(service){
+    switch(service) {
         case "amazonmusic": return false;
         case "applemusic": return false;
         case "soundcloud": return id.includes("likes");
@@ -18,7 +18,7 @@ export function isdefault_playlist(compact_playlist: CompactPlaylist){
     }
 }
 
-export async function fetch_linked_playlists(links: LinkerLink[]){
+export async function fetch_linked_playlists(links: LinkerLink[]) {
     if(!Prefs.get_pref("enable_linker")) return;
     if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return;
     for(const link of links)

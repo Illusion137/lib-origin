@@ -1,6 +1,6 @@
 import { HydratableUser } from "./Hydration"
 
-export interface ClientSearchOf<T>{
+export interface ClientSearchOf<T> {
     data: SearchOf<T>
     client_id: string
 }
@@ -183,7 +183,6 @@ export interface Track0 {
     monetization_model: string
     policy: string
 }
-
 
 export interface Track1 {
     artwork_url: string

@@ -12,7 +12,7 @@ export default class Cache extends Map {
         });
     }
     get(key: string) {
-        let entry = super.get(key);
+        const entry = super.get(key);
         if (entry) {
             return entry.value;
         }
@@ -22,7 +22,7 @@ export default class Cache extends Map {
         if (this.has(key)) {
             return this.get(key);
         } else {
-            let value = fn();
+            const value = fn();
             this.set(key, value);
             (async () => {
                 try {
@@ -35,7 +35,7 @@ export default class Cache extends Map {
         }
     }
     delete(key: string): boolean {
-        let entry = super.get(key);
+        const entry = super.get(key);
         if (entry) {
             return super.delete(key);
         }
@@ -44,7 +44,7 @@ export default class Cache extends Map {
     clear() {
         super.clear();
     }
-    clear_expired(){
+    clear_expired() {
         for (const entry of this.entries()) {
             if(entry[1].tid + this.timeout > new Date().getTime())
                 this.delete(entry[0]);

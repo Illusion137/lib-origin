@@ -81,18 +81,18 @@ export interface Content2 {
     playlistRenderer: PlaylistRenderer
 }
 
-export type PlaylistRenderer = {
+export interface PlaylistRenderer {
     playlistId: string
     title: {
         simpleText: string
     }
-    thumbnails: Array<{
-        thumbnails: Array<{
+    thumbnails: {
+        thumbnails: {
             url: string
             width: number
             height: number
-        }>
-    }>
+        }[]
+    }[]
     videoCount: string
     navigationEndpoint: {
         clickTrackingParams: string
@@ -122,7 +122,7 @@ export type PlaylistRenderer = {
         }
     }
     viewPlaylistText: {
-        runs: Array<{
+        runs: {
             text: string
             navigationEndpoint: {
                 clickTrackingParams: string
@@ -138,10 +138,10 @@ export type PlaylistRenderer = {
                     browseId: string
                 }
             }
-        }>
+        }[]
     }
     shortBylineText: {
-        runs: Array<{
+        runs: {
             text: string
             navigationEndpoint?: {
                 clickTrackingParams: string
@@ -158,9 +158,9 @@ export type PlaylistRenderer = {
                     canonicalBaseUrl: string
                 }
             }
-        }>
+        }[]
     }
-    videos: Array<{
+    videos: {
         childVideoRenderer: {
             title: {
                 simpleText: string
@@ -201,21 +201,21 @@ export type PlaylistRenderer = {
             }
             videoId: string
         }
-    }>
+    }[]
     videoCountText: {
-        runs: Array<{
+        runs: {
             text: string
-        }>
+        }[]
     }
     trackingParams: string
     thumbnailText: {
-        runs: Array<{
+        runs: {
             text: string
             bold?: boolean
-        }>
+        }[]
     }
     longBylineText: {
-        runs: Array<{
+        runs: {
             text: string
             navigationEndpoint?: {
                 clickTrackingParams: string
@@ -232,16 +232,16 @@ export type PlaylistRenderer = {
                     canonicalBaseUrl: string
                 }
             }
-        }>
+        }[]
     }
     thumbnailRenderer: {
         playlistVideoThumbnailRenderer: {
             thumbnail: {
-                thumbnails: Array<{
+                thumbnails: {
                     url: string
                     width: number
                     height: number
-                }>
+                }[]
                 sampledThumbnailColor: {
                     red: number
                     green: number
@@ -259,7 +259,7 @@ export type PlaylistRenderer = {
             trackingParams: string
         }
     }
-    thumbnailOverlays: Array<{
+    thumbnailOverlays: {
         thumbnailOverlayBottomPanelRenderer?: {
             text: {
                 simpleText: string
@@ -270,9 +270,9 @@ export type PlaylistRenderer = {
         }
         thumbnailOverlayHoverTextRenderer?: {
             text: {
-                runs: Array<{
+                runs: {
                     text: string
-                }>
+                }[]
             }
             icon: {
                 iconType: string
@@ -280,18 +280,18 @@ export type PlaylistRenderer = {
         }
         thumbnailOverlayNowPlayingRenderer?: {
             text: {
-                runs: Array<{
+                runs: {
                     text: string
-                }>
+                }[]
             }
         }
-    }>
+    }[]
     thumbnail: {
-        thumbnails: Array<{
+        thumbnails: {
             url: string
             width: number
             height: number
-        }>
+        }[]
         sampledThumbnailColor: {
             red: number
             green: number

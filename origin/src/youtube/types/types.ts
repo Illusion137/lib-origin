@@ -1,8 +1,8 @@
-export type InitialData = {
+export interface InitialData {
     trackingParams: string
     responseContext: object
-};
-export type InitialContinuationData = {
+}
+export interface InitialContinuationData {
     responseContext: object
     estimatedResults: string
     trackingParams: string

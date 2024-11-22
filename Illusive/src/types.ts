@@ -15,7 +15,7 @@ export interface ImageArtwork {
 export type Artwork = ImageArtwork | number
 export type Promises = Promise<unknown>[]
 
-export type Route<T> = {"key": string, "name": string, "params": T, path: string};
+export interface Route<T> {"key": string, "name": string, "params": T, path: string}
 
 export type SQLType = "INTEGER" | "STRING" | "BOOLEAN";
 export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
@@ -37,7 +37,6 @@ export interface SQLTable {
     type: string
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
-
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
@@ -137,8 +136,8 @@ export interface TrackMetaData {
     chapters?: Chapter[];
     songs?: YTDescriptionSong[];
 }
-//Regex
-//\s+.+?: (.+?)\n
+// Regex
+// \s+.+?: (.+?)\n
 interface Basic_Track<T, U, V, X> {
     uid: string
     title: string
@@ -310,10 +309,10 @@ export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
 
-export type CompactPlaylistsResult = {"playlists": CompactPlaylist[], "error"?: string};
-export type TrackMix = { "tracks": Track[], "error"?: string };
+export interface CompactPlaylistsResult {"playlists": CompactPlaylist[], "error"?: string}
+export interface TrackMix { "tracks": Track[], "error"?: string }
 
-export type MusicServiceMappedPlaylist = {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist};
+export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
 export class MusicService {
     app_icon: string | number
@@ -335,61 +334,6 @@ export class MusicService {
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
-    has_credentials() {
-        if (this.cookie_jar_callback === undefined) return false;
-        for (const required_cookie_credential of this.required_cookie_credentials) {
-            if (this.cookie_jar_callback().getCookie(required_cookie_credential) === undefined)
-                return false;
-        }
-        return true;
-    }
-    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}>{
-        const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
-        if(this.get_user_playlists === undefined) return {"error": [{"error": "get_user_playlist is undefined"}], "map": map};
-        const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {"error": [account_playlists as ResponseError], "map": map};
-        const service_domain_map: Record<MusicServiceURI, string> = {
-            "illusi": "",
-            "musi": "",
-            "youtube": "https://www.youtube.com/playlist?list=",
-            "youtubemusic": "https://music.youtube.com/playlist?list=",
-            "spotify": "https://open.spotify.com/",
-            "amazonmusic": "https://music.amazon.com",
-            "applemusic": "https://music.apple.com/library/playlist/",
-            "soundcloud": "https://soundcloud.com/",
-            "api": "",
-        };
-        for(const playlist of account_playlists.playlists){
-            let [service, endpoint] = <[MusicServiceURI, string]>playlist.title.uri!.split(':');
-            if((<MusicServiceURI[]>["illusi", "musi", "api"]).includes(service)) return {"error": [{"error": "service lacks playlist list"}], "map": map};
-            endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
-            if(service === "spotify"){
-                if(playlist.type === undefined) return {"error": [{"error": "Playlist Type is undefined"}], "map": map};
-                const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
-                map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
-            }
-            else
-                map.set(playlist.title.name, {url: service_domain_map[service] + endpoint, compact_playlist: playlist});
-        }
-        return {"map": map};
-    }
-    async get_rest_of_playlist(continuation_data: any){
-        const continued_tracks: Track[] = [];
-        let i = 0;
-        while(i++ <= Constants.safe_max_fetch_continues && continuation_data !== null){
-            const continuation = await this.get_playlist_continuation!(continuation_data);
-            if("error" in continuation) break;
-            continued_tracks.push(...continuation.tracks);
-            continuation_data = continuation.continuation;
-        }
-        return continued_tracks;
-    }
-    async get_full_playlist(url: string){
-        const initial = await this.get_playlist(url);
-        if("error" in initial) return initial;
-        initial.tracks.push(...await this.get_rest_of_playlist(initial.continuation));
-        return initial;
-    }
     constructor(s: {
         app_icon: string | number,
         web_view_url?: string,
@@ -431,6 +375,61 @@ export class MusicService {
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
     }
+    has_credentials() {
+        if (this.cookie_jar_callback === undefined) return false;
+        for (const required_cookie_credential of this.required_cookie_credentials) {
+            if (this.cookie_jar_callback().getCookie(required_cookie_credential) === undefined)
+                return false;
+        }
+        return true;
+    }
+    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}> {
+        const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
+        if(this.get_user_playlists === undefined) return {error: [{error: "get_user_playlist is undefined"}], map};
+        const account_playlists = await this.get_user_playlists();
+        if("error" in account_playlists) return {error: [account_playlists as ResponseError], map};
+        const service_domain_map: Record<MusicServiceURI, string> = {
+            illusi: "",
+            musi: "",
+            youtube: "https://www.youtube.com/playlist?list=",
+            youtubemusic: "https://music.youtube.com/playlist?list=",
+            spotify: "https://open.spotify.com/",
+            amazonmusic: "https://music.amazon.com",
+            applemusic: "https://music.apple.com/library/playlist/",
+            soundcloud: "https://soundcloud.com/",
+            api: "",
+        };
+        for(const playlist of account_playlists.playlists) {
+            // eslint-disable-next-line prefer-const
+            let [service, endpoint] = playlist.title.uri!.split(':') as [MusicServiceURI, string];
+            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: [{error: "service lacks playlist list"}], map};
+            endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
+            if(service === "spotify") {
+                if(playlist.type === undefined) return {error: [{error: "Playlist Type is undefined"}], map};
+                const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
+                map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
+            } else
+                map.set(playlist.title.name, {url: service_domain_map[service] + endpoint, compact_playlist: playlist});
+        }
+        return {map};
+    }
+    async get_rest_of_playlist(continuation_data: any) {
+        const continued_tracks: Track[] = [];
+        let i = 0;
+        while(i++ <= Constants.safe_max_fetch_continues && continuation_data !== null) {
+            const continuation = await this.get_playlist_continuation!(continuation_data);
+            if("error" in continuation) break;
+            continued_tracks.push(...continuation.tracks);
+            continuation_data = continuation.continuation;
+        }
+        return continued_tracks;
+    }
+    async get_full_playlist(url: string) {
+        const initial = await this.get_playlist(url);
+        if("error" in initial) return initial;
+        initial.tracks.push(...await this.get_rest_of_playlist(initial.continuation));
+        return initial;
+    }
 }
 
 export class PQueue<T> {
@@ -460,25 +459,25 @@ export class PQueue<T> {
 export class TimedCache<K, V> {
     lifespan_milliseconds?: number
     store: { created_at: Date, key: K, value: V }[]
-    constructor(lifespan_seconds?: number){
+    constructor(lifespan_seconds?: number) {
         this.lifespan_milliseconds = lifespan_seconds;
         this.store = [];
     }
-    add(key: K, value: V){
+    add(key: K, value: V) {
         this.clear_expired();
-        this.store.push({created_at: new Date(), key: key, value: value});
+        this.store.push({created_at: new Date(), key, value});
     }
-    get(key: K){
+    get(key: K) {
         this.clear_expired();
         return this.store.find(item => item.key === key)?.value;
     }
-    update(key: K, value: V){
+    update(key: K, value: V) {
         this.clear_expired();
         const i = this.store.findIndex(item => item.key === key);
         if(i === -1) this.add(key, value);
         this.store[i].value = value;
     }
-    clear_expired(){
+    clear_expired() {
         this.store = this.store.filter(item => item.created_at.getTime() + (this.lifespan_milliseconds ?? Prefs.get_pref('playlist_cache_seconds')) > new Date().getTime())
     }
 }

@@ -25,6 +25,6 @@ export namespace ProIP {
       
     export async function pro_ip_api(api_key?: string) {
         const response = await fetch(`https://pro.ip-api.com/json?key=${api_key}`);
-        return <IpResult>await response.json();
+        return await response.json() as IpResult;
     }
 }

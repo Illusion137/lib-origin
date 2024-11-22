@@ -4,16 +4,16 @@ import { try_json_parse } from "../utils/util";
 // const rabbitstream_embed = (await axios.get(ajax_sources_json.link, {"headers": RABBITSTREAM_DEFAULT_HEADERS})).data;
 export namespace RabbitStream {
     export interface SourceTrack {
-        file : string,
-        label : string,
-        kind : string,
-        default? : boolean
+        file: string,
+        label: string,
+        kind: string,
+        default?: boolean
     }
     export interface Source { 
-        sources : string, // Encoded in Base64
-        tracks : SourceTrack[],
-        encrypted : boolean,
-        server : number
+        sources: string, // Encoded in Base64
+        tracks: SourceTrack[],
+        encrypted: boolean,
+        server: number
     }
     // function default_headers(){
     //     return {
@@ -31,7 +31,7 @@ export namespace RabbitStream {
     //         "Referrer-Policy": "strict-origin-when-cross-origin"
     //     };
     // }
-    function source_headers(){
+    function source_headers() {
         return {
             "accept": "*/*",
             "accept-language": "en-US,en;q=0.9",
@@ -46,7 +46,7 @@ export namespace RabbitStream {
             "Referrer-Policy": "strict-origin-when-cross-origin"
         };
     }
-    export async function dataid_to_source(vidcloud_data_id : string) : PromiseResult<Source> {
+    export async function dataid_to_source(vidcloud_data_id: string): PromiseResult<Source> {
         const source_response = await fetch(`https://rabbitstream.net/ajax/embed-4/getSources?id=${vidcloud_data_id}`, {headers: source_headers()});
         const rabbitstream_source = try_json_parse<Source>(await source_response.json());
         return rabbitstream_source;

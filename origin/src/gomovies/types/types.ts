@@ -86,12 +86,12 @@ export enum FiltersType {
     Movies = "&type=movie",
     TV_Shows = "&type=tv"
 };
-export enum FiltersQuality{
+export enum FiltersQuality {
     HD = "&quality=HD",
     SD = "&quality=SD",
     CAM = "&quality=CAM"
 };
-export enum FiltersReleased{
+export enum FiltersReleased {
     _2023 = "&release_year=2023",
     _2022 = "&release_year=2022",
     _2021 = "&release_year=2021",
@@ -99,7 +99,7 @@ export enum FiltersReleased{
     _2019 = "&release_year=2019",
     Older = "&release_year=older-2019"
 };
-export enum FiltersGenre{ // document.querySelectorAll("[name='genres[]']")
+export enum FiltersGenre { // document.querySelectorAll("[name='genres[]']")
     Action = "10",
     Action_Adventure = "24",
     Adventure = "18",
@@ -129,7 +129,7 @@ export enum FiltersGenre{ // document.querySelectorAll("[name='genres[]']")
     War_Politics = "28",
     Western = "6",
 };
-export enum FiltersCountry{ // document.querySelectorAll("[name='countries[]']")
+export enum FiltersCountry { // document.querySelectorAll("[name='countries[]']")
     Argentina = "11",
     Australia = "151",
     Austria = "4",
@@ -171,84 +171,84 @@ export enum FiltersCountry{ // document.querySelectorAll("[name='countries[]']")
 type Empty = null|undefined;
 
 export interface HrefString {
-    href : string, 
-    str : string
+    href: string, 
+    str: string
 };
 
-export interface GoMovie_Display_Content{
-    content_type : string | Empty;
-    title : string | Empty;
-    thumbnail_url : string | Empty;
+export interface GoMovie_Display_Content {
+    content_type: string | Empty;
+    title: string | Empty;
+    thumbnail_url: string | Empty;
     quality: string | Empty;
-    href : string | Empty;
-    left_data : string | Empty;
-    right_data : string | Empty;
+    href: string | Empty;
+    left_data: string | Empty;
+    right_data: string | Empty;
 };
 
-export interface GoMovieTab{
-    title : string | Empty;
-    gomovies : GoMovie_Display_Content[] | any[];
+export interface GoMovieTab {
+    title: string | Empty;
+    gomovies: GoMovie_Display_Content[] | any[];
 };
 
 export interface GoMovieSearchPage {
-    title : string | Empty;
-    gomovies : GoMovie_Display_Content[] | any[];
-    page : number | Empty;
-    last_page : number  | Empty;
+    title: string | Empty;
+    gomovies: GoMovie_Display_Content[] | any[];
+    page: number | Empty;
+    last_page: number  | Empty;
 }; 
 
 export interface GoMovieFilters {
-    type? : FiltersType,
-    quality? : FiltersQuality,
-    released? : FiltersReleased,
-    genre? : FiltersGenre[],
-    country? : FiltersCountry[],
+    type?: FiltersType,
+    quality?: FiltersQuality,
+    released?: FiltersReleased,
+    genre?: FiltersGenre[],
+    country?: FiltersCountry[],
 };
 export interface GoMovieSourceData {
-    host : string
-    data_linkid : string,
+    host: string
+    data_linkid: string,
 }
-export interface GoMovieAjaxSource{
-    link : string,
-    sources : any[],
-    title : string,
-    tracks : any[],
-    type : string, 
+export interface GoMovieAjaxSource {
+    link: string,
+    sources: any[],
+    title: string,
+    tracks: any[],
+    type: string, 
 }
 export interface GoMovieMovie {
     id: string,
-    title : string,
-    href : string,
-    thumbnail_url : string,
-    quality : string,
-    trailer_url : string,
-    imdb_rating : string,
-    released : string,
-    duration : string,
-    genres : Genre[] | string[],
-    countries : Country[] | string[],
-    productions : HrefString[],
-    cast : HrefString[],
-    description : string,
-    vote_info : string,
-    sources_list : GoMovieSourceData[],
-    may_also_like : GoMovie_Display_Content[]
+    title: string,
+    href: string,
+    thumbnail_url: string,
+    quality: string,
+    trailer_url: string,
+    imdb_rating: string,
+    released: string,
+    duration: string,
+    genres: Genre[] | string[],
+    countries: Country[] | string[],
+    productions: HrefString[],
+    cast: HrefString[],
+    description: string,
+    vote_info: string,
+    sources_list: GoMovieSourceData[],
+    may_also_like: GoMovie_Display_Content[]
 };
 export interface GoMovieTV {
-    title : string,
-    thumbnail_url : string,
-    quality : string,
-    href : string,
-    trailer_url : string,
-    critic_rating : string,
-    stars_ten : number,
-    voted : number,
-    released : string,
-    duration : string,
-    genres : Genre[],
-    countries : Country[],
-    productions : HrefString[],
-    cast : HrefString[],
-    description : string,
-    may_also_like : GoMovieSearchPage
+    title: string,
+    thumbnail_url: string,
+    quality: string,
+    href: string,
+    trailer_url: string,
+    critic_rating: string,
+    stars_ten: number,
+    voted: number,
+    released: string,
+    duration: string,
+    genres: Genre[],
+    countries: Country[],
+    productions: HrefString[],
+    cast: HrefString[],
+    description: string,
+    may_also_like: GoMovieSearchPage
 };

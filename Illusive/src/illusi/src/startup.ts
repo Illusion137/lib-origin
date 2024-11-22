@@ -1,15 +1,15 @@
-import * as GLOBALS from './globals';
-import * as SQLTracks from './sql/sql_tracks';
-import * as SQLUtils from './sql/sql_utils';
-import * as SQLUpdate from './sql/sql_update';
-import * as SQLRecentlyPlayed from './sql/sql_recently_played';
-import * as ffmpeg from 'react-native-ffmpeg';
-import * as LegacyPrefs from './legacy/1307/legacy_prefs';
-import { Prefs } from '../../prefs';
-import { download_track } from './downloader'
-import { Track } from '../../types';
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
+import * as ffmpeg from 'react-native-ffmpeg';
+import { Prefs } from '../../prefs';
+import { Track } from '../../types';
+import { download_track } from './downloader'
+import * as GLOBALS from './globals';
 import { catch_function_async } from './illusi_utils';
+import * as LegacyPrefs from './legacy/1307/legacy_prefs';
+import * as SQLRecentlyPlayed from './sql/sql_recently_played';
+import * as SQLTracks from './sql/sql_tracks';
+import * as SQLUpdate from './sql/sql_update';
+import * as SQLUtils from './sql/sql_utils';
 
 export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
     await catch_function_async(async() => {

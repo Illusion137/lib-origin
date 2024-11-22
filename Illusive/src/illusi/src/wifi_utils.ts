@@ -1,7 +1,7 @@
 import * as Network from 'expo-network';
 
 export namespace Wifi {
-    export async function ip_address(){ return await Network.getIpAddressAsync(); }
+    export async function ip_address() { return await Network.getIpAddressAsync(); }
     export async function network_state() { return await Network.getNetworkStateAsync(); }
     export async function airplane_mode() { return await Network.isAirplaneModeEnabledAsync(); }
     export async function wifi_connected() {

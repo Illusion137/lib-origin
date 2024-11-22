@@ -1,24 +1,24 @@
-export type Artist = {
+export interface Artist {
     data: {
         artistUnion: {
             __typename: string
             discography: {
                 albums: {
-                    items: Array<{
+                    items: {
                         releases: {
-                            items: Array<{
+                            items: {
                                 copyright: {
-                                    items: Array<{
+                                    items: {
                                         text: string
                                         type: string
-                                    }>
+                                    }[]
                                 }
                                 coverArt: {
-                                    sources: Array<{
+                                    sources: {
                                         height: number
                                         url: string
                                         width: number
-                                    }>
+                                    }[]
                                 }
                                 date: {
                                     day: number
@@ -42,28 +42,28 @@ export type Artist = {
                                 }
                                 type: string
                                 uri: string
-                            }>
+                            }[]
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
                 compilations: {
-                    items: Array<any>
+                    items: any[]
                     totalCount: number
                 }
                 latest: {
                     copyright: {
-                        items: Array<{
+                        items: {
                             text: string
                             type: string
-                        }>
+                        }[]
                     }
                     coverArt: {
-                        sources: Array<{
+                        sources: {
                             height: number
                             url: string
                             width: number
-                        }>
+                        }[]
                     }
                     date: {
                         day: number
@@ -89,19 +89,19 @@ export type Artist = {
                     uri: string
                 }
                 popularReleasesAlbums: {
-                    items: Array<{
+                    items: {
                         copyright: {
-                            items: Array<{
+                            items: {
                                 text: string
                                 type: string
-                            }>
+                            }[]
                         }
                         coverArt: {
-                            sources: Array<{
+                            sources: {
                                 height: number
                                 url: string
                                 width: number
-                            }>
+                            }[]
                         }
                         date: {
                             day: number
@@ -125,25 +125,25 @@ export type Artist = {
                         }
                         type: string
                         uri: string
-                    }>
+                    }[]
                     totalCount: number
                 }
                 singles: {
-                    items: Array<{
+                    items: {
                         releases: {
-                            items: Array<{
+                            items: {
                                 copyright: {
-                                    items: Array<{
+                                    items: {
                                         text: string
                                         type: string
-                                    }>
+                                    }[]
                                 }
                                 coverArt: {
-                                    sources: Array<{
+                                    sources: {
                                         height: number
                                         url: string
                                         width: number
-                                    }>
+                                    }[]
                                 }
                                 date: {
                                     day: number
@@ -167,29 +167,29 @@ export type Artist = {
                                 }
                                 type: string
                                 uri: string
-                            }>
+                            }[]
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
                 topTracks: {
-                    items: Array<{
+                    items: {
                         track: {
                             albumOfTrack: {
                                 coverArt: {
-                                    sources: Array<{
+                                    sources: {
                                         url: string
-                                    }>
+                                    }[]
                                 }
                                 uri: string
                             }
                             artists: {
-                                items: Array<{
+                                items: {
                                     profile: {
                                         name: string
                                     }
                                     uri: string
-                                }>
+                                }[]
                             }
                             associations: {
                                 associatedVideos: {
@@ -213,13 +213,13 @@ export type Artist = {
                             uri: string
                         }
                         uid: string
-                    }>
+                    }[]
                 }
             }
             goods: {
                 events: {
                     concerts: {
-                        items: Array<any>
+                        items: any[]
                         pagingInfo: {
                             limit: number
                         }
@@ -230,7 +230,7 @@ export type Artist = {
                     }
                 }
                 merch: {
-                    items: Array<any>
+                    items: any[]
                 }
             }
             id: string
@@ -241,17 +241,17 @@ export type Artist = {
                     type: string
                 }
                 externalLinks: {
-                    items: Array<{
+                    items: {
                         name: string
                         url: string
-                    }>
+                    }[]
                 }
                 name: string
                 pinnedItem: {
                     backgroundImage: {
-                        sources: Array<{
+                        sources: {
                             url: string
-                        }>
+                        }[]
                     }
                     comment: string
                     itemV2: {
@@ -259,11 +259,11 @@ export type Artist = {
                         data: {
                             __typename: string
                             coverArt: {
-                                sources: Array<{
+                                sources: {
                                     height: number
                                     url: string
                                     width: number
-                                }>
+                                }[]
                             }
                             name: string
                             type: string
@@ -273,18 +273,18 @@ export type Artist = {
                     type: string
                 }
                 playlistsV2: {
-                    items: Array<{
+                    items: {
                         data: {
                             __typename: string
                             description: string
                             images: {
-                                items: Array<{
-                                    sources: Array<{
+                                items: {
+                                    sources: {
                                         height?: number
                                         url: string
                                         width?: number
-                                    }>
-                                }>
+                                    }[]
+                                }[]
                             }
                             name: string
                             ownerV2: {
@@ -295,30 +295,30 @@ export type Artist = {
                             }
                             uri: string
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
                 verified: boolean
             }
             relatedContent: {
                 appearsOn: {
-                    items: Array<{
+                    items: {
                         releases: {
-                            items: Array<{
+                            items: {
                                 artists: {
-                                    items: Array<{
+                                    items: {
                                         profile: {
                                             name: string
                                         }
                                         uri: string
-                                    }>
+                                    }[]
                                 }
                                 coverArt: {
-                                    sources: Array<{
+                                    sources: {
                                         height: number
                                         url: string
                                         width: number
-                                    }>
+                                    }[]
                                 }
                                 date: {
                                     year: number
@@ -331,26 +331,26 @@ export type Artist = {
                                 }
                                 type: string
                                 uri: string
-                            }>
+                            }[]
                             totalCount: number
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
                 discoveredOnV2: {
-                    items: Array<{
+                    items: {
                         data: {
                             __typename: string
                             description: string
                             id: string
                             images: {
-                                items: Array<{
-                                    sources: Array<{
+                                items: {
+                                    sources: {
                                         height?: number
                                         url: string
                                         width?: number
-                                    }>
-                                }>
+                                    }[]
+                                }[]
                                 totalCount: number
                             }
                             name: string
@@ -362,23 +362,23 @@ export type Artist = {
                             }
                             uri: string
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
                 featuringV2: {
-                    items: Array<{
+                    items: {
                         data: {
                             __typename: string
                             description: string
                             id: string
                             images: {
-                                items: Array<{
-                                    sources: Array<{
+                                items: {
+                                    sources: {
                                         height: any
                                         url: string
                                         width: any
-                                    }>
-                                }>
+                                    }[]
+                                }[]
                                 totalCount: number
                             }
                             name: string
@@ -390,11 +390,11 @@ export type Artist = {
                             }
                             uri: string
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
                 relatedArtists: {
-                    items: Array<{
+                    items: {
                         id: string
                         profile: {
                             name: string
@@ -402,20 +402,20 @@ export type Artist = {
                         uri: string
                         visuals: {
                             avatarImage: {
-                                sources: Array<{
+                                sources: {
                                     height: number
                                     url: string
                                     width: number
-                                }>
+                                }[]
                             }
                         }
-                    }>
+                    }[]
                     totalCount: number
                 }
             }
             relatedVideos: {
                 __typename: string
-                items: Array<any>
+                items: any[]
                 totalCount: number
             }
             saved: boolean
@@ -427,12 +427,12 @@ export type Artist = {
                 followers: number
                 monthlyListeners: number
                 topCities: {
-                    items: Array<{
+                    items: {
                         city: string
                         country: string
                         numberOfListeners: number
                         region: string
-                    }>
+                    }[]
                 }
                 worldRank: number
             }
@@ -444,20 +444,20 @@ export type Artist = {
                             hex: string
                         }
                     }
-                    sources: Array<{
+                    sources: {
                         height: number
                         url: string
                         width: number
-                    }>
+                    }[]
                 }
                 gallery: {
-                    items: Array<{
-                        sources: Array<{
+                    items: {
+                        sources: {
                             height: number
                             url: string
                             width: number
-                        }>
-                    }>
+                        }[]
+                    }[]
                 }
                 headerImage: {
                     extractedColors: {
@@ -465,11 +465,11 @@ export type Artist = {
                             hex: string
                         }
                     }
-                    sources: Array<{
+                    sources: {
                         height: number
                         url: string
                         width: number
-                    }>
+                    }[]
                 }
             }
         }

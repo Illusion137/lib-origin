@@ -1,30 +1,30 @@
-import * as SQLTracks from './sql/sql_tracks';
-import * as SQLPlaylists from './sql/sql_playlists';
-import * as GLOBALS from './globals';
 import * as Origin from '../../../../origin/src/index';
-import { Illusive } from "../../illusive";
-import { ConvertTo, MusicServiceType, Track } from "../../types";
-import { is_empty } from "../../../../origin/src/utils/util";
-import { Logger } from "./logger";
-import { Prefs } from "../../prefs";
-import { music_service_uri_to_music_service, random_of, shuffle_array, split_uri } from "../../illusive_utilts";
 import { PromiseResult } from "../../../../origin/src/utils/types";
-import { Wifi } from "./wifi_utils";
+import { is_empty } from "../../../../origin/src/utils/util";
 import { Constants } from '../../constants';
+import { Illusive } from "../../illusive";
+import { music_service_uri_to_music_service, random_of, shuffle_array, split_uri } from "../../illusive_utilts";
+import { Prefs } from "../../prefs";
+import { ConvertTo, MusicServiceType, Track } from "../../types";
+import * as GLOBALS from './globals';
+import { Logger } from "./logger";
+import * as SQLPlaylists from './sql/sql_playlists';
+import * as SQLTracks from './sql/sql_tracks';
+import { Wifi } from "./wifi_utils";
 
-type ConvertPlaylistOpts = {
+interface ConvertPlaylistOpts {
     to: ConvertTo;
     full_sample: boolean;
-};
+}
 
-export function loggedin_services(){
+export function loggedin_services() {
     const services: MusicServiceType[] = [];
     const entries = [...Illusive.music_service.entries()];
     for(const entry of entries)
         if(entry[1].has_credentials()) services.push(entry[0]);
     return services;
 }
-export function track_intersection(f: Track, t: Track): boolean{
+export function track_intersection(f: Track, t: Track): boolean {
     if(!is_empty(f.illusi_id) && !is_empty(t.illusi_id) && f.illusi_id === t.illusi_id) return true;
     if(!is_empty(f.youtube_id) && !is_empty(t.youtube_id) && f.youtube_id === t.youtube_id) return true;
     if(!is_empty(f.youtubemusic_id) && !is_empty(t.youtubemusic_id) && f.youtubemusic_id === t.youtubemusic_id) return true;
@@ -35,8 +35,8 @@ export function track_intersection(f: Track, t: Track): boolean{
     if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
     return false;
 }
-export async function playlist_tracks(uuid_uri: string){
-    if(uuid_uri === Constants.library_write_playlist){
+export async function playlist_tracks(uuid_uri: string) {
+    if(uuid_uri === Constants.library_write_playlist) {
         await SQLTracks.fetch_track_data();
         return GLOBALS.global_var.sql_tracks.slice();
     }
@@ -48,7 +48,7 @@ export async function playlist_tracks(uuid_uri: string){
     if("error" in playlist_tracks) return [];
     return playlist_tracks.tracks;
 }
-export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_uri: string){
+export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_uri: string) {
     const ptracks = await playlist_tracks(uuid_uri);
     return tracks.filter((f) => {
         for(const t of ptracks)
@@ -56,29 +56,28 @@ export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_u
         return true;
     });
 }
-export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[]){
+export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[]) {
     if("title" in to) {
-        if(to_service === "Illusi"){
+        if(to_service === "Illusi") {
             const playlist_uuid = await SQLPlaylists.create_playlist(to.title);
             await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
-            return {"ok": true};
+            return {ok: true};
         }
         const service = Illusive.music_service.get(to_service)!;
         const [, playlist_id] = split_uri(await service.create_playlist!(to.title));
         return await service.add_tracks_to_playlist!(tracks, playlist_id);
-    }
-    else {
+    } else {
         if(to_service === "Illusi") {
             await SQLPlaylists.insert_all_tracks_playlist(to.uuid_uri, tracks.map(({uid}) => uid)); 
-            return {"ok": true};
+            return {ok: true};
         }
         const service = Illusive.music_service.get(to_service)!;
         const [_, playlist_id] = split_uri(to.uuid_uri);
         return await service.add_tracks_to_playlist!(await playlist_tracks_excluding_playlist(tracks, to.uuid_uri), playlist_id);
     }
 }
-export function unsampled_tracks(service: MusicServiceType, tracks: Track[]){
-    switch(service){
+export function unsampled_tracks(service: MusicServiceType, tracks: Track[]) {
+    switch(service) {
         case "YouTube Music":
         case "YouTube":      return tracks.filter(track => is_empty(track.youtube_id));
         case "Amazon Music": return tracks.filter(track => is_empty(track.amazonmusic_id));
@@ -88,22 +87,22 @@ export function unsampled_tracks(service: MusicServiceType, tracks: Track[]){
         default: return [];
     }
 }
-export async function next_sample_tracks(ingore_services: MusicServiceType[] = []){
+export async function next_sample_tracks(ingore_services: MusicServiceType[] = []) {
     const possible_services = loggedin_services().filter(item => ingore_services.includes(item));
     if(possible_services.length === 0) return [];
     const service = random_of(possible_services);
-    let tracks: Track[] = unsampled_tracks(service, GLOBALS.global_var.sql_tracks);
+    const tracks: Track[] = unsampled_tracks(service, GLOBALS.global_var.sql_tracks);
     if(tracks.length === 0) return next_sample_tracks(ingore_services.concat([service]));
     return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
 }
-export async function sample_tracks(stracks: Track[], to: MusicServiceType){
+export async function sample_tracks(stracks: Track[], to: MusicServiceType) {
     const proxies: Origin.Proxy.Proxy[] = [];
-    if(Prefs.get_pref("fastpack")){
+    if(Prefs.get_pref("fastpack")) {
         const proxy_list = await Origin.Proxy.get_proxy_list();
         if(!("error" in proxy_list)) proxies.push(...proxy_list);
     }
     const updated_tracks: Track[] = [];
-    for(const track of stracks){
+    for(const track of stracks) {
         if(track.imported_id) continue;
         const conversion_track = await Illusive.convert_track(track, to, proxies, [to]);
         if("error" in conversion_track) { 
@@ -114,13 +113,13 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType){
     }
     return updated_tracks;
 }
-export async function convert_playlist(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts): PromiseResult<{"ok": true}>{
-    if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {"error": "Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']"};
+export async function convert_playlist(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts): PromiseResult<{"ok": true}> {
+    if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: "Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']"};
     const to_service = Illusive.music_service.get(to)!;
     const to_ok = to_service.create_playlist !== undefined && to_service.add_tracks_to_playlist !== undefined;
-    if(!to_ok) return {"error": `Unable to create/modify playlist from ${to_service}`};
-    if(opts.full_sample && to_service.search === undefined) return {"error": `Unable to sample tracks to ${to_service}; Missing search function`};
+    if(!to_ok) return {error: `Unable to create/modify playlist from ${to_service}`};
+    if(opts.full_sample && to_service.search === undefined) return {error: `Unable to sample tracks to ${to_service}; Missing search function`};
     if(opts.full_sample) from_tracks = await sample_tracks(from_tracks, to);
     await mutilate_playlist(to, opts.to, from_tracks);
-    return {"ok": true};
+    return {ok: true};
 }

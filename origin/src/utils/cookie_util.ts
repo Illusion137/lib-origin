@@ -30,15 +30,9 @@ Set-Cookie: <cookie-name>=<cookie-value>; SameSite=None; Secure
 */
 export class Cookie {
     #data: CookieData
-    constructor(c: CookieData){
+    constructor(c: CookieData) {
         this.#data = c;
     }
-    hasExpired(): boolean { 
-        if(this.#data.expires !== undefined) return new Date().getTime() > this.#data.expires?.getTime();
-        else return false;
-    }
-    toString(): string { return `${this.#data.name}=${this.#data.value}`; }
-    getData(): CookieData { return this.#data; }
     static fromString(cstring: string): Cookie {
         const attributes = cstring.split(';');
         const key_value_split = attributes[0].split('=');
@@ -61,22 +55,47 @@ export class Cookie {
         
         return new Cookie({
             name: key,
-            value: value,
-            domain: domain,
-            path: path,
-            expires: expires,
-            max_age: max_age,
+            value,
+            domain,
+            path,
+            expires,
+            max_age,
             same_site: same_site as SameSite,
-            http_only: http_only,
-            secure: secure,
+            http_only,
+            secure,
         });
     }
+    hasExpired(): boolean { 
+        if(this.#data.expires !== undefined) return new Date().getTime() > this.#data.expires?.getTime();
+        else return false;
+    }
+    toString(): string { return `${this.#data.name}=${this.#data.value}`; }
+    getData(): CookieData { return this.#data; }
 }
 
-export class CookieJar{
+export class CookieJar {
     #jar: Cookie[]
-    constructor(j: Cookie[]){
+    constructor(j: Cookie[]) {
         this.#jar = j;
+    }
+    static fromString(cstring: string): CookieJar {
+        cstring = cstring ?? "";
+        const jar: Cookie[] = cstring.split('; ').map(cstr => Cookie.fromString(cstr));
+        return new CookieJar(jar.filter(cookie => !cookie.hasExpired()));
+    }
+    static fromStrings(cstrings: string[]): CookieJar {
+        const jar: Cookie[] = cstrings.map(cstring => Cookie.fromString(cstring));
+        return new CookieJar(jar.filter(cookie => !cookie.hasExpired()));
+    }
+    static fromCookies(cookies: Cookies) {
+        const cookie_data: Cookie[] = Object.values(cookies).map((cookie) => {
+            return new Cookie({
+                name: cookie.name,
+                value: cookie.value,
+                expires: cookie.expires ? new Date(cookie.expires) : undefined
+            })
+        });
+        return new CookieJar(cookie_data);
     }
     hasCookie(other_cookie: Cookie): boolean { return this.getCookies().findIndex(cookie => cookie.getData().name === other_cookie.getData().name) !== -1; }
     getCookies(): Cookie[] { 
@@ -93,35 +112,15 @@ export class CookieJar{
     toString(): string { return this.getCookies().map(cookie => cookie.toString()).join("; "); }
     merge(other_jar: CookieJar): void {
         const cookie_names = this.getCookies().map(cookie => cookie.getData().name); 
-        for(const other_cookie of other_jar.getCookies()){
-            if(cookie_names.includes(other_cookie.getData().name) && !other_cookie.hasExpired()){
+        for(const other_cookie of other_jar.getCookies()) {
+            if(cookie_names.includes(other_cookie.getData().name) && !other_cookie.hasExpired()) {
                 const jar_cookie_index = this.#jar.findIndex(cookie => cookie.getData().name = other_cookie.getData().name);
                 this.#jar[jar_cookie_index] = other_cookie;
-            }
-            else this.#jar.push(other_cookie);
+            } else this.#jar.push(other_cookie);
         }
     }
-    updateWithFetch(response: Response){
+    updateWithFetch(response: Response) {
         const set_cookies = response.headers.getSetCookie();
         this.merge(CookieJar.fromStrings(set_cookies));
-    }
-    static fromString(cstring: string): CookieJar {
-        cstring = cstring ?? "";
-        const jar: Cookie[] = cstring.split('; ').map(cstr => Cookie.fromString(cstr));
-        return new CookieJar(jar.filter(cookie => !cookie.hasExpired()));
-    }
-    static fromStrings(cstrings: string[]): CookieJar {
-        const jar: Cookie[] = cstrings.map(cstring => Cookie.fromString(cstring));
-        return new CookieJar(jar.filter(cookie => !cookie.hasExpired()));
-    }
-    static fromCookies(cookies: Cookies){
-        const cookie_data: Cookie[] = Object.values(cookies).map((cookie) => {
-            return new Cookie({
-                "name": cookie.name,
-                "value": cookie.value,
-                "expires": cookie.expires ? new Date(cookie.expires) : undefined
-            })
-        });
-        return new CookieJar(cookie_data);
     }
 }

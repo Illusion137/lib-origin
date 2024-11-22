@@ -1,3 +1,7 @@
+import { MangaGenres } from "./MangaGenres";
+import { MangaTypes } from "./MangaTypes";
+
+export type MangaListTypes = MangaTypes | MangaGenres;
 export type Language = string;
 
 export interface HrefString {

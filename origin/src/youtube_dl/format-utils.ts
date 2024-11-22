@@ -1,6 +1,6 @@
-import * as utils from './utils';
 import { FORMATS } from './formats';
-import { AVFormat, Filter, DownloadOptions } from './types';
+import { AVFormat, DownloadOptions, Filter } from './types';
+import * as utils from './utils';
 
 // Use these to help sort formats, higher index is better.
 const audioEncodingRanks = [
@@ -28,7 +28,6 @@ const getAudioBitrate = (format: AVFormat) => format.audioBitrate || 0;
 const getAudioEncodingRank = (format: AVFormat) =>
     audioEncodingRanks.findIndex(enc => format.codecs && format.codecs.includes(enc));
 
-
 /**
  * Sort formats by a list of functions.
  *
@@ -39,7 +38,7 @@ const getAudioEncodingRank = (format: AVFormat) =>
  */
 const sortFormatsBy = (a: AVFormat, b: AVFormat, sortBy: ((format: AVFormat) => number)[]) => {
     let res = 0;
-    for (let fn of sortBy) {
+    for (const fn of sortBy) {
         res = fn(b) - fn(a);
         if (res !== 0) {
             break;
@@ -48,19 +47,16 @@ const sortFormatsBy = (a: AVFormat, b: AVFormat, sortBy: ((format: AVFormat) => 
     return res;
 };
 
-
 const sortFormatsByVideo = (a: AVFormat, b: AVFormat) => sortFormatsBy(a, b, [
     (format: AVFormat) => parseInt(format.qualityLabel ?? ""),
     getVideoBitrate,
     getVideoEncodingRank,
 ]);
 
-
 const sortFormatsByAudio = (a: AVFormat, b: AVFormat) => sortFormatsBy(a, b, [
     getAudioBitrate,
     getAudioEncodingRank,
 ]);
-
 
 /**
  * Sort formats from highest quality to lowest.
@@ -82,7 +78,6 @@ export const sortFormats = (a: AVFormat, b: AVFormat) => sortFormatsBy(a, b, [
     getVideoEncodingRank,
     getAudioEncodingRank,
 ]);
-
 
 /**
  * Choose a format depending on the given options.
@@ -158,7 +153,6 @@ export const chooseFormat = (formats: AVFormat[], options: DownloadOptions): AVF
         }
         default: {
             format = getFormatByQuality(quality as string|string[], formats);
-            break;
         }
     }
 
@@ -176,14 +170,13 @@ export const chooseFormat = (formats: AVFormat[], options: DownloadOptions): AVF
  * @returns {Object}
  */
 const getFormatByQuality = (quality: string|string[], formats: AVFormat[]) => {
-    let getFormat = (itag: string) => formats.find(format => `${format.itag}` === `${itag}`);
+    const getFormat = (itag: string) => formats.find(format => `${format.itag}` === `${itag}`);
     if (Array.isArray(quality)) {
         return getFormat(quality.find(q => getFormat(q)) ?? "");
     } else {
         return getFormat(quality);
     }
 };
-
 
 /**
  * @param {Array.<Object>} formats
@@ -219,7 +212,6 @@ export const filterFormats = (formats: AVFormat[], filter: Filter) => {
     return formats.filter(format => !!format.url && fn(format));
 };
 
-
 /**
  * @param {Object} format
  * @returns {Object}
@@ -229,7 +221,7 @@ export const addFormatMeta = (format: AVFormat) => {
     format.hasVideo = !!format.qualityLabel;
     format.hasAudio = !!format.audioBitrate;
     format.container = format.mimeType !== undefined ?
-        <typeof format.container>format.mimeType.split(';')[0].split('/')[1] : <typeof format.container><unknown>null;
+        format.mimeType.split(';')[0].split('/')[1] as typeof format.container : null as unknown as typeof format.container;
     format.codecs = (format.mimeType ?
         utils.between(format.mimeType, 'codecs="', '"') : null) as string;
     format.videoCodec = format.hasVideo && format.codecs ?

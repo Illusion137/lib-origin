@@ -3,51 +3,51 @@ import { is_empty } from '../../../../../../origin/src/utils/util';
 
 export let prefs = get_default_prefs();
 
-export async function get_legacy_prefs(): Promise<typeof prefs|null>{
+export async function get_legacy_prefs(): Promise<typeof prefs|null> {
     const prefs_item = await AsyncStorage.getItem("Prefs");
     if(is_empty(prefs_item)) return null;
     return JSON.parse(prefs_item as string);
 }
-export async function clear_prefs(){
+export async function clear_prefs() {
     await AsyncStorage.removeItem("Prefs");
 }
 
-export async function is_prefs_empty(){
-    let prefs = await AsyncStorage.getItem("Prefs");
-    if(prefs == null || prefs == undefined){
+export async function is_prefs_empty() {
+    const prefs = await AsyncStorage.getItem("Prefs");
+    if(prefs == null || prefs == undefined) {
         return true;
     }
     return false;
 }
 
-export async function fetch_prefs(){
+export async function fetch_prefs() {
     if(await is_prefs_empty())
         await reset_prefs();
     prefs = JSON.parse(await AsyncStorage.getItem("Prefs") as string);
 }
 
-export function cookies_to_json(cookies: string): Record<string, any>{
-    let cookie_json: Record<string, any> = {};
-    let cookie_set = cookies.split('; ');
+export function cookies_to_json(cookies: string): Record<string, any> {
+    const cookie_json: Record<string, any> = {};
+    const cookie_set = cookies.split('; ');
     cookie_set.forEach((cookie: any) => {
-        let cookie_key_value = cookie.split('=')
+        const cookie_key_value = cookie.split('=')
         cookie_json[cookie_key_value[0]] = cookie_key_value[1]
     })
     return cookie_json;
 }
 
-export function update_cookies(cookies: string, new_cookies: any){
+export function update_cookies(cookies: string, new_cookies: any) {
     const cookies_obj = cookies_to_json(cookies);
     new_cookies.forEach((cookie: any) => {
-        let cookieKeyValue = cookie[0].split('=')
+        const cookieKeyValue = cookie[0].split('=')
         cookies_obj[cookieKeyValue[0]] = cookieKeyValue[1]
     });
     return format_cookies(cookies);
 }
 
-function format_cookies(cookie_data: any){
+function format_cookies(cookie_data: any) {
     try {
-        let cookieKeys: string[] = []
+        const cookieKeys: string[] = []
         let formated_cookies = ""
         for (const key in cookie_data) {
             cookieKeys.push(key);
@@ -60,29 +60,29 @@ function format_cookies(cookie_data: any){
         return formated_cookies;
     } catch (error) { return ""; }
 }
-function format_cookies_json(cookie_data: Record<string, any>){
+function format_cookies_json(cookie_data: Record<string, any>) {
     try {
         let formatedCookies = "";
-        for(const cookie of Object.entries(cookie_data)){
+        for(const cookie of Object.entries(cookie_data)) {
             formatedCookies += `${cookie[0]}=${cookie[1]}; `;
             formatedCookies = formatedCookies.slice(0, formatedCookies.length-2)
         }
         return formatedCookies;
     } catch (error) { return ""; }
 }
-export async function set_cookies_json(unformated_cookies: Record<string, any>, service: string){
-    let cookies = format_cookies_json(unformated_cookies);
-    (<any>prefs.external_services)[service] = cookies;
+export async function set_cookies_json(unformated_cookies: Record<string, any>, service: string) {
+    const cookies = format_cookies_json(unformated_cookies);
+    (prefs.external_services as any)[service] = cookies;
     await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
 }
-export async function set_cookies(unformated_cookies: Record<string, any>, service: string){
-    let cookies = format_cookies(unformated_cookies);
-    (<any>prefs.external_services)[service] = cookies;
+export async function set_cookies(unformated_cookies: Record<string, any>, service: string) {
+    const cookies = format_cookies(unformated_cookies);
+    (prefs.external_services as any)[service] = cookies;
     await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
 }
 
-export function get_experimental_feature_enabled(feature: string): boolean{
-    return prefs.settings.enable_experimental_features && (<any>prefs.experimental_features)[feature]
+export function get_experimental_feature_enabled(feature: string): boolean {
+    return prefs.settings.enable_experimental_features && (prefs.experimental_features as any)[feature]
 }
 
 export const dark_theme_default = {
@@ -111,46 +111,46 @@ export const dark_theme_default = {
     },
 }
 
-function get_default_prefs(){
+function get_default_prefs() {
     return {
-        'experimental_features':{
-            'get_account_playlists_in_get_playlist': true,
-            'auto_cache_thumbnails': false,
-            'smart_remove_cached_thumbnails': false,
+        experimental_features:{
+            get_account_playlists_in_get_playlist: true,
+            auto_cache_thumbnails: false,
+            smart_remove_cached_thumbnails: false,
         },
-        'settings': {
-            'default_playlists_size': 200,
-            'download_queue_max_length': 6,
-            'spotify_library_limit': 20,
-            'spotify_playlist_limit': 200,
-            'always_shuffle': true,
-            'only_play_downloaded': false,
-            'show_track_duration': true,
-            'ask_where_to_save': false,
-            'edit_mode_disables_playing': true,
-            'use_cookies_on_playback': false,
-            'use_cookies_on_download': false,
+        settings: {
+            default_playlists_size: 200,
+            download_queue_max_length: 6,
+            spotify_library_limit: 20,
+            spotify_playlist_limit: 200,
+            always_shuffle: true,
+            only_play_downloaded: false,
+            show_track_duration: true,
+            ask_where_to_save: false,
+            edit_mode_disables_playing: true,
+            use_cookies_on_playback: false,
+            use_cookies_on_download: false,
             // 'alphascroll_hitslop': 20,
             // 'cache_backpack_ids': false,
-            'enable_dev_features': false,
-            'enable_experimental_features': false
+            enable_dev_features: false,
+            enable_experimental_features: false
         },
-        'sleep_timer_time': 0,
-        'external_services': {
-            'youtube_cookies' : '',
-            'youtube_music_cookies' : '',
-            'spotify_cookies' : '',
-            'amazon_music_cookies' : '',
+        sleep_timer_time: 0,
+        external_services: {
+            youtube_cookies : '',
+            youtube_music_cookies : '',
+            spotify_cookies : '',
+            amazon_music_cookies : '',
         },
-        'linker': {
-            'linked_playlists': []
+        linker: {
+            linked_playlists: []
         },
-        'search': {
-            'recent_searches': [] as string[]
+        search: {
+            recent_searches: [] as string[]
         }
     }
 } 
-export function snake_case_to_plain_text(text: string){
+export function snake_case_to_plain_text(text: string) {
     text = text.replace(/_/g,' ');
     const words = text.split(" ");
     for (let i = 0; i < words.length; i++)
@@ -158,10 +158,10 @@ export function snake_case_to_plain_text(text: string){
     return words.join(" ");
 }
 
-export async function reset_prefs(){ 
+export async function reset_prefs() { 
     prefs = get_default_prefs();
     await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
 }
-export async function save_prefs(){
+export async function save_prefs() {
     await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
 }

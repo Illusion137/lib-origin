@@ -726,18 +726,18 @@ export interface Content8 {
               thumbnail: {
                 musicThumbnailRenderer: {
                   thumbnail: {
-                    thumbnails: Array<{
+                    thumbnails: {
                       url: string
                       width: number
                       height: number
-                    }>
+                    }[]
                   }
                   thumbnailCrop: string
                   thumbnailScale: string
                   trackingParams: string
                 }
               }
-              buttons: Array<{
+              buttons: {
                 downloadButtonRenderer?: {
                   trackingParams: string
                   style: string
@@ -788,24 +788,24 @@ export interface Content8 {
                       content: {
                         confirmDialogRenderer: {
                           title: {
-                            runs: Array<{
+                            runs: {
                               text: string
-                            }>
+                            }[]
                           }
                           trackingParams: string
-                          dialogMessages: Array<{
-                            runs: Array<{
+                          dialogMessages: {
+                            runs: {
                               text: string
-                            }>
-                          }>
+                            }[]
+                          }[]
                           confirmButton: {
                             buttonRenderer: {
                               style: string
                               isDisabled: boolean
                               text: {
-                                runs: Array<{
+                                runs: {
                                   text: string
-                                }>
+                                }[]
                               }
                               trackingParams: string
                               command: {
@@ -821,9 +821,9 @@ export interface Content8 {
                               style: string
                               isDisabled: boolean
                               text: {
-                                runs: Array<{
+                                runs: {
                                   text: string
-                                }>
+                                }[]
                               }
                               trackingParams: string
                             }
@@ -888,12 +888,12 @@ export interface Content8 {
                   }
                 }
                 menuRenderer?: {
-                  items: Array<{
+                  items: {
                     menuNavigationItemRenderer?: {
                       text: {
-                        runs: Array<{
+                        runs: {
                           text: string
-                        }>
+                        }[]
                       }
                       icon: {
                         iconType: string
@@ -904,25 +904,25 @@ export interface Content8 {
                           content: {
                             confirmDialogRenderer: {
                               title: {
-                                runs: Array<{
+                                runs: {
                                   text: string
-                                }>
+                                }[]
                               }
                               trackingParams: string
-                              dialogMessages: Array<{
-                                runs: Array<{
+                              dialogMessages: {
+                                runs: {
                                   text: string
-                                }>
-                              }>
+                                }[]
+                              }[]
                               confirmButton: {
                                 buttonRenderer: {
                                   style: string
                                   size?: string
                                   isDisabled: boolean
                                   text: {
-                                    runs: Array<{
+                                    runs: {
                                       text: string
-                                    }>
+                                    }[]
                                   }
                                   serviceEndpoint?: {
                                     clickTrackingParams: string
@@ -945,9 +945,9 @@ export interface Content8 {
                                   size?: string
                                   isDisabled: boolean
                                   text: {
-                                    runs: Array<{
+                                    runs: {
                                       text: string
-                                    }>
+                                    }[]
                                   }
                                   trackingParams: string
                                 }
@@ -967,9 +967,9 @@ export interface Content8 {
                     }
                     menuServiceItemRenderer?: {
                       text: {
-                        runs: Array<{
+                        runs: {
                           text: string
-                        }>
+                        }[]
                       }
                       icon: {
                         iconType: string
@@ -987,21 +987,21 @@ export interface Content8 {
                             }
                           }
                           queueInsertPosition: string
-                          commands: Array<{
+                          commands: {
                             clickTrackingParams: string
                             addToToastAction: {
                               item: {
                                 notificationTextRenderer: {
                                   successResponseText: {
-                                    runs: Array<{
+                                    runs: {
                                       text: string
-                                    }>
+                                    }[]
                                   }
                                   trackingParams: string
                                 }
                               }
                             }
-                          }>
+                          }[]
                         }
                       }
                       trackingParams: string
@@ -1029,7 +1029,7 @@ export interface Content8 {
                       }
                       trackingParams: string
                     }
-                  }>
+                  }[]
                   trackingParams: string
                   accessibility: {
                     accessibilityData: {
@@ -1037,20 +1037,20 @@ export interface Content8 {
                     }
                   }
                 }
-              }>
+              }[]
               title: {
-                runs: Array<{
+                runs: {
                   text: string
-                }>
+                }[]
               }
               subtitle: {
-                runs: Array<{
+                runs: {
                   text: string
-                }>
+                }[]
               }
               trackingParams: string
               straplineTextOne: {
-                runs: Array<{
+                runs: {
                   text: string
                   navigationEndpoint: {
                     clickTrackingParams: string
@@ -1063,16 +1063,16 @@ export interface Content8 {
                       }
                     }
                   }
-                }>
+                }[]
               }
               straplineThumbnail: {
                 musicThumbnailRenderer: {
                   thumbnail: {
-                    thumbnails: Array<{
+                    thumbnails: {
                       url: string
                       width: number
                       height: number
-                    }>
+                    }[]
                   }
                   thumbnailCrop: string
                   thumbnailScale: string
@@ -1080,28 +1080,28 @@ export interface Content8 {
                 }
               }
               secondSubtitle: {
-                runs: Array<{
+                runs: {
                   text: string
-                }>
+                }[]
               }
             }
           }
           editHeader: {
             musicPlaylistEditHeaderRenderer: {
               title: {
-                runs: Array<{
+                runs: {
                   text: string
-                }>
+                }[]
               }
               editTitle: {
-                runs: Array<{
+                runs: {
                   text: string
-                }>
+                }[]
               }
               editDescription: {
-                runs: Array<{
+                runs: {
                   text: string
-                }>
+                }[]
               }
               privacy: string
               trackingParams: string
@@ -1113,24 +1113,24 @@ export interface Content8 {
                   content: {
                     confirmDialogRenderer: {
                       title: {
-                        runs: Array<{
+                        runs: {
                           text: string
-                        }>
+                        }[]
                       }
                       trackingParams: string
-                      dialogMessages: Array<{
-                        runs: Array<{
+                      dialogMessages: {
+                        runs: {
                           text: string
-                        }>
-                      }>
+                        }[]
+                      }[]
                       confirmButton: {
                         buttonRenderer: {
                           style: string
                           isDisabled: boolean
                           text: {
-                            runs: Array<{
+                            runs: {
                               text: string
-                            }>
+                            }[]
                           }
                           trackingParams: string
                         }
@@ -1141,12 +1141,12 @@ export interface Content8 {
               }
               privacyDropdown: {
                 dropdownRenderer: {
-                  entries: Array<{
+                  entries: {
                     dropdownItemRenderer: {
                       label: {
-                        runs: Array<{
+                        runs: {
                           text: string
-                        }>
+                        }[]
                       }
                       isSelected: boolean
                       accessibility: {
@@ -1157,12 +1157,12 @@ export interface Content8 {
                         iconType: string
                       }
                       descriptionText: {
-                        runs: Array<{
+                        runs: {
                           text: string
-                        }>
+                        }[]
                       }
                     }
-                  }>
+                  }[]
                   label: string
                   accessibility: {
                     label: string

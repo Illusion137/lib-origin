@@ -6,7 +6,7 @@
         "noEmit": true,
         "module": "commonjs",
         "esModuleInterop": true,
-        "target": "es2019",
+        "target": "es2020",
         "moduleResolution": "node",
         "resolveJsonModule": true,
         "sourceMap": true,

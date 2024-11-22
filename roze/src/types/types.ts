@@ -1,5 +1,5 @@
-type ReaderContentImage = { type: "image", src: string };
-type ReaderContentText = { type: "text", text: string };
-type ReaderContentChapter = { type: "chapter", title: string };
-type ReaderContentSubChapter = { type: "sub_chapter", title: string };
+interface ReaderContentImage { type: "image", src: string }
+interface ReaderContentText { type: "text", text: string }
+interface ReaderContentChapter { type: "chapter", title: string }
+interface ReaderContentSubChapter { type: "sub_chapter", title: string }
 export type ReaderContent = (ReaderContentImage|ReaderContentText|ReaderContentChapter|ReaderContentSubChapter)[];

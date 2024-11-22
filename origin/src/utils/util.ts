@@ -9,23 +9,23 @@ export function generate_new_uid(prefix_name: string) {
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
-export function encode_params(data: Record<string, unknown>){
+export function encode_params(data: Record<string, unknown>) {
 	const encoded_params: string[] = [];
-	for(const key of Object.keys(data)){
+	for(const key of Object.keys(data)) {
 		const param = data[key];
-		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : <string|number|boolean>param )}`);
+		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : param as string|number|boolean )}`);
 	}
 	return encoded_params.join('&');
 }
 export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
-export function extract_string_from_pattern(str: string, pattern: RegExp){
+export function extract_string_from_pattern(str: string, pattern: RegExp) {
 	const body_groups = pattern.exec(str);
-	if(body_groups === null) return {"error": `Unable to extract pattern from: ${str}\n NULL found`} ;
-	if(body_groups.length < 2) throw {"error": `Unable to extract pattern from: ${str}\n Not sufficient groups`};
+	if(body_groups === null) return {error: `Unable to extract pattern from: ${str}\n NULL found`} ;
+	if(body_groups.length < 2) throw {error: `Unable to extract pattern from: ${str}\n Not sufficient groups`};
 	const extracted = body_groups[1];
 	return extracted;
 }
-export function extract_all_strings_from_pattern(str: string, pattern: RegExp){
+export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const matched = str.matchAll(pattern);
     const match_spread = [...matched];
     return match_spread.map(match => match?.[1]).filter(match => match !== undefined);
@@ -33,7 +33,7 @@ export function extract_all_strings_from_pattern(str: string, pattern: RegExp){
 export function parse_time(clock_time: string): number {
 	let time = 0;
 	const time_split = clock_time.split(":");
-	for(let i = 0; i < time_split.length; i++){
+	for(let i = 0; i < time_split.length; i++) {
 		const parsed = parseInt(time_split[time_split.length - 1 - i]);
 		if(i == 0) time += parsed;
 		else time += parsed * Math.pow(60,i);
@@ -44,15 +44,15 @@ export function parse_runs(runs: ({text: string}[]) | undefined ): string {
     if(runs === undefined) return "";
     return runs.map(run => run.text).join(" ");
 }
-export function empty_undefined(str: string){ return is_empty(str) ? undefined : str; }
-export function urlid(url: string, ...remove_links: (string|RegExp)[]){ 
+export function empty_undefined(str: string) { return is_empty(str) ? undefined : str; }
+export function urlid(url: string, ...remove_links: (string|RegExp)[]) { 
     let id = url.replace("https://", "").replace("www.", "").replace("http://", '');
-    for(const link of remove_links){ id = id.replace(link, ""); }
+    for(const link of remove_links) { id = id.replace(link, ""); }
     return id;
 }
-export function make_topic(title: string){ return `${title} - Topic`; }
-export function remove_topic(title: string){ return title.replace(" - Topic", ''); }
-export function is_empty(value: unknown){ return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
+export function make_topic(title: string) { return `${title} - Topic`; }
+export function remove_topic(title: string) { return title.replace(" - Topic", ''); }
+export function is_empty(value: unknown) { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 export function remove(str: string, ...rs: (string|RegExp)[]) { for(const r of rs) str = str.replace(r, ''); return str; }
@@ -61,7 +61,7 @@ export function remove_special_chars(str: string) {
     for(const char of special_characters) str = remove(str, char);
     return str;
 }
-export function eval_json<T>(json: string): T{
+export function eval_json<T>(json: string): T {
     let evaluated;
     const result = eval("evaluated = " + json);
     evaluated;
@@ -85,8 +85,7 @@ export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string)
 	return SAPISIDHASH;
 }
 export function try_json_parse<T>(json_string: string): T|ResponseError {
-	try { return <T>JSON.parse(json_string); }
-	catch (error) { return { "error": String(error) }; }
+	try { return JSON.parse(json_string) as T; } catch (error) { return { error: String(error) }; }
 }
 export function clean_html_text(text: string) {
 	return text.replace(/&#34;/g, '"')

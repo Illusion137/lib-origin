@@ -1,4 +1,4 @@
-export type Source = "YouTube"|"GoMovies"|"!Anime";
+export type Source = "YouTube" | "GoMovies" | "!Anime";
 export type Uri = `${Source}:${string}`;
 
 export interface Thumbnail {
@@ -19,5 +19,5 @@ export interface VideoContent {
 };
 
 export class SosuService {
-    
+
 };

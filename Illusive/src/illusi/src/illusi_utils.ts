@@ -1,33 +1,31 @@
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { Alert, GestureResponderEvent } from "react-native";
-import { AlphabetScroll } from '../../types';
 import BigList from 'react-native-big-list';
+import { AlphabetScroll } from '../../types';
 import { alert_error } from './alert';
 
-export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void){
+export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [
-        {"text": "Cancel", "onPress": () => {}},
-        {"text": "OK", "onPress": on_press }
+        {text: "Cancel", onPress: () => {}},
+        {text: "OK", onPress: on_press }
     ])
 }
 
-export function catch_function_sync(func: () => any){
-    try { return func(); } 
-    catch (error) { alert_error({"error": String(error)}); return {"error": String(error)}; }
+export function catch_function_sync(func: () => any) {
+    try { return func(); } catch (error) { alert_error({error: String(error)}); return {error: String(error)}; }
 }
-export async function catch_function_async(func: () => Promise<any>){
-    try { return await func(); } 
-    catch (error) { alert_error({"error": String(error)}); return {"error": String(error)}; }
+export async function catch_function_async(func: () => Promise<any>) {
+    try { return await func(); } catch (error) { alert_error({error: String(error)}); return {error: String(error)}; }
 }
 
-export function closest_to(target: number, array: number[]){
+export function closest_to(target: number, array: number[]) {
     return array.reduce(function(prev, curr) {
         return (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
     });
 }
 
-function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: string[]){
+function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: string[]) {
     alphabet_scroll.all_alphabet_fast_scroll_locations = [];
     for(let i = 0; i < char_data.length; i++) {
         alphabet_scroll.all_alphabet_fast_scroll_locations.push((17*i) + alphabet_scroll.top_scroll);
@@ -46,7 +44,7 @@ export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
-export async function share_item(item: {link: string}|{uri: string}){
+export async function share_item(item: {link: string}|{uri: string}) {
     const UTI = 'public.item';
     if("link" in item)
         await Sharing.shareAsync(item.link);

@@ -1,71 +1,71 @@
+import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
+import { Alert } from 'react-native';
+import * as ffmpeg from 'react-native-ffmpeg';
+import { is_empty } from '../../../../origin/src/utils/util';
+import { Constants } from '../../constants';
+import { Illusive } from '../../illusive';
+import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
+import { Prefs } from '../../prefs';
+import { DownloadFromIdResult, DownloadTrackResult, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
+import { alert_error } from './alert';
+import * as GLOBALS from './globals';
+import { playlist_tracks } from './playlist_converter';
+import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLTracks from './sql/sql_tracks';
-import * as SQLBackpack from './sql/sql_backpack';
-import * as GLOBALS from './globals';
-import * as ffmpeg from 'react-native-ffmpeg';
-import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
-import { Track, SetState, DownloadTrackResult, TrackMetaData, NamedUUID, DownloadFromIdResult } from "../../types";
-import { Prefs } from '../../prefs';
-import { Illusive } from '../../illusive';
-import { Alert } from 'react-native';
-import { alert_error } from './alert';
-import { is_empty } from '../../../../origin/src/utils/util';
-import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
-import { Constants } from '../../constants';
-import { playlist_tracks } from './playlist_converter';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
         if (condition_function()) resolve();
         else setTimeout((_: never) => poll(resolve), 400);
     }
-    return new Promise(<never>poll);
+    return new Promise(poll as never);
 }
-export function sort_tracks_for_download(tracks: Track[]): Track[]{
+export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
 }
-export function sort_filter_tracks(tracks: Track[]){
+export function sort_filter_tracks(tracks: Track[]) {
     return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri)));
 }
-export async function download_track_list(tracks: Track[]){
+export async function download_track_list(tracks: Track[]) {
     for(const track of sort_filter_tracks(tracks))
         GLOBALS.global_var.download_track(track);
 }
 
-export async function batch_download(key: string){
+export async function batch_download(key: string) {
     return await download_track_list(await playlist_tracks(key));
 }
 
 function download_error_callback(title: string, error: string, track: Track, start_download?: SetState): "ERROR" {
     if (start_download !== undefined) start_download(false);
-    if( !is_empty(error) ) alert_error({"error": title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error});
+    if( !is_empty(error) ) alert_error({error: title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error});
     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
     GLOBALS.downloading.splice(item_index, 1);
     return "ERROR";
 }
-export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata']){
+export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata']) {
     if(metadata === undefined) return;
     if(!await SQLTracks.track_exists(track)) return;
     if(track.artists[0].uri === null) {
         await SQLTracks.update_track(track.uid, 
             {
                 ...track, 
-                "artists": [
-                    <NamedUUID>{"name": track.artists[0].name, "uri": create_uri("youtube", metadata.artist_id)}
+                artists: [
+                    {name: track.artists[0].name, uri: create_uri("youtube", metadata.artist_id)} as NamedUUID
                 ].concat(...track.artists.slice(1))
             });
     }
     const new_metadata: TrackMetaData = {
-        ...track.meta ?? <any>{},
-        "age_restricted": metadata.age_restricted,
-        "chapters": metadata.chapters,
-        "songs": metadata.songs,
+        ...track.meta ?? ({} as any),
+        age_restricted: metadata.age_restricted,
+        chapters: metadata.chapters,
+        songs: metadata.songs,
     }
     track.meta = new_metadata;
     await SQLTracks.update_track_meta_data(track.uid, new_metadata);
 }
-export async function handle_new_track_data(track: Track, dl_uri: Awaited<ReturnType<typeof Illusive.get_download_url>>){
+export async function handle_new_track_data(track: Track, dl_uri: Awaited<ReturnType<typeof Illusive.get_download_url>>) {
     if("error" in dl_uri) return dl_uri;
     if(!await SQLTracks.track_exists(track))
         if(dl_uri.new_track_data !== undefined)
@@ -77,7 +77,7 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
         await SQLTracks.update_track_with_new_track_data(track, dl_uri.new_track_data);
         track = SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data!);
     }
-    if("metadata" in dl_uri){
+    if("metadata" in dl_uri) {
         await handle_track_meta_data(track, dl_uri.metadata);
     }
     return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
@@ -91,7 +91,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
         return false;
     }
 
-    GLOBALS.downloading.push({ 'uid': track.uid, 'progress': 0, 'progress_updater': progress_updater, 'execution_id': 0, 'duration': track.duration });
+    GLOBALS.downloading.push({ uid: track.uid, progress: 0, progress_updater: progress_updater, execution_id: 0, duration: track.duration });
     const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
@@ -115,18 +115,18 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                 ffmpeg.RNFFmpeg.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
                     try {
                         if(execution.returnCode !== Constants.ffmpeg_retcode_success)
-                            throw `FFMPEG return status code: ${execution.returnCode};\n Execution ID: ${execution.executionId}`
+                            throw new Error(`FFMPEG return status code: ${execution.returnCode};\n Execution ID: ${execution.executionId}`)
                         const sound_temp = new Audio.Sound();
                         await sound_temp.loadAsync({ uri: new_uri });
                         const meta_data = await sound_temp.getStatusAsync();
                         await sound_temp.unloadAsync();
                         if (meta_data.isLoaded === false)
-                            throw 'No load';
+                            throw new Error('No load');
                         const downloaded_duration = (meta_data.durationMillis ?? 0) / 1000;
                         if (Math.round(downloaded_duration) < 3)
-                            throw `Invalid Duration: ${downloaded_duration}`;
+                            throw new Error(`Invalid Duration: ${downloaded_duration}`);
                         else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))
-                            throw `Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`;
+                            throw new Error(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`);
 
                         await SQLTracks.mark_track_downloaded(track.uid, track.uid + '.m4a');
 
@@ -155,7 +155,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     return "GOOD";
 }
 
-export async function ffcache_yt(url: string, track: Track){
+export async function ffcache_yt(url: string, track: Track) {
     const hls_out_uri = SQLfs.cache_directory(`playlist_${track.youtube_id}.m3u8`);
     const hls_segments = SQLfs.cache_directory(`file_${track.youtube_id}__%d.m4a`);
     const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
