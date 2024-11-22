@@ -66,17 +66,17 @@ export namespace Instagram {
     export async function fetch_api_get<T extends { status: "ok" | "fail" }>(opts: Opts & { api_path: string, max_id?: string, params?: object }) {
         const params = { ...opts.params, max_id: opts.max_id ?? "" }
         const response = await fetch(base_api_path + opts.api_path + "?" + encode_params(params), { headers: api_get_headers(opts) });
-        if (!response.ok) return { error: `Status Code: ${response.status}` };
+        if (!response.ok) return { error: new Error(`Status Code: ${response.status}`) };
         const response_result: T = await response.json();
-        if (response_result.status !== "ok") return { error: JSON.stringify(response_result) };
+        if (response_result.status !== "ok") return { error: new Error(JSON.stringify(response_result)) };
         return response_result;
     }
     export async function fetch_api_post<T extends { status: "ok" | "fail" }>(opts: Opts & { base_path?: string, api_path: string, max_id?: string, params?: object, body?: any, no_params?: boolean}) {
         const params = { ...opts.params, max_id: opts.max_id ?? "" }
         const response = await fetch((opts.base_path ?? base_api_path) + opts.api_path + ((opts.no_params??false) ? "" : "?" + encode_params(params)), { headers: api_post_headers(opts), method: "POST", body: opts.body ? encode_params(opts.body) : null });
-        if (!response.ok) return { error: `Status Code: ${response.status}` };
+        if (!response.ok) return { error: new Error(`Status Code: ${response.status}`) };
         const response_result: T = await response.json();
-        if (response_result.status !== "ok") return { error: JSON.stringify(response_result) };
+        if (response_result.status !== "ok") return { error: new Error(JSON.stringify(response_result)) };
         return response_result;
     }
 

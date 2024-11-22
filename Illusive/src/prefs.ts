@@ -55,9 +55,11 @@ export namespace Prefs {
         hide_errors:                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
         keep_prefs:                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true}    as Pref<boolean>,
 
+        safe_mode:                             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
+        safe_mode_undownload:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
         can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
-        fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}    as Pref<boolean>,
+        fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
         auto_clean_directories:                {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
         can_clean_directories:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,
         track_player_file_searching:           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, experimental: true}  as Pref<boolean>,

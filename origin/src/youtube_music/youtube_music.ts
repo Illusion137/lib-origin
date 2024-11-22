@@ -203,7 +203,7 @@ export namespace YouTubeMusic {
 	}
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://music.youtube.com/search?q=${google_query(search_query)}`, Parser.parse_search_contents); }
 	export async function search_mode(opts: Opts, endpoint: Endpoint, ytcfg: YTCFG) {
-		if (endpoint === undefined) return { error: "Endpoint Undefined" };
+		if (endpoint === undefined) return { error: new Error("Endpoint Undefined") };
 		const payload = endpoint;
 		const search_response = await post_check_response(opts, ytcfg, "search?prettyPrint=false", payload);
 		if ("error" in search_response) return search_response;
@@ -280,7 +280,7 @@ export namespace YouTubeMusic {
 		}
 		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
 		if ("error" in response) return response;
-		if (!response.ok) return { error: `Failed to create playlist with status code ${response.status}` };
+		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
 		return await response.json() as CreatePlaylist;
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {

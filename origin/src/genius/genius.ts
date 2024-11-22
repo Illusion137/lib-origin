@@ -21,10 +21,10 @@ export namespace Genius {
             body: null,
             method: "GET"
         });
-        if (!search_response.ok) return { error: search_response.status };
+        if (!search_response.ok) return { error: new Error(String(search_response.status)) };
         const search_result: Search = await search_response.json();
         const top_hit = search_result.response.sections.find(item => item.type === "top_hit");
-        if (top_hit === undefined) return { error: "top_hit doesn't exist" };
+        if (top_hit === undefined) return { error: new Error("top_hit doesn't exist") };
         return top_hit.hits[0].result;
     }
     export async function get_lyrics(search_result: Result): Promise<string> {

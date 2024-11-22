@@ -226,7 +226,7 @@ export namespace YouTube {
 		}
 		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
 		if ("error" in response) return response;
-		if (!response.ok) return { error: `Failed to create playlist with status code ${response.status}` };
+		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
 		return await response.json() as CreatePlaylist;
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {

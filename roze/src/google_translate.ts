@@ -156,7 +156,7 @@ export namespace GoogleTranslate {
 
 	const translate_small_input_threshold = 5000;
 	export async function translate_small(opts: Opts & { input: string }) {
-		if (opts.input.length > translate_small_input_threshold) return { error: `Input Length exceeds the maximum length of ${translate_small_input_threshold}` };
+		if (opts.input.length > translate_small_input_threshold) return { error: new Error(`Input Length exceeds the maximum length of ${translate_small_input_threshold}`) };
 		const from_lang: LangCode = "es"; from_lang;
 		const to_lang: LangCode = "en"; to_lang;
 
@@ -201,7 +201,7 @@ export namespace GoogleTranslate {
 			body: encode_params(payload),
 			method: "POST"
 		});
-		if (!translate_response.ok) return { error: `Status Code: ${translate_response.status} - ${translate_response.statusText}` };
+		if (!translate_response.ok) return { error: new Error(`Status Code: ${translate_response.status} - ${translate_response.statusText}`) };
 		const response_text = await translate_response.text();
 		const extracted = extract_string_from_pattern(response_text, /\d+\n(.+?)\d+\n/is);
 		if (typeof extracted === "object") return extracted;
@@ -216,7 +216,7 @@ export namespace GoogleTranslate {
 		const translation: string | undefined =
 			parsed[1][0][0].find((item: any) => Array.isArray(item) && item.length !== 0)?.[0]
 				.find((inner_item: string | number | null) => typeof inner_item === "string" && inner_item !== opts.input);
-		if (translation === undefined) return { error: "translation is undefined" };
+		if (translation === undefined) return { error: new Error("translation is undefined") };
 		return translation;
 	}
 }

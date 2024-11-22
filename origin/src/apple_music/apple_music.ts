@@ -226,7 +226,7 @@ export namespace AppleMusic {
         };
         const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlists", params, payload, "POST");
         if("error" in playlists_response) return playlists_response;
-        if(!playlists_response.ok) return {error: `Failed to create playlist with status code: ${playlists_response.status}`};
+        if(!playlists_response.ok) return {error: new Error(`Failed to create playlist with status code: ${playlists_response.status}`)};
         return await playlists_response.json() as CreatePlaylist;
     }
     export async function delete_playlist(playlist_id: string, opts: Opts) {

@@ -325,7 +325,7 @@ export namespace SoundCloud {
         const has_cookies = requires_cookies(opts);
         if("error" in has_cookies) return has_cookies;
         const redirect_response = await fetch("https://soundcloud.com/you", page_method_options(opts.cookie_jar));
-        if(redirect_response.redirected === false) return {error: "Response not redirected"};
+        if(redirect_response.redirected === false) return {error: new Error("Response not redirected")};
         return redirect_response.headers.get("Location")?.replace("//", "");
     }
     function extract_playlist_name(permalink: string) {
