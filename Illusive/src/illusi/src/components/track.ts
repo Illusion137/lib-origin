@@ -18,7 +18,7 @@ export async function download_track(track_data: Track, is_downloading: boolean,
 }
 
 export async function insert_into_write_playlist(track_data: Track, write_playlist_uuid: string|undefined, playlist_saved: boolean, set_playlist_saved: SetState<boolean>, refresh_data?: () => any) {
-    if(write_playlist_uuid === undefined) { alert_error({error: "Track props.write_playlist is undefined"}); return; }
+    if(write_playlist_uuid === undefined) { alert_error({error: new Error("Track props.write_playlist is undefined")}); return; }
     if(!playlist_saved) {
         if(write_playlist_uuid === Constants.library_write_playlist) await SQLTracks.insert_track(track_data);
         else await SQLPlaylists.insert_track_playlist(write_playlist_uuid, track_data.uid);
@@ -31,7 +31,7 @@ export async function insert_into_write_playlist(track_data: Track, write_playli
 }
 
 export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined, refresh_data?: (() => Promise<void>)) {
-    if(refresh_data === undefined) { alert_error({error: "Track props.refresh_data is undefined"}); return; }
+    if(refresh_data === undefined) { alert_error({error: new Error("Track props.refresh_data is undefined")}); return; }
     if(write_playlist_uuid === undefined || write_playlist_uuid === Constants.library_write_playlist) {
         const playlists = await SQLPlaylists.all_playlists_data();
         for(let i = 0; i < playlists.length; i++) {

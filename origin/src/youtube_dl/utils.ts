@@ -173,7 +173,7 @@ export const playError = (player_response: any) => {
 // Undici request
 // import * as fs from 'fs';
 // let i = 0;
-export const request = async (url: string, options: DownloadOptions = {}): Promise<string | object> => {
+export const request = async (url: string, options: DownloadOptions = {}): Promise<string | Record<string, any>> => {
 	const { requestOptions } = options;
 	// console.log(url, requestOptions);
 	const req = await fetch(url, requestOptions);

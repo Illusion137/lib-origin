@@ -6,9 +6,9 @@ interface GetInfoOptions {
 	requestCallback?: (res: Response) => {};
 	requestOptions?: any;
 }
-
+export type YTDLQuality = 'lowest' | 'highest' | 'highestaudio' | 'lowestaudio' | 'highestvideo' | 'lowestvideo' | `${number}` | string[] | number[]
 interface ChooseFormatOptions {
-	quality?: 'lowest' | 'highest' | 'highestaudio' | 'lowestaudio' | 'highestvideo' | 'lowestvideo' | `${number}` | string[] | number[];
+	quality?: YTDLQuality;
 	filter?: Filter;
 	format?: AVFormat;
 }

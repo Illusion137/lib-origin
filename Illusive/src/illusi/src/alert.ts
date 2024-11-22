@@ -11,5 +11,5 @@ export function alert_errors(errors: ResponseError[]) {
 }
 export function alert_error(error: ResponseError[]|ResponseError|string, force?: boolean) {
     if(!Prefs.get_pref("hide_errors") || force)
-        Alert.alert("Error", typeof error === "string" ? error : Array.isArray(error) ? error.map(err => err.error).join(', ') : error.error);
+        Alert.alert("Error", typeof error === "string" ? error : Array.isArray(error) ? error.map(err => `${err.error.message} - ${err.error.stack}`).join(', ') : `${error.error.message} - ${error.error.stack}`);
 }

@@ -43,9 +43,9 @@ export namespace MangaReader {
     }
     export async function ajax(path: string) {
         const response = await fetch(`${base_url}/ajax/${path}`);
-        if(!response.ok) return {error: `Response failed with status code: ${response.status}`};
+        if(!response.ok) return {error: new Error(`Response failed with status code: ${response.status}`)};
         const result: AjaxResult = await response.json();
-        if(result.status === false) return {error: `Ajax Result failed with: ${result.status}`};
+        if(result.status === false) return {error: new Error(`Ajax Result failed with: ${result.status}`)};
         return result;
     }
     export async function manga_list(opts: {page?: number} & ({query: string}|{genre: MangaGenres}|{type: MangaTypes})): PromiseResult<MangaList> {
@@ -53,7 +53,7 @@ export namespace MangaReader {
         if("query" in opts) params["keyword"] = google_query(opts.query);
         const path = "query" in opts ? "/search" : "genre" in opts ? opts.genre : opts.type;
         const response = await fetch(`${base_url}${path}?${encode_params(params)}`);
-        if(!response.ok) return {error: `Response failed with status code: ${response.status}`};
+        if(!response.ok) return {error: new Error(`Response failed with status code: ${response.status}`)};
         const document = jsdom_document(await response.text());
         const manga_elements = document.querySelectorAll(".item.item-spc");
         const mangas = map_html_collection(manga_elements, parse_search_manga);

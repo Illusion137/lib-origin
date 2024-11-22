@@ -17,7 +17,7 @@ export const cache = new Cache(1);
 export const getFunctions = (html5playerfile: string, options: DownloadOptions): Promise<[vmScript, vmScript]> => {
 	return cache.getOrSet(html5playerfile, async () => {
 		const body = await utils.request(html5playerfile, options);
-		const functions = extractFunctions(body);
+		const functions = extractFunctions(body as string);
 		cache.set(html5playerfile, functions);
 		return functions;
 	});

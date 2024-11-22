@@ -1,5 +1,5 @@
 import { CookieJar } from "../utils/cookie_util";
-import { FetchMethod, ResponseError, ResponseSuccess } from "../utils/types";
+import { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../utils/types";
 import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../utils/util";
 import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
 import { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
@@ -146,7 +146,7 @@ export namespace SoundCloud {
             ...get_locale_params(opts)
         }
         const response = await fetch(`https://api-v2.soundcloud.com/${opts.path}?${encode_params(params)}`, api_method_options(opts.cookie_jar));
-        if(!response.ok) return {error: String(response.status)};
+        if(!response.ok) return {error: new Error(String(response.status))};
         return {data: await response.json() as SearchOf<T>, client_id: opts.client_id, hydration};
     }
     export async function apipost(opts: Opts & {path: string, params?: Record<string, any>, payload: object|null, method?: FetchMethod, hydration_url?: string, }) {
@@ -163,7 +163,7 @@ export namespace SoundCloud {
             ...get_locale_params(opts)
         }
         const response = await fetch(`https://api-v2.soundcloud.com/playlists?${encode_params(params)}`, {method: opts.method ?? "POST", body: opts.payload === null ? null : JSON.stringify(opts.payload), headers: post_api_headers(opts.cookie_jar!)});
-        if(!response.ok) return {error: String(response.status)};
+        if(!response.ok) return {error: new Error(String(response.status))};
         return {data: response, client_id: opts.client_id, hydration};
     }
     export function combine_continuation(current: SearchOf<unknown>, next: SearchOf<unknown>) {
@@ -299,7 +299,7 @@ export namespace SoundCloud {
         }
         const params = Object.assign(locale_params, opts_params);
         const playlist_tracks_response = await fetch(`https://api-v2.soundcloud.com/tracks?${encode_params(params)}`, { headers: post_api_headers(opts.cookie_jar!), method: "GET" });
-        if(!playlist_tracks_response.ok) return {error: String(playlist_tracks_response.status)};;
+        if(!playlist_tracks_response.ok) return {error: new Error(String(playlist_tracks_response.status))};
         const playlist_tracks: Track[] = await playlist_tracks_response.json();
         return { hydration: playlist_hyrdration, tracks: playlist_tracks, client_id: opts.client_id };
     }
@@ -331,7 +331,7 @@ export namespace SoundCloud {
     function extract_playlist_name(permalink: string) {
         return extract_string_from_pattern( clean_permalink(permalink), /\*+?\/sets\/(.+)/);
     }
-    export async function create_playlist(opts: Opts & ({ sharing: "public"|"private", title: string, track_uids: number[] })) {
+    export async function create_playlist(opts: Opts & ({ sharing: "public"|"private", title: string, track_uids: number[] })): PromiseResult<Playlist> {
         const payload = {
             playlist: {
                 title: opts.title,

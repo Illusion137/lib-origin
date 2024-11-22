@@ -40,7 +40,7 @@ export async function batch_download(key: string) {
 
 function download_error_callback(title: string, error: Error, track: Track, start_download?: SetState): "ERROR" {
     if (start_download !== undefined) start_download(false);
-    if( !is_empty(error) ) alert_error({error: new Error(title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error.message + ":\n" + error.stack)});
+    if( !is_empty(error) && !is_empty(error.message) ) alert_error({error: new Error(title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error.message + ":\n" + error.stack)});
     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
     GLOBALS.downloading.splice(item_index, 1);
     return "ERROR";
@@ -103,7 +103,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                 return download_error_callback("Couldn't find the file", download_uri.error, track, start_download);
             }
             if("url" in download_uri && download_uri.url.includes("file://")) {
-                return download_error_callback("", "", track, start_download);
+                return download_error_callback("", new Error(""), track, start_download);
             }
             const nt_handle = await handle_new_track_data(track, download_uri);
             if(!("error" in nt_handle)) track = nt_handle;

@@ -44,7 +44,7 @@ export async function push_track_to_playing_queue(track_data: Track) {
 }
 export async function play_mix(track_data: Track, from: string) {
     if(is_empty(from)) {
-        alert_error({error: "Play Mix: from is empty"});
+        alert_error({error: new Error("Play Mix: from is empty")});
         return;
     }
     GLOBALS.global_var.play_tracks(track_data, [track_data], from);

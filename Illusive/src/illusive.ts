@@ -199,10 +199,10 @@ export namespace Illusive {
     export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "SoundCloud"];
 
     export async function convert_track(track: Track, to_music_service: MusicServiceType, proxies?: Origin.Proxy.Proxy[], possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError> {
-        if(music_service.get(to_music_service)?.search === undefined) return {error: "Can't convert to this music-service"};
+        if(music_service.get(to_music_service)?.search === undefined) return {error: new Error("Can't convert to this music-service")};
         possible_services = possible_services.filter(service => service !== to_music_service);
         const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
-        if(search_tracks.tracks.length === 0) return {error: "Unable to convert track"};
+        if(search_tracks.tracks.length === 0) return {error: new Error("Unable to convert track")};
         interface Max {"index": number, "value": number}
         let best: Max = {index: 0, value: 30};
         let all_negative_values = true;

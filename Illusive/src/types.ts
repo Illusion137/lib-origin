@@ -309,8 +309,8 @@ export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
 
-export interface CompactPlaylistsResult {"playlists": CompactPlaylist[], "error"?: string}
-export interface TrackMix { "tracks": Track[], "error"?: string }
+export interface CompactPlaylistsResult {"playlists": CompactPlaylist[], "error"?: Error}
+export interface TrackMix { "tracks": Track[], "error"?: Error }
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
@@ -385,7 +385,7 @@ export class MusicService {
     }
     async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}> {
         const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
-        if(this.get_user_playlists === undefined) return {error: [{error: "get_user_playlist is undefined"}], map};
+        if(this.get_user_playlists === undefined) return {error: [{error: new Error("get_user_playlist is undefined")}], map};
         const account_playlists = await this.get_user_playlists();
         if("error" in account_playlists) return {error: [account_playlists as ResponseError], map};
         const service_domain_map: Record<MusicServiceURI, string> = {

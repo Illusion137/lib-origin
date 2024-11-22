@@ -58,7 +58,7 @@ export namespace AppleMusic {
     }
     export async function get_serialized_server_data(url: string, opts: Opts) {
         const response = await get_response(url, opts);
-        if (!response.ok) return { error: String(response.status) };
+        if (!response.ok) return { error: new Error(String(response.status)) };
         const text = await response.text();
         return await extract_serialized_server_data(text, opts);
     }
@@ -148,7 +148,7 @@ export namespace AppleMusic {
             const playlist_id = urlid(playlist_path, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
             const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
             if ("error" in api_playlists_response) return api_playlists_response;
-            if(!api_playlists_response.ok) return {error: String(api_playlists_response.status)};
+            if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
             const user_playlist: UserPlaylist = await api_playlists_response.json();
             return {data: user_playlist, authorization: playlist_response.authorization};
         }

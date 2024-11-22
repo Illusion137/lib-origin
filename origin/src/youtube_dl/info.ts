@@ -87,7 +87,7 @@ const playerAPI = async (videoId: string, payload: object, userAgent: string | u
 			body: JSON.stringify(payload),
 		},
 	};
-	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts);
+	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts) as Record<string, any>;
 	const playErr = utils.playError(response);
 	if (playErr) throw playErr;
 	if (!response.videoDetails || videoId !== response.videoDetails.videoId) {
@@ -290,7 +290,7 @@ export const getInfo = async (id: string, options: DownloadOptions): Promise<Vid
 
 	// Fill in HTML5 player URL
 	info.html5player = info.html5player ||
-		getHTML5player(await getWatchHTMLPageBody(id, options)) || getHTML5player(await getEmbedPageBody(id, options))!;
+		getHTML5player(await getWatchHTMLPageBody(id, options)) || getHTML5player(await getEmbedPageBody(id, options) as string)!;
 
 	if (!info.html5player) {
 		throw Error('Unable to find html5player file');
@@ -313,7 +313,7 @@ export const getInfo = async (id: string, options: DownloadOptions): Promise<Vid
 		for (const resp of responses) {
 			if (resp.status !== "fulfilled") continue;
 			if (resp.value) {
-				funcs.push(...parseAdditionalManifests(resp.value, options));
+				funcs.push(...parseAdditionalManifests(resp.value as VideoInfo["player_response"], options));
 			}
 		}
 	} catch (_) {
@@ -386,7 +386,7 @@ const fetchIosJsonPlayer = async (videoId: string, _: DownloadOptions) => {
 			body: JSON.stringify(payload),
 		},
 	};
-	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts);
+	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts) as Record<string, any>;
 	const playErr = utils.playError(response);
 	if (playErr) throw playErr;
 	if (!response.videoDetails || videoId !== response.videoDetails.videoId) {
@@ -449,7 +449,7 @@ const fetchAndroidJsonPlayer = async (videoId: string, _: DownloadOptions) => {
 			body: JSON.stringify(payload),
 		},
 	};
-	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts);
+	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts) as Record<string, any>;
 	const playErr = utils.playError(response);
 	if (playErr) throw playErr;
 	if (!response.videoDetails || videoId !== response.videoDetails.videoId) {
@@ -511,7 +511,7 @@ const getDashManifest = (url: string, options: DownloadOptions): Promise<Record<
  */
 const getM3U8 = async (url_: string, options: DownloadOptions) => {
 	const url = new URL(url_, BASE_URL);
-	const body: string = await utils.request(url.toString(), options);
+	const body = await utils.request(url.toString(), options) as string;
 	const formats: Record<string, any> = {};
 	body.split('\n')
 		.filter(line => /^https?:\/\//.test(line))

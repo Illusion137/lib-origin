@@ -39,7 +39,7 @@ export async function youtube_get_playlist(url: string): Promise<MusicServicePla
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_playlist({cookie_jar}, url);
     if("error" in playlist_response) return default_playlist(playlist_response);
-    if(playlist_response.data.playlist_data === undefined) return default_playlist({error: "playlist_data is undefined"});
+    if(playlist_response.data.playlist_data === undefined) return default_playlist({error: new Error("playlist_data is undefined")});
     return {
         ...youtube_parse_playlist_header(playlist_response.data.playlist_data),
         tracks: youtube_parse_videos(playlist_response.data.tracks),
@@ -118,7 +118,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
         case "collection": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client, limit: playlist_limit}); break;
         default: return {title: "", tracks: [], continuation: null};
     }
-    if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: [{error: "playlist_response is undefined"}]};
+    if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: [{error: new Error("playlist_response is undefined")}]};
     if((typeof playlist_response === "object" && "error" in playlist_response)) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
     if("playlistV2" in playlist_response.data) {
         return {
@@ -188,7 +188,7 @@ export async function spotify_get_playlist_continuation(opts: SpotifyPlaylistCon
 export async function amazon_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("amazon_music_cookie_jar");
     const playlist_response = await Origin.AmazonMusic.get_playlist(url, {cookie_jar});
-    if("error" in playlist_response && typeof playlist_response.error === "string") return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
     return {
         title: playlist_response.title,
         tracks: playlist_response.tracks.map(track => parse_amazon_music_playlist_track(track)),

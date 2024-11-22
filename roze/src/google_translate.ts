@@ -75,7 +75,7 @@ export namespace GoogleTranslate {
 			body: null,
 			method: "GET"
 		});
-		if (!response.ok) return { error: `Status Code: ${response.status}` };
+		if (!response.ok) return { error: new Error(`Status Code: ${response.status}`) };
 		const html = await response.text();
 
 		const window_values_string = extract_string_from_pattern(html, /window\..+?_values ?= ?(.+?);/si);
@@ -88,7 +88,7 @@ export namespace GoogleTranslate {
 		const global_data_cast: Record<string, any> = global_data;
 
 		const token_time: TokenTime | undefined = windows_values.find(item => typeof item === "string" && !item.includes("https://") && /.+?:\d+/.test(item));
-		if (!token_time) return { error: "token_time is undefined" };
+		if (!token_time) return { error: new Error("token_time is undefined") };
 		const email: string | undefined = windows_values.find(item => typeof item === "string" && item.includes("@") && /.+?@.+?\./.test(item));
 		const server: string | undefined = windows_values.find(item => typeof item === "string" && item.includes("boq_translate"));
 		const freq: string | undefined = Object.values(global_data_cast).find(value => typeof value === "string" && /\d{8,}/.test(value));
