@@ -45,11 +45,11 @@ export namespace JNovel {
 	}
 	async function get_response_text(url: string, opts: Opts) {
 		const response = await get_response(url, opts);
-		if (!response.ok) return { error: `user_response is not ok: Status Code: ${response.status}` };
+		if (!response.ok) return { error: new Error(`user_response is not ok: Status Code: ${response.status}`) };
 		return await response.text();
 	}
 	function try_json_parse<T>(json_string: string): T | ResponseError {
-		try { return JSON.parse(json_string) as T; } catch (error) { return { error: String(error) }; }
+		try { return JSON.parse(json_string) as T; } catch (error) { return { error: error as Error }; }
 	}
 	function clean_html_text(text: string) {
 		return text.replace(/&#34;/g, '"')
@@ -74,7 +74,7 @@ export namespace JNovel {
 	export async function calender(opts: Opts): PromiseResult<JNovel_Calender> { return __next_data__(await get_response_text("https://j-novel.club/calendar", opts)) as JNovel_Calender | ResponseError; }
 	export async function user(opts: Opts): PromiseResult<JNovel_User> {
 		const access_token_expired = opts.cookie_jar?.getCookie("access_token")?.hasExpired() ?? true;
-		if (access_token_expired) return { error: "access token is expired or doesn't exist" };
+		if (access_token_expired) return { error: new Error("Access token is expired or doesn't exist") };
 		return __next_data__(await get_response_text("https://j-novel.club/user", opts)) as JNovel_User | ResponseError;
 	}
 	export async function reader_initial(opts: Opts & { legacy_id: string }) {
@@ -133,7 +133,7 @@ export namespace JNovel {
 					content.push({ type: "chapter", title: html_inner_text_content(xhtml_lines[line]) + '\r\n' }); break;
 				case 'h2':
 					content.push({ type: "sub_chapter", title: html_inner_text_content(xhtml_lines[line]) + '\r\n' }); break;
-				default: return { error: `Parse Error: unknown JNovel html_class of '${type}'` };
+				default: return { error: new Error(`Parse Error: unknown JNovel html_class of '${type}'`) };
 			}
 		}
 		return content;

@@ -79,7 +79,7 @@ export namespace YouTube {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"Cookies": cookie_jar?.toString() as string,
+			"Cookies": cookie_jar?.toString(),
 			"Referer": "https://www.youtube.com",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
 		}
@@ -149,9 +149,11 @@ export namespace YouTube {
 				initial_data: extract_initial_data(page_html),
 				ytcfg: extract_ytcfg(page_html)
 			};
-		} catch (error) { return { error: String(error) }; }
+		} catch (error) { return { error: error as Error }; }
 	}
-	async function parse_initial(opts: Opts, init_url: string, parser: (contents: any) => any, tuser_agent?: string): Promise<any | ResponseError> {
+    interface ICFGData<T> { icfg: ICFG, data: T }
+	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
+	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any, tuser_agent?: string): PromiseICFGData<T> {
 		try {
 			const icfg = await get_initial_data_config(opts, init_url, tuser_agent);
 			if ("error" in icfg) throw icfg.error;
@@ -159,10 +161,8 @@ export namespace YouTube {
 				icfg,
 				data: parser(icfg.initial_data)
 			};
-		} catch (error) { return { error: String(error) }; }
+		} catch (error) { return { error: error as Error }; }
 	}
-	interface ICFGData<T> { icfg: ICFG, data: T }
-	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
 	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_channel_contents> { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_channel_contents); }
@@ -185,7 +185,7 @@ export namespace YouTube {
 			const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload);
 			if ("error" in response) throw response.error;
 			return (await response.json()) as ContinuedResults_0;
-		} catch (error) { return { error: String(error) } }
+		} catch (error) { return { error: error as Error } }
 	}
 	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
 		try {
@@ -195,7 +195,7 @@ export namespace YouTube {
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
 			const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload), credentials: "include" });
 			return response;
-		} catch (error) { return { error: String(error) } }
+		} catch (error) { return { error: error as Error } }
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
 		const response = await post_check_response(opts, ytcfg, path, payload);

@@ -39,7 +39,7 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             SQLRecentlyPlayed.cleanup_recently_played(),
             activateKeepAwakeAsync()
         ]);
-        if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories();
+        if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories().catch(e => e);
         set_theme(Prefs.get_theme(Prefs.get_pref('theme')));
     })
 }

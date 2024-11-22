@@ -67,8 +67,7 @@ export function obj_to_sql_table(primary: string|undefined, obj: Record<string, 
 }
 export function sql_table_to_query_variadics(sql_table: string) {
     const qarr: string[] = [];
-    for(const _ in sql_table.split(','))
-        qarr.push('?');
+    sql_table.split(',').forEach(_ => qarr.push('?'));
     return `(${qarr.join(', ')})`;
 }
 function sql_serialize(str: string) {

@@ -8,7 +8,7 @@ interface GetInfoOptions {
 }
 
 interface ChooseFormatOptions {
-	quality?: 'lowest' | 'highest' | 'highestaudio' | 'lowestaudio' | 'highestvideo' | 'lowestvideo' | string | number | string[] | number[];
+	quality?: 'lowest' | 'highest' | 'highestaudio' | 'lowestaudio' | 'highestvideo' | 'lowestvideo' | `${number}` | string[] | number[];
 	filter?: Filter;
 	format?: AVFormat;
 }
@@ -37,7 +37,7 @@ export interface AVFormat {
 	indexRange?: { start: string; end: string };
 	lastModified: string;
 	contentLength: string;
-	quality: 'tiny' | 'small' | 'medium' | 'large' | 'hd720' | 'hd1080' | 'hd1440' | 'hd2160' | 'highres' | string;
+	quality: 'tiny' | 'small' | 'medium' | 'large' | 'hd720' | 'hd1080' | 'hd1440' | 'hd2160' | 'highres';
 	qualityLabel: '144p' | '144p 15fps' | '144p60 HDR' | '240p' | '240p60 HDR' | '270p' | '360p' | '360p60 HDR'
 	| '480p' | '480p60 HDR' | '720p' | '720p60' | '720p60 HDR' | '1080p' | '1080p60' | '1080p60 HDR' | '1440p'
 	| '1440p60' | '1440p60 HDR' | '2160p' | '2160p60' | '2160p60 HDR' | '4320p' | '4320p60';
@@ -189,7 +189,6 @@ export interface CaptionTrack {
 		| "Yiddish"
 		| "Yoruba"
 		| "Zulu"
-		| string;
 	};
 	vssId: string;
 	languageCode:
@@ -297,7 +296,6 @@ export interface CaptionTrack {
 	| "yi"
 	| "yo"
 	| "zu"
-	| string;
 	kind: string;
 	rtl?: boolean;
 	isTranslatable: boolean;

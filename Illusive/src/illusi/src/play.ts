@@ -21,7 +21,7 @@ export function filter_play_tracks(start_track: Track, tracks: Track[], playlist
         GLOBALS.global_var.can_play_again_mutex = false;
         return tracks;
     } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(e => e);
         return [];
     }
 }

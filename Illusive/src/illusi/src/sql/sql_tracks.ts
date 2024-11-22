@@ -86,7 +86,7 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
 export function sql_track_to_track(sql_track: SQLTrack): Track {
     const meta: TrackMetaData = JSON.parse(sql_track.meta!);
     return Object.assign(sql_track, {
-        artists: JSON.parse(sql_track.artists!),
+        artists: JSON.parse(sql_track.artists),
         album: JSON.parse(sql_track.album!),
         prods: JSON.parse(sql_track.prods!),
         tags: JSON.parse(sql_track.tags!),
@@ -171,10 +171,10 @@ export async function insert_all_tracks(tracks: Track[]) {
 }
 export async function insert_track(track: Track) {
     if( await track_exists(track) ) return;
-    if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track);
+    if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
     await db.runAsync(sql_insert_values("tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
     GLOBALS.global_var.sql_tracks.push(track);
-    if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track);
+    if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
 }
 export async function update_track(track_uid: string, new_track: Track) {
     await db.runAsync(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, true)} ${sql_where<Track>(["uid", track_uid])}`);
@@ -197,7 +197,7 @@ export async function restore_thumbnail_cache() {
     await fetch_track_data();
     for(const track of GLOBALS.global_var.sql_tracks)
         if(is_empty(track.imported_id) && is_empty(track.thumbnail_uri))
-            download_thumbnail(track);
+            download_thumbnail(track).catch(e => e);
 }
 
 export async function clean_thumbnail_cache() {

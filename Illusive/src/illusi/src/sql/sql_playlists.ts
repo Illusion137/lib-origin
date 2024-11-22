@@ -101,7 +101,7 @@ export async function all_playlists_names(): Promise<{"title": string}[]> {
 }
 const playlist_name_sync_memo: Record<string, string> = {};
 export function playlist_name_sync(playlist_uuid: string) {
-    const title = db.getAllSync(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`) as {"title": string}[];
+    const title = db.getAllSync<{"title": string}>(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     if(title.length === 0) return null;
     playlist_name_sync_memo[playlist_uuid] = title[0].title;
     return title[0].title;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
@@ -30,16 +31,16 @@ export function sort_filter_tracks(tracks: Track[]) {
 }
 export async function download_track_list(tracks: Track[]) {
     for(const track of sort_filter_tracks(tracks))
-        GLOBALS.global_var.download_track(track);
+        GLOBALS.global_var.download_track(track).catch(e => alert_error(e));
 }
 
 export async function batch_download(key: string) {
     return await download_track_list(await playlist_tracks(key));
 }
 
-function download_error_callback(title: string, error: string, track: Track, start_download?: SetState): "ERROR" {
+function download_error_callback(title: string, error: Error, track: Track, start_download?: SetState): "ERROR" {
     if (start_download !== undefined) start_download(false);
-    if( !is_empty(error) ) alert_error({error: title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error});
+    if( !is_empty(error) ) alert_error({error: new Error(title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error.message + ":\n" + error.stack)});
     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
     GLOBALS.downloading.splice(item_index, 1);
     return "ERROR";
@@ -75,7 +76,7 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
         else return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
     if ("new_track_data" in dl_uri && dl_uri.new_track_data !== undefined) {
         await SQLTracks.update_track_with_new_track_data(track, dl_uri.new_track_data);
-        track = SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data!);
+        track = SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data);
     }
     if("metadata" in dl_uri) {
         await handle_track_meta_data(track, dl_uri.metadata);
@@ -97,7 +98,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
         .then(async () => {
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track);
             if ("error" in download_uri) {
-                if (download_uri.error.toLowerCase().includes("unavailable"))
+                if (download_uri.error.message.toLowerCase().includes("unavailable"))
                     await SQLBackpack.add_to_backpack(track.uid);
                 return download_error_callback("Couldn't find the file", download_uri.error, track, start_download);
             }
@@ -140,18 +141,18 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                         if (start_download !== undefined)          start_download(false);
                         if (set_finished_downloaded !== undefined) set_finished_downloaded(true);
                     } catch (error) {
-                        download_error_callback("Failed To Download:", String(error), track, start_download);
+                        download_error_callback("Failed To Download:", error as Error, track, start_download);
                     }
                 }).then(execution_id => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
                         GLOBALS.downloading[item_index].execution_id = execution_id;
-                })
+                }).catch(e => e)
             } catch (error) {
-                return download_error_callback("Failed To Download:", String(error), track, start_download);
+                return download_error_callback("Failed To Download:", error as Error, track, start_download);
             }
             return "GOOD";
-        });
+    }).catch(e => e);
     return "GOOD";
 }
 
@@ -159,6 +160,6 @@ export async function ffcache_yt(url: string, track: Track) {
     const hls_out_uri = SQLfs.cache_directory(`playlist_${track.youtube_id}.m3u8`);
     const hls_segments = SQLfs.cache_directory(`file_${track.youtube_id}__%d.m4a`);
     const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
-    ffmpeg.RNFFmpeg.executeAsync(cmd, async (execution) => {execution});
+    ffmpeg.RNFFmpeg.executeAsync(cmd, () => {}).catch(e => e);
     return hls_out_uri;
 }

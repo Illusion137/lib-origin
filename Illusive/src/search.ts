@@ -107,11 +107,11 @@ export async function youtube_music_search(query: string, _?: number): Promise<M
 
 interface SoundcloudSearchContinuation {"next_href": string|null, "client_id": string, "depth": number}
 export function soundcloud_parse_search(search_response: ClientSearchOf<Playlist|Track|User>): MusicSearchResponse {
-    const playlists_and_albums = search_response.data.collection.filter(item => item.kind === "playlist") as Playlist[];
+    const playlists_and_albums = search_response.data.collection.filter(item => item.kind === "playlist");
     const playlists = playlists_and_albums.filter(item => item.is_album === false);
     const albums = playlists_and_albums.filter(item => item.is_album === true);
-    const users = search_response.data.collection.filter(item => item.kind === "user") as User[];
-    const tracks = search_response.data.collection.filter(item => item.kind === "track") as Track[];
+    const users = search_response.data.collection.filter(item => item.kind === "user");
+    const tracks = search_response.data.collection.filter(item => item.kind === "track");
     return {
         tracks: tracks.map(soundcloud_parse_track),
         playlists: playlists.map(soundcloud_parse_playlist),

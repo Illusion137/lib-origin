@@ -224,7 +224,7 @@ export interface PlaylistsTracks {
     track_uid: string
 }
 
-export type MaybeErrors = ResponseError[] | never;
+export type MaybeErrors = ResponseError[] | undefined;
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
 export interface CompactPlaylist {
     title: NamedUUID
@@ -402,10 +402,10 @@ export class MusicService {
         for(const playlist of account_playlists.playlists) {
             // eslint-disable-next-line prefer-const
             let [service, endpoint] = playlist.title.uri!.split(':') as [MusicServiceURI, string];
-            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: [{error: "service lacks playlist list"}], map};
+            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: [{error: new Error("Service lacks playlist list")}], map};
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify") {
-                if(playlist.type === undefined) return {error: [{error: "Playlist Type is undefined"}], map};
+                if(playlist.type === undefined) return {error: [{error: new Error("Playlist Type is undefined")}], map};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
                 map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
             } else

@@ -45,11 +45,11 @@ export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1
 }
 
 export async function get_legacy_1307_track_data(database: SQLite.SQLiteDatabase) {
-    return await database.getAllAsync(sql_select("tracks", "*")) as LegacyTypes1307.Track[];
+    return await database.getAllAsync<LegacyTypes1307.Track>(sql_select("tracks", "*"));
 }
 export async function get_legacy_1307_playlists(database: SQLite.SQLiteDatabase) {
-    return await database.getAllAsync(sql_select("playlists", "*")) as LegacyTypes1307.Playlist[];
+    return await database.getAllAsync<LegacyTypes1307.Playlist>(sql_select("playlists", "*"));
 }
 export async function get_legacy_1307_playlist_tracks(database: SQLite.SQLiteDatabase, playlist_name: string) {
-    return await database.getAllAsync(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`) as LegacyTypes1307.Track[];
+    return await database.getAllAsync<LegacyTypes1307.Track>(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`);
 }

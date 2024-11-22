@@ -1,5 +1,4 @@
 import { Audio } from 'expo-av';
-import { Alert } from 'react-native';
 import * as DocumentPicker from 'react-native-document-picker'
 import { generate_new_uid } from '../../../../origin/src/utils/util';
 import { Playlist, Promises, Track } from '../..//types';
@@ -7,9 +6,10 @@ import { extract_file_extension } from '../../illusive_utilts';
 import * as SQLfs from './sql/sql_fs'
 import * as SQLPlaylists from './sql/sql_playlists'
 import * as SQLTracks from './sql/sql_tracks'
+import { alert_error } from './alert';
 
 function handle_document_picker_error(error: unknown) {
-    if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else throw error;
+    if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else alert_error({error: error as Error});
 }
 
 export async function upload_sqlite_db() {
@@ -17,16 +17,16 @@ export async function upload_sqlite_db() {
         return await DocumentPicker.pickSingle({copyTo: 'cachesDirectory'});
     } catch (error) {
         handle_document_picker_error(error);
-        return {error: String(error)};
+        return {error: error as Error};
     }
 }
 
 export async function upload_playlist_thumbnail(playlist: Playlist, callback: () => Promise<void>) {
     try {
         const thumbnail_uri = await DocumentPicker.pickSingle({type: [DocumentPicker.types.images], copyTo: 'documentDirectory'});
-        if("copyError" in thumbnail_uri) throw thumbnail_uri.copyError;
-        if(thumbnail_uri.fileCopyUri === null) throw {error: "fileCopyUri is null"};
-        if(thumbnail_uri.name === null) throw {error: "name is null"};
+        if("copyError" in thumbnail_uri) throw new Error(thumbnail_uri.copyError);
+        if(thumbnail_uri.fileCopyUri === null) throw new Error("thumbnail_uri.fileCopyUri is null");
+        if(thumbnail_uri.name === null) throw new Error("thumbnail_uri.name is null");
         await SQLfs.move_to_thumbnail_directory(thumbnail_uri.fileCopyUri, thumbnail_uri.name);
         
         playlist.thumbnail_uri = thumbnail_uri.name!;
@@ -53,7 +53,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
 
         for(const audio_file of audio_files) {
             try {
-                if(audio_file.copyError !== undefined) throw audio_file.copyError;
+                if(audio_file.copyError !== undefined) throw new Error(audio_file.copyError);
                 if(typeof(audio_file.name) !== "string") throw new Error("Audio-file name is undefined");
                 if(typeof(audio_file.fileCopyUri) !== "string") throw new Error("Audio-file copy-uri is undefined");
 
@@ -83,7 +83,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                     })
                 );
                 all_promise_tracks.push(SQLfs.delete_folder_of_file(audio_file.fileCopyUri));
-            } catch (error) { Alert.alert("Document Error", String(error)); }
+            } catch (error) { alert_error({error: error as Error}) ; }
         }
         
         await Promise.all(all_promise_tracks);

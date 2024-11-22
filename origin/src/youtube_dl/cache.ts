@@ -30,7 +30,7 @@ export default class Cache extends Map {
                 } catch (err) {
                     this.delete(key);
                 }
-            })();
+            })().catch(e => e);
             return value;
         }
     }

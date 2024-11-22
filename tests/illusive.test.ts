@@ -36,7 +36,7 @@ function test_music_services_list(name: string, service_names: MusicServiceType[
 		const music_service = Illusive.music_service.get(service_name)!;
 		if (music_service[key_value[0]] === undefined) continue;
 		describe(service_name, () => {
-			illusive_test_async(name, async () => await (music_service[key_value[0]] as (...arg0: any[]) => Promise<any>)!(...key_value[1]));
+			illusive_test_async(name, async () => await (music_service[key_value[0]] as (...arg0: any[]) => Promise<any>)(...key_value[1]));
 		});
 	}
 }

@@ -137,7 +137,7 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
             return parse_youtube_title_artist({
                 uid: generate_new_uid(parse_runs(track?.headline.runs)),
                 title: parse_runs(track?.headline.runs),
-                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: create_uri("youtube", track!.shortBylineText!.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
+                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
                 duration: parse_time(parse_runs(track.lengthText.runs)),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(parse_runs(track?.shortViewCountText?.runs ?? []))

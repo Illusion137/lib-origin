@@ -7,4 +7,4 @@ async function main() {
 	// const tflite_model = await tflite.loadTFLiteModel(tflite_buffer);
 	// console.log(tflite_model.inputs);
 }
-main();
+main().catch(e => e);

@@ -20,8 +20,8 @@ export function encode_params(data: Record<string, unknown>) {
 export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
 export function extract_string_from_pattern(str: string, pattern: RegExp) {
 	const body_groups = pattern.exec(str);
-	if(body_groups === null) return {error: `Unable to extract pattern from: ${str}\n NULL found`} ;
-	if(body_groups.length < 2) throw {error: `Unable to extract pattern from: ${str}\n Not sufficient groups`};
+	if(body_groups === null) return {error: new Error(`Unable to extract pattern NULL found`)} ;
+	if(body_groups.length < 2) return {error: new Error(`Unable to extract pattern Not sufficient groups`)};
 	const extracted = body_groups[1];
 	return extracted;
 }
@@ -85,7 +85,7 @@ export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string)
 	return SAPISIDHASH;
 }
 export function try_json_parse<T>(json_string: string): T|ResponseError {
-	try { return JSON.parse(json_string) as T; } catch (error) { return { error: String(error) }; }
+	try { return JSON.parse(json_string) as T; } catch (error) { return { error: error as Error }; }
 }
 export function clean_html_text(text: string) {
 	return text.replace(/&#34;/g, '"')

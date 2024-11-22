@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import TrackPlayer, {
     AddTrack,
     AppKilledPlaybackBehavior,
@@ -72,7 +73,7 @@ export async function setup_track_player(): Promise<boolean> {
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
     if ("error" in url_data) {
-        if (url_data.error.includes("Video unavailable"))
+        if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
     } else if(url_data.url.includes("file://") && Prefs.get_pref('track_player_file_searching')) {
@@ -86,7 +87,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
                         await SQLfs.move_to_media_directory(SQLfs.document_directory(doc));
                         break;
                     } catch (error) {
-                        alert_error(String(error));
+                        alert_error({error: error as Error});
                         break;
                     }
                 }
@@ -176,7 +177,7 @@ export async function playback_service() {
         try {
             if(data.index !== undefined) {
                 const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
-                if(illusi_track.meta?.begdur !== undefined) { TrackPlayer.seekTo(illusi_track.meta.begdur) };
+                if(illusi_track.meta?.begdur !== undefined) { TrackPlayer.seekTo(illusi_track.meta.begdur).catch(e => e) };
             }
             updated_metadata_mutex = false;
             if (!initial_playback_track_changed_mutex && !changed_mutex) {
@@ -225,7 +226,7 @@ export async function playback_service() {
                 current_track.meta!.plays++;
                 await SQLTracks.update_track_meta_data(current_track.uid, current_track.meta!);
             }
-            if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) track_player_next();
+            if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) track_player_next().catch(e => e);
             if (next_track === undefined) return;
             if (next_track.playback!.added === false && next_track.playback!.successful === false && !next_track_into_queue_mutex) {
                 next_track.playback!["added"] = true;

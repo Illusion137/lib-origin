@@ -128,7 +128,7 @@ export namespace Spotify {
             const client = { session: session, client_token: await client_token.json() as ClientToken };
             if(client_cache.enabled) client_cache.client = client;
             return client;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export function uri_to_id(uri: string) {
         const split = uri.split(':');
@@ -150,7 +150,7 @@ export namespace Spotify {
                 {  method: "GET", headers }) ).json() as UserPlaylist;
             
             return playlist_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export async function get_album(album_id: string, opts: {"limit"?: number, "offset"?: number} & Opts): Promise<Album | ResponseError> {
         try {
@@ -168,7 +168,7 @@ export namespace Spotify {
                 {  method: "GET", headers }) ).json() as Album;
             
             return album_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export async function get_collection(opts: {"limit"?: number, "offset"?: number} & Opts): Promise<Collection | ResponseError> {
         try {
@@ -188,7 +188,7 @@ export namespace Spotify {
             {  method: "GET", headers }) ).json() as Collection;
             
             return collection_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     
     export async function get_profile_account_attributes(opts: Opts) {
@@ -205,7 +205,7 @@ export namespace Spotify {
             const account_data: ProfileData = await ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?${encode_params(params)}`,
             {  method: "GET", headers }) ).json() as ProfileData;
             return account_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function get_artist(url: string, opts: {"locale"?: string, "include_pre_releases"?: boolean} & Opts): Promise<Artist | ResponseError> {
@@ -227,7 +227,7 @@ export namespace Spotify {
             {  method: "GET", headers }) ).json() as Artist;
             
             return artist_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function search(query: string, opts: {
@@ -261,7 +261,7 @@ export namespace Spotify {
             const search_data = await ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?${encode_params(params)}`, 
             { method: "GET", headers }) ).json() as SearchResult;
             return search_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function get_home(opts: {
@@ -283,7 +283,7 @@ export namespace Spotify {
             const home_data = await ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?${encode_params(params)}`, 
             { method: "GET", headers }) ).json() as Home;
             return home_data;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function account_playlists(opts: Opts & { limit?: number }) {
@@ -314,7 +314,7 @@ export namespace Spotify {
             { method: "GET", headers }) ).json();
             const playlist_items = library.data.me.libraryV3.items;
             return playlist_items;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function get_credits(opts: {"uri_id": string} & Opts) {
@@ -327,7 +327,7 @@ export namespace Spotify {
             const credits: Credits = await ( await fetch(`https://spclient.wg.spotify.com/track-credits-view/v0/experimental/${opts.uri_id}/credits`, 
             { method: "GET", headers }) ).json();
             return credits;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     // opts.uris EXAMPLE: "spotify:track:1xsY8IFXUrxeet1Fcmk4oC"
@@ -346,7 +346,7 @@ export namespace Spotify {
             const in_library: InLibrary = await ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?${encode_params(params)}`, 
             { method: "GET", headers }) ).json();
             return in_library;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function add_tracks_to_library(opts: {"uris": string[]} & Opts) {
@@ -364,7 +364,7 @@ export namespace Spotify {
             const result = ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query`, 
             { method: "POST", headers, body: JSON.stringify(payload) }) );
             return result;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     // opts.playlist_uri EXAMPLE: "spotify:playlist:4uNs2lqeO0Ec43d2Sp3yp4"
@@ -395,7 +395,7 @@ export namespace Spotify {
             const result = ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query`, 
             { method: "POST", headers, body: JSON.stringify(payload) }) );
             return result;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function delete_tracks_from_library(opts: {"uris": string[]} & Opts) {
@@ -413,7 +413,7 @@ export namespace Spotify {
             const result = ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query`, 
             { method: "POST", headers, body: JSON.stringify(payload) }) );
             return result;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function delete_tracks_from_playlist(opts: {
@@ -439,7 +439,7 @@ export namespace Spotify {
             const result = ( await fetch(`https://api-partner.spotify.com/pathfinder/v1/query`, 
                 { method: "POST", headers, body: JSON.stringify(payload) }) );
             return result;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function create_playlist(opts: {
@@ -458,7 +458,7 @@ export namespace Spotify {
                 { method: "POST", headers, body: JSON.stringify(payload) }) );
             const result: ResponseError|{uri: string, revision: string} = await response.json();
             return result;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export async function delete_playlist(opts: {
         "playlist_uri": string
@@ -475,6 +475,6 @@ export namespace Spotify {
             const result = ( await fetch(`https://spclient.wg.spotify.com/playlist/v2/playlist`, 
                 { method: "POST", headers, body: JSON.stringify(payload) }) );
             return result;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 }

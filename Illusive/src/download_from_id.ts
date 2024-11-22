@@ -15,15 +15,15 @@ export async function youtube_download_from_id(video_id: string, quality: string
     try {
         try {            
             const av_result = await Origin.YouTubeDL.ytdl(video_id, {quality: quality});
-            if("error" in av_result) throw av_result.error;
+            if("error" in av_result) throw new Error(av_result.error as string);
             return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
         } catch (error) {
             const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
             if(!use_cookies_on_download) throw error;
             const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
             const av_result = await Origin.YouTubeDL.ytdl(video_id, {quality: quality, requestOptions: use_cookies_on_download ? {headers: {cookie: cookie_jar.toString()}} : {}});
-            if("error" in av_result) throw av_result.error;
+            if("error" in av_result) throw new Error(av_result.error as string);
             return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
         }
-    } catch (error) { return { error: String(error) }; }
+    } catch (error) { return { error: error as Error }; }
 }

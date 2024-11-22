@@ -1,11 +1,11 @@
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult } from "../utils/types";
-import { urlid } from "../utils/util";
+import { try_json_parse, urlid } from "../utils/util";
 import { Config } from "./types/Config";
 import { CreatePlaylist } from "./types/CreatePlaylist";
 import { SearchResult } from "./types/SearchResult";
 import { ShowHome } from "./types/ShowHome";
-import { CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
+import { AmazonTrack, CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
 import { ShowLibraryHome } from "./types/ShowLibraryHome";
 
 export namespace AmazonMusic {
@@ -44,7 +44,7 @@ export namespace AmazonMusic {
             const config: Config = await response.json();
             if(client_cache.enabled) client_cache.client = config;
             return config;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function get_show_home_data(amzn_music: Config, url: string): PromiseResult<ShowHome> {
@@ -112,7 +112,7 @@ export namespace AmazonMusic {
             });
             const show_home: ShowHome = await show_home_body.json();
             return show_home;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export function get_x_amzn_auth(amzn_music: Config) {
         return {
@@ -160,13 +160,15 @@ export namespace AmazonMusic {
             if ("error" in show_home) throw show_home.error;
             // if(show_home.methods[0].interface !== "VideoPlayerAuthenticationInterface.v1_0.SetVideoPlayerTokenMethod")
             // throw "SetVideoPlayerTokenMethod not found in Show Home method interface";
-            const auth_header = "header" in show_home.methods[0] ? JSON.parse(show_home.methods[0].header) : undefined;
+            const auth_header = "header" in show_home.methods[0] ? try_json_parse<AuthHeader>(show_home.methods[0].header) : undefined;
+            if(auth_header === undefined) throw new Error("Auth Header is undefined");
+            if("error" in auth_header) throw auth_header.error;
             const x_amzn_auth = get_x_amzn_auth(amzn_music);
             const amzn_csrf = get_amzn_csrf(amzn_music);
             const x_amzn_video_player_token = get_amzn_video_player_token(auth_header);
             const request_headers = get_amzn_music_request_headers(x_amzn_auth, amzn_music, amzn_csrf, x_amzn_video_player_token, playlist_url);
             return request_headers;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return {error: error as Error}; }
     }
     export function get_amzn_music_request_headers(x_amzn_auth: ReturnType<typeof get_x_amzn_auth>, amzn_music: Config, x_amzn_csrf: ReturnType<typeof get_amzn_csrf>, x_amzn_video_player_token: ReturnType<typeof get_amzn_video_player_token>, playlist_url = "https://music.amazon.com/my/library") {
         return {
@@ -215,14 +217,14 @@ export namespace AmazonMusic {
                 throw new Error("TemplateListInterface not found in Show Library Home method interface");
             const playlists = show_library.methods[0].template.widgets[1].items;
             return playlists;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export function get_track_id(track: { "primaryLink": { "deeplink": string } }) {
         return track.primaryLink.deeplink.replace(/\/.+?\/.+?\?trackAsin=/, '');
     }
 
-    export async function get_playlist(playlist_url: string, opts: Opts) {
+    export async function get_playlist(playlist_url: string, opts: Opts): PromiseResult<{title: string, tracks: AmazonTrack[]}> {
         try {
             const amzn_music = opts.client ?? await get_amzn_music_data(opts);
             if ("error" in amzn_music) throw amzn_music.error;
@@ -234,7 +236,7 @@ export namespace AmazonMusic {
             const amzn_track_data = (show_home.methods[template_list_index] as CreateAndBindMethod).template.widgets[0].items;
 
             return { title: (show_home.methods[template_list_index] as CreateAndBindMethod).template.headerImageAltText, tracks: amzn_track_data };
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
 
     export async function search(query: string, opts: Opts) {
@@ -271,7 +273,7 @@ export namespace AmazonMusic {
             }
             const tracks = response.methods[0].template.widgets[song_widgets_index].items;
             return tracks;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export async function add_to_playlist(playlist_url: string, playlist_name: string, uids: string[], opts: Opts) {
         try {
@@ -303,7 +305,7 @@ export namespace AmazonMusic {
                 body: JSON.stringify(request_payload)
             });
             return response;
-        } catch (error) { return { error: error }; }
+        } catch (error) { return { error: error as Error }; }
     }
     function pause(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
     export async function delete_from_playlist(playlist_url: string, track_ids: string[], delay: number, opts: Opts) {
@@ -321,7 +323,7 @@ export namespace AmazonMusic {
             if ("error" in request_headers) throw request_headers.error;
 
             const result = { ok: true };
-            for (const track_id in track_ids) {
+            for (const track_id of track_ids) {
                 try {
                     const playlist_item = playlist.tracks.find((item) => get_track_id(item) === track_id);
                     const request_payload = {
@@ -336,7 +338,7 @@ export namespace AmazonMusic {
                         body: JSON.stringify(request_payload)
                     });
                     if (!response.ok) result.ok = false;
-                } catch (error) { result.ok = false; } finally { if (delay > 0) pause(delay); }
+                } catch (error) { result.ok = false; } finally { if (delay > 0) await pause(delay); }
             }
             return result;
         } catch (error) { return { error: error }; }

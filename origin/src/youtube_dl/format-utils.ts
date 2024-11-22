@@ -157,7 +157,7 @@ export const chooseFormat = (formats: AVFormat[], options: DownloadOptions): AVF
     }
 
     if (!format) {
-        throw Error(`No such format found: ${quality}`);
+        throw Error(`No such format found: ${quality as string}`);
     }
     return format;
 };
@@ -206,7 +206,7 @@ export const filterFormats = (formats: AVFormat[], filter: Filter) => {
             if (typeof filter === 'function') {
                 fn = filter;
             } else {
-                throw TypeError(`Given filter (${filter}) is not supported`);
+                throw TypeError(`Given filter (${filter as string}) is not supported`);
             }
     }
     return formats.filter(format => !!format.url && fn(format));

@@ -1,9 +1,7 @@
 // Side note: Only designed & tested for seed generation,
 
-import { is_empty } from "../../origin/src/utils/util";
-
 // may be suboptimal as a general 128-bit hash.
-function cyrb128(str: string) {
+export function cyrb128(str: string) {
     let h1 = 1779033703, h2 = 3144134277,
         h3 = 1013904242, h4 = 2773480762;
     for (let i = 0, k; i < str.length; i++) {
@@ -19,8 +17,4 @@ function cyrb128(str: string) {
     h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
     h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
     return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
-}
-
-export function generate_new_illusi_id(title: string, artists: string[], duration: number, album?: string) {
-    return String(cyrb128(String(duration) + title + artists.map(artist => artist) + (is_empty(album) ? "-1" : album))[0])
 }

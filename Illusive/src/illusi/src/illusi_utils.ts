@@ -8,15 +8,16 @@ import { alert_error } from './alert';
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [
         {text: "Cancel", onPress: () => {}},
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         {text: "OK", onPress: on_press }
     ])
 }
 
 export function catch_function_sync(func: () => any) {
-    try { return func(); } catch (error) { alert_error({error: String(error)}); return {error: String(error)}; }
+    try { return func(); } catch (error) { alert_error({error: error as Error}); return {error: error as Error}; }
 }
 export async function catch_function_async(func: () => Promise<any>) {
-    try { return await func(); } catch (error) { alert_error({error: String(error)}); return {error: String(error)}; }
+    try { return await func(); } catch (error) { alert_error({error: error as Error}); return {error: error as Error}; }
 }
 
 export function closest_to(target: number, array: number[]) {
@@ -41,7 +42,7 @@ export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_
     if(alphabet_scroll.current_position == closest) return;
     alphabet_scroll.current_position = closest;
     (biglist_ref?.current?.scrollToLocation as any)({ animated: false, itemIndex: 0, sectionIndex: alphabet_scroll.all_alphabet_fast_scroll_locations.indexOf(closest) }); 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(e => e);
 }
 
 export async function share_item(item: {link: string}|{uri: string}) {

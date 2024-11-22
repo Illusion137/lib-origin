@@ -14,7 +14,7 @@ export namespace SoundCloud {
     export function client_cache_user_full() { return client_cache.enabled && client_cache.client.user_id !== null; }
 
     function requires_cookies(opts: Opts): ResponseError | ResponseSuccess {
-        if(opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return {error: "No cookies supplied"};
+        if(opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return {error: new Error("No cookies supplied")};
         return {success: true};
     }
     export function clean_permalink(permalink?: string) {
@@ -89,7 +89,7 @@ export namespace SoundCloud {
         }
     }
     export async function get_client_id(scripts: string[], cookie_jar?: CookieJar) {
-        if(client_cache_full()) return client_cache.client!.client_id!;
+        if(client_cache_full()) return client_cache.client.client_id!;
         for(const asset_script of asset_scripts(scripts)) {
             const response = await fetch(asset_script, api_method_options(cookie_jar));
             if(!response.ok) continue;
@@ -97,14 +97,14 @@ export namespace SoundCloud {
             if(typeof extracted === "object") continue;
             return extracted;
         }
-        return {error: "Can't find client_id"};
+        return {error: new Error("Can't find client_id")};
     }
     export async function extract_from_page(url: string, pattern: RegExp, opts: Opts): PromiseError<{extracted: string, full: string}> {
         const response = await fetch(url, page_method_options(opts.cookie_jar));
-        if (!response.ok) return {error: "Response not ok: extractFromPage"};
+        if (!response.ok) return {error: new Error("Response not ok: extractFromPage")};
         const text = await response.text();
         const exec = pattern.exec(text);
-        if (exec === null || exec[1] === undefined) return {error: "Couldn't extract pattern: extractFromPage"};
+        if (exec === null || exec[1] === undefined) return {error: new Error("Couldn't extract pattern: extractFromPage")};
         return {extracted: exec[1], full: text};
     }
     export async function get_hydration(url: string, opts: Opts): PromiseError<{hydration: Hydration, scripts_urls: string[]}> {
@@ -175,10 +175,10 @@ export namespace SoundCloud {
     }
     export async function continuation(next_href: string, opts: Opts, depth = -1): Promise<SearchOf<unknown>> {
         try {
-            if(next_href === null || next_href === undefined || next_href === "" || depth === 0) throw null;
+            if(next_href === null || next_href === undefined || next_href === "" || depth === 0) throw new Error();
             const locale_params = get_locale_params(opts);
             const next_response = await fetch(`${next_href}&${encode_params(locale_params)}`, api_method_options());
-            if(!next_response.ok) throw next_response.status;
+            if(!next_response.ok) throw new Error(String(next_response.status));
             const next_data: SearchOf<unknown> = await next_response.json();
             if(depth === 1) return next_data;
             const combined_data = combine_continuation(next_data, await continuation(next_data.next_href, opts, depth - 1));
@@ -203,7 +203,7 @@ export namespace SoundCloud {
     }
     type PromiseError<T>  = Promise<T|ResponseError>;
     export async function try_user_id(url: string, opts: Opts) {
-        if(client_cache_user_full()) return [client_cache.client!.client_id, client_cache.client!.user_id!];
+        if(client_cache_user_full()) return [client_cache.client.client_id, client_cache.client.user_id!];
         const hydration = await get_hydration(url, opts);
         if("error" in hydration) return hydration;
         const anonymous_hydration = hydration.hydration.find(item => item.hydratable === "anonymousId");
@@ -211,9 +211,9 @@ export namespace SoundCloud {
         if(typeof res[0] === "object" && !is_empty(res) ) return res[0];
         if(client_cache.enabled) {
             if(!is_empty(res[0]))
-                client_cache.client!.client_id = (res[0] as string);
+                client_cache.client.client_id = (res[0] as string);
             if(!is_empty(res[1]))
-                client_cache.client!.user_id = res[1]!;
+                client_cache.client.user_id = res[1]!;
         }
         return res; 
     }
@@ -237,10 +237,10 @@ export namespace SoundCloud {
             offset: opts.offset ?? 0,
         }
         const search_response = await fetch(`https://api-v2.soundcloud.com/${search_type_to_api_method(search_type ?? "EVERYTHING")}${encode_params(params)}`, api_method_options(opts.cookie_jar));
-        if(!search_response.ok) return {error: `${search_response.status} : ${search_response.statusText}`};
+        if(!search_response.ok) return {error: new Error(`${search_response.status} : ${search_response.statusText}`)};
         const search_data: Search = await search_response.json() as Search;
         const result: SearchOf<Playlist|Track|User> = combine_continuation(search_data, await continuation(search_data.next_href, opts, opts.depth ?? 0) ) as unknown as SearchOf<Playlist|Track|User>;
-        return {data: result, client_id: opts.client_id!};
+        return {data: result, client_id: opts.client_id};
     }
     type ArtistMode = "ALL" | "POPULAR_TRACKS" | "TRACKS" | "ALBUMS" | "PLAYLISTS" | "REPOSTS";
     function artist_mode_to_api_method(artist_mode: ArtistMode): string {
@@ -277,7 +277,7 @@ export namespace SoundCloud {
         }
         const repost_mode_str = mode === "REPOSTS" ? "stream/" : "";
         const artist_response = await fetch(`https://api-v2.soundcloud.com/${repost_mode_str}users/${artist_id}/${artist_mode_to_api_method(mode ?? "ALL")}?${encode_params(params)}`, api_method_options(opts.cookie_jar) );
-        if(!artist_response.ok) return {error: `${artist_response.status} : ${artist_response.statusText}` };
+        if(!artist_response.ok) return {error: new Error(`${artist_response.status} : ${artist_response.statusText}`)};
         const artist: Search = await artist_response.json() as Search;
         return {user: user_hyrdration, artist_data: combine_continuation(artist, await continuation(artist.next_href, opts, opts.depth ?? 0)) as unknown as SearchOf<Playlist|User|Track>};
     }

@@ -57,7 +57,7 @@ async function main() {
 
 		return undefined;
 	}
-	add_only_cat_posters(only_cat_posters);
+	await add_only_cat_posters(only_cat_posters);
 
 	while (cats_collection.more_available) {
 		console.log("ID: ", cats_collection.next_max_id);

@@ -28,7 +28,7 @@ export function parse_library_contents(initial_data: InitialData) {
             endpoint: item.musicTwoRowItemRenderer.navigationEndpoint.browseEndpoint.browseId.replace("VL", "")
         }
     })
-    const filtered_playlists = playlists.filter(playlist => playlist !== undefined)!;
+    const filtered_playlists = playlists.filter(playlist => playlist !== undefined);
     return filtered_playlists;
 }
 export function parse_playlist_contents(initial_data: InitialData[]) {
@@ -37,8 +37,8 @@ export function parse_playlist_contents(initial_data: InitialData[]) {
     const playlist_data_contents = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0];
     return {
         tracks: inner_contents.musicShelfRenderer === undefined ?
-            inner_contents.musicPlaylistShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) as YouTubeMusicPlaylistTrack[] :
-            inner_contents.musicShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) as YouTubeMusicPlaylistTrack[],
+            inner_contents.musicPlaylistShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) :
+            inner_contents.musicShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer),
         playlist_data: playlist_data_contents.musicResponsiveHeaderRenderer !== undefined ? playlist_data_contents.musicResponsiveHeaderRenderer : playlist_data_contents.musicEditablePlaylistDetailHeaderRenderer.header.musicResponsiveHeaderRenderer,
         continuation: inner_contents.musicPlaylistShelfRenderer !== undefined ? 
             inner_contents.musicPlaylistShelfRenderer.continuations === undefined ? null :

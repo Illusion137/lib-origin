@@ -30,7 +30,7 @@ export async function insert_into_write_playlist(track_data: Track, write_playli
     if(refresh_data !== undefined) refresh_data();
 }
 
-export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined, refresh_data: (() => void)|undefined) {
+export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined, refresh_data?: (() => Promise<void>)) {
     if(refresh_data === undefined) { alert_error({error: "Track props.refresh_data is undefined"}); return; }
     if(write_playlist_uuid === undefined || write_playlist_uuid === Constants.library_write_playlist) {
         const playlists = await SQLPlaylists.all_playlists_data();

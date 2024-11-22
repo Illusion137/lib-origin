@@ -84,7 +84,7 @@ export namespace YouTubeMusic {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"Cookies": cookie_jar?.toString() as string,
+			"Cookies": cookie_jar?.toString(),
 			"Referer": "https://music.youtube.com/",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
 		}
@@ -156,9 +156,13 @@ export namespace YouTubeMusic {
 				initial_data: extract_initial_data(page_html),
 				ytcfg: extract_ytcfg(page_html)
 			};
-		} catch (error) { return { error: String(error) }; }
+		} catch (error) { return { error: error as Error }; }
 	}
-	async function parse_initial(opts: Opts, init_url: string, parser: (contents: any) => any): Promise<any | ResponseError> {
+    interface ICFGData<T> { icfg: ICFG, data: T }
+	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
+	type SearchMode = "All" | "Songs" | "Videos" | "Albums" | "Community playlists" | "Artists" | "Episodes" | "Profiles";
+	interface Endpoint { "query": string, "params": string }
+	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any): PromiseICFGData<T> {
 		const icfg = await get_initial_data_config(opts, init_url);
 		if ("error" in icfg) return icfg;
 		return {
@@ -166,10 +170,6 @@ export namespace YouTubeMusic {
 			data: parser(icfg.initial_data)
 		};
 	}
-	interface ICFGData<T> { icfg: ICFG, data: T }
-	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
-	type SearchMode = "All" | "Songs" | "Videos" | "Albums" | "Community playlists" | "Artists" | "Episodes" | "Profiles";
-	interface Endpoint { "query": string, "params": string }
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://music.youtube.com/", Parser.parse_home_contents); }
 	export async function get_explore(opts: Opts): PromiseICFGData<typeof Parser.parse_explore_contents> { return await parse_initial(opts, "https://music.youtube.com/explore", Parser.parse_explore_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://music.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents); }
@@ -177,7 +177,7 @@ export namespace YouTubeMusic {
 	export async function get_artist_tracks(opts: Opts, artist_id: string) {
 		const artist_response = await get_artist(opts, artist_id);
 		if ("error" in artist_response) return artist_response;
-		const music_shelf_renderer_endpoint_id: string = artist_response.data.top_shelf.bottomEndpoint.browseEndpoint.browseId.replace("VL", "") as string;
+		const music_shelf_renderer_endpoint_id: string = artist_response.data.top_shelf.bottomEndpoint.browseEndpoint.browseId.replace("VL", "");
 		const playlist_response = await get_playlist(opts, music_shelf_renderer_endpoint_id);
 		return playlist_response;
 	}
@@ -208,7 +208,7 @@ export namespace YouTubeMusic {
 		const search_response = await post_check_response(opts, ytcfg, "search?prettyPrint=false", payload);
 		if ("error" in search_response) return search_response;
 		const browse_data = await search_response.json();
-		return Parser.parse_search_contents([undefined, browse_data]);
+		return Parser.parse_search_contents([undefined, browse_data] as InitialData[]);
 	}
 	export async function full_search(opts: Opts, search_query: string, mode: SearchMode) {
 		const all_search = await search(opts, search_query);
@@ -223,7 +223,7 @@ export namespace YouTubeMusic {
 		const payload = { browseId: "FEmusic_liked_playlists" };
 		const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
-		const browse_data = await browse_response.json();
+		const browse_data = await browse_response.json() as InitialData;
 		return {
 			icfg,
 			data: Parser.parse_library_contents(browse_data)
@@ -244,7 +244,7 @@ export namespace YouTubeMusic {
 		return (await response.json()) as ContinuedResults_0;
 	}
 	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
-		if (opts.cookie_jar === undefined) return { error: "CookieJar is empty" };
+		if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;

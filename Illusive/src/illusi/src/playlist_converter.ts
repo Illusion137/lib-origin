@@ -106,7 +106,7 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType) {
         if(track.imported_id) continue;
         const conversion_track = await Illusive.convert_track(track, to, proxies, [to]);
         if("error" in conversion_track) { 
-            Logger.log_error(conversion_track); 
+            Logger.log_error(conversion_track).catch(e => e); 
             continue;
         }
         updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track));
@@ -114,11 +114,11 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType) {
     return updated_tracks;
 }
 export async function convert_playlist(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts): PromiseResult<{"ok": true}> {
-    if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: "Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']"};
+    if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
     const to_service = Illusive.music_service.get(to)!;
     const to_ok = to_service.create_playlist !== undefined && to_service.add_tracks_to_playlist !== undefined;
-    if(!to_ok) return {error: `Unable to create/modify playlist from ${to_service}`};
-    if(opts.full_sample && to_service.search === undefined) return {error: `Unable to sample tracks to ${to_service}; Missing search function`};
+    if(!to_ok) return {error: new Error(`Unable to create/modify playlist from ${to}`)};
+    if(opts.full_sample && to_service.search === undefined) return {error: new Error(`Unable to sample tracks to ${to}; Missing search function`)};
     if(opts.full_sample) from_tracks = await sample_tracks(from_tracks, to);
     await mutilate_playlist(to, opts.to, from_tracks);
     return {ok: true};

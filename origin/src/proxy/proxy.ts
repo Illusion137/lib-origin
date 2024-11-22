@@ -21,7 +21,7 @@ export namespace Proxy {
                 });
             }
             return proxies;
-        } catch (error) { return { error: String(error) }; }
+        } catch (error) { return { error: error as Error }; }
     }
     export function get_axios_proxies(proxies: Proxy[]): {host: string, port: number}[] {
         return proxies.map(p => ({host: p.ip, port: p.port}));

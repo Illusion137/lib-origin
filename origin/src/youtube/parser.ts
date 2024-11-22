@@ -25,7 +25,7 @@ export function parse_home_continuation_contents(initial_data: InitialData) {
     return {
         videos: { video_renderer: contents.filter(item => item.richItemRenderer !== undefined).map(item => item.richItemRenderer!.content.videoRenderer)},
         shorts: { shorts_renderer: contents.filter(item => item.richSectionRenderer !== undefined).map(item => item.richSectionRenderer!.content.richShelfRenderer.contents
-            .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel!)).map(item => item[0])},
+            .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel)).map(item => item[0])},
         continuation: contents.find(item => item.continuationItemRenderer !== undefined)?.continuationItemRenderer ?? null
     }
 }

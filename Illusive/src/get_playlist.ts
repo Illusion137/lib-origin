@@ -59,7 +59,7 @@ interface YouTubeMusicPlaylistContinuation {"ytcfg": YTMUSIC_YTCFG.YTCFG, "conti
 export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
     const playlist_response = await Origin.YouTubeMusic.get_playlist({cookie_jar}, url);
-    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response as ResponseError]};
+    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
     if(url.includes("OLAK5uy_")) { // Album
         return {
             title: parse_runs(playlist_response.data.playlist_data.title.runs),
@@ -202,7 +202,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
     const playlist_limit: number = Prefs.get_pref("soundcloud_playlist_limit");
 
     const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {cookie_jar});
-    if("error" in hydration) return {title: "", tracks: [], continuation: null, error: [hydration as ResponseError]};
+    if("error" in hydration) return {title: "", tracks: [], continuation: null, error: [hydration]};
     const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);
     if(typeof client_id === "object") return {title: "", tracks: [], continuation: null, error: [client_id]};
 

@@ -142,7 +142,7 @@ export interface Track {
 }
 
 export interface Playlist {
-    artwork_url: any
+    artwork_url: string
     created_at: string
     description: any
     duration: number

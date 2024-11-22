@@ -244,7 +244,7 @@ export namespace Illusive {
         // console.log(best)
         if(all_negative_values) {
             if(possible_services.length === 0)
-                return {error: "Unable to find good conversion"};
+                return {error: new Error("Unable to find good conversion")};
             else return convert_track(track, possible_services[0], proxies, possible_services);
         }
         const best_match: Track = search_tracks.tracks[best.index];
