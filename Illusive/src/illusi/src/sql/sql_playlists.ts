@@ -90,6 +90,9 @@ export async function insert_track_playlist(playlist_uuid: string, track_uid: st
 export async function delete_track_playlist(playlist_uuid: string, track_uid: string) {
     await db.runAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
 }
+export async function delete_track_from_all_playlists(track_uid: string) {
+    await db.runAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["track_uid", track_uid])}`);
+}
 
 export async function all_playlists_data() {
     const playlists: SQLPlaylist[] = await db.getAllAsync(sql_select<Playlist>("playlists", "*"));

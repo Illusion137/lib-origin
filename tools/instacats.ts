@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import request from 'request';
 import { gcc } from "../admin/gcc";
 import { Instagram } from "../origin/src/instagram/instragram";
 import { MediaListItem } from "../origin/src/instagram/types/MediaList";
@@ -102,7 +103,48 @@ async function editstuff() {
 
 } editstuff;
 // editstuff();
+let dl_index = 0;
+async function dlpost(uri: string){
+    request.head(uri, function(err, res, body){
+        err; res; body;
+        // console.log('content-type:', res.headers['content-type']);
+        // console.log('content-length:', res.headers['content-length']);
+        const path = `ignore/cats/cat_${dl_index++}.jpg`;
+        request(uri).pipe(fs.createWriteStream(path)).on('close', () => {
+            console.log(path);
+        });
+    });
+}
+function dispatch_dlposts(items: MediaListItem[]){
+    for(const post of items){
+        if(post.media.carousel_media === undefined) continue;
+        for(const media of post.media.carousel_media){
+            if(media.image_versions2.candidates.length > 0){
+                dlpost(media.image_versions2.candidates[0].url).catch(e => e);
+            }
+        }
+    }
+}
+async function catdl(){
+	const cats_collection_id = "17877414743861513";
+    let cats_collection = await Instagram.collection_posts({ cookie_jar, collection_id: cats_collection_id });
+    if("error" in cats_collection) {
+        console.error(cats_collection.error.stack);
+        return;
+    }
+    dispatch_dlposts(cats_collection.items);
 
+    let max_refreshes = 50;
+    while (max_refreshes-- > 0 && cats_collection.more_available) {
+		cats_collection = await Instagram.collection_posts_more({ cookie_jar, collection_id: cats_collection_id, max_id: cats_collection.next_max_id });
+		if ("error" in cats_collection) {
+			console.error(cats_collection.error);
+			break;
+		}
+        dispatch_dlposts(cats_collection.items);
+	}
+}
+catdl().catch(e => e);
 // ISAIAH
 // 4798
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -147,12 +148,12 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
                         GLOBALS.downloading[item_index].execution_id = execution_id;
-                }).catch(e => e)
+                })
             } catch (error) {
                 return download_error_callback("Failed To Download:", error as Error, track, start_download);
             }
             return "GOOD";
-    }).catch(e => e);
+    });
     return "GOOD";
 }
 

@@ -3,7 +3,7 @@ import { PromiseResult } from "../utils/types";
 import { encode_params, google_query } from "../utils/util";
 import { MangaGenres } from "./types/MangaGenres";
 import { MangaTypes } from "./types/MangaTypes";
-import { AjaxResult, ChapterItem, MangaList, ReadingBy, SearchManga } from "./types/types";
+import { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageSize, MangaReadMode, MangaReadQuality, ReadingBy, SearchManga } from "./types/types";
 
 export namespace MangaReader {
     const base_url = "https://mangareader.to";
@@ -19,6 +19,11 @@ export namespace MangaReader {
             id: el.getAttribute("data-id")!,
             href: el.querySelector("a")!.href,
             title: el.querySelector("a")!.title
+        };
+    }
+    function parse_chapter_image_list(el: Element): ChapterImageItem {
+        return {
+            artwork_url: el.getAttribute("data-url")!
         };
     }
     function parse_search_manga(el: Element): SearchManga {
@@ -63,12 +68,23 @@ export namespace MangaReader {
         }
     }
     export async function manga_chapter_volume_list(manga_id: string, opts: {reading_by?: ReadingBy}): PromiseResult<ChapterItem[]> {
-        const reading_by: ReadingBy = opts.reading_by ?? "chap";
-        const params = { readingBy: reading_by };
+        const readingBy: ReadingBy = opts.reading_by ?? "chap";
+        const params = { readingBy };
         const reading_list_result = await ajax(`manga/reading-list/${href_manga_id(manga_id)}?${encode_params(params)}`);
         if("error" in reading_list_result) return reading_list_result;
         const document = jsdom_document(reading_list_result.html);
         const chapter_items = document.querySelectorAll(".chapter-item");
         return map_html_collection(chapter_items, parse_chapter_item);
+    }
+    export async function manga_chapter_volume_image_list(manga_chap_id: string, opts: {mode?: MangaReadMode, quality?: MangaReadQuality, hoz_page_size: MangaReadHozPageSize}): PromiseResult<ChapterImageItem[]> {
+        const mode: MangaReadMode = opts.mode ?? "vertical";
+        const quality: MangaReadQuality = opts.quality ?? "medium";
+        const hozPageSize: MangaReadHozPageSize = opts.hoz_page_size ?? 1;
+        const params = { mode, quality, hozPageSize };
+        const reading_list_result = await ajax(`image/list/chap/${manga_chap_id}?${encode_params(params)}`);
+        if("error" in reading_list_result) return reading_list_result;
+        const document = jsdom_document(reading_list_result.html);
+        const chapter_items = document.querySelectorAll(".iv-card");
+        return map_html_collection(chapter_items, parse_chapter_image_list);
     }
 }

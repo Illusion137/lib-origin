@@ -1,6 +1,9 @@
 import { MangaGenres } from "./MangaGenres";
 import { MangaTypes } from "./MangaTypes";
 
+export type MangaReadMode = "vertical"|"horizontal";
+export type MangaReadQuality = "low"|"medium"|"high";
+export type MangaReadHozPageSize = number;
 export type MangaListTypes = MangaTypes | MangaGenres;
 export type Language = string;
 
@@ -32,10 +35,11 @@ export interface ChapterItem {
     title: string;
     href: string;
 }
+export interface ChapterImageItem {
+    artwork_url: string;
+}
 export type ReadingBy = "chap"|"vol";
 export interface AjaxResult {
-    continueReading: null;
     html: string;
-    settings: null;
     status: boolean;
 };

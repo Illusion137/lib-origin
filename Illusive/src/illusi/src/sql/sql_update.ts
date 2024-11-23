@@ -76,17 +76,25 @@ export async function fix_to_new_update() {
     } catch (error) {}
 
     // UPDATE 14.1.4 BETA
-    const all_1403_playlist_data = await all_playlists_data();
-    if(all_1403_playlist_data.length > 0 && all_1403_playlist_data.every((playlist) => playlist.public_uuid === "0" && (playlist.public as any) === "OLDEST")) {
-        await db.runAsync( sql_drop_table("playlists") );
-        await recreate_all_tables();
-        for(const playlist of all_1403_playlist_data) {
-            delete (playlist as any).id;
-            delete (playlist as any).uuid;
-            delete (playlist as any).visual_data;
-            const playlist_uuid = await create_playlist(playlist.title);
-            await update_playlist(playlist_uuid, playlist);
+    try {        
+        const all_1403_playlist_data = await all_playlists_data();
+        if(all_1403_playlist_data.length > 0 && all_1403_playlist_data.every((playlist) => playlist.public_uuid === "0" && (playlist.public as any) === "OLDEST")) {
+            await db.runAsync( sql_drop_table("playlists") );
+            await recreate_all_tables();
+            for(const playlist of all_1403_playlist_data) {
+                delete (playlist as any).id;
+                delete (playlist as any).uuid;
+                delete (playlist as any).visual_data;
+                const new_playlist = {
+                    ...playlist,
+                    sort: (playlist as any).public,
+                    public: Boolean(Number((playlist as any).public_uuid)),
+                    public_uuid: (playlist as any).sort
+                }
+                const playlist_uuid = await create_playlist(playlist.title);
+                await update_playlist(playlist_uuid, new_playlist);
+            }
+            Alert.alert("Updated Playlists to 14.1.4 BETA");
         }
-        Alert.alert("Updated Playlists to 14.1.4 BETA");
-    }
+    } catch (error) {}
 }

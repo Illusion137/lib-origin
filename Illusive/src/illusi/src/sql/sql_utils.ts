@@ -73,13 +73,13 @@ export function sql_table_to_query_variadics(sql_table: string) {
 function sql_serialize(str: string) {
     return str.replace("'", "''");
 }
-export function obj_to_update_sql(obj: Record<string, any>, serialize_strings?: boolean) {
+export function obj_to_update_sql(obj: Record<string, any>, ) {
     const updation: string[] = [];
     const keys = Object.keys(obj);
     for(const key of keys) {
         const value = obj[key];
         switch(typeof value) {
-            case "string": (serialize_strings ?? false) ? updation.push(`${key}='${sql_serialize(value)}'`) : updation.push(`${key}='${value}'`); break;
+            case "string": updation.push(`${key}='${sql_serialize(value)}'`); break;
             case "object": updation.push(`${key}='${sql_serialize(JSON.stringify(value))}'`); break;
             case "undefined": break;
             default: updation.push(`${key}=${value}`);
