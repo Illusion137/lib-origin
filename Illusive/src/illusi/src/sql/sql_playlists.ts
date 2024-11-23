@@ -3,9 +3,8 @@ import { all_promises, array_exclude, array_include, array_mask, track_query_fil
 import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
-import { db } from "./database";
 import { sql_track_to_track } from "./sql_tracks";
-import { obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
+import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 
 function playlist_to_sqllite_insertion(playlist: Playlist) {
     const to_array: SQLPlaylistArray = [
@@ -47,7 +46,7 @@ export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore
 }
 
 export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids = new Set<string>(), skip_inheritance = false) {
-    const playlist: SQLTrack[] = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
+    const playlist = await db_get_all_async<SQLTrack>(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
     let tracks: Track[] = playlist.map(track => sql_track_to_track(track)); 
     if(skip_inheritance) return tracks;
     seen_playlist_uuids.add(playlist_uuid);
@@ -75,7 +74,7 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
 }
 
 export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string) {
-    const count = await db.getAllAsync(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
+    const count = await db_get_all_async<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
     return count.length !== 0;
 }
 
@@ -84,37 +83,36 @@ export async function insert_all_tracks_playlist(playlist_uuid: string, track_ui
 }
 export async function insert_track_playlist(playlist_uuid: string, track_uid: string) {
     if(await track_exists_in_playlist(playlist_uuid, track_uid)) return;
-    await db.runAsync(sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0), [playlist_uuid, track_uid]);
+    await db_run_async(sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0), [playlist_uuid, track_uid]);
 }
 
 export async function delete_track_playlist(playlist_uuid: string, track_uid: string) {
-    await db.runAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
+    await db_run_async(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
 }
 export async function delete_track_from_all_playlists(track_uid: string) {
-    await db.runAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["track_uid", track_uid])}`);
+    await db_run_async(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["track_uid", track_uid])}`);
 }
 
 export async function all_playlists_data() {
-    const playlists: SQLPlaylist[] = await db.getAllAsync(sql_select<Playlist>("playlists", "*"));
+    const playlists = await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"));
     return Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist)) );
 }
 export async function all_playlists_names(): Promise<{"title": string}[]> {
-    const playlists_names = await db.getAllAsync(sql_select<Playlist>("playlists", "title"));
-    return playlists_names as {"title": string}[];
+    return await db_get_all_async<{"title": string}>(sql_select<Playlist>("playlists", "title"));
 }
 const playlist_name_sync_memo: Record<string, string> = {};
 export function playlist_name_sync(playlist_uuid: string) {
-    const title = db.getAllSync<{"title": string}>(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    const title = db_get_all_sync<{"title": string}>(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     if(title.length === 0) return null;
     playlist_name_sync_memo[playlist_uuid] = title[0].title;
     return title[0].title;
 }
 export async function playlist_data(playlist_uuid: string, ignore_tracks = false) {
-    const playlists: SQLPlaylist[] = await db.getAllAsync(`${sql_select<Playlist>("playlists", "*")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    const playlists = await db_get_all_async<SQLPlaylist>(`${sql_select<Playlist>("playlists", "*")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     return await sql_playlist_to_playlist(playlists[0], ignore_tracks);
 }
 export async function update_playlist(playlist_uuid: string, new_playlist: Playlist) {
-    await db.runAsync(`${sql_update_table("playlists")} SET ${obj_to_update_sql(new_playlist, true)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db_run_async(`${sql_update_table("playlists")} SET ${obj_to_update_sql(new_playlist, ExampleObj.playlist_example0)} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function create_playlist(title: string): Promise<string> {
     const playlist_names = await all_playlists_names();
@@ -126,13 +124,13 @@ export async function create_playlist(title: string): Promise<string> {
             title = `${title} ${count}`;
     }
     const playlist_uuid = uuid.default.v4() as string;
-    await db.runAsync(sql_insert_values("playlists", ExampleObj.playlist_example0), playlist_to_sqllite_insertion({ uuid: playlist_uuid, title }));
+    await db_run_async(sql_insert_values("playlists", ExampleObj.playlist_example0), playlist_to_sqllite_insertion({ uuid: playlist_uuid, title }));
     return playlist_uuid;
 }
 export async function delete_playlist(playlist_uuid: string) {
     await all_promises([
-        db.execAsync(`${sql_delete_from("playlists")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`),
-        db.execAsync(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid])}`)
+        db_exec_async(`${sql_delete_from("playlists")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`),
+        db_exec_async(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid])}`)
     ]);
 }
 export async function delete_all_playlists() {
@@ -141,28 +139,28 @@ export async function delete_all_playlists() {
 }
 export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
     if(pin)
-        await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", true])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+        await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", true])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     else
-        await db.execAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+        await db_exec_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function is_playlist_pinned(playlist_uuid: string): Promise<boolean> {
-    const playlists: SQLPlaylist[] = await db.getAllAsync(`${sql_select<Playlist>("playlists", "pinned")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    const playlists = await db_get_all_async<{pinned: boolean}>(`${sql_select<Playlist>("playlists", "pinned")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     return Boolean(playlists[0].pinned);
 }
 export async function update_playlist_title(playlist_uuid: string, title: string) {
-    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["title", title])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["title", title])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function update_playlist_description(playlist_uuid: string, description: string) {
-    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["description", description])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["description", description])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function update_playlist_sort_mode(playlist_uuid: string, sort_mode: SortType) {
-    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["sort", sort_mode])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["sort", sort_mode])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function update_playlist_inherited_playlists(playlist_uuid: string, inherited_playlists: InheritedPlaylist[]) {
-    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_playlists", JSON.stringify(inherited_playlists)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_playlists", JSON.stringify(inherited_playlists)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function update_playlist_inherited_searchs(playlist_uuid: string, inherited_searchs: InheritedSearch[]) {
-    await db.runAsync(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_searchs", JSON.stringify(inherited_searchs)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["inherited_searchs", JSON.stringify(inherited_searchs)])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export function inherited_playlists_action(inherited_playlists: InheritedPlaylist[], new_iplaylist: InheritedPlaylist, action: "ADD"|"REMOVE"): InheritedPlaylist[] {
     if(action === "ADD") return inherited_playlists.concat(new_iplaylist);

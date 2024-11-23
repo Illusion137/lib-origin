@@ -1,8 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
-import { Promises, SQLAlter, SQLTable, SQLType, Track } from '../../../types';
-import { move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_where } from '../sql/sql_utils';
-import { db, db_pre_1307 } from './database';
+import { Promises, SQLAlter, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
+import { db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_where } from '../sql/sql_utils';
+import { db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
 import { insert_track } from './sql_tracks';
@@ -58,7 +58,7 @@ export async function fix_to_new_update() {
         const legacy_1307_tracks = await get_legacy_1307_track_data(db_pre_1307);
         const legacy_1307_playlists = await get_legacy_1307_playlists(db_pre_1307);
         const all_legacy_1307_table_names = (await get_all_tables(db_pre_1307)).map(table => table.name);
-        const current_tracks = (await db.getAllAsync(sql_select<Track>("tracks", "*")));
+        const current_tracks = (await db_get_all_async<SQLTrack>(sql_select<Track>("tracks", "*")));
         if(all_legacy_1307_table_names.includes("tracks") && current_tracks.length === 0) {
             Alert.alert("Updating to 14.0.0 BETA");
             await move_unsorted_media_to_folders();
@@ -79,7 +79,7 @@ export async function fix_to_new_update() {
     try {        
         const all_1403_playlist_data = await all_playlists_data();
         if(all_1403_playlist_data.length > 0 && all_1403_playlist_data.every((playlist) => playlist.public_uuid === "0" && (playlist.public as any) === "OLDEST")) {
-            await db.runAsync( sql_drop_table("playlists") );
+            await db_run_async( sql_drop_table("playlists") );
             await recreate_all_tables();
             for(const playlist of all_1403_playlist_data) {
                 delete (playlist as any).id;

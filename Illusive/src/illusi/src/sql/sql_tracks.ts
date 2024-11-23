@@ -4,10 +4,9 @@ import { Prefs } from "../../../prefs";
 import { ISOString, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from '../globals';
-import { db } from './database';
 import * as SQLfs from './sql_fs';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
-import { download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
+import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
@@ -103,12 +102,12 @@ export function sql_track_to_track(sql_track: SQLTrack): Track {
 }
 
 export async function mark_track_downloaded(uid: string, media_uri: string) {
-    await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
+    await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = media_uri;
 }
 export async function mark_track_undownloaded(uid: string) {
-    await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
+    await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = "";
     await clean_directories();
@@ -138,27 +137,27 @@ export async function track_from_service_id(ftrack: Track) {
         }
     }
     if(is_empty(key!) || is_empty(track_id!)) return null;
-    const track = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>([key!, track_id!])}`);
+    const track = await db_get_all_async(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>([key!, track_id!])}`);
     if(track.length === 0) return null;
     return sql_track_to_track(track[0] as SQLTrack);
 }
 export async function track_from_uid(uid: string) {
-    const track = await db.getAllAsync(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
+    const track = await db_get_all_async(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return sql_track_to_track(track[0] as SQLTrack);
 }
 export async function track_uid_exists(track: Track) {
-    const count_sql = await db.getAllAsync(`${sql_select<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
+    const count_sql = await db_get_all_async(`${sql_select<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
     return count_sql.length !== 0;
 }
 export async function fetch_track_data() {
-    const tracks: SQLTrack[] = await db.getAllAsync(sql_select("tracks", "*"));
+    const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = tracks.map(track => sql_track_to_track(track));
 }
 export async function clear_tracks() {
-    await db.execAsync('DELETE FROM tracks');
+    await db_exec_async('DELETE FROM tracks');
 }
 export async function fetch_track_data_from_uid(uid: string): Promise<Track> {
-    const tracks: SQLTrack[] = await db.getAllAsync(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
+    const tracks: SQLTrack[] = await db_get_all_async(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return tracks.map(track => sql_track_to_track(track))[0];
 }
 
@@ -172,15 +171,15 @@ export async function insert_all_tracks(tracks: Track[]) {
 export async function insert_track(track: Track) {
     if( await track_exists(track) ) return;
     if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
-    await db.runAsync(sql_insert_values("tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
+    await db_run_async(sql_insert_values("tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
     GLOBALS.global_var.sql_tracks.push(track);
     if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
 }
 export async function update_track(track_uid: string, new_track: Track) {
-    await db.runAsync(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, true)} ${sql_where<Track>(["uid", track_uid])}`);
+    await db_run_async(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, ExampleObj.track_example0)} ${sql_where<Track>(["uid", track_uid])}`);
 }
 export async function update_track_meta_data(track_uid: string, new_meta: TrackMetaData) {
-    await db.runAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
+    await db_run_async(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
 }
 
 export async function update_track_with_new_track_data(old_track: Track, new_track: Track) {
@@ -189,7 +188,7 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
     return merged_track;
 }
 export async function delete_track(uid: string) {
-    await db.runAsync(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
+    await db_run_async(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
     await clean_directories();
 }
 
@@ -206,7 +205,7 @@ export async function clean_thumbnail_cache() {
     const all_promises: Promises = [];
     for(const file of files)
         all_promises.push(SQLfs.delete_item(thumbnail_directory(file)))
-    await db.execAsync(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
+    await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
     await Promise.all(all_promises);
 }
 

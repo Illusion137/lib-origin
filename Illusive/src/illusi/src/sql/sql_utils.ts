@@ -10,6 +10,43 @@ import * as GLOBALS from '../globals';
 import { db, db_path, reasign_db } from './database';
 import * as SQLfs from './sql_fs';
 import { document_directory, sqlite_directory, thumbnail_directory } from './sql_fs';
+import { alert_error } from '../alert';
+
+export async function db_exec_async(source: string){
+    try {
+        await db.execAsync(source);
+    } catch (error) {
+        alert_error({error: error as Error});
+        alert_error(`SQL: ${source}`);
+    }
+}
+export async function db_run_async(source: string, params?: SQLite.SQLiteBindParams) {
+    try {
+        if(params !== undefined)
+            await db.runAsync(source, params);
+        else await db.runAsync(source);
+    } catch (error) {
+        alert_error({error: error as Error});
+        alert_error(`SQL: ${source}`);
+    }
+}
+export function db_get_all_sync<T>(source: string, ...params: SQLite.SQLiteVariadicBindParams) {
+    try {
+        return db.getAllSync<T>(source, params);
+    } catch (error) {
+        alert_error({error: error as Error});
+        alert_error(`SQL: ${source}`);
+        return [];
+    }
+}
+export async function db_get_all_async<T>(source: string, ...params: SQLite.SQLiteVariadicBindParams) {
+    try {
+        return await db.getAllAsync<T>(source, params);
+    } catch (error) {
+        alert_error({error: error as Error});
+        return [];
+    }
+}
 
 export async function sql_update<T extends Record<string, any>>(table: SQLTables, item: {uid: string}, key: keyof T, value: any) {
     return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]))
@@ -71,11 +108,20 @@ export function sql_table_to_query_variadics(sql_table: string) {
     return `(${qarr.join(', ')})`;
 }
 function sql_serialize(str: string) {
-    return str.replace("'", "''");
+    return str.replace(/'/g, "''");
 }
-export function obj_to_update_sql(obj: Record<string, any>, ) {
+export function obj_to_update_sql(obj: Record<string, any>, example_obj?: Record<string, any>) {
     const updation: string[] = [];
-    const keys = Object.keys(obj);
+    let keys;
+    if(example_obj !== undefined) {
+        const obj_keys = Object.keys(example_obj);
+        for(let i = 0; i < obj_keys.length; i++)
+            if(example_obj[obj_keys[i]] === undefined) delete example_obj[obj_keys[i]];
+        const new_obj_keys = Object.keys(example_obj);
+        keys = Object.keys(obj).filter(key => new_obj_keys.includes(key));
+    }
+    else keys = Object.keys(obj);
+    
     for(const key of keys) {
         const value = obj[key];
         switch(typeof value) {

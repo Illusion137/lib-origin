@@ -241,7 +241,7 @@ const parseParams = _0xafb6f8 => {
     });
     return _0x50e042;
 };
-function imgReverser(_0x152dfe, box_size = 0xc8, seed = 'stay') {
+function imgReverser(src, box_size = 0xc8, seed = 'stay') {
     return new Promise((_0x526b3e, _0x1a8c11) => {
         const canvas = document.createElement('CANVAS');
         const context = canvas.getContext('2d');
@@ -287,8 +287,8 @@ function imgReverser(_0x152dfe, box_size = 0xc8, seed = 'stay') {
                 img.onerror = null;
                 return _0x526b3e(null);
             }
-            var _0xe02232 = _0x152dfe;
-            var _0x3aed57 = parseParams(_0x152dfe);
+            var _0xe02232 = src;
+            var _0x3aed57 = parseParams(src);
             if (_0x3aed57 && 0x0 < _0x3aed57.length) {
                 for (const _0x19b364 of _0x3aed57) if (!(_0xe02232.includes(_0x19b364[0x0] + '=' + _0x19b364[0x1]) || _0x19b364[0x0].toString().includes("http"))) {
                     _0xe02232 = '' + _0xe02232 + (_0xe02232.includes('?') ? '&' : '?') + _0x19b364[0x0] + '=' + _0x19b364[0x1];
@@ -298,7 +298,7 @@ function imgReverser(_0x152dfe, box_size = 0xc8, seed = 'stay') {
             img.src = '' + _0xe02232 + (_0xe02232.includes('?') ? '&' : '?') + 'v=' + _0x3aed57;
             _0x36a3f1++;
         };
-        img.src = _0x152dfe;
+        img.src = src;
     });
 }
 var settings = {

@@ -12,6 +12,7 @@ export default [
         "eslint.config.mjs", 
         "jest.config.js",
         "origin/src/youtube_dl/PATCH/sax/sax.js",
+        "origin/src/manga_reader/deob.js",
     ]},
     pluginJs.configs.recommended,
     // ...tseslint.configs.recommended,

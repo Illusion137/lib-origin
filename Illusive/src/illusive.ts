@@ -252,8 +252,8 @@ export namespace Illusive {
     }
 
     interface ExportTrack {"new_track_data"?: Track}
-    export async function get_download_url(document_directory: string, track: Track, quality?: string): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError> {
-        if(!is_empty(track.media_uri))
+    export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError> {
+        if(!is_empty(track.media_uri) && !(redownload_mode ?? false))
             return { url: document_directory + media_archive_path + track.media_uri! };
         else if(!is_empty(track.youtube_id))
             return await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio");

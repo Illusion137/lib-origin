@@ -1,13 +1,12 @@
 import * as SQLite from 'expo-sqlite';
 import path from 'path';
 import { Alert } from 'react-native';
-import { Track } from '../../../types';
-import { db } from './database';
+import { SQLTrack, Track } from '../../../types';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { create_playlist, insert_all_tracks_playlist } from './sql_playlists';
 import { insert_all_tracks } from './sql_tracks';
 import { get_all_tables } from './sql_update';
-import { destroy_all_tables, move_unsorted_media_to_folders, recreate_all_tables, sql_select } from './sql_utils';
+import { db_get_all_async, destroy_all_tables, move_unsorted_media_to_folders, recreate_all_tables, sql_select } from './sql_utils';
 
 export async function test_import_1307_sqldb(__path: string) {
     const old_db = await SQLite.openDatabaseAsync(path.basename(__path).replace(".sqlite3", "101.sqlite3"));
@@ -17,7 +16,7 @@ export async function test_import_1307_sqldb(__path: string) {
     const legacy_1307_tracks = await get_legacy_1307_track_data(old_db);
     const legacy_1307_playlists = await get_legacy_1307_playlists(old_db);
     const all_legacy_1307_table_names = (await get_all_tables(old_db)).map(table => table.name);
-    const current_tracks = (await db.getAllAsync(sql_select<Track>("tracks", "*")));
+    const current_tracks = (await db_get_all_async<SQLTrack>(sql_select<Track>("tracks", "*")));
     if(all_legacy_1307_table_names.includes("tracks") && current_tracks.length === 0) {
         Alert.alert("Updating to 14.0.0 BETA");
         await move_unsorted_media_to_folders();
