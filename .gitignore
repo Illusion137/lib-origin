@@ -1,6 +1,11 @@
+.history/
 .env
+.venv
 admin/**
 bin/**
+ignore/**
 node_modules
 scratch
 scratch.**
+translate
+catids.txt

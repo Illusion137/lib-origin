@@ -1,18 +1,18 @@
-export type Library = {
+export interface Library {
     data: {
         me: {
             libraryV3: {
                 __typename: string
-                availableFilters: Array<{
+                availableFilters: {
                     id: string
                     name: string
-                }>
-                availableSortOrders: Array<{
+                }[]
+                availableSortOrders: {
                     id: string
                     name: string
-                }>
-                breadcrumbs: Array<any>
-                items: Array<{
+                }[]
+                breadcrumbs: any[]
+                items: {
                     addedAt: {
                         isoString: string
                     }
@@ -23,12 +23,12 @@ export type Library = {
                         data: {
                             __typename: string
                             artists?: {
-                                items: Array<{
+                                items: {
                                     profile: {
                                         name: string
                                     }
                                     uri: string
-                                }>
+                                }[]
                             }
                             coverArt?: {
                                 extractedColors: {
@@ -37,11 +37,11 @@ export type Library = {
                                         isFallback: boolean
                                     }
                                 }
-                                sources: Array<{
+                                sources: {
                                     height: number
                                     url: string
                                     width: number
-                                }>
+                                }[]
                             }
                             date?: {
                                 isoString: string
@@ -49,35 +49,35 @@ export type Library = {
                             }
                             name?: string
                             uri: string
-                            attributes?: Array<any>
+                            attributes?: any[]
                             currentUserCapabilities?: {
                                 canEditItems: boolean
                             }
                             description?: string
                             images?: {
-                                items: Array<{
+                                items: {
                                     extractedColors: {
                                         colorDark: {
                                             hex: string
                                             isFallback: boolean
                                         }
                                     }
-                                    sources: Array<{
+                                    sources: {
                                         height: number
                                         url: string
                                         width: number
-                                    }>
-                                }>
+                                    }[]
+                                }[]
                             }
                             ownerV2?: {
                                 data: {
                                     __typename: string
                                     avatar?: {
-                                        sources: Array<{
+                                        sources: {
                                             height: number
                                             url: string
                                             width: number
-                                        }>
+                                        }[]
                                     }
                                     id: string
                                     name: string
@@ -97,11 +97,11 @@ export type Library = {
                                             isFallback: boolean
                                         }
                                     }
-                                    sources: Array<{
+                                    sources: {
                                         height: number
                                         url: string
                                         width: number
-                                    }>
+                                    }[]
                                 }
                             }
                             count?: number
@@ -112,11 +112,11 @@ export type Library = {
                                         isFallback: boolean
                                     }
                                 }
-                                sources: Array<{
+                                sources: {
                                     height: number
                                     url: string
                                     width: number
-                                }>
+                                }[]
                             }
                         }
                     }
@@ -125,12 +125,12 @@ export type Library = {
                     playedAt?: {
                         isoString: string
                     }
-                }>
+                }[]
                 pagingInfo: {
                     limit: number
                     offset: number
                 }
-                selectedFilters: Array<any>
+                selectedFilters: any[]
                 selectedSortOrder: {
                     id: string
                     name: string

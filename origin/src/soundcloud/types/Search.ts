@@ -1,5 +1,10 @@
 import { HydratableUser } from "./Hydration"
 
+export interface ClientSearchOf<T> {
+    data: SearchOf<T>
+    client_id: string
+}
+
 export interface ArtistUser<T> {
     user: HydratableUser
     artist_data: SearchOf<T>
@@ -7,10 +12,10 @@ export interface ArtistUser<T> {
 
 export interface SearchOf<T> {
     collection: (T)[]
-    total_results: number
-    facets: Facet[]
+    total_results?: number
+    facets?: Facet[]
     next_href: string
-    query_urn: string
+    query_urn: string|null
 }
 
 export interface Search {
@@ -24,6 +29,31 @@ export interface Search {
 export interface Facet {
     name: string
     facets: any[]
+}
+
+export interface HistoryTrack {
+    played_at: number
+    track_id: number
+    track: Track
+}
+
+export interface LikedTrack {
+    created_at: string
+    kind: "like"
+    track: Track
+}
+
+export interface ArtistShortcut {
+    has_read: boolean
+    unread_update_at?: string
+    user: User
+    user_urn: string
+}
+
+export interface ArtistRecommendation {
+    source: "algorithm"
+    token: string
+    user: User
 }
 
 export interface User {
@@ -112,7 +142,7 @@ export interface Track {
 }
 
 export interface Playlist {
-    artwork_url: any
+    artwork_url: string
     created_at: string
     description: any
     duration: number
@@ -153,7 +183,6 @@ export interface Track0 {
     monetization_model: string
     policy: string
 }
-
 
 export interface Track1 {
     artwork_url: string

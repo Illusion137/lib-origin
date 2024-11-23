@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction } from 'react';
 
 export type Artwork = string | number | {uri: string, cache?: string};
 
-export type Route<T> = {"key": string, "name": string, "params": T, path: string};
+export interface Route<T> {"key": string, "name": string, "params": T, path: string}
 
 export type SQLType = "INTEGER" | "STRING" | "BOOLEAN";
 export type SQLAlter = {"table": string, "action": "DROP",   'column_name': string} | 
@@ -13,21 +13,21 @@ export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "ERROR";
 export type SetState = Dispatch<SetStateAction<any>>;
 
-export type TrackProps = {"uid": string};
+export interface TrackProps {"uid": string}
 export type SortType = "ALPHABETICAL" | "NEWEST" | "OLDEST"
 
 export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "API";
-export type MusicServiceImport = {tracks: Track[], title: string};
+export interface MusicServiceImport {tracks: Track[], title: string}
 
-export type DefaultPlaylist = {
+export interface DefaultPlaylist {
     name: string,
     track_function: () => Track[]
-};
+}
 
-export type DefaultPlaylistData = {
+export interface DefaultPlaylistData {
     name: string,
     tracks: Track[]
-};
+}
 
 export interface QueueTrack {
     artwork: Artwork, 
@@ -63,7 +63,7 @@ export interface Playlist {
     track_count?: number
 }
 
-export class Track{
+export class Track {
     uid: string
     video_id: string
     video_name: string
@@ -110,7 +110,7 @@ export class Track{
         successful?: boolean
         added?: boolean
         callback?: () => void
-    }){
+    }) {
         this.uid = t.uid;
         this.video_id = t.video_id ?? "";
         this.video_name = t.video_name ?? "";
@@ -135,7 +135,7 @@ export class Track{
         this.callback = t.callback ?? (() => {});
     }
 
-    toSQLInsert(): any[]{
+    toSQLInsert(): any[] {
         const toArray: any[] = [];
         
         toArray.push(this.uid)
@@ -166,7 +166,7 @@ export class SmallTrack {
     video_creator: string
     video_duration: number
 
-    constructor(t : {
+    constructor(t: {
         uid: string
         video_id: string
         video_name: string
@@ -174,12 +174,12 @@ export class SmallTrack {
         video_duration: number
     }) {
         this.uid = t.uid ?? "";
-        this.video_id = String(t.video_id) ?? "";
-        this.video_name = String(t.video_name) ?? "";
-        this.video_creator = String(t.video_creator) ?? "";
+        this.video_id = String(t.video_id);
+        this.video_name = String(t.video_name);
+        this.video_creator = String(t.video_creator);
         this.video_duration = t.video_duration ?? 0;
     }
-    toSQLInsert(){
+    toSQLInsert() {
         const toArray: any = [];
         
         toArray.push(this.uid)
@@ -207,7 +207,7 @@ export class MusicService {
         has_credentials: () => boolean,
         get_playlists_list: () => Promise<Map<MusicServicePlaylistTitle, MusicServicePlaylistURL>>,
         get_playlist_import: (url: string) => Promise<MusicServiceImport>
-    }){
+    }) {
         this.valid_playlist_url_regex = s.valid_playlist_url_regex;
         this.get_playlists_list = s.get_playlists_list;
         this.has_credentials = s.has_credentials;

@@ -1,2 +1,4 @@
-export type ResponseError = { "error": string };
+export interface ResponseError { "error": Error }
+export interface ResponseSuccess { "success": true }
 export type PromiseResult<T> = Promise<ResponseError|T>;
+export type FetchMethod = "GET"|"POST"|"DELETE"|"PUT"|"OPTIONS";

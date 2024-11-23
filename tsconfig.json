@@ -1,16 +1,27 @@
 {
     "compilerOptions": {
-      "strict": true,
-      "noImplicitAny": true,
-      "noEmitOnError": true,
-      "noEmit": true,
-      "module": "commonjs",
-      "esModuleInterop": true,
-      "target": "es2019",
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "sourceMap": true,
-      "outDir": "dist"
+        "strict": true,
+        "noImplicitAny": true,
+        "noEmitOnError": true,
+        "noEmit": true,
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "target": "es2020",
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "sourceMap": true,
+        "outDir": "dist",
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "allowUnreachableCode": false,
+        "alwaysStrict": true,
+        "noFallthroughCasesInSwitch": true,
+        "strictNullChecks": true,
+        "noImplicitReturns": true,
+        "skipLibCheck": true,
     },
-    "lib": ["es2015"]
+    "exclude": ["node_modules/**"],
+    "lib": [
+        "es2015"
+    ]
 }

@@ -1,83 +1,114 @@
-import { get_main_key, parse_runs } from "../utils/util";
-import { ArtistResults_0, Content4, MusicCarouselShelfRenderer, MusicShelfRenderer } from "./types/ArtistResults_0";
-import { ExploreResults_0 } from "./types/ExploreResults_0";
-import { HomeResults_0 } from "./types/HomeResults_0";
-import { LibraryResults_0, ParsedLibraryResults } from "./types/LibraryResults_0";
+import { ChannelResultsW } from "./types/ChannelResultsW";
+import { ChannelResultsWContinuation } from "./types/ChannelResultsWContinuation";
+import { HomeResultsW } from "./types/HomeResultsW";
+import { HomeResultsWContinuation } from "./types/HomeResultsWContinuation";
+import { LibraryResultsW } from "./types/LibraryResultsW";
 import { MixResults_0 } from "./types/MixResults_0";
-import { PlaylistResults_0 } from "./types/PlaylistResults_0";
-import { PlaylistResults_1 } from "./types/PlaylistResults_1";
-import { PlaylistResults_2 } from "./types/PlaylistResults_2";
-import { SearchResults_0 } from "./types/SearchResults_0";
-import { SearchResults_1 } from "./types/SearchResults_1";
-import { TabRenderer_0 } from "./types/TabRender_0";
+import { PlaylistResultsW, PlaylistVideoRenderer } from "./types/PlaylistResultsW";
+import { PlaylistResultsWContinuation } from "./types/PlaylistResultsWContinuation";
+import { SearchResultsM } from "./types/SearchResultsM";
+import { SearchResultsW } from "./types/SearchResultsW";
+import { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
 import { InitialData } from "./types/types";
 
-export function parse_home_contents(initial_data: InitialData){
-    const contents: HomeResults_0 = initial_data as unknown as HomeResults_0;
+export function parse_home_contents(initial_data: InitialData) {
+    const contents = (initial_data as HomeResultsW).contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents;
     return {
-        // "contents": contents.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents,
-        // "continuation": contents.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.continuations[0].nextContinuationData
+        videos: { video_renderer: contents.filter(item => item.richItemRenderer !== undefined).map(item => item.richItemRenderer!.content.videoRenderer)},
+        shorts: { shorts_renderer: contents.filter(item => item.richSectionRenderer !== undefined).map(item => item.richSectionRenderer!.content.richShelfRenderer.contents
+            .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel!)).map(item => item[0])},
+        continuation: contents.find(item => item.continuationItemRenderer !== undefined)?.continuationItemRenderer ?? null
     }
 }
-export function parse_explore_contents(initial_data: InitialData){
-    const contents: ExploreResults_0 = initial_data as unknown as ExploreResults_0;
-    return contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.filter(item => item.musicCarouselShelfRenderer !== undefined);
+export function parse_home_continuation_contents(initial_data: InitialData) {
+    const contents = (initial_data as HomeResultsWContinuation).onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems;
+    return {
+        videos: { video_renderer: contents.filter(item => item.richItemRenderer !== undefined).map(item => item.richItemRenderer!.content.videoRenderer)},
+        shorts: { shorts_renderer: contents.filter(item => item.richSectionRenderer !== undefined).map(item => item.richSectionRenderer!.content.richShelfRenderer.contents
+            .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel)).map(item => item[0])},
+        continuation: contents.find(item => item.continuationItemRenderer !== undefined)?.continuationItemRenderer ?? null
+    }
 }
-export function parse_library_contents(initial_data: InitialData){
-    const contents: LibraryResults_0 = initial_data as unknown as LibraryResults_0;
+export function parse_library_contents(initial_data: InitialData) {
+    const contents = initial_data as LibraryResultsW;
     const playlists = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents.map(item => {
         return {
-            "title": item.richItemRenderer.content.lockupViewModel.metadata.lockupMetadataViewModel.title.content,
-            "thumbnails": item.richItemRenderer.content.lockupViewModel.contentImage.collectionThumbnailViewModel.primaryThumbnail.thumbnailViewModel.image.sources,
-            "endpoint": item.richItemRenderer.content.lockupViewModel.contentId
+            title: item.richItemRenderer.content.lockupViewModel.metadata.lockupMetadataViewModel.title.content,
+            thumbnails: item.richItemRenderer.content.lockupViewModel.contentImage.collectionThumbnailViewModel.primaryThumbnail.thumbnailViewModel.image.sources,
+            endpoint: item.richItemRenderer.content.lockupViewModel.contentId
         }
     })
     return playlists;
 }
-export function parse_playlist_contents(initial_data: InitialData){
-    const contents: PlaylistResults_1 = initial_data as unknown as PlaylistResults_1;
+export function parse_playlist_contents(initial_data: InitialData) {
+    const contents = initial_data as PlaylistResultsW;
     const playlist_contents = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
     const continuation_item = playlist_contents.find(item => item.continuationItemRenderer !== undefined);
     return {
-        "tracks": playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer),
-        "playlist_data": contents.header?.pageHeaderRenderer?.content !== undefined ? contents.header?.pageHeaderRenderer?.content : contents.header.playlistHeaderRenderer,
-        "continuation": continuation_item?.continuationItemRenderer ?? null
+        tracks: { playlist_video_renderer: playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer) as PlaylistVideoRenderer[] },
+        playlist_data: contents.header?.pageHeaderRenderer?.content !== undefined ? { playlist_header_content_renderer: contents.header?.pageHeaderRenderer?.content.pageHeaderViewModel } : { playlist_header_renderer: contents.header.playlistHeaderRenderer},
+        continuation: continuation_item?.continuationItemRenderer ?? null
     }
 }
-export function parse_playlist_continuation_contents(initial_data: InitialData){
-    const contents: PlaylistResults_2 = initial_data as unknown as PlaylistResults_2;
+export function parse_playlist_continuation_contents(initial_data: InitialData) {
+    const contents = initial_data as PlaylistResultsWContinuation;
     const playlist_contents = contents.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems;
     const continuation_item = playlist_contents.find(item => item.continuationItemRenderer !== undefined);
     return {
-        "tracks": playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer),
-        "continuation": continuation_item?.continuationItemRenderer ?? null
+        tracks: { playlist_video_renderer: playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer) as PlaylistVideoRenderer[]},
+        continuation: continuation_item?.continuationItemRenderer ?? null
     }
 }
-export function parse_artist_contents(initial_data: InitialData[]){
-    const contents: ArtistResults_0 = initial_data as unknown as ArtistResults_0;
+export function parse_channel_contents(initial_data: InitialData) {
+    const contents = initial_data as ChannelResultsW;
+    const tabs = contents.contents.twoColumnBrowseResultsRenderer.tabs.filter(tab => tab.tabRenderer !== undefined).map(tab => tab.tabRenderer!);
     return {
-        "top_shelf": contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.filter(item => item.musicShelfRenderer !== undefined)[0].musicShelfRenderer as MusicShelfRenderer,
-        "shelfs": contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.filter(item => item.musicCarouselShelfRenderer !== undefined).map(item => item.musicCarouselShelfRenderer) as MusicCarouselShelfRenderer[]
+        header: contents.header.pageHeaderRenderer.content.pageHeaderViewModel,
+        tabs: tabs
     }
 }
-export function parse_search_contents(initial_data: InitialData){
-    const contents = initial_data as unknown as SearchResults_0|SearchResults_1;
-    if("twoColumnSearchResultsRenderer" in contents.contents) 
+export function parse_channel_continuation_contents(initial_data: InitialData) {
+    const contents = initial_data as ChannelResultsWContinuation;
+    const tabs = contents.contents.twoColumnBrowseResultsRenderer.tabs.filter(tab => tab.tabRenderer !== undefined).map(tab => tab.tabRenderer!);
     return {
-        "videos": contents.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.videoRenderer !== undefined).map(item => item.videoRenderer),
-        "artists": contents.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.channelRenderer !== undefined).map(item => item.channelRenderer),
-        "playlists": contents.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.radioRenderer !== undefined).map(item => item.radioRenderer),
-    }
-    else 
-    return {
-        "videos": contents.contents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.videoWithContextRenderer !== undefined).map(item => item.videoWithContextRenderer),
-        "artists": contents.contents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.compactChannelRenderer !== undefined).map(item => item.compactChannelRenderer),
-        "playlists": contents.contents.sectionListRenderer.contents[0].itemSectionRenderer.contents.filter(item => item.compactPlaylistRenderer !== undefined).map(item => item.compactPlaylistRenderer),
+        tabs: tabs
     }
 }
-export function parse_mix_contents(initial_data: InitialData){
-    const contents: MixResults_0 = initial_data as MixResults_0;
+export function parse_search_contents(initial_data: InitialData) {
+    const contents = (initial_data as SearchResultsW|SearchResultsM).contents;
+    if("twoColumnSearchResultsRenderer" in contents) {
+        const items = contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+        const continuations = contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer?.contents?.[1]?.continuationItemRenderer;
+        return {
+            videos: {video_renderer: items.filter(item => item.videoRenderer !== undefined).map(item => item.videoRenderer)},
+            artists: {channel_renderer: items.filter(item => item.channelRenderer !== undefined).map(item => item.channelRenderer)},
+            playlists: {playlist_renderer: items.filter(item => item.playlistRenderer !== undefined).map(item => item.playlistRenderer)},
+            continuation: continuations ?? null
+        }
+    }
+    const items = contents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+    const continuations = contents.sectionListRenderer.contents?.[1]?.continuationItemRenderer;
     return {
-        "tracks": contents.contents.twoColumnWatchNextResults.playlist.playlist.contents.map(item => item.playlistPanelVideoRenderer)
+        videos: {compact_video_renderer: items.filter(item => item.videoWithContextRenderer !== undefined).map(item => item.videoWithContextRenderer)},
+        artists: {compact_channel_renderer: items.filter(item => item.compactChannelRenderer !== undefined).map(item => item.compactChannelRenderer)},
+        playlists: {compact_playlist_renderer: items.filter(item => item.compactPlaylistRenderer !== undefined).map(item => item.compactPlaylistRenderer)},
+        continuation: continuations ?? null
+    }
+}
+export function parse_search_continuation_contents(initial_data: InitialData) {
+    const contents = (initial_data as unknown as SearchResultsWContinuation).onResponseReceivedCommands[0].appendContinuationItemsAction.continuationItems;
+    const items = contents[0].itemSectionRenderer.contents;
+    const continuation = contents?.[1]?.continuationItemRenderer;
+    return {
+        videos: {video_renderer: items.filter(item => item.videoRenderer !== undefined).map(item => item.videoRenderer)},
+        artists: {channel_renderer: items.filter(item => item.channelRenderer !== undefined).map(item => item.channelRenderer)},
+        playlists: {playlist_renderer: items.filter(item => item.playlistRenderer !== undefined).map(item => item.playlistRenderer)},
+        continuation: continuation ?? null
+    }
+}
+export function parse_mix_contents(initial_data: InitialData) {
+    const contents = (initial_data as MixResults_0).contents.twoColumnWatchNextResults.playlist.playlist.contents;
+    return {
+        tracks: contents.map(item => item.playlistPanelVideoRenderer)
     }
 }

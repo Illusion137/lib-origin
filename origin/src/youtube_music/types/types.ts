@@ -1,5 +1,5 @@
-export type InitialData = {
-    contents: any
-    trackingParams: string
-    responseContext: object
-};
+export interface InitialData {
+	contents: any
+	trackingParams: string
+	responseContext: object
+}
