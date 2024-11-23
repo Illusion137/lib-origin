@@ -16,7 +16,7 @@ export function lyrics_directory(item: string) { return document_directory(Illus
 async function move_to(item: string, dir_func: (item: string) => string, new_name?: string) {
     const base_name = path.basename(new_name ?? item);
     await FileSystem.moveAsync({from: item, to: dir_func(base_name)});
-    return base_name;
+    return dir_func(base_name);
 }
 
 export async function move_to_thumbnail_directory(item: string, new_name?: string) { return await move_to(item, thumbnail_directory, new_name); }
