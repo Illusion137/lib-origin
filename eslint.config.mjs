@@ -13,6 +13,7 @@ export default [
         "jest.config.js",
         "origin/src/youtube_dl/PATCH/sax/sax.js",
         "origin/src/manga_reader/deob.js",
+        "origin/src/manga_reader/deob2.js",
     ]},
     pluginJs.configs.recommended,
     // ...tseslint.configs.recommended,
