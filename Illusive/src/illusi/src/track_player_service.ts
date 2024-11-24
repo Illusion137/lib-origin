@@ -129,16 +129,11 @@ let changed_mutex = false;
 let updated_metadata_mutex = false;
 
 export async function track_player_previous() {
-    if (previous_next_mutex) return;
     try {
-        previous_next_mutex = true;
         const active_index = await TrackPlayer.getActiveTrackIndex();
-        if (active_index === undefined) return;
         const progress = await TrackPlayer.getProgress();
         if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
             await TrackPlayer.seekTo(0);
-            previous_next_mutex = false;
-            updated_metadata_mutex = false;
             return;
         }
         if (GLOBALS.global_var.playing_tracks[active_index - 1].playback!.successful === false) {
@@ -146,7 +141,7 @@ export async function track_player_previous() {
             await TrackPlayer.skipToPrevious();
         } else await TrackPlayer.skipToPrevious();
         previous_next_mutex = false;
-    } catch (error) { }
+    } catch (error) { alert_error({error: error as Error}); }
 }
 
 export async function track_player_next() {

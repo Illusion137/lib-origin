@@ -102,7 +102,16 @@ export async function youtube_music_search(query: string, _?: number): Promise<M
     const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
     const search_response = await Origin.YouTubeMusic.search({cookie_jar}, query);
     if("error" in search_response) return default_search(search_response);
-    return default_search();
+    const top_result = search_response.data.contents[0].musicCardShelfRenderer;
+    const results = search_response.data.contents.filter(item => item.musicShelfRenderer !== undefined).map(item => item.musicShelfRenderer!);
+    type SectionHeaders = "";
+    return {
+        tracks: [],
+        playlists: [],
+        albums: [],
+        artists: [],
+        continuation: null
+    };
 }
 
 interface SoundcloudSearchContinuation {"next_href": string|null, "client_id": string, "depth": number}

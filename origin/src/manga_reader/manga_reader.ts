@@ -1,6 +1,7 @@
 import { jsdom_document } from "../utils/jsdom";
 import { PromiseResult } from "../utils/types";
 import { encode_params, google_query } from "../utils/util";
+import { decode_image_base64 } from "./img_decoder";
 import { MangaGenres } from "./types/MangaGenres";
 import { MangaTypes } from "./types/MangaTypes";
 import { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageSize, MangaReadMode, MangaReadQuality, ReadingBy, SearchManga } from "./types/types";
@@ -86,5 +87,8 @@ export namespace MangaReader {
         const document = jsdom_document(reading_list_result.html);
         const chapter_items = document.querySelectorAll(".iv-card");
         return map_html_collection(chapter_items, parse_chapter_image_list);
+    }
+    export async function decode_image(url: string) {
+        return await decode_image_base64(url);
     }
 }
