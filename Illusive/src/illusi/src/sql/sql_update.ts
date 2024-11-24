@@ -28,8 +28,8 @@ async function alter_sql(database: SQLite.SQLiteDatabase, alter: SQLAlter) {
 
     const table_column_props = get_sql_table_column_properties(tables[selected_table_index]);
     const selected_column_index = table_column_props.findIndex((props) => props.column_name == alter.column_name);
-    if(selected_column_index === -1) return;
     const column_props = table_column_props[selected_column_index];
+
     if(alter.action === 'ADD' && column_props === undefined) {
         await database.execAsync(`ALTER TABLE ${alter.table} ${alter.action} ${alter.column_name} ${alter.type}`);
     } else if(alter.action === 'DROP' && column_props !== undefined) {
@@ -90,4 +90,6 @@ export async function fix_to_new_update() {
     } catch (error) {}
 
     await alter_sql(db, {table: 'tracks', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
+    await alter_sql(db, {table: 'backpack', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
+    await alter_sql(db, {table: 'recently_played_tracks', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
 }
