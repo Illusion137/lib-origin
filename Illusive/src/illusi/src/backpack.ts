@@ -3,7 +3,7 @@ import * as Origin from '../../../../origin/src/index';
 import { Constants } from '../../constants';
 import { Illusive } from "../../illusive";
 import { Prefs } from "../../prefs";
-import { Track } from "../../types";
+import { MusicServiceType, Track } from "../../types";
 import { alert_error } from './alert';
 import { Logger } from './logger';
 import { Wifi } from './wifi_utils';
@@ -14,6 +14,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
         return [];
     }
     const fastpack = Prefs.get_pref('fastpack') && unavailable_tracks.length >= Constants.fastpack_track_threshold;
+    const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
     if(fastpack) {
         let proxies: Origin.Proxy.Proxy[] = [];
         const promise_tracks: ReturnType<typeof Illusive.convert_track>[] = [];
@@ -22,7 +23,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
             proxies = fetched_proxies;
         } else await Logger.log_error(fetched_proxies);
         for(const utrack of unavailable_tracks)
-            promise_tracks.push(Illusive.convert_track(utrack, "YouTube", proxies));
+            promise_tracks.push(Illusive.convert_track(utrack, to_service, proxies));
         const resolved_tracks = await Promise.all(promise_tracks);
         resolved_tracks.forEach(track => { if("error" in track) alert_error(track); })
         
@@ -34,7 +35,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
     }
     const tracks: Track[] = [];
     for(const utrack of unavailable_tracks) {
-        const track = await Illusive.convert_track(utrack, "YouTube");
+        const track = await Illusive.convert_track(utrack, to_service);
         if("error" in track) {
             alert_error(track);
             continue;

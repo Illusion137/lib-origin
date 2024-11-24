@@ -17,6 +17,7 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const to_array: SQLTrackArray = [        
         track.uid ?? "",
         track.title ?? "",
+        track.alt_title ?? "",
         JSON.stringify(track.artists ?? []),
         track.duration ?? 0,
         JSON.stringify(track.prods ?? []),
@@ -60,6 +61,7 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
     return {
         uid: track.uid,
         title: track.title,
+        alt_title: new_track.title,
         artists: track.artists,
         duration: new_track.duration,
         album: is_empty(track.album) ? new_track.album : track.album,

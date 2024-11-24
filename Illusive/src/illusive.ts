@@ -196,7 +196,7 @@ export namespace Illusive {
         ["Musi", musi],
         ["API", api],
     ]);
-    export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "SoundCloud"];
+    export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "Spotify", "SoundCloud"];
 
     export async function convert_track(track: Track, to_music_service: MusicServiceType, proxies?: Origin.Proxy.Proxy[], possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError> {
         if(music_service.get(to_music_service)?.search === undefined) return {error: new Error("Can't convert to this music-service")};
@@ -259,11 +259,12 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio");
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!);
-        const new_track_data = await convert_track(track, "YouTube");
+        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+        const new_track_data = await convert_track(track, to_service);
         if("error" in new_track_data) return new_track_data;
-        const ytdl_response = await music_service.get("YouTube")!.download_from_id!(new_track_data.youtube_id!, quality ?? "highestaudio");
-        if("error" in ytdl_response) return ytdl_response;
-        return { url: ytdl_response.url, metadata: ytdl_response.metadata, new_track_data: new_track_data };
+        const convert_response = await music_service.get(to_service)!.download_from_id!(new_track_data.youtube_id!, quality ?? "highestaudio");
+        if("error" in convert_response) return convert_response;
+        return { url: convert_response.url, metadata: convert_response.metadata, new_track_data: new_track_data };
     }
 
     interface ExportMix {"tracks": Track[], "new_track_data"?: Track}
@@ -272,9 +273,10 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.get_track_mix!(track.youtube_id!);
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.get_track_mix!(track.soundcloud_permalink!);
-        const new_track_data = await convert_track(track, "YouTube");
+        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+        const new_track_data = await convert_track(track, to_service);
         if("error" in new_track_data) return new_track_data;
-        const youtube_mix_response = await music_service.get("YouTube")!.get_track_mix!(new_track_data.youtube_id!);
+        const youtube_mix_response = await music_service.get(to_service)!.get_track_mix!(new_track_data.youtube_id!);
         if("error" in youtube_mix_response) return youtube_mix_response;
         return {tracks: youtube_mix_response.tracks, new_track_data: new_track_data};
     }

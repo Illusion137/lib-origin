@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
 import { Promises, SQLAlter, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
 import { db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_where } from '../sql/sql_utils';
-import { db_pre_1307 } from './database';
+import { db, db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
 import { insert_track } from './sql_tracks';
@@ -17,7 +17,7 @@ function get_sql_table_column_properties(table: SQLTable): {'column_name': strin
     const inner_sql = table.sql.slice(table.sql.indexOf('(') + 1, table.sql.indexOf(')'));
     for(const prop of inner_sql.split(', ').map((prop => prop.trim())) ) {
         const [column_name, type] = prop.split(' ');
-        column_props.push({column_name: column_name, type: type as SQLType})
+        column_props.push({column_name: column_name, type: type as SQLType});
     }
     return column_props;
 }
@@ -43,11 +43,11 @@ async function alter_sql(database: SQLite.SQLiteDatabase, alter: SQLAlter) {
 export async function fix_to_new_update() {
     // UPDATE 13.0.4 BETA
     await alter_sql(db_pre_1307, {table: 'playlists', action: 'RENAME', column_name: 'thumbnail_URI',         new_column_name: 'thumbnail_uri'}); 
-    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'sort',                     type: 'STRING'}); 
+    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'sort',                     type: 'TEXT'}); 
     await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'public',                   type: "BOOLEAN"});
-    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'public_uid',               type: "STRING"});
-    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'inherited_playlists_json', type: "STRING"});
-    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'linked_playlists_json',    type: "STRING"});
+    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'public_uid',               type: "TEXT"});
+    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'inherited_playlists_json', type: "TEXT"});
+    await alter_sql(db_pre_1307, {table: 'playlists', action: 'ADD', column_name: 'linked_playlists_json',    type: "TEXT"});
 
     // UPDATE 13.0.5 BETA
     await alter_sql(db_pre_1307, {table: 'tracks', action: 'ADD', column_name: 'views', type: "INTEGER"});
@@ -88,4 +88,6 @@ export async function fix_to_new_update() {
             Alert.alert("Updated Playlists to 14.1.4 BETA");
         }
     } catch (error) {}
+
+    await alter_sql(db, {table: 'tracks', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
 }

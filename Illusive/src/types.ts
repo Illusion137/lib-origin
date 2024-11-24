@@ -17,7 +17,7 @@ export type Promises = Promise<unknown>[]
 
 export interface Route<T> {"key": string, "name": string, "params": T, path: string}
 
-export type SQLType = "INTEGER" | "STRING" | "BOOLEAN";
+export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN";
 export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
                        {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
                        {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
@@ -141,6 +141,7 @@ export interface TrackMetaData {
 interface Basic_Track<T, U, V, X> {
     uid: string
     title: string
+    alt_title?: string
     artists: T
     duration: number
     prods?: string
@@ -167,7 +168,7 @@ interface Basic_Track<T, U, V, X> {
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
 }
-export type SQLTrackArray = [ string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
+export type SQLTrackArray = [ string, string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
 
 export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>

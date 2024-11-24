@@ -1,5 +1,6 @@
 import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
+import { Prefs } from "./prefs";
 import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
@@ -85,10 +86,11 @@ export function track_query_filter(tracks: Track[], query?: string) {
         query = remove(query!, /@jp ?/);
 
         return tracks.filter(track => {
-            const includes_title = remove_special_chars(track.title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
+            const title = Prefs.get_pref('alt_titles') ? track.alt_title ?? track.title : track.title;
+            const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
             const includes_artist = track.artists[0].name.toUpperCase().includes(query!.toUpperCase());
             
-            const jp_test_title = jp_regex.test(track.title);
+            const jp_test_title = jp_regex.test(title);
             const jp_test_artist = jp_regex.test(track.artists[0].name);
             const jp_test = jp_flag && (jp_test_title||jp_test_artist);
             
