@@ -177,7 +177,7 @@ export async function track_player_next() {
         next_track_into_queue_mutex = false;
         await TrackPlayer.skipToNext();
         previous_next_mutex = false;
-    } catch (error) { }
+    } catch (error) { previous_next_mutex = false; }
 }
 
 export async function playback_service() {
@@ -191,15 +191,10 @@ export async function playback_service() {
             updated_metadata_mutex = false;
             if (!initial_playback_track_changed_mutex && !changed_mutex) {
                 changed_mutex = true;
-
-                if (!GLOBALS.global_var.playing_queue.is_empty)
-                    GLOBALS.global_var.playing_queue.dequeue();
-                GLOBALS.global_var.playing_queue.elements = {};
-                GLOBALS.global_var.playing_queue.head = 0;
-                GLOBALS.global_var.playing_queue.tail = 0;
+                GLOBALS.global_var.playing_queue = [];
                 let index = await TrackPlayer.getActiveTrackIndex() ?? 0;
 
-                if (index != 0 && GLOBALS.global_var.playing_tracks[index].playback!.successful == false && !previous_next_mutex) {
+                if (index !== 0 && GLOBALS.global_var.playing_tracks[index].playback!.successful == false && !previous_next_mutex) {
                     await TrackPlayer.pause();
                     const new_react_native_track = await illusive_track_to_track_player_track(GLOBALS.global_var.playing_tracks[index]);
                     if (new_react_native_track == null || new_react_native_track === 'skip') {
@@ -238,10 +233,10 @@ export async function playback_service() {
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) track_player_next().catch(e => e);
             if (next_track === undefined) return;
             if (next_track.playback!.added === false && next_track.playback!.successful === false && !next_track_into_queue_mutex) {
+                next_track_into_queue_mutex = true;
+                previous_next_mutex = true;
                 next_track.playback!["added"] = true;
 
-                previous_next_mutex = true;
-                next_track_into_queue_mutex = true;
 
                 GLOBALS.global_var.playing_track_index += 2;
                 const react_native_track = await illusive_track_to_track_player_track(next_track);

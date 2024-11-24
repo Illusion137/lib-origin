@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
-import path from 'path';
 import { is_empty } from '../../../../../origin/src/utils/util';
 import { Illusive } from '../../../illusive';
+import path from 'path';
 
 function forward_item(item: string) {
     return !is_empty(item) ? item : "";
@@ -22,6 +22,7 @@ async function move_to(item: string, dir_func: (item: string) => string, new_nam
 export async function move_to_thumbnail_directory(item: string, new_name?: string) { return await move_to(item, thumbnail_directory, new_name); }
 export async function move_to_media_directory(item: string, new_name?: string) { return await move_to(item, media_directory, new_name); }
 export async function move_to_lyrics_directory(item: string, new_name?: string) { return await move_to(item, lyrics_directory, new_name); }
+export async function move_to_sqlite_directory(item: string, new_name?: string) { return await move_to(item, sqlite_directory, new_name); }
 
 export async function delete_folder_of_file(file_path: string, safe = true) {
     if(safe) {

@@ -116,3 +116,13 @@ export async function compact_playlists() {
     }
     return playlists;
 }
+
+export async function resolved_default_playlists() {
+    return await Promise.all(default_playlists.map(async(p) => {
+        return {
+            name: p.name,
+            force_order: p.force_order,
+            four_tracks: await p.four_track_function()
+        };
+    }));
+}
