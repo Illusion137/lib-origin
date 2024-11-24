@@ -112,6 +112,7 @@ export function parse_youtube_title_artist(track: Track): Track {
     return {
         ...track,
         title: new_title,
+        alt_title: track.title,
         artists: joined_artists,
         explicit: (info.explicit ? "EXPLICIT" : 
             info.clean ? "CLEAN" : "NONE") as ExplicitMode,
