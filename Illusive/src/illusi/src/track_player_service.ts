@@ -13,7 +13,7 @@ import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { Prefs } from '../../prefs';
 import { ISOString, Track } from '../../types';
-import { alert_error, alert_info } from './alert';
+import { alert_error, alert_info, alert_trackplayer_error } from './alert';
 import { handle_new_track_data } from './downloader';
 import * as GLOBALS from './globals';
 import * as SQLBackpack from './sql/sql_backpack';
@@ -130,49 +130,19 @@ let updated_metadata_mutex = false;
 
 export async function track_player_previous() {
     try {
-        const active_index = await TrackPlayer.getActiveTrackIndex();
         const progress = await TrackPlayer.getProgress();
         if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
             await TrackPlayer.seekTo(0);
             return;
         }
-        if (GLOBALS.global_var.playing_tracks[active_index - 1].playback!.successful === false) {
-            await TrackPlayer.skipToPrevious();
-            await TrackPlayer.skipToPrevious();
-        } else await TrackPlayer.skipToPrevious();
-        previous_next_mutex = false;
-    } catch (error) { alert_error({error: error as Error}); }
+        await TrackPlayer.skipToPrevious();
+    } catch (error) { alert_trackplayer_error({error: error as Error}); }
 }
 
 export async function track_player_next() {
-    if (previous_next_mutex) return;
     try {
-        const active_index = await TrackPlayer.getActiveTrackIndex();
-        if (active_index === undefined) return;
-        if (active_index + 1 >= GLOBALS.global_var.playing_tracks.length) {
-            previous_next_mutex = false;
-            return;
-        }
-        if (GLOBALS.global_var.playing_tracks[active_index + 1].playback!.added) {
-            await TrackPlayer.skipToNext();
-            previous_next_mutex = false;
-            return;
-        }
-        next_track_into_queue_mutex = true;
-        GLOBALS.global_var.playing_track_index++;
-        const react_native_track = await illusive_track_to_track_player_track(GLOBALS.global_var.playing_tracks[active_index + 1]);
-        if (react_native_track == null || react_native_track === 'skip') {
-            // handle dat
-            await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, active_index + 1);
-        } else {
-            GLOBALS.global_var.playing_tracks[active_index + 1].playback!.successful = true;
-            GLOBALS.global_var.playing_tracks[active_index + 1].playback!.added = true;
-            await TrackPlayer.add(react_native_track, active_index + 1);
-        }
-        next_track_into_queue_mutex = false;
         await TrackPlayer.skipToNext();
-        previous_next_mutex = false;
-    } catch (error) { previous_next_mutex = false; }
+    } catch (error) { alert_trackplayer_error({error: error as Error}); }
 }
 
 export async function playback_service() {
@@ -231,7 +201,6 @@ export async function playback_service() {
                 next_track_into_queue_mutex = true;
                 previous_next_mutex = true;
                 next_track.playback!["added"] = true;
-
 
                 GLOBALS.global_var.playing_track_index += 2;
                 const react_native_track = await illusive_track_to_track_player_track(next_track);
