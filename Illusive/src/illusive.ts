@@ -7,7 +7,7 @@ import { soundcloud_download_from_id, youtube_download_from_id } from "./downloa
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "./get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "./get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "./get_user_playlist";
-import { all_words, shuffle_array, str_or_include } from "./illusive_utilts";
+import { all_words, duration_to_string, shuffle_array, str_or_include } from "./illusive_utilts";
 import { Prefs } from "./prefs";
 import { amazon_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
 import { Artwork, DownloadFromIdResult, MusicService, MusicServiceType, Track } from "./types";
@@ -237,9 +237,10 @@ export namespace Illusive {
 
             // console.log({ctitle, cartist});
             // console.log(current);
-            if(current.value > 35) current.value += 5 * i;
+            if(current.value > 80) current.value += 5 * i;
             if(current.value > 30) all_negative_values = false;
             if(current.value > best.value) best = current;
+            // console.log(current.value, " | ", ctrack.title, " | ", duration_to_string(ctrack.duration).duration, " | ", ctrack.plays);
         }
         // console.log(best)
         if(all_negative_values) {
