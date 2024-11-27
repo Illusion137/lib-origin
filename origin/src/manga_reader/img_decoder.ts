@@ -160,7 +160,7 @@ export function decode_image(image: Image, seed = 'stay'): Inputs {
 import * as Canvas from 'canvas';
 import * as fs from 'fs';
 const deob = require("./deob2.js");
-export async function draw_image(src: string){
+export async function decode_image_base64(src: string){
     //https://c-1.mreadercdn.com/_v2/1/0dcb8f9eaacfd940603bd75c7c152919c72e45517dcfb1087df215e3be94206cfdf45f64815888ea0749af4c0ae5636fabea0abab8c2e938ab3ad7367e9bfa52/2e/0f/2e0f1e0c8e77417950692b023ad568a4/2e0f1e0c8e77417950692b023ad568a4_1600.jpeg?t=515363393022bbd440b0b7d9918f291a&ttl=1908547557
     const canvas = Canvas.createCanvas(1135, 1600);
     console.log(deob);
@@ -191,4 +191,5 @@ export async function draw_image(src: string){
     const buffer = canvas.toBuffer("image/png");
     console.log(buffer.length);
     fs.writeFileSync("ignore/decoded.png", buffer);
+    return buffer.toBase64();
 }
