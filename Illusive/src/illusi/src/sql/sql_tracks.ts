@@ -164,7 +164,6 @@ export async function fetch_track_data_from_uid(uid: string): Promise<Track> {
 }
 
 export async function insert_all_tracks(tracks: Track[]) {
-    await fetch_track_data();
     const promise_tracks: Promises = [];
     for(const track of tracks)
         promise_tracks.push(insert_track(track));
@@ -195,14 +194,12 @@ export async function delete_track(uid: string) {
 }
 
 export async function restore_thumbnail_cache() {
-    await fetch_track_data();
     for(const track of GLOBALS.global_var.sql_tracks)
         if(is_empty(track.imported_id) && is_empty(track.thumbnail_uri))
             download_thumbnail(track).catch(e => e);
 }
 
 export async function clean_thumbnail_cache() {
-    await fetch_track_data();
     const files = await SQLfs.read_directory(thumbnail_directory(""));
     const all_promises: Promises = [];
     for(const file of files)
@@ -213,7 +210,6 @@ export async function clean_thumbnail_cache() {
 
 export async function clean_directories() {
     if(!Prefs.get_pref('can_clean_directories')) return;
-    await fetch_track_data();
     const thumbnail_files = await SQLfs.read_directory(thumbnail_directory(""));
     const media_files     = await SQLfs.read_directory(media_directory(""));
     const lyrics_files    = await SQLfs.read_directory(lyrics_directory(""));

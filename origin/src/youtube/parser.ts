@@ -109,6 +109,6 @@ export function parse_search_continuation_contents(initial_data: InitialData) {
 export function parse_mix_contents(initial_data: InitialData) {
     const contents = (initial_data as MixResults_0).contents.twoColumnWatchNextResults.playlist.playlist.contents;
     return {
-        tracks: contents.map(item => item.playlistPanelVideoRenderer)
+        videos: {playlist_panel_video_renderer: contents.filter(item => item.playlistPanelVideoRenderer !== undefined).map(item => item.playlistPanelVideoRenderer)}
     }
 }

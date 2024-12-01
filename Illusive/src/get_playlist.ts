@@ -12,12 +12,14 @@ import * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Cont
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
 import * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
+import { parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from './gen/apple_music_parser';
 import { musi_parse_track } from './gen/musi_parser';
 import { soundcloud_parse_track } from './gen/soundcloud_parser';
+import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './gen/youtube_music_parser';
 import { youtube_parse_playlist_header, youtube_parse_videos } from './gen/youtube_parser';
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
 import { Prefs } from './prefs';
-import { parse_amazon_music_playlist_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track, parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './track_parser';
+import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './track_parser';
 import { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist {
@@ -243,9 +245,11 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
 export async function soundcloud_get_playlist_continuation(opts: SoundcloudPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     if(opts.next_href === null) return {tracks:[], continuation: null};
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
-    const artist_response = await Origin.SoundCloud.continuation(opts.next_href, {...opts, cookie_jar}, opts.depth) as unknown as SCSearch.SearchOf<SCSearch.Track>;
+    const artist_response = await Origin.SoundCloud.continuation(opts.next_href, {...opts, cookie_jar}, opts.depth) as unknown as SCSearch.SearchOf<SCSearch.Track>|SCSearch.SearchOf<SCSearch.LikedTrack>;
     return {
-        tracks: artist_response.collection.map(soundcloud_parse_track),
+        tracks: artist_response.collection.length > 0 && "kind" in artist_response.collection[0] && artist_response.collection[0].kind === "like" ? 
+            artist_response.collection.map((track) => (track as SCSearch.LikedTrack).track).map(soundcloud_parse_track) : 
+                (artist_response as SCSearch.SearchOf<SCSearch.Track>).collection.map(soundcloud_parse_track),
         continuation: {next_href: artist_response.next_href, client_id: opts.client_id, depth: 1} as SoundcloudPlaylistContinuation
     };
 }
@@ -301,11 +305,11 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
 export async function illusi_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const playlist_response = await fetch(url);
     if(!playlist_response.ok) return {title: "", tracks: [], continuation: null};
-    return await playlist_response.json();
+    return await playlist_response.json().catch((result) => { return result instanceof Error ? {error: result} : result});
 }
 
 export async function api_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const playlist_response = await fetch(url);
     if(!playlist_response.ok) return {title: "", tracks: [], continuation: null};
-    return await playlist_response.json();
+    return await playlist_response.json().catch((result) => { return result instanceof Error ? {error: result} : result});
 }

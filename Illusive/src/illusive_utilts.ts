@@ -1,7 +1,7 @@
 import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
-import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Promises, Track } from "./types";
+import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
@@ -53,8 +53,14 @@ export function pad_number_left(num: number, padding: number): IntString {
 }
 export function date_from(date: {year?: number, month?: number, day?: number, hour?: number, minute?: number, second?: number, ms?: number}) {
     const new_date = new Date();
-    const iso_string: ISOString = `${pad_number_left(date.year ?? new_date.getFullYear(), 4)}-${pad_number_left(date.month ?? new_date.getMonth(), 2)}-${pad_number_left(date.day ?? new_date.getDay(), 2)}T${pad_number_left(date.hour ?? new_date.getHours(), 2)}:${pad_number_left(date.minute ?? new_date.getMinutes(), 2)}:${pad_number_left(date.second ?? new_date.getSeconds(), 2)}.${pad_number_left(date.ms ?? new_date.getMilliseconds(), 3)}Z`;
-    return new Date(iso_string);
+    if(date.year) new_date.setFullYear(date.year);
+    if(date.month) new_date.setMonth(date.month);
+    if(date.day) new_date.setDate(date.day);
+    if(date.hour) new_date.setHours(date.hour);
+    if(date.minute) new_date.setMinutes(date.minute);
+    if(date.second) new_date.setSeconds(date.second);
+    if(date.ms) new_date.setMilliseconds(date.ms);
+    return new_date;
 }
 export function track_section_map(tracks: Track[]): { "char_data": string[], "section_map": Track[][] } {
     const sections_map = new Map<string, Track[]>();
@@ -172,9 +178,13 @@ export function music_service_to_music_service_uri(music_service_uri: MusicServi
         case "API":           return "api";;
     }
 }
-export function youtube_views_number(views_string: string): number {
+export function is_duration_string(str: string|undefined){
+    if(str === undefined) return false;
+    return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str);
+}
+export function youtube_views_number(views_string?: string): number {
     if(is_empty(views_string)) return 0;
-    views_string = views_string.replace(" views", '');
+    views_string = remove(views_string!, " view",  " views", " play", " plays");
     const last_char = views_string[views_string.length - 1];
     const sliced = views_string.slice(0, views_string.length - 1);
     switch(last_char) {
@@ -259,4 +269,8 @@ export function all_words(str: string) {
 }
 export function str_or_include(str1: string, str2: string) {
     return str1.includes(str2) || str2.includes(str1);
+}
+export function one_includes_word_not_other(word_group_1: string[], word_group_2: string[], needle: string){
+    return (!word_group_1.includes(needle) &&  word_group_2.includes(needle)) 
+        || ( word_group_1.includes(needle) && !word_group_2.includes(needle));
 }

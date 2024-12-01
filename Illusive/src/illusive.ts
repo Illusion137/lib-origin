@@ -2,14 +2,15 @@ import * as Origin from '../../origin/src/index'
 import { ResponseError } from "../../origin/src/utils/types";
 import { is_empty, remove_topic } from "../../origin/src/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "./add_delete_tracks_from_playlist";
+import { convert_track } from './convert_track';
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "./get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "./get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "./get_user_playlist";
-import { all_words, duration_to_string, shuffle_array, str_or_include } from "./illusive_utilts";
+import { shuffle_array } from "./illusive_utilts";
 import { Prefs } from "./prefs";
-import { amazon_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
+import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
 import { Artwork, DownloadFromIdResult, MusicService, MusicServiceType, Track } from "./types";
 
 export namespace Illusive {
@@ -147,7 +148,7 @@ export namespace Illusive {
             get_playlist: apple_music_get_playlist,
             get_playlist_continuation: apple_music_get_playlist_continuation,
             cookie_jar_callback: () => Prefs.get_pref("apple_music_cookie_jar"),
-            search: undefined,
+            search: apple_music_search,
             explore: undefined,
             create_playlist: apple_music_create_playlist,
             delete_playlist: apple_music_delete_playlist,
@@ -198,60 +199,6 @@ export namespace Illusive {
     ]);
     export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "Spotify", "SoundCloud"];
 
-    export async function convert_track(track: Track, to_music_service: MusicServiceType, proxies?: Origin.Proxy.Proxy[], possible_services: MusicServiceType[] = ["YouTube", "SoundCloud"]): Promise<Track|ResponseError> {
-        if(music_service.get(to_music_service)?.search === undefined) return {error: new Error("Can't convert to this music-service")};
-        possible_services = possible_services.filter(service => service !== to_music_service);
-        const search_tracks = await music_service.get(to_music_service)!.search!(`${remove_topic(track.artists[0].name)} ${track.title}`);
-        if(search_tracks.tracks.length === 0) return {error: new Error("Unable to convert track")};
-        interface Max {"index": number, "value": number}
-        let best: Max = {index: 0, value: 30};
-        let all_negative_values = true;
-        const ttitle = track.title.toLowerCase();
-        const tartist = remove_topic(track.artists[0].name.toLowerCase());
-        const twords = all_words(ttitle);
-        search_tracks.tracks.sort((a,b) => (a.plays ?? 0) - (b.plays ?? 0));
-        for(let i = 0; i < search_tracks.tracks.length; i++) {
-            const current: Max = {index: i, value: 0};
-            const ctrack = search_tracks.tracks[i];
-            const ctitle = ctrack.title.toLowerCase();
-            const cartist = ctrack.artists[0].name.toLowerCase();
-            const cwords = all_words(ctitle);
-
-            if(!twords.includes("instrumental") && cwords.includes("instrumental")) current.value -= 50;
-            if(twords.includes("instrumental") && !cwords.includes("instrumental")) current.value -= 50;
-            if(!twords.includes("spedup") && cwords.includes("spedup")) current.value -= 50;
-            if(twords.includes("spedup") && !cwords.includes("spedup")) current.value -= 50;
-            if(!twords.includes("sped up") && cwords.includes("sped up")) current.value -= 50;
-            if(twords.includes("sped up") && !cwords.includes("sped up")) current.value -= 50;
-
-            if(str_or_include(ctitle, ttitle)) current.value += 30;
-            if(str_or_include(ctitle, ttitle) && str_or_include(ctitle, tartist)) current.value += 40;
-            if(str_or_include(ctitle, ttitle) && str_or_include(cartist, tartist)) current.value += 55;
-            if(str_or_include(cartist, remove_topic(tartist))) current.value += 15;
-            if(to_music_service === "YouTube" && cartist.includes(" - Topic")) current.value += 15;
-            if(ctitle.includes("Official Audio")) current.index += 10;
-            if(ctitle.includes("Official Music Video")) current.index += 8;
-            if(ctitle.includes("Music Video")) current.index += 5;
-            if(!isNaN(track.duration) && ! isNaN(ctrack.duration))
-                current.value += (6 - Math.abs(ctrack.duration - track.duration)) * 4;
-
-            // console.log({ctitle, cartist});
-            // console.log(current);
-            if(current.value > 80) current.value += 5 * i;
-            if(current.value > 30) all_negative_values = false;
-            if(current.value > best.value) best = current;
-            // console.log(current.value, " | ", ctrack.title, " | ", duration_to_string(ctrack.duration).duration, " | ", ctrack.plays);
-        }
-        // console.log(best)
-        if(all_negative_values) {
-            if(possible_services.length === 0)
-                return {error: new Error("Unable to find good conversion")};
-            else return convert_track(track, possible_services[0], proxies, possible_services);
-        }
-        const best_match: Track = search_tracks.tracks[best.index];
-        return best_match;
-    }
-
     interface ExportTrack {"new_track_data"?: Track}
     export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError> {
         if(!is_empty(track.media_uri) && !(redownload_mode ?? false))
@@ -261,11 +208,11 @@ export namespace Illusive {
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!);
         const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
-        const new_track_data = await convert_track(track, to_service);
+        const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
-        const convert_response = await music_service.get(to_service)!.download_from_id!(new_track_data.youtube_id!, quality ?? "highestaudio");
+        const convert_response = await music_service.get(to_service)!.download_from_id!(new_track_data.track!.youtube_id!, quality ?? "highestaudio");
         if("error" in convert_response) return convert_response;
-        return { url: convert_response.url, metadata: convert_response.metadata, new_track_data: new_track_data };
+        return { url: convert_response.url, metadata: convert_response.metadata, new_track_data: new_track_data.track };
     }
 
     interface ExportMix {"tracks": Track[], "new_track_data"?: Track}
@@ -275,11 +222,11 @@ export namespace Illusive {
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.get_track_mix!(track.soundcloud_permalink!);
         const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
-        const new_track_data = await convert_track(track, to_service);
+        const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
-        const youtube_mix_response = await music_service.get(to_service)!.get_track_mix!(new_track_data.youtube_id!);
+        const youtube_mix_response = await music_service.get(to_service)!.get_track_mix!(new_track_data.track!.youtube_id!);
         if("error" in youtube_mix_response) return youtube_mix_response;
-        return {tracks: youtube_mix_response.tracks, new_track_data: new_track_data};
+        return {tracks: youtube_mix_response.tracks, new_track_data: new_track_data.track};
     }
 
     export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {

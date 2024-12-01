@@ -1,3 +1,4 @@
+import { Proxy } from "../../origin/src";
 import { CookieJar } from "../../origin/src/utils/cookie_util"
 import { ResponseError } from "../../origin/src/utils/types"
 import { remove } from "../../origin/src/utils/util";
@@ -315,6 +316,8 @@ export interface TrackMix { "tracks": Track[], "error"?: Error }
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
+export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
+
 export class MusicService {
     app_icon: string | number
     web_view_url?: string
@@ -323,7 +326,7 @@ export class MusicService {
     valid_playlist_url_regex: RegExp
     required_cookie_credentials: string[]
     cookie_jar_callback?: () => CookieJar
-    search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
+    search?: (query: string, opts?: SearchOpts) => Promise<MusicSearchResponse>
     search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
     explore?: () => Promise<IllusiveExplore>
     create_playlist?: (title: string) => Promise<string>
@@ -343,7 +346,7 @@ export class MusicService {
         valid_playlist_url_regex: RegExp,
         required_cookie_credentials: string[],
         cookie_jar_callback?: () => CookieJar
-        search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
+        search?: (query: string, opts?: SearchOpts) => Promise<MusicSearchResponse>
         search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
         explore?: () => Promise<IllusiveExplore>
         create_playlist?: (title: string) => Promise<string>

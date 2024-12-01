@@ -1,20 +1,11 @@
-import { gcc } from "../admin/gcc";
 import { Illusive } from "../Illusive/src/illusive";
-import { Prefs } from "../Illusive/src/prefs";
+import load_cookies_env from "../Illusive/src/load_cookies_env";
 import { MusicService, MusicServiceType } from "../Illusive/src/types";
-import { CookieJar } from "../origin/src/utils/cookie_util";
+
+load_cookies_env();
 
 const illusive_music_services: MusicServiceType[] = ["YouTube", "YouTube Music", "Spotify", "SoundCloud", "Amazon Music", "Apple Music"];
 const timeout_ms = 15000;
-
-const gcc_mode: ("dotenv" | "gcc") = "dotenv";
-
-Prefs.prefs.youtube_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'YOUTUBE_COOKIE_JAR'));
-Prefs.prefs.youtube_music_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'YOUTUBE_MUSIC_COOKIE_JAR'));
-Prefs.prefs.spotify_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'SPOTIFY_COOKIE_JAR'))
-Prefs.prefs.soundcloud_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'SOUNDCLOUD_COOKIE_JAR'));
-Prefs.prefs.amazon_music_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'AMAZON_MUSIC_COOKIE_JAR'));
-Prefs.prefs.apple_music_cookie_jar.current_value = CookieJar.fromString(gcc.cookie_of(gcc_mode, 'APPLE_MUSIC_COOKIE_JAR'));
 
 function is_okay(result: any) {
 	const ok_object = typeof result === "object" && result !== null && !("error" in result);
@@ -52,7 +43,6 @@ function test_fetch_playlists(service_name: MusicServiceType, playlist_ids: stri
 		}
 	});
 }
-// function test_playlist_cycle(service_name: MusicServiceType, tracks: Track[]){}
 
 function test_search(service_names: MusicServiceType[], query: string) { test_music_services_list(query, service_names, ["search", [query]]); }
 function test_user_playlists(service_names: MusicServiceType[]) { test_music_services_list("library", service_names, ["user_playlists_map", []]); }
@@ -61,14 +51,12 @@ test_search(illusive_music_services, "Lelo camelot");
 test_user_playlists(illusive_music_services);
 
 test_fetch_playlists("YouTube", [
-	//     "PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
-	//     "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
-	//     "PLpBymDh5XkKT8RfHiXz9cnWsc6F1pa7W3",
-	//     "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
+	    "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+	    "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
 ])
 test_fetch_playlists("YouTube Music", [
-	"PLnIB0XeUqT-iV1eQbPGps-aE8dwoi2ujJ",
-	// "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+    "PLnIB0XeUqT-j6HkmTcOlhtkAS4cbpsLeA",
+    "OLAK5uy_lUjNfp9_FGk7abrMc7c8LP54quOgCyacY"
 ])
 test_fetch_playlists("Spotify", [
 	"https://open.spotify.com/playlist/4uNs2lqeO0Ec43d2Sp3yp4",

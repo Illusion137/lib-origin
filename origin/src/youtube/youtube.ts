@@ -1,3 +1,4 @@
+import { HttpsProxyAgent } from "https-proxy-agent";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
 import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, urlid } from "../utils/util";
@@ -7,11 +8,12 @@ import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { CreatePlaylist } from "./types/CreatePlaylist";
 import { InitialData } from './types/types';
 import { YTCFG } from "./types/YTCFG";
+import fetch from "node-fetch";
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent_windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
-	interface Opts { cookie_jar?: CookieJar }
+	interface Opts { cookie_jar?: CookieJar, agent?: HttpsProxyAgent<""> };
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
 		initial_data: InitialData,
@@ -113,6 +115,7 @@ export namespace YouTube {
 	async function get_initial_data_config(opts: Opts, url: string, tuser_agent?: string): Promise<ICFG | ResponseError> {
 		try {
 			const page_response = await fetch(url, {
+                agent: opts.agent,
 				headers: {
 					'authority': 'www.youtube.com',
 					"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
@@ -138,10 +141,9 @@ export namespace YouTube {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQjkr84BCOW1zgEIwrbOAQjZt84BCJ66zgEInrvOARi9rs4BGJyxzgE=",
-					"Cookies": opts.cookie_jar?.toString() as string,
+					"cookie": opts.cookie_jar?.toString() as string,
 				},
-				body: null,
-				credentials: "include",
+				body: undefined,
 				method: "GET"
 			});
 			const page_html = await page_response.text();
@@ -193,7 +195,7 @@ export namespace YouTube {
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload), credentials: "include" });
+			const response = await fetch(url, { method: "POST", agent: opts.agent, headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}

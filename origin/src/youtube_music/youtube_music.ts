@@ -1,20 +1,23 @@
+import * as Parser from "./parser";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
 import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
 import { CreatePlaylist } from "../youtube/types/CreatePlaylist";
-import * as Parser from "./parser";
 import { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
 import { ArtistResults_1 } from './types/ArtistResults_1';
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { InitialData } from './types/types';
 import { YTCFG } from "./types/YTCFG";
+import fetch from "node-fetch";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import { YTError } from "./types/Error";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
 
-	interface Opts { cookie_jar?: CookieJar }
+	interface Opts { cookie_jar?: CookieJar, agent?: HttpsProxyAgent<""> }
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
 		initial_data: InitialData[],
@@ -97,7 +100,7 @@ export namespace YouTubeMusic {
 			user: ytcfg.INNERTUBE_CONTEXT.user
 		};
 	}
-	function extract_initial_data(html: string) {
+	function extract_initial_data(html: string): InitialData[] {
 		const initial_data_regex = /initialData.push\(({.+?})/gs;
 		const initial_data: InitialData[] = [];
 
@@ -122,7 +125,9 @@ export namespace YouTubeMusic {
 	}
 	async function get_initial_data_config(opts: Opts, url: string): Promise<ICFG | ResponseError> {
 		try {
+            console.log(opts.cookie_jar?.toString());
 			const page_response = await fetch(url, {
+                agent: opts.agent,
 				headers: {
 					"User-Agent": user_agent,
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -146,9 +151,8 @@ export namespace YouTubeMusic {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==",
-					"Cookies": opts.cookie_jar?.toString() as string,
+					"cookie": opts.cookie_jar?.toString() as string,
 				},
-				body: null,
 				method: "GET"
 			});
 			const page_html = await page_response.text();
@@ -223,7 +227,8 @@ export namespace YouTubeMusic {
 		const payload = { browseId: "FEmusic_liked_playlists" };
 		const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
-		const browse_data = await browse_response.json() as InitialData;
+		const browse_data = await browse_response.json() as InitialData|YTError;
+        if("error" in browse_data) return {error: new Error(browse_data.error.message)};
 		return {
 			icfg,
 			data: Parser.parse_library_contents(browse_data)
@@ -249,7 +254,7 @@ export namespace YouTubeMusic {
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
 		const headers = get_post_headers(opts.cookie_jar, epoch);
-		const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(merged_payload) });
+		const response = await fetch(url, { method: "POST", headers, agent: opts.agent, body: JSON.stringify(merged_payload) });
 		return response;
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {

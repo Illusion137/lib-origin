@@ -30,7 +30,8 @@ export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const match_spread = [...matched];
     return match_spread.map(match => match?.[1]).filter(match => match !== undefined);
 }
-export function parse_time(clock_time: string): number {
+export function parse_time(clock_time: string|undefined): number {
+    if(clock_time === undefined) return NaN;
 	let time = 0;
 	const time_split = clock_time.split(":");
 	for(let i = 0; i < time_split.length; i++) {
@@ -91,4 +92,14 @@ export function clean_html_text(text: string) {
 	return text.replace(/&#34;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/\n/g, '');
+}
+export function json_catch(result: any){
+    return result instanceof Error ? {error: result} : result;
+}
+
+import { RequestInit } from 'node-fetch';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+export function proxy_agent(proxy: { ip: string; port: number }): RequestInit['agent'] {
+    return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);
 }

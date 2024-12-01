@@ -26,7 +26,6 @@ export function filter_play_tracks(start_track: Track, tracks: Track[], playlist
     }
 }
 export async function play_shuffle(tracks: Track[], from: string) {
-    await SQLTracks.fetch_track_data();
     const shuffled_tracks = Illusive.shuffle_tracks("SHUFFLE", [...tracks]);
     if (shuffled_tracks.length == 0) { return; }
     GLOBALS.global_var.play_tracks(shuffled_tracks[0], shuffled_tracks, from);

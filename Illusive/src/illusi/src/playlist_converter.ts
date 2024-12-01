@@ -2,6 +2,7 @@ import * as Origin from '../../../../origin/src/index';
 import { PromiseResult } from "../../../../origin/src/utils/types";
 import { is_empty } from "../../../../origin/src/utils/util";
 import { Constants } from '../../constants';
+import { convert_track } from '../../convert_track';
 import { Illusive } from "../../illusive";
 import { music_service_uri_to_music_service, random_of, shuffle_array, split_uri } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
@@ -37,7 +38,6 @@ export function track_intersection(f: Track, t: Track): boolean {
 }
 export async function playlist_tracks(uuid_uri: string) {
     if(uuid_uri === Constants.library_write_playlist) {
-        await SQLTracks.fetch_track_data();
         return GLOBALS.global_var.sql_tracks.slice();
     }
     const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
@@ -104,12 +104,12 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType) {
     const updated_tracks: Track[] = [];
     for(const track of stracks) {
         if(track.imported_id) continue;
-        const conversion_track = await Illusive.convert_track(track, to, proxies, [to]);
+        const conversion_track = await convert_track(track, {to_music_service: to, proxies, possible_services: [to]});
         if("error" in conversion_track) { 
             Logger.log_error(conversion_track).catch(e => e); 
             continue;
         }
-        updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track));
+        updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track.track!));
     }
     return updated_tracks;
 }

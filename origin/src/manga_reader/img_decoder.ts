@@ -191,5 +191,5 @@ export async function decode_image_base64(src: string){
     const buffer = canvas.toBuffer("image/png");
     console.log(buffer.length);
     fs.writeFileSync("ignore/decoded.png", buffer);
-    return buffer.toBase64();
+    return buffer.toString("base64");
 }

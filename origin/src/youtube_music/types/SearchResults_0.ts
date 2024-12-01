@@ -112,7 +112,7 @@ export interface MusicInlineBadgeRenderer {
 }
 
 export interface Icon {
-    iconType: string
+    iconType: "MUSIC_EXPLICIT_BADGE"
 }
 
 export interface AccessibilityData2 {
@@ -323,9 +323,10 @@ export interface Content2 {
 export interface MusicCardShelfRenderer {
     trackingParams: string
     thumbnail: Thumbnail
+    subtitleBadges?: SubtitleBadge[]
     title: Title
     subtitle: Subtitle
-    contents: Content3[]
+    contents?: Content3[]
     buttons: Button2[]
     menu: Menu2
     onTap: OnTap
@@ -360,7 +361,7 @@ export interface Title {
 
 export interface Run8 {
     text: string
-    navigationEndpoint: NavigationEndpoint3
+    navigationEndpoint: NavigationEndpoint6
 }
 
 export interface NavigationEndpoint3 {
@@ -382,7 +383,7 @@ export interface BrowseEndpointContextMusicConfig2 {
 }
 
 export interface Subtitle {
-    runs: Run9[]
+    runs: Run10[]
 }
 
 export interface Run9 {
@@ -390,15 +391,16 @@ export interface Run9 {
 }
 
 export interface Content3 {
-    musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer
+    musicResponsiveListItemRenderer: SearchMusicResponsiveListItemRenderer
 }
 
-export interface MusicResponsiveListItemRenderer {
+export interface SearchMusicResponsiveListItemRenderer {
     trackingParams: string
     thumbnail: Thumbnail4
     flexColumns: FlexColumn[]
+    badges?: SubtitleBadge[]
     menu: Menu
-    playlistItemData?: PlaylistItemData
+    playlistItemData: PlaylistItemData
     flexColumnDisplayStyle: string
     navigationEndpoint: NavigationEndpoint6
     itemHeight: string
@@ -1099,8 +1101,8 @@ export interface MusicResponsiveListItemRenderer2 {
     flexColumnDisplayStyle: string
     navigationEndpoint: NavigationEndpoint10
     itemHeight: string
-    playlistItemData?: PlaylistItemData2
-    overlay?: Overlay2
+    playlistItemData: PlaylistItemData2
+    overlay: Overlay2
 }
 
 export interface Thumbnail7 {
@@ -1637,7 +1639,7 @@ export interface MusicPlayButtonRenderer3 {
 export interface PlayNavigationEndpoint2 {
     clickTrackingParams: string
     watchPlaylistEndpoint?: WatchPlaylistEndpoint5
-    watchEndpoint?: WatchEndpoint10
+    watchEndpoint: WatchEndpoint10
 }
 
 export interface WatchPlaylistEndpoint5 {

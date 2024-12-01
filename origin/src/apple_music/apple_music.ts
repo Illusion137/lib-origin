@@ -1,8 +1,10 @@
 import { CookieJar } from "../utils/cookie_util";
-import { encode_params, extract_string_from_pattern, try_json_parse, urlid } from "../utils/util";
+import { ResponseError } from "../utils/types";
+import { encode_params, extract_string_from_pattern, json_catch, try_json_parse, urlid } from "../utils/util";
 import { CreatePlaylist } from "./types/CreatePlaylist";
 import { MyPlaylists } from "./types/MyPlaylists";
 import { Playlist } from "./types/Playlist";
+import { Search } from "./types/Search";
 import { SerializedServerData } from "./types/type";
 import { UserPlaylist } from "./types/UserPlaylist";
 
@@ -121,6 +123,37 @@ export namespace AppleMusic {
         if(client_cache_full()) return client_cache.client;
         else return await get_serialized_server_data(url, opts);
     }
+    export async function search(query: string, opts: Opts){
+        const search_response = await get_serialized_server_data(`https://music.apple.com/us/search?term=${encodeURIComponent(query)}`, opts);
+        if ("error" in search_response) return search_response;
+        const params = {
+            "art%5Bmusic-videos%3Aurl%5D": "c",
+            "art%5Burl%5D": "f",
+            "extend": "artistUrl",
+            "fields%5Balbums%5D": "artistName,artistUrl,artwork,contentRating,editorialArtwork,editorialNotes,name,playParams,releaseDate,url,trackCount",
+            "fields%5Bartists%5D": "url,name,artwork",
+            "format%5Bresources%5D": "map",
+            "include%5Balbums%5D": "artists",
+            "include%5Bmusic-videos%5D": "artists",
+            "include%5Bsongs%5D": "artists",
+            "include%5Bstations%5D": "radio-show",
+            "l": "en-US",
+            "limit": "21",
+            "omit%5Bresource%5D": "autos",
+            "platform": "web",
+            "relate%5Balbums%5D": "artists",
+            "relate%5Bsongs%5D": "albums",
+            "term": query,
+            "types": "activities,albums,apple-curators,artists,curators,editorial-items,music-movies,music-videos,playlists,record-labels,songs,stations,tv-episodes,uploaded-videos",
+            "with": "lyricHighlights,lyrics,naturalLanguage,serverBubbles,subtitles",
+        }
+        const api_search_response = await api_check_response(opts, search_response.authorization, `catalog/us/search`, params, null);
+        if ("error" in api_search_response) return api_search_response;
+        if(!api_search_response.ok) return {error: new Error(String(api_search_response.status))};
+        const search_result: Search|ResponseError = await api_search_response.json().catch(json_catch);
+        if("error" in search_result) return search_result;
+        return {data: search_result, authorization: search_response.authorization};
+    }
     export async function get_playlist(playlist_path: string, opts: Opts) {
         const playlist_response = await get_serialized_server_data(`https://music.apple.com/${urlid(playlist_path, "music.apple.com/")}`, opts);
         if ("error" in playlist_response) return playlist_response;
@@ -149,7 +182,8 @@ export namespace AppleMusic {
             const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
             if ("error" in api_playlists_response) return api_playlists_response;
             if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
-            const user_playlist: UserPlaylist = await api_playlists_response.json();
+            const user_playlist: UserPlaylist|ResponseError = await api_playlists_response.json().catch(json_catch);
+            if("error" in user_playlist) return user_playlist;
             return {data: user_playlist, authorization: playlist_response.authorization};
         }
     }
@@ -165,7 +199,7 @@ export namespace AppleMusic {
         };
         const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
         if ("error" in playlists_response) return playlists_response;
-        return await playlists_response.json() as UserPlaylist;
+        return await playlists_response.json().catch(json_catch) as UserPlaylist|ResponseError;
     }
     export async function account_playlists(opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
@@ -184,7 +218,7 @@ export namespace AppleMusic {
         }
         const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlist-folders/p.playlistsroot/children", params, null);
         if ("error" in playlists_response) return playlists_response;
-        return await playlists_response.json() as MyPlaylists;
+        return await playlists_response.json().catch(json_catch) as MyPlaylists|ResponseError;
     }
     export async function add_tracks_to_playlist(playlist_id: string, track_ids: {id: string, type: "songs"}[], opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
@@ -227,7 +261,7 @@ export namespace AppleMusic {
         const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlists", params, payload, "POST");
         if("error" in playlists_response) return playlists_response;
         if(!playlists_response.ok) return {error: new Error(`Failed to create playlist with status code: ${playlists_response.status}`)};
-        return await playlists_response.json() as CreatePlaylist;
+        return await playlists_response.json().catch(json_catch) as CreatePlaylist|ResponseError;
     }
     export async function delete_playlist(playlist_id: string, opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);

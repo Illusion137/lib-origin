@@ -1,4 +1,5 @@
 import { extract_string_from_pattern, generate_new_uid, is_empty, parse_runs, parse_time } from "../../../origin/src/utils/util";
+import { PlaylistPanelVideoRenderer } from "../../../origin/src/youtube/types/MixResults_0";
 import { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
 import { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
 import { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
@@ -121,7 +122,7 @@ export function parse_youtube_title_artist(track: Track): Track {
     }
 }
 
-export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[] {
+export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_panel_video_renderer: PlaylistPanelVideoRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[] {
     if("video_renderer" in videos) {
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
             return parse_youtube_title_artist({
@@ -144,7 +145,18 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
                 plays: youtube_views_number(parse_runs(track?.shortViewCountText?.runs ?? []))
             } as Track);
         });
-    } else return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
+    } else if("playlist_panel_video_renderer" in videos) {
+        return videos.playlist_panel_video_renderer.filter(track => !is_empty(track?.lengthText.simpleText)).map(track => { 
+            return parse_youtube_title_artist ({
+                uid: generate_new_uid(track.title.simpleText),
+                title: track.title.simpleText,
+                artists: [{name: parse_runs(track.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId)}],
+                duration: parse_time(track.lengthText.simpleText),
+                youtube_id: track.videoId
+            } as Track)
+        });
+    } 
+    else return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
         return parse_youtube_title_artist({
             uid: generate_new_uid(parse_runs(track.title.runs)),
             title: parse_runs(track.title.runs),
