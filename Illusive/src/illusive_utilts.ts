@@ -182,16 +182,19 @@ export function is_duration_string(str: string|undefined){
     if(str === undefined) return false;
     return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str);
 }
+export function is_number(str: string){
+    return !isNaN(parseFloat(str));
+}
 export function youtube_views_number(views_string?: string): number {
     if(is_empty(views_string)) return 0;
-    views_string = remove(views_string!, " view",  " views", " play", " plays");
+    views_string = remove(views_string!, " views",  " view", " plays", " play");
     const last_char = views_string[views_string.length - 1];
-    const sliced = views_string.slice(0, views_string.length - 1);
+
     switch(last_char) {
-        case 'B': return parseFloat(sliced) * 1000000000;
-        case 'M': return parseFloat(sliced) * 1000000;
-        case 'K': return parseFloat(sliced) * 1000;
-        default: return parseFloat(sliced);
+        case 'B': return parseFloat(views_string) * 1000000000;
+        case 'M': return parseFloat(views_string) * 1000000;
+        case 'K': return parseFloat(views_string) * 1000;
+        default: return parseFloat(views_string);
     }
 }
 export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {

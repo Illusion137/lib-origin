@@ -4,6 +4,11 @@ import { Track } from "../Illusive/src/types";
 import playlist from '../sample/illusi/zayboy.json';
 import { remove_topic } from '../origin/src/utils/util';
 import { convert_track } from '../Illusive/src/convert_track';
+import { Prefs } from '../Illusive/src/prefs';
+
+Prefs.prefs.prefer_youtube_music.current_value = true;
+Prefs.prefs.force_explicit_conversion.current_value = true;
+Prefs.prefs.use_cookies_on_search.current_value = false;
 
 function small_track(track: Track){
     return {
@@ -11,20 +16,22 @@ function small_track(track: Track){
         alt_title: track.alt_title,
         artist: track.artists.map(item => remove_topic(item.name).trim()).join(', '),
         duration: duration_to_string(track.duration).duration,
-        id: track.youtube_id
+        id: track.youtube_id,
+        explicit: track.explicit
     }
 }
-function log_conversion(track: Track, converted_track: Track){
-    console.log(JSON.stringify(small_track(track)), " | ", JSON.stringify(small_track(converted_track)));
+function log_conversion(track: Track, converted_track: Track, score: number){
+    console.log("CONVERTED: ", JSON.stringify(small_track(track)), " | ", JSON.stringify(small_track(converted_track)), " === ", score);
 }
 async function test_convert_track(track: Track, callback?: (track: Track, converted_track: Track) => void){
-    const converted_track = await convert_track(track, {to_music_service: "YouTube"});
+    const converted_track = await convert_track(track, {to_music_service: "YouTube Music"});
     if("error" in converted_track){
         console.error(small_track(track), converted_track);
         return;
     }
     if(callback !== undefined) callback(track, converted_track.track!);
-    log_conversion(track, converted_track.track!);
+    log_conversion(track, converted_track.track!, converted_track.score);
+    return convert_track;
 }
 async function test_convert_tracks(){
     const converted_pairs: [ReturnType<typeof small_track>, ReturnType<typeof small_track>][] = [];
@@ -35,4 +42,4 @@ async function test_convert_tracks(){
     fs.writeFileSync(`sample/illusi/converted.json`, JSON.stringify(converted_pairs));
 } test_convert_tracks;
 // test_convert_tracks().catch(e => e); 
-test_convert_track({title: "Swang", artists: [{name: "Rae Sremmurd"}], duration: 208} as any).catch(e => e);
+test_convert_track({title: "Swang", artists: [{name: "Rae Sremmurd"}], duration: 208, explicit: "EXPLICIT"} as any).catch(e => console.log(e));

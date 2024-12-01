@@ -54,9 +54,9 @@ export function parse_youtube_music_search_artist(playlist: SearchMusicResponsiv
 export function parse_youtube_music_search_playlist(playlist: SearchMusicResponsiveListItemRenderer): CompactPlaylist{
     const [title_column, info_column] = playlist.flexColumns;
     const info_runs = info_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
-    const start_artist_index = info_runs.findIndex(item => responsive_item_types.includes(item.text));
-    const end_artist_index = info_runs.findIndex(item => item.text === " • ", start_artist_index === -1 ? 0 : start_artist_index + 2);
-    const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index + 1, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
+    const start_artist_index = info_runs.findIndex(item => responsive_item_types.includes(item.text)) === -1 ? 0 : 2;
+    const end_artist_index = info_runs.findIndex((item, i) => item.text === " • " && i >= start_artist_index);
+    const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
     const title_runs = title_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
 
     return {
@@ -70,9 +70,9 @@ export function parse_youtube_music_search_playlist(playlist: SearchMusicRespons
 export function parse_youtube_music_search_top_result_contents_track(track: SearchMusicResponsiveListItemRenderer): Track{
     const [title_column, info_column, plays_column] = track.flexColumns;
     const info_runs = info_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
-    const start_artist_index = info_runs.findIndex(item => responsive_item_types.includes(item.text));
-    const end_artist_index = info_runs.findIndex(item => item.text === " • ", start_artist_index === -1 ? 0 : start_artist_index + 2);
-    const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index + 1, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
+    const start_artist_index = info_runs.findIndex(item => responsive_item_types.includes(item.text)) === -1 ? 0 : 2;
+    const end_artist_index = info_runs.findIndex((item, i) => item.text === " • " && i >= start_artist_index);
+    const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
     const duration = info_runs[info_runs.length - 1];
     return {
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),

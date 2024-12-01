@@ -125,7 +125,6 @@ export namespace YouTubeMusic {
 	}
 	async function get_initial_data_config(opts: Opts, url: string): Promise<ICFG | ResponseError> {
 		try {
-            console.log(opts.cookie_jar?.toString());
 			const page_response = await fetch(url, {
                 agent: opts.agent,
 				headers: {

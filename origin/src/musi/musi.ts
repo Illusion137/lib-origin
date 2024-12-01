@@ -1,4 +1,5 @@
-import { urlid } from "../utils/util";
+import { ResponseError } from "../utils/types";
+import { json_catch, urlid } from "../utils/util";
 import { Explore } from "./types/Explore";
 import { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "./types/Playlist";
 import { Support } from "./types/Support";
@@ -25,17 +26,17 @@ export namespace Musi {
     export type MusiTrack = Track;
     export async function support() {
         const response = await fetch(`https://feelthemusi.com/api/v4/support/`);
-        return await response.json() as Support;
+        return await response.json().catch(json_catch) as Support|ResponseError;
     }
     export async function explore() {
         const response = await fetch(`https://feelthemusi.com/api/v4/search/explore`);
-        return await response.json() as Explore;
+        return await response.json().catch(json_catch) as Explore|ResponseError;
     }
     
     export async function get_playlist(url: string) {
         const playlist_param = urlid(url, "feelthemusi.com/", "api/v4/playlists/fetch/", "playlist/");
         const response = await fetch(`https://feelthemusi.com/api/v4/playlists/fetch/${playlist_param}`);
-        const playlist_response = await response.json() as PlaylistResponse;
+        const playlist_response = await response.json().catch(json_catch) as PlaylistResponse|ResponseError;
         if("error" in playlist_response) return playlist_response;
         const playlist_response_parsed_data: PlaylistResponseSuccessParsed = {
             success: {

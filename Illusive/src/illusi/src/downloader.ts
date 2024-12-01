@@ -16,6 +16,7 @@ import { playlist_tracks } from './playlist_converter';
 import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLTracks from './sql/sql_tracks';
+import { is_youtube } from '../../convert_track';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -97,6 +98,9 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
+            if(Prefs.get_pref('can_redownload') && !is_youtube(track)) track = {...track, youtube_id: ""};
+            else if(Prefs.get_pref('can_redownload') && Prefs.get_pref('force_redownload_conversion')) track = {...track, youtube_id: ""};
+            
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", Prefs.get_pref('can_redownload'));
             if ("error" in download_uri) {
                 if (download_uri.error.message.toLowerCase().includes("unavailable"))
