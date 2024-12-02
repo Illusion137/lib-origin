@@ -211,8 +211,8 @@ export namespace Illusive {
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
-        const convert_response = await music_service.get(new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud")!.download_from_id!(new_track_data.track!.youtube_id!, quality ?? "highestaudio");
-    
+        const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
+        const convert_response = await music_service.get(mode)!.download_from_id!(mode === "YouTube" ? new_track_data.track!.youtube_id! : new_track_data.track!.soundcloud_permalink!, quality ?? "highestaudio");
         if("error" in convert_response) return convert_response;
         return { url: convert_response.url, metadata: convert_response.metadata, new_track_data: new_track_data.track };
     }
@@ -227,8 +227,8 @@ export namespace Illusive {
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
-        
-        const mix_response = await music_service.get(to_service)!.get_track_mix!(new_track_data.track!.youtube_id!);
+        const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
+        const mix_response = await music_service.get(to_service)!.get_track_mix!(mode === "YouTube" ? new_track_data.track!.youtube_id! : new_track_data.track!.soundcloud_permalink!);
         if("error" in mix_response) return mix_response;
         return {tracks: mix_response.tracks, new_track_data: new_track_data.track};
     }

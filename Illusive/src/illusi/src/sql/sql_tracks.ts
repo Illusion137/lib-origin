@@ -110,6 +110,7 @@ export async function mark_track_downloaded(uid: string, media_uri: string) {
 }
 export async function mark_all_tracks_undownloaded() {
     await Promise.all(GLOBALS.global_var.sql_tracks.map(async (track) => {
+        if(is_empty(track.media_uri)) return;
         await SQLfs.delete_item(media_directory(track.media_uri!));
         track.media_uri = "";
     }));

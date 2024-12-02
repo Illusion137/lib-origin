@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import { is_empty } from '../../../../../origin/src/utils/util';
 import { Illusive } from '../../../illusive';
 import path from 'path';
+import { alert_error } from '../alert';
 
 function forward_item(item: string) {
     return !is_empty(item) ? item : "";
@@ -35,6 +36,12 @@ export async function delete_folder_of_file(file_path: string, safe = true) {
 
 export async function mkdir(path: string) { return await FileSystem.makeDirectoryAsync(path); }
 export async function info(path: string) { return await FileSystem.getInfoAsync(path); }
-export async function delete_item(path: string) { return await FileSystem.deleteAsync(path, {idempotent: true}); }
+export async function delete_item(path: string) {
+    if([media_directory(""), thumbnail_directory(""), lyrics_directory("")].includes(path)){
+        alert_error({error: new Error(`Trying to delete important path: ${path}`)});
+        return;
+    }
+    return await FileSystem.deleteAsync(path, {idempotent: true}); 
+}
 export async function read_directory(path: string) { try { return await FileSystem.readDirectoryAsync(path); } catch(e) { return []; } }
 export function create_download_resumeable(uri: string, file_uri: string) { return FileSystem.createDownloadResumable(uri, file_uri); }

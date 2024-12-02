@@ -98,8 +98,10 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
             const is_redownloading = (Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track)) || (Prefs.get_pref('can_redownload') && Prefs.get_pref('force_redownload_conversion'));
-            if(is_redownloading) track = {...track, youtube_id: ""};
-            if(is_redownloading) SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
+            if(is_redownloading) {
+                track = {...track, youtube_id: ""};
+                if(!is_empty(track.media_uri)) await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
+            } 
 
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", Prefs.get_pref('can_redownload'));
             if ("error" in download_uri) {
