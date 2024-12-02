@@ -3,8 +3,8 @@ import { duration_to_string } from "../Illusive/src/illusive_utilts";
 import { Track } from "../Illusive/src/types";
 import playlist from '../sample/illusi/zayboy.json';
 import { remove_topic } from '../origin/src/utils/util';
-import { convert_track } from '../Illusive/src/convert_track';
 import { Prefs } from '../Illusive/src/prefs';
+import { Illusive } from '../Illusive/src/illusive';
 
 Prefs.prefs.prefer_youtube_music.current_value = true;
 Prefs.prefs.force_explicit_conversion.current_value = true;
@@ -24,14 +24,14 @@ function log_conversion(track: Track, converted_track: Track, score: number){
     console.log("CONVERTED: ", JSON.stringify(small_track(track)), " | ", JSON.stringify(small_track(converted_track)), " === ", score);
 }
 async function test_convert_track(track: Track, callback?: (track: Track, converted_track: Track) => void){
-    const converted_track = await convert_track(track, {to_music_service: "YouTube Music"});
+    const converted_track = await Illusive.convert_track(track, {to_music_service: "YouTube Music"});
     if("error" in converted_track){
         console.error(small_track(track), converted_track);
         return;
     }
     if(callback !== undefined) callback(track, converted_track.track!);
     log_conversion(track, converted_track.track!, converted_track.score);
-    return convert_track;
+    return Illusive.convert_track;
 }
 async function test_convert_tracks(){
     const converted_pairs: [ReturnType<typeof small_track>, ReturnType<typeof small_track>][] = [];

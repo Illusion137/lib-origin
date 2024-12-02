@@ -61,7 +61,7 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
     return {
         uid: track.uid,
         title: track.title,
-        alt_title: new_track.title,
+        alt_title: new_track.title ?? new_track.alt_title,
         artists: track.artists,
         duration: new_track.duration,
         album: is_empty(track.album) ? new_track.album : track.album,
@@ -91,7 +91,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track {
         album: JSON.parse(sql_track.album!),
         prods: JSON.parse(sql_track.prods!),
         tags: JSON.parse(sql_track.tags!),
-        explicit: Boolean(sql_track.explicit),
+        explicit: sql_track.explicit,
         unreleased: Boolean(sql_track.unreleased),
         meta: {
             plays: meta.plays,

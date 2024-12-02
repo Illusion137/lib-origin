@@ -16,7 +16,6 @@ import { playlist_tracks } from './playlist_converter';
 import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLTracks from './sql/sql_tracks';
-import { is_youtube } from '../../convert_track';
 
 function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -29,7 +28,7 @@ export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
 }
 export function sort_filter_tracks(tracks: Track[]) {
-    return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri)));
+    return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri) || Prefs.get_pref('can_redownload_batch') ));
 }
 export async function download_track_list(tracks: Track[]) {
     for(const track of sort_filter_tracks(tracks))
@@ -42,7 +41,7 @@ export async function batch_download(key: string) {
 
 function download_error_callback(title: string, error: Error, track: Track, start_download?: SetState): "ERROR" {
     if (start_download !== undefined) start_download(false);
-    if( !is_empty(error) && !is_empty(error.message) ) alert_error({error: new Error(title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error.message + ":\n" + error.stack)});
+    if( error.message ) alert_error({error: new Error(title + ": " + JSON.stringify({title: track.title, uid: track.uid}) + ":\n" + error.message + ":\n")});
     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
     GLOBALS.downloading.splice(item_index, 1);
     return "ERROR";
@@ -98,7 +97,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
-            if(Prefs.get_pref('can_redownload') && !is_youtube(track)) track = {...track, youtube_id: ""};
+            if(Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track)) track = {...track, youtube_id: ""};
             else if(Prefs.get_pref('can_redownload') && Prefs.get_pref('force_redownload_conversion')) track = {...track, youtube_id: ""};
             
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", Prefs.get_pref('can_redownload'));

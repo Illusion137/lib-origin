@@ -45,6 +45,7 @@ export namespace Prefs {
         prioritize_youtube_thumbnail:          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}    as Pref<boolean>,
         alt_titles:                            {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}  as Pref<boolean>,
         simple_tags:                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}  as Pref<boolean>,
+        simple_errors:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}  as Pref<boolean>,
         keep_prefs:                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; If you clear-all-data then you'll keep your preferences"} as Pref<boolean>,
 
         default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true}       as Pref<number>,
@@ -63,6 +64,7 @@ export namespace Prefs {
         safe_mode:                             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         safe_mode_undownload:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
+        can_redownload_batch:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         force_redownload_conversion:           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         force_explicit_conversion:             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,

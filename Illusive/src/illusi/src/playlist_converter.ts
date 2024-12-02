@@ -2,7 +2,6 @@ import * as Origin from '../../../../origin/src/index';
 import { PromiseResult } from "../../../../origin/src/utils/types";
 import { is_empty } from "../../../../origin/src/utils/util";
 import { Constants } from '../../constants';
-import { convert_track } from '../../convert_track';
 import { Illusive } from "../../illusive";
 import { music_service_uri_to_music_service, random_of, shuffle_array, split_uri } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
@@ -104,7 +103,7 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType) {
     const updated_tracks: Track[] = [];
     for(const track of stracks) {
         if(track.imported_id) continue;
-        const conversion_track = await convert_track(track, {to_music_service: to, proxies, possible_services: [to]});
+        const conversion_track = await Illusive.convert_track(track, {to_music_service: to, proxies, possible_services: [to]});
         if("error" in conversion_track) { 
             Logger.log_error(conversion_track).catch(e => e); 
             continue;

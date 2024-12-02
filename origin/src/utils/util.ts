@@ -98,8 +98,8 @@ export function json_catch(result: any){
 }
 
 import { RequestInit } from 'node-fetch';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 
-export function proxy_agent(proxy: { ip: string; port: number }): RequestInit['agent'] {
-    return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);
+export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
+    // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);
+    return undefined;
 }

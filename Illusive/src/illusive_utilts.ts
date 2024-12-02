@@ -84,23 +84,27 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
     }
     return {char_data: section_chars, section_map: [...sections]};
 }
+const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
 export function track_query_filter(tracks: Track[], query?: string) {
     if(!is_empty(query)) {
+        const explicit_flag = query!.includes("@ex");
+        const clean_flag = query!.includes("@cl");
         const jp_flag = query!.includes("@jp");
-        const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
 
-        query = remove(query!, /@jp ?/);
+        query = remove(query!, /@ex ?/);
+        query = remove(query, /@cl ?/);
+        query = remove(query, /@jp ?/);
 
         return tracks.filter(track => {
-            const title = Prefs.get_pref('alt_titles') ? track.alt_title ?? track.title : track.title;
+            const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
             const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
             const includes_artist = track.artists[0].name.toUpperCase().includes(query!.toUpperCase());
             
-            const jp_test_title = jp_regex.test(title);
-            const jp_test_artist = jp_regex.test(track.artists[0].name);
-            const jp_test = jp_flag && (jp_test_title||jp_test_artist);
+            const jp_test = jp_flag && (jp_regex.test(title)||jp_regex.test(track.artists[0].name));
+            const clean_test = clean_flag && (track.explicit === "CLEAN");
+            const explicit_test = explicit_flag && (track.explicit === "EXPLICIT");
             
-            return !is_empty(query) && (includes_title||includes_artist) || jp_test;
+            return !is_empty(query) && (includes_title||includes_artist) || jp_test || clean_test || explicit_test;
         });
     }
     return tracks;
