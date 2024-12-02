@@ -97,9 +97,10 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
-            if(Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track)) track = {...track, youtube_id: ""};
-            else if(Prefs.get_pref('can_redownload') && Prefs.get_pref('force_redownload_conversion')) track = {...track, youtube_id: ""};
-            
+            const is_redownloading = (Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track)) || (Prefs.get_pref('can_redownload') && Prefs.get_pref('force_redownload_conversion'));
+            if(is_redownloading) track = {...track, youtube_id: ""};
+            if(is_redownloading) SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
+
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", Prefs.get_pref('can_redownload'));
             if ("error" in download_uri) {
                 if (download_uri.error.message.toLowerCase().includes("unavailable"))

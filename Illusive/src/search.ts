@@ -103,7 +103,7 @@ export async function youtube_music_search(query: string, _?: SearchOpts): Promi
     const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
     const search_response = await Origin.YouTubeMusic.search({cookie_jar}, query);
     if("error" in search_response) return default_search(search_response);
-    const top_result = parse_youtube_music_search_top_result(search_response.data.contents[0].musicCardShelfRenderer);
+    const top_result = parse_youtube_music_search_top_result(search_response.data.contents.find(item => item.musicCardShelfRenderer !== undefined)?.musicCardShelfRenderer);
     const results = search_response.data.contents.filter(item => item.musicShelfRenderer !== undefined).map(item => item.musicShelfRenderer!);
     
     const tracks: IllusiveTypes.Track[] = [];

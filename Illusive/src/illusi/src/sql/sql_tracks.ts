@@ -108,11 +108,18 @@ export async function mark_track_downloaded(uid: string, media_uri: string) {
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = media_uri;
 }
-export async function mark_track_undownloaded(uid: string) {
+export async function mark_all_tracks_undownloaded() {
+    await Promise.all(GLOBALS.global_var.sql_tracks.map(async (track) => {
+        await SQLfs.delete_item(media_directory(track.media_uri!));
+        track.media_uri = "";
+    }));
+    await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])}`);
+}
+export async function mark_track_undownloaded(uid: string, media_uri: string) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
+    await SQLfs.delete_item(media_directory(media_uri));
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = "";
-    await clean_directories();
 }
 export async function track_exists(track: Track) {
     for(const t of GLOBALS.global_var.sql_tracks) {

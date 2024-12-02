@@ -210,7 +210,9 @@ export namespace Illusive {
         const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : yt_music ? "YouTube Music" : "YouTube";
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
-        const convert_response = await music_service.get(to_service === "YouTube Music" ? "YouTube" : to_service)!.download_from_id!(new_track_data.track!.youtube_id!, quality ?? "highestaudio");
+        if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
+        const convert_response = await music_service.get(new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud")!.download_from_id!(new_track_data.track!.youtube_id!, quality ?? "highestaudio");
+    
         if("error" in convert_response) return convert_response;
         return { url: convert_response.url, metadata: convert_response.metadata, new_track_data: new_track_data.track };
     }
@@ -221,13 +223,14 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.get_track_mix!(track.youtube_id!);
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.get_track_mix!(track.soundcloud_permalink!);
-        const yt_music = Prefs.get_pref('prefer_youtube_music') && Illusive.music_service.get("YouTube Music")!.has_credentials();
-        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : yt_music ? "YouTube Music" : "YouTube";
+        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
-        const youtube_mix_response = await music_service.get(to_service)!.get_track_mix!(new_track_data.track!.youtube_id!);
-        if("error" in youtube_mix_response) return youtube_mix_response;
-        return {tracks: youtube_mix_response.tracks, new_track_data: new_track_data.track};
+        if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
+        
+        const mix_response = await music_service.get(to_service)!.get_track_mix!(new_track_data.track!.youtube_id!);
+        if("error" in mix_response) return mix_response;
+        return {tracks: mix_response.tracks, new_track_data: new_track_data.track};
     }
 
     export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {

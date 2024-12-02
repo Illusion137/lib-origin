@@ -94,7 +94,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         if(!info.exists) {
             alert_error({error: new Error(`Unable to find file at ${url_data.url}`)});
             if(Prefs.get_pref('safe_mode_undownload')){
-                await SQLTracks.mark_track_undownloaded(track.uid);
+                await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
             }
             return 'skip';
         }
