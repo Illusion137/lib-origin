@@ -1,8 +1,8 @@
 export type Action = FormBusinessAction|FinanceSavingsAction|FinanceLoanAction|LocateBusinessAction|ChangeInsuranceAction|UpdatePricesAction|AddItemAction|MoveItemAction|RotateItemAction|BookAdAction;
-
+export type BusinessType = "Smoothie Shop"|"Pizza Place"|"Plumbing Business"|"Electrical Business"|"Physical Therapy"|"Hair Salon"|"Auto Repair Shop"|"Catering"|"Online Gift Baskets"|"Trampoline Park"|"Bowling Alley"|"Fitness Center"|"Coffee Shop"|"Ice Cream Shop"|"T Shirt Printing"|"Burrito Shop"|"Lawncare"|"Disc Jockey"|"Batting Cage"|"Go Karts";
 interface FormBusinessAction {
     type: "form_business";
-    business_type: "Smoothie Shop"|"Pizza Place"|"Plumbing Business"|"Electrical Business"|"Physical Therapy"|"Hair Salon"|"Auto Repair Shop"|"Catering"|"Online Gift Baskets"|"Trampoline Park"|"Bowling Alley"|"Fitness Center"|"Coffee Shop"|"Ice Cream Shop"|"T Shirt Printing"|"Burrito Shop"|"Lawncare"|"Disc Jockey"|"Batting Cage"|"Go Karts";
+    business_type: BusinessType;
     name: string;
 }
 interface FinanceSavingsAction {

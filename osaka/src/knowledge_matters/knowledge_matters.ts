@@ -1,4 +1,4 @@
-import { Action } from "./actions";
+import { Action, BusinessType } from "./actions";
 
 function quiz_answerquestion_info(): [string, string[]]{
     const title = document.getElementsByClassName('quiz_question_numbers')[0].parentElement!.textContent!.replace(/\n/g, '').replace(/\s{2,}/g, '').replace(/QUESTION \d+ of \d+:/, '');
@@ -305,9 +305,32 @@ function pattern_extract(str: string, pattern: RegExp){
 function parse_num(numstr: string){
     return parseInt(numstr.replace(/,/g, ''));
 }
+function to_camelcase(str: string){
+    const words = str.split(' ');
+    words[0] = words[0].toLowerCase();
+    return words.join();
+}
 
-function run_action(){
+declare const document: any;
 
+function run_action(action: Action){
+    switch(action.type){
+        case "form_business": {
+            document.querySelector('#formBusiness').click();
+            document.querySelector('.form-control').value = action.name;
+            document.querySelector(`#${to_camelcase(action.business_type)}`).click();
+            document.querySelector('.btn.btn-primary').click()
+            document.querySelector('.nonPartner').click()
+            document.querySelectorAll('.btn.btn-primary')[1].click();
+            break;
+        }
+        case "finance_savings": {
+            break;
+        }
+        case "locate_business": {
+            document.querySelector('#locateBusiness').click();
+        }
+    }
 }
 
 function parse_action(actstr: string): Action{
@@ -316,7 +339,7 @@ function parse_action(actstr: string): Action{
         return {
             type: "form_business",
             name: name,
-            business_type: business_type
+            business_type: business_type as BusinessType
         };
     }
     if(actstr.startsWith("Financed business with ")){
@@ -326,6 +349,7 @@ function parse_action(actstr: string): Action{
             amount: parse_num(amount)
         };
     }
+    if(actstr.startsWith())
 }
 
 function parse_actions_journal(input: string){
