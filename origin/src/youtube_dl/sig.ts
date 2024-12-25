@@ -37,17 +37,16 @@ const VARIABLE_PART_DEFINE = `\\"?${VARIABLE_PART}\\"?`;
 const BEFORE_ACCESS = '(?:\\[\\"|\\.)';
 const AFTER_ACCESS = '(?:\\"\\]|)';
 const VARIABLE_PART_ACCESS = BEFORE_ACCESS + VARIABLE_PART + AFTER_ACCESS;
-const REVERSE_PART = ":function\\(a\\)\\{(?:return )?a\\.reverse\\(\\)\\}";
-const SLICE_PART = ":function\\(a,b\\)\\{return a\\.slice\\(b\\)\\}";
-const SPLICE_PART = ":function\\(a,b\\)\\{a\\.splice\\(0,b\\)\\}";
+const REVERSE_PART = ":function\\(\\w\\)\\{(?:return )?\\w\\.reverse\\(\\)\\}";
+const SLICE_PART = ":function\\(\\w,\\w\\)\\{return \\w\\.slice\\(\\w\\)\\}";
+const SPLICE_PART = ":function\\(\\w,\\w\\)\\{\\w\\.splice\\(0,\\w\\)\\}";
 const SWAP_PART =
-	":function\\(a,b\\)\\{" + "var c=a\\[0\\];a\\[0\\]=a\\[b%a\\.length\\];a\\[b(?:%a.length|)\\]=c(?:;return a)?\\}";
-
+    ":function\\(\\w,\\w\\)\\{var \\w=\\w\\[0\\];\\w\\[0\\]=\\w\\[\\w%\\w\\.length\\];\\w\\[\\w(?:%\\w.length|)\\]=\\w(?:;return \\w)?\\}";
 const DECIPHER_REGEXP =
-	`function(?: ${VARIABLE_PART})?\\(a\\)\\{` +
-	`a=a\\.split\\(""\\);\\s*` +
-	`((?:(?:a=)?${VARIABLE_PART}${VARIABLE_PART_ACCESS}\\(a,\\d+\\);)+)` +
-	`return a\\.join\\(""\\)` +
+    `function(?: ${VARIABLE_PART})?\\(([a-zA-Z])\\)\\{` +
+    '\\1=\\1\\.split\\(""\\);\\s*' +
+    `((?:(?:\\1=)?${VARIABLE_PART}${VARIABLE_PART_ACCESS}\\(\\1,\\d+\\);)+)` +
+    'return \\1\\.join\\(""\\)' +
 	`\\}`;
 
 const HELPER_REGEXP = `var (${VARIABLE_PART})=\\{((?:(?:${VARIABLE_PART_DEFINE}${REVERSE_PART}|${VARIABLE_PART_DEFINE}${SLICE_PART}|${VARIABLE_PART_DEFINE}${SPLICE_PART}|${VARIABLE_PART_DEFINE}${SWAP_PART}),?\\n?)+)\\};`;
@@ -56,16 +55,13 @@ const SCVR = "[a-zA-Z0-9$_]";
 const MCR = `${SCVR}+`;
 const AAR = "\\[(\\d+)]";
 const N_TRANSFORM_NAME_REGEXPS = [
-	// NewPipeExtractor regexps
-	`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\).+\\|\\|(${MCR})\\(""\\)`,
-	`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\)&&\\(${MCR}=(${MCR})${AAR}`,
-	`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\).+\\|\\|(${MCR})\\(""\\)`,
-	`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\)&&\\(${MCR}=(${MCR})\\[(\\d+)]`,
-	`\\(${SCVR}=String\\.fromCharCode\\(110\\),${SCVR}=${SCVR}\\.get\\(${SCVR}\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`,
-	`\\.get\\("n"\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`,
-	// Skick regexps
-	'(\\w+).length\\|\\|\\w+\\(""\\)',
-	'\\w+.length\\|\\|(\\w+)\\(""\\)',
+    // NewPipeExtractor regexps
+    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\).+\\|\\|(${MCR})\\(""\\)`,
+    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\)&&\\(${MCR}=(${MCR})${AAR}`,
+    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\).+\\|\\|(${MCR})\\(""\\)`,
+    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\)&&\\(${MCR}=(${MCR})\\[(\\d+)]`,
+    `\\(${SCVR}=String\\.fromCharCode\\(110\\),${SCVR}=${SCVR}\\.get\\(${SCVR}\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`,
+    `\\.get\\("n"\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`,
 ];
 
 // LavaPlayer regexps
@@ -74,7 +70,7 @@ const N_TRANSFORM_REGEXP =
 	"var\\s*(\\w+)=(?:\\1\\.split\\(.*?\\)|String\\.prototype\\.split\\.call\\(\\1,.*?\\))," +
 	"\\s*(\\w+)=(\\[.*?]);\\s*\\3\\[\\d+]" +
 	"(.*?try)(\\{.*?})catch\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
-	'\\s*return"enhanced_except_([A-z0-9-]+)"\\s*\\+\\s*\\1\\s*}' +
+    '\\s*return"[\\w-]+([A-z0-9-]+)"\\s*\\+\\s*\\1\\s*}' +
 	'\\s*return\\s*(\\2\\.join\\(""\\)|Array\\.prototype\\.join\\.call\\(\\2,.*?\\))};';
 
 const DECIPHER_ARGUMENT = 'sig';
@@ -137,12 +133,12 @@ const extractDecipherWithName = (body: string) => {
 	}
 };
 
-const getExtractFunctions = (extractFunctions: ((body: string) => string | null)[], body: string): vmScript | null => {
+const getExtractFunctions = (extractFunctions: ((body: string) => string | null)[], body: string, postProcess: ((str: string)=>void)|null = null): vmScript | null => {
 	for (const extractFunction of extractFunctions) {
 		try {
 			const func = extractFunction(body);
 			if (!func) continue;
-			return new vm.Script(func);
+			return new vm.Script(postProcess ? postProcess(func) : func);
 		} catch (err) {
 			continue;
 		}
@@ -180,7 +176,7 @@ const extractNTransformFunc = (body: string) => {
 const extractNTransformWithName = (body: string) => {
 	try {
 		const nFuncName = getFuncName(body, N_TRANSFORM_NAME_REGEXPS);
-		const funcPattern = `(${nFuncName.replace(/\$/g, '\\$')}=\\s*function([\\S\\s]*?\\}\\s*return (([\\w$]+?\\.join\\(""\\))|(Array\\.prototype\\.join\\.call\\([\\w$]+?,[\\n\\s]*(("")|(\\("",""\\)))\\)))\\s*\\}))`;
+        const funcPattern = `(${nFuncName.replace(/\$/g, "\\$")}=function\\([a-zA-Z0-9_]+\\)\\{.+?\\})`;
 		const nTransformFunc = `var ${matchGroup1(funcPattern, body)};`;
 		const callerFunc = `${nFuncName}(${N_ARGUMENT});`;
 		return nTransformFunc + callerFunc;
@@ -192,7 +188,9 @@ const extractNTransformWithName = (body: string) => {
 let nTransformWarning = false;
 const extractNTransform = (body: string) => {
 	// Faster: extractNTransformFunc
-	const nTransformFunc = getExtractFunctions([extractNTransformFunc, extractNTransformWithName], body);
+	const nTransformFunc = getExtractFunctions([extractNTransformFunc, extractNTransformWithName], body, code =>
+        code.replace(/if\(typeof \S+==="undefined"\)return \S+;/, ""),
+    );
 	if (!nTransformFunc && !nTransformWarning) {
 		// This is optional, so we can continue if it's not found, but it will bottleneck the download.
 		console.warn('\x1b[33mWARNING:\x1B[0m Could not parse n transform function.\n' +
