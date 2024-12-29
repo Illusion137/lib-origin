@@ -64,7 +64,7 @@ export namespace Prefs {
         safe_mode:                             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         safe_mode_undownload:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
-        can_redownload_batch:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
+        can_redownload_batch:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         force_redownload_conversion:           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         force_explicit_conversion:             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
