@@ -16,7 +16,7 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.set_theme = set_theme;
-        ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET);
+        await ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET);
         const statistics_callback = (statistics: ffmpeg.Statistics) => {
             const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.getSessionId());
             if (dlidx === -1) return;
@@ -40,6 +40,6 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             activateKeepAwakeAsync()
         ]);
         if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories().catch(e => e);
-        set_theme(Prefs.get_theme(Prefs.get_pref('theme')));
+        Prefs.pref_set_theme(set_theme);
     })
 }

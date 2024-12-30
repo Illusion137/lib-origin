@@ -124,7 +124,9 @@ export async function track_player_previous() {
     try {
         const progress = await TrackPlayer.getProgress();
         if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
-            await TrackPlayer.seekTo(0);
+            const track_index = await TrackPlayer.getActiveTrackIndex();
+            if(track_index === undefined) await TrackPlayer.seekTo(0);
+            else await TrackPlayer.seekTo(GLOBALS.global_var.playing_tracks?.[track_index]?.meta?.begdur ?? 0);
             return;
         }
         await TrackPlayer.skipToPrevious();

@@ -11,17 +11,17 @@ export interface Success {
 export interface Module {
     identifier: string
     placements: Placement[]
-    type: string
+    type: "hero"|"scroller"
     title?: string
 } 
 export interface Placement {
     icon_image_url: string
     subtitle: string
     title: string
-    track?: Track
+    track?: MusiTrackV2
     playlist?: Playlist
 } 
-export interface Track {
+export interface MusiTrackV2 {
     duration: number
     id: string
     title: string

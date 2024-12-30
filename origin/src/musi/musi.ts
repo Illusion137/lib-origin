@@ -1,6 +1,6 @@
 import { ResponseError } from "../utils/types";
 import { json_catch, urlid } from "../utils/util";
-import { Explore } from "./types/Explore";
+import { Explore, ExploreSuccess } from "./types/Explore";
 import { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "./types/Playlist";
 import { Support } from "./types/Support";
 import { Track } from "./types/types";
@@ -24,6 +24,7 @@ import { Track } from "./types/types";
 
 export namespace Musi {
     export type MusiTrack = Track;
+    export type MusiExplore = ExploreSuccess;
     export async function support() {
         const response = await fetch(`https://feelthemusi.com/api/v4/support/`);
         return await response.json().catch(json_catch) as Support|ResponseError;

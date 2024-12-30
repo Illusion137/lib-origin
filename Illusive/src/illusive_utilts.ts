@@ -90,10 +90,9 @@ export function track_query_filter(tracks: Track[], query?: string) {
         const explicit_flag = query!.includes("@ex");
         const clean_flag = query!.includes("@cl");
         const jp_flag = query!.includes("@jp");
+        const sc_flag = query!.includes("@sc");
 
-        query = remove(query!, /@ex ?/);
-        query = remove(query, /@cl ?/);
-        query = remove(query, /@jp ?/);
+        query = remove(query!, /@ex ?/, /@cl ?/, /@jp ?/, /@sc ?/);
 
         return tracks.filter(track => {
             const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
@@ -103,8 +102,9 @@ export function track_query_filter(tracks: Track[], query?: string) {
             const jp_test = jp_flag && (jp_regex.test(title)||jp_regex.test(track.artists[0].name));
             const clean_test = clean_flag && (track.explicit === "CLEAN");
             const explicit_test = explicit_flag && (track.explicit === "EXPLICIT");
+            const sc_test = sc_flag && (!is_empty(track.soundcloud_id));
             
-            return !is_empty(query) && (includes_title||includes_artist) || jp_test || clean_test || explicit_test;
+            return !is_empty(query) && (includes_title||includes_artist) || jp_test || clean_test || explicit_test || sc_test;
         });
     }
     return tracks;

@@ -10,7 +10,7 @@ import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundc
 import { all_words, one_includes_word_not_other, random_of, shuffle_array, str_or_include } from "./illusive_utilts";
 import { Prefs } from "./prefs";
 import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
-import { Artwork, DownloadFromIdResult, MusicService, MusicServiceType, Track } from "./types";
+import { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicService, MusicServiceType, Track } from "./types";
 
 export namespace Illusive {
     // export const illusi_icon: number = 0;
@@ -444,5 +444,28 @@ export namespace Illusive {
         }
     
         return best;
+    }
+    type SmartSearch = (Track|CompactArtist|CompactPlaylist)[];
+    export function smart_search(query: string, search: MusicSearchResponse): SmartSearch {
+        if(is_empty(query)) return [];
+        const smart_search_storage: SmartSearch = [];
+        for(const artist of search.artists.slice(0, 3)){
+            if(query.toLowerCase() === remove_topic(artist.name.name).toLowerCase()){
+                smart_search_storage.push(artist);
+                break;
+            }
+        }
+        let found_track: Track;
+        for(const track of search.tracks.slice(0, 5)){
+            if(remove_topic(track.title).toLowerCase().includes(query.toLowerCase())){
+                found_track = track;
+                smart_search_storage.push(track);
+                break;
+            }
+        }
+        for(const track of search.tracks.filter(t =>  t.uid !== (found_track?.uid ?? ""))){
+            smart_search_storage.push(track);
+        }
+        return smart_search_storage;
     }
 }

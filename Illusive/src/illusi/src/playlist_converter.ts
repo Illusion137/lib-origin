@@ -58,11 +58,25 @@ export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_u
 export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[]) {
     if("title" in to) {
         if(to_service === "Illusi") {
+            const all_playlists = await SQLPlaylists.all_playlists_data()
+            const found_playlist = all_playlists.find(playlist => playlist.title === to.title);
+            if(found_playlist !== undefined){
+                await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, tracks.map(({uid}) => uid));
+                return {ok: true};
+            }
             const playlist_uuid = await SQLPlaylists.create_playlist(to.title);
             await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
             return {ok: true};
         }
         const service = Illusive.music_service.get(to_service)!;
+        const all_playlists = await service.get_user_playlists!();
+        if("error" in all_playlists) return {ok: false};
+        const found_playlist = all_playlists.playlists.find(playlist => playlist.title.name === to.title);
+        if(found_playlist !== undefined){
+            if(found_playlist.title.uri === undefined) return {ok: false};
+            const [, playlist_id] = split_uri(found_playlist.title.uri!);
+            return await service.add_tracks_to_playlist!(await playlist_tracks_excluding_playlist(tracks, found_playlist.title.uri!), playlist_id);
+        }
         const [, playlist_id] = split_uri(await service.create_playlist!(to.title));
         return await service.add_tracks_to_playlist!(tracks, playlist_id);
     } else {
