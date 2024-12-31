@@ -63,9 +63,7 @@ export function remove_special_chars(str: string) {
     return str;
 }
 export function eval_json<T>(json: string): T {
-    let evaluated;
-    const result = eval("evaluated = " + json);
-    evaluated;
+    const result = eval("let evaluated = " + json + "; evaluated;");
     return result;
 }
 
@@ -95,6 +93,27 @@ export function clean_html_text(text: string) {
 }
 export function json_catch(result: any){
     return result instanceof Error ? {error: result} : result;
+}
+
+export function clean_error_stack(error: Error){
+	const at_regex = /at (.+?) /gs;
+	const matches = [...error.stack!.matchAll(at_regex)]
+	const bad_regexes: RegExp[] = [
+		/anon_0_/i,
+		/asyncGeneratorStep/i,
+		/tryCallOne/i,
+		/InternalBytecode/i,
+		/invokeCallback/i,
+		/callTimer/i,
+		/callReact/i,
+		/flushedQueue/i,
+		/_next/i,
+		/__guard/i,
+		/anonymous/i,
+		/apply/i,
+	];
+	const new_stack = matches.map(match => match[1]).filter(loc => !bad_regexes.some(regex => regex.test(loc)));
+	return error.message + " \n " + new_stack.map(item => `at ${item}`).join(' \n');
 }
 
 import { RequestInit } from 'node-fetch';

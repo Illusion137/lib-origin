@@ -292,6 +292,7 @@ export namespace Illusive {
     export async function get_suggestions(query: string) { return await Origin.Google.get_suggestions(query); }
 
     export async function get_track_lryics(track: Track) {
+        if(is_youtube(track) && !((track?.artists?.[0]?.name ?? "").includes(" - Topic"))) return {error: new Error('Track is pure YouTube')};
         const search_response = await Origin.Genius.search(`${remove_topic(track.artists[0].name)} ${track.title}`);
         if("error" in search_response) return search_response;
         const lyrics_response = await Origin.Genius.get_lyrics(search_response);
