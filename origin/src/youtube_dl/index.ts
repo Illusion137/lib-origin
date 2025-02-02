@@ -6,7 +6,7 @@ import { DownloadOptions } from './types';
 
 export namespace YouTubeDL {
     export async function ytdl (link: string, options: DownloadOptions) {
-        const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=");
+        const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=", /&.+/);
         const info = await ytdl.getInfo(video_id, options);
         const format = ytdl.chooseFormat(info.formats, options);
         return {av: format, info};

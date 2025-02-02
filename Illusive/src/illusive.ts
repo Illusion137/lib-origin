@@ -161,7 +161,7 @@ export namespace Illusive {
             pref_cookie_jar: "soundcloud_cookie_jar",
             valid_playlist_url_regex: /(https?:\/\/)soundcloud\.com\/.+?\/(sets\/.+)?/i,
             link_text: 'https://soundcloud.com/.../sets/... or \n - https://soundcloud.com/...',
-            required_cookie_credentials: ["sc_anonymous_id"],
+            required_cookie_credentials: ["sc_anonymous_id", "oauth_token", "datadome"],
             get_user_playlists: soundcloud_get_user_playlists,
             get_playlist: soundcloud_get_playlist,
             get_playlist_continuation: soundcloud_get_playlist_continuation,

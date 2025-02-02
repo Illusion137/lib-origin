@@ -76,6 +76,7 @@ export namespace Prefs {
         add_from_modal:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         prefer_youtube_music:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         prefer_soundcloud:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
+        keep_soundcloud_alive:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         auto_clean_directories:                {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         can_clean_directories:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,

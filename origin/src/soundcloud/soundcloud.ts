@@ -162,7 +162,7 @@ export namespace SoundCloud {
             ...opts.params,
             ...get_locale_params(opts)
         }
-        const response = await fetch(`https://api-v2.soundcloud.com/playlists?${encode_params(params)}`, {method: opts.method ?? "POST", body: opts.payload === null ? null : JSON.stringify(opts.payload), headers: post_api_headers(opts.cookie_jar!)});
+        const response = await fetch(`https://api-v2.soundcloud.com/${opts.path}?${encode_params(params)}`, {method: opts.method ?? "POST", body: opts.payload === null ? null : JSON.stringify(opts.payload), headers: post_api_headers(opts.cookie_jar!)});
         if(!response.ok) return {error: new Error(String(response.status))};
         return {data: response, client_id: opts.client_id, hydration};
     }
@@ -393,5 +393,38 @@ export namespace SoundCloud {
             }
         };
         return await apipost({...opts, path: `playlists/${found_playlist.id}`, params: {}, payload, method: "PUT"});
+    }
+    export async function try_connect_session(opts: Opts){
+        const has_cookies = requires_cookies(opts);
+        if("error" in has_cookies) return {ok: false};
+        const params = {
+            ...get_locale_params(opts)
+        }
+        const oauth_cookie = opts.cookie_jar?.getCookie('oauth_token');
+        if(oauth_cookie === undefined) return {ok: false};
+        const payload = {
+            session: {
+                access_token: oauth_cookie.getData().value
+            }
+        };
+        const controller = new AbortController();
+        const abort = setTimeout(() => controller.abort(), 5000);
+        try {
+            const response = await fetch(`https://api-auth.soundcloud.com/connect/session?${encode_params(params)}`, { 
+                method: "POST", 
+                body: JSON.stringify(payload), 
+                headers: post_api_headers(opts.cookie_jar!), 
+                signal: controller.signal
+            });
+            clearTimeout(abort);
+            if(!response.ok) return {ok: false};
+            opts.cookie_jar?.updateWithFetch(response);
+            return {ok: true};
+        }
+        catch(e) {
+            console.log(e);
+            clearTimeout(abort);
+            return {ok: false};
+        }
     }
 }

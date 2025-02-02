@@ -10,6 +10,7 @@ import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLTracks from './sql/sql_tracks';
 import * as SQLUpdate from './sql/sql_update';
 import * as SQLUtils from './sql/sql_utils';
+import * as Origin from '../../../../origin/src/index';
 
 export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
     await catch_function_async(async() => {
@@ -41,5 +42,11 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
         ]);
         if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories().catch(e => e);
         Prefs.pref_set_theme(set_theme);
+
+        if(Prefs.get_pref('keep_soundcloud_alive')){
+            Origin.SoundCloud.try_connect_session({cookie_jar: Prefs.get_pref('soundcloud_cookie_jar')}).then(async(result) => {
+                if(result.ok) await Prefs.save_pref('soundcloud_cookie_jar', Prefs.get_pref('soundcloud_cookie_jar'));
+            }).catch(e => e);
+        }
     })
 }

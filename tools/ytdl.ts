@@ -1,0 +1,28 @@
+import { YouTubeDL } from "../origin/src";
+import { spawn } from 'child_process';
+
+const output_folder = "/Users/illusion/ytdl_out/";
+const url = process.argv[2];
+
+YouTubeDL.ytdl(url, {quality: 'highestaudio'}).then(av_result => {
+    const args = [
+        '-y',
+        '-i',
+        av_result.av.url,
+        `${output_folder}${av_result.info.videoDetails.title}.mp3`.replace(/\s/g, '_')
+    ]
+    const ffproc = spawn('ffmpeg', args);
+    ffproc.stdout.on('data', function(data) {
+        console.log(data);
+    });
+    
+    ffproc.stderr.setEncoding("utf8")
+    ffproc.stderr.on('data', function(data) {
+        console.log(data);
+    });
+    
+    ffproc.on('close', function() {
+        console.log('finished');
+    });
+    
+}).catch(e => console.error(e));

@@ -120,7 +120,7 @@ export class CookieJar {
         }
     }
     updateWithFetch(response: Response) {
-        const set_cookies = response.headers.getSetCookie();
-        this.merge(CookieJar.fromStrings(set_cookies));
+        const set_cookies = response.headers.get("set-cookie") ?? "";
+        this.merge(CookieJar.fromString(set_cookies));
     }
 }
