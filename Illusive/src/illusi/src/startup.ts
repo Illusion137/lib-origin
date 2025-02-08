@@ -1,5 +1,5 @@
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
-import * as ffmpeg from 'react-native-ffmpeg';
+import * as ffmpeg from 'ffmpeg-kit-react-native';
 import { Prefs } from '../../prefs';
 import { Track } from '../../types';
 import { download_track } from './downloader'
@@ -10,23 +10,24 @@ import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLTracks from './sql/sql_tracks';
 import * as SQLUpdate from './sql/sql_update';
 import * as SQLUtils from './sql/sql_utils';
+import * as Origin from '../../../../origin/src/index';
 
 export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
     await catch_function_async(async() => {
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.set_theme = set_theme;
-        ffmpeg.RNFFmpegConfig.setLogLevel(ffmpeg.LogLevel.AV_LOG_QUIET);
+        await ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET);
         const statistics_callback = (statistics: ffmpeg.Statistics) => {
-            const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.executionId);
+            const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.getSessionId());
             if (dlidx === -1) return;
-            const progress = Math.floor(statistics.time / 1000) / GLOBALS.downloading[dlidx].duration;
+            const progress = Math.floor(statistics.getTime() / 1000) / GLOBALS.downloading[dlidx].duration;
             GLOBALS.downloading[dlidx].progress = Math.floor(progress * 100);
             if (GLOBALS.downloading[dlidx].progress_updater !== undefined) {
                 GLOBALS.downloading[dlidx].progress_updater(GLOBALS.downloading[dlidx].progress);
             }
         };
-        ffmpeg.RNFFmpegConfig.enableStatisticsCallback(statistics_callback);
+        ffmpeg.FFmpegKitConfig.enableStatisticsCallback(statistics_callback);
         
         await SQLUtils.recreate_all_tables();
 
@@ -40,6 +41,12 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             activateKeepAwakeAsync()
         ]);
         if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories().catch(e => e);
-        set_theme(Prefs.get_theme(Prefs.get_pref('theme')));
+        Prefs.pref_set_theme(set_theme);
+
+        if(Prefs.get_pref('keep_soundcloud_alive')){
+            Origin.SoundCloud.try_connect_session({cookie_jar: Prefs.get_pref('soundcloud_cookie_jar')}).then(async(result) => {
+                if(result.ok) await Prefs.save_pref('soundcloud_cookie_jar', Prefs.get_pref('soundcloud_cookie_jar'));
+            }).catch(e => e);
+        }
     })
 }

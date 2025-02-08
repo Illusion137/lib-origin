@@ -3,7 +3,7 @@
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
-import * as ffmpeg from 'react-native-ffmpeg';
+import * as ffmpeg from 'ffmpeg-kit-react-native';
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
@@ -120,10 +120,11 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             try {
                 if (start_download !== undefined) start_download(true);
                 const new_uri = SQLfs.media_directory(track.uid + '.m4a');
-                ffmpeg.RNFFmpeg.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
+                ffmpeg.FFmpegKit.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
                     try {
-                        if(execution.returnCode !== Constants.ffmpeg_retcode_success)
-                            throw new Error(`FFMPEG return status code: ${execution.returnCode};\n Execution ID: ${execution.executionId}`)
+                        const retcode = (await execution.getReturnCode()).getValue();
+                        if(retcode !== Constants.ffmpeg_retcode_success)
+                            throw new Error(`FFMPEG return status code: ${retcode};\n Execution ID: ${execution.getSessionId()}`)
                         const sound_temp = new Audio.Sound();
                         await sound_temp.loadAsync({ uri: new_uri });
                         const meta_data = await sound_temp.getStatusAsync();
@@ -150,10 +151,10 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                     } catch (error) {
                         download_error_callback("Failed To Download:", error as Error, track, start_download);
                     }
-                }).then(execution_id => {
+                }).then(ff_session => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
-                        GLOBALS.downloading[item_index].execution_id = execution_id;
+                        GLOBALS.downloading[item_index].execution_id = ff_session.getSessionId();
                 })
             } catch (error) {
                 return download_error_callback("Failed To Download:", error as Error, track, start_download);
@@ -167,6 +168,6 @@ export async function ffcache_yt(url: string, track: Track) {
     const hls_out_uri = SQLfs.cache_directory(`playlist_${track.youtube_id}.m3u8`);
     const hls_segments = SQLfs.cache_directory(`file_${track.youtube_id}__%d.m4a`);
     const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
-    ffmpeg.RNFFmpeg.executeAsync(cmd, () => {}).catch(e => e);
+    ffmpeg.FFmpegKit.executeAsync(cmd, () => {}).catch(e => e);
     return hls_out_uri;
 }

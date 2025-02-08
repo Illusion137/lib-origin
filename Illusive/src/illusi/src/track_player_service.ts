@@ -124,7 +124,9 @@ export async function track_player_previous() {
     try {
         const progress = await TrackPlayer.getProgress();
         if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
-            await TrackPlayer.seekTo(0);
+            const track_index = await TrackPlayer.getActiveTrackIndex();
+            if(track_index === undefined) await TrackPlayer.seekTo(0);
+            else await TrackPlayer.seekTo(GLOBALS.global_var.playing_tracks?.[track_index]?.meta?.begdur ?? 0);
             return;
         }
         await TrackPlayer.skipToPrevious();
@@ -142,6 +144,7 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             if(data.index === undefined) return;
+            updated_metadata_mutex = false;
             const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
             if(illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
@@ -168,6 +171,7 @@ export async function playback_service() {
             if (data.position / data.duration >= .75 && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid);
+                if(is_empty(current_track.meta!.plays)) current_track.meta!.plays = 0;
                 current_track.meta!.last_played_date = (new Date().toISOString() as ISOString);
                 current_track.meta!.plays++;
                 await SQLTracks.update_track_meta_data(current_track.uid, current_track.meta!);

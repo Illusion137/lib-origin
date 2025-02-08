@@ -51,6 +51,7 @@ export interface AlphabetScroll {
 }
 export type ConvertTo = { uuid_uri: string } | { title: string };
 export interface LinkerLink {
+    link_uuid: string;
     uuid_uri: string;
     full_sample: boolean;
     to_service: MusicServiceType;
@@ -60,12 +61,14 @@ export interface LinkerLink {
 export interface DefaultPlaylist {
     name: string;
     force_order?: boolean;
+    check_existing_tracks?: boolean;
     track_function: () => Promise<Track[]>;
     four_track_function: () => Promise<Track[]>
 };
 export interface ResolvedDefaultPlaylist {
     name: string;
     force_order?: boolean;
+    check_existing_tracks?: boolean;
     four_tracks: Track[];
 };
 
@@ -211,6 +214,7 @@ export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], Pla
 export interface CompactPlaylistData {
     title: string
     four_track: Track[]
+	check_existing_tracks?: boolean;
     track_count: number
     type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>

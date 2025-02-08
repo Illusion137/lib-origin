@@ -3,10 +3,11 @@ import * as uuid from "react-native-uuid";
 import { CookieJar } from "../../origin/src/utils/cookie_util";
 import { Constants } from './constants';
 import * as LegacyPrefs from './illusi/src/legacy/1307/legacy_prefs';
+import { HexColor, LinkerLink } from './types';
 
 export namespace Prefs {
     export type PossibleThemes = keyof typeof themes;
-    type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING";
+    type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING" | "LINKER_LINKS";
     type ShowInSettings = "MISC"|"EXPERIMENTAL";
     export interface Pref<T> {
         default_value: T
@@ -30,6 +31,8 @@ export namespace Prefs {
         user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as Pref<string>,
         recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as Pref<string[]>,
         last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as Pref<number>,
+        linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as Pref<LinkerLink[]>,
+        primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as Pref<HexColor>,
         theme:                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as Pref<PossibleThemes>,
         
         recent_search_limit:                   {default_value: 20, current_value: 20, type: "NUMBER", range: {start: 1, end: 30}, show_in_settings: true, show_in_type: "MISC"}  as Pref<number>,
@@ -42,6 +45,8 @@ export namespace Prefs {
         show_track_duration:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}    as Pref<boolean>,
         use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}  as Pref<boolean>,
         play_no_popup:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When clicking on a track if you already are playing music, the player won't popup"} as Pref<boolean>,
+        compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; Your playlists in the 'Playlist' screen will become smaller"} as Pref<boolean>,
+        share_as_original:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When sharing a track if downloaded it'll still share the song from the original source"} as Pref<boolean>,
         prioritize_youtube_thumbnail:          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}    as Pref<boolean>,
         alt_titles:                            {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}  as Pref<boolean>,
         simple_tags:                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC"}  as Pref<boolean>,
@@ -64,12 +69,14 @@ export namespace Prefs {
         safe_mode:                             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         safe_mode_undownload:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
-        can_redownload_batch:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
+        can_redownload_batch:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         force_redownload_conversion:           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         force_explicit_conversion:             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
+        add_from_modal:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         prefer_youtube_music:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         prefer_soundcloud:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
+        keep_soundcloud_alive:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         auto_clean_directories:                {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
         can_clean_directories:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL"}  as Pref<boolean>,
@@ -103,7 +110,8 @@ export namespace Prefs {
                     case "BOOLEAN":      prefs[key].current_value = await AsyncStorage.getItem(key) === "true" ? true : false; break;
                     case "NUMBER":       prefs[key].current_value = parseInt((await AsyncStorage.getItem(key))!); break;
                     case "COOKIE_JAR":   prefs[key].current_value = CookieJar.fromString((await AsyncStorage.getItem(key))!); break;
-                    case "STRING_ARRAY": prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!);
+                    case "STRING_ARRAY": prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
+                    case "LINKER_LINKS": prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
                 }
             else prefs[key].current_value = prefs[key].default_value;
         }
@@ -115,7 +123,8 @@ export namespace Prefs {
             case "BOOLEAN":      await AsyncStorage.setItem(pref, String(value)); break;
             case "NUMBER":       await AsyncStorage.setItem(pref, String(value)); break;
             case "COOKIE_JAR":   await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
-            case "STRING_ARRAY": await AsyncStorage.setItem(pref, JSON.stringify(value));
+            case "STRING_ARRAY": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "LINKER_LINKS": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
         }
         await load_prefs();
     }
@@ -191,10 +200,41 @@ export namespace Prefs {
         }
     }
 
+    export const light_theme: Theme = {
+        dark: false,
+        colors: {
+            primary: Prefs.get_pref('primary_color'),
+            secondary: '#fc00c9',
+            background: '#eeeeee',
+            primary_dark: '#1a184f',
+            card: '#f2f2f2',
+            title: '#000000',
+            text: '#000000',
+            subtext: '#60676e',
+            deeptext: '#606060',
+            border: '#222222',
+            notification: '#1313ff',
+            shelf: '#c0bad6',
+            tabInactive: '#5b5b78',
+            line: '#303040',
+            searchInput: '#b7a1d4',
+            searchPlaceholder: '#8080a0',
+            inactive: '#5b5b78',
+            red: '#FF0000',
+            green: '#00FF00',
+            orange: '#FF7F50',
+            playingSong: '#7a71ab',
+            playScreen: '#7a71ab',
+            track: '#d0cae6',
+            highlightPressColor: '#bbaaff',
+            black: "#000000"
+        },
+    }
+
     export const dark_theme: Theme = {
         dark: true,
         colors: {
-            primary: '#7400fe',
+            primary: Prefs.get_pref('primary_color'),
             secondary: '#fc00c9',
             background: '#0d1016',
             primary_dark: '#1a184f',
@@ -225,7 +265,7 @@ export namespace Prefs {
     export const oled_theme: Theme = {
         dark: true,
         colors: {
-            primary: '#7400fe',
+            primary: Prefs.get_pref('primary_color'),
             secondary: '#fc00c9',
             background: '#000000',
             primary_dark: '#1a184f',
@@ -254,10 +294,22 @@ export namespace Prefs {
     }
 
     const themes = {
+        light: light_theme,
         dark: dark_theme,
-        oled: oled_theme,
+        oled: oled_theme
     }
-
+    export function pref_set_theme(set_theme: (_: Prefs.Theme) => void){
+        const theme = Prefs.get_theme(Prefs.get_pref('theme'));
+        set_theme(
+            {
+                dark: theme.dark,
+                colors: {
+                    ...theme.colors,
+                    primary: Prefs.get_pref('primary_color')
+                }
+            }
+        );
+    }
     export function get_theme(key: PossibleThemes) {
         const fallback_theme = dark_theme;
         if(key in themes) return themes[key];
@@ -266,4 +318,18 @@ export namespace Prefs {
     export function all_themes() {
         return Object.keys(themes);
     }
+    export type PrimaryColorDetails = {color: HexColor, icon: string, name: string};
+    export const possible_primary_colors: PrimaryColorDetails[] = [
+        {color: '#7400fe', icon: '🔮', name: 'Illusi'},
+        {color: '#FFFAFA', icon: '🌹', name: 'Snow'},
+        {color: '#FFCCFF', icon: '🌔', name: 'Moon'},
+        {color: '#FF007F', icon: '🌹', name: 'Rose'},
+        {color: '#14f727', icon: '📗', name: 'Science'},
+        {color: '#FF69B4', icon: '🌸', name: 'Hot'},
+        {color: '#FF7F50', icon: '🪸', name: 'Coral'},
+        {color: '#4B0082', icon: '🫐', name: 'Indigo'},
+        {color: '#E6E6FA', icon: '💠', name: 'Lavender'},
+        {color: '#00FA9A', icon: '🍃', name: 'Spring'},
+        {color: '#87CEEB', icon: '🌌', name: 'Sky'},
+    ];
 }
