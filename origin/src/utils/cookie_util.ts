@@ -1,4 +1,5 @@
 import { Cookies } from "@react-native-community/cookies";
+import { AxiosResponse } from "axios";
 
 type SameSite = "None" | "Lax" | "Strict" | undefined;
 
@@ -122,5 +123,9 @@ export class CookieJar {
     updateWithFetch(response: Response) {
         const set_cookies = response.headers.getSetCookie();
         this.merge(CookieJar.fromStrings(set_cookies));
+    }
+    updateWithAxios(response: AxiosResponse){
+        const set_cookies = response.headers["set-cookie"];
+        this.merge(CookieJar.fromStrings(set_cookies ?? []));
     }
 }
