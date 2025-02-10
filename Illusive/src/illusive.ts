@@ -196,7 +196,7 @@ export namespace Illusive {
         ["Musi", musi],
         ["API", api],
     ]);
-    export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "Spotify", "SoundCloud"];
+    export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "Spotify", "SoundCloud", "Apple Music"];
 
     interface ExportTrack {"new_track_data"?: Track}
     export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError> {

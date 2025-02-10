@@ -15,7 +15,7 @@ export namespace AppleMusic {
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
     export function client_cache_full() { return client_cache.enabled && client_cache.client.authorization !== null}
     export function playlist_urlid(playlist_url: string) {
-        return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
+        return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US", /.+?\//);
     }
     export async function extract_serialized_server_data(html: string, opts: Opts) {
         const serialized_server_data_regex = /<script type=\"application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
@@ -157,7 +157,7 @@ export namespace AppleMusic {
     export async function get_playlist(playlist_path: string, opts: Opts) {
         const playlist_response = await get_serialized_server_data(`https://music.apple.com/${urlid(playlist_path, "music.apple.com/")}`, opts);
         if ("error" in playlist_response) return playlist_response;
-        if(playlist_path.match(/us\/playlist\/.+?\/.+/)) { // Non-user playlist
+        if((playlist_response?.data as Playlist)?.[0]?.intent?.$kind == "PlaylistDetailPageIntent"){ // Non-user playlist
             const playlist = playlist_response.data as Playlist;
             return {data: playlist[0].data, authorization: playlist_response.authorization};
         } else { // User playlist
@@ -178,15 +178,26 @@ export namespace AppleMusic {
                 "platform": "web",
                 "relate": "catalog"
             };
-            const playlist_id = urlid(playlist_path, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US");
-            const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
-            if ("error" in api_playlists_response) return api_playlists_response;
-            if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
-            const user_playlist: UserPlaylist|ResponseError = await api_playlists_response.json().catch(json_catch);
-            if("error" in user_playlist) return user_playlist;
-            return {data: user_playlist, authorization: playlist_response.authorization};
+            const playlist_id = playlist_urlid(playlist_path);
+            try {
+                const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
+                if ("error" in api_playlists_response) throw api_playlists_response.error;
+                if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
+                const user_playlist: UserPlaylist|ResponseError = await api_playlists_response.json().catch(json_catch);
+                if("error" in user_playlist) throw user_playlist.error;
+                return {data: user_playlist, authorization: playlist_response.authorization};
+            }
+            catch(e){
+                const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `catalog/us/playlists/${playlist_id}`, params, null);
+                if ("error" in api_playlists_response) return api_playlists_response;
+                if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
+                const user_playlist: UserPlaylist|ResponseError = await api_playlists_response.json().catch(json_catch);
+                if("error" in user_playlist) return user_playlist;
+                return {data: user_playlist, authorization: playlist_response.authorization};
+            }
         }
     }
+    // TODO: Fix/Update this lol
     export async function get_playlist_continuation(playlist_id: string, offset: number, authorization: string, opts: Opts) {
         const params = {
             "l": "en-US",
