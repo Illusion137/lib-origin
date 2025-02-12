@@ -27,7 +27,7 @@ export async function cleanup_recently_played() {
     
     if(recently_played_data.length === recently_played_max_size) {
         await db_exec_async(sql_delete_from("recently_played_tracks"));
-        await all_promises( recently_played_data.map(async(track) => 
+        await all_promises( recently_played_data.reverse().map(async(track) => 
             insert_recently_played_track(
                 {
                     uid:track.uid,

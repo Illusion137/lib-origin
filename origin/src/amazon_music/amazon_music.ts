@@ -1,6 +1,6 @@
 import { CookieJar } from "../utils/cookie_util";
-import { PromiseResult } from "../utils/types";
-import { try_json_parse, urlid } from "../utils/util";
+import { PromiseResult, ResponseError } from "../utils/types";
+import { json_catch, try_json_parse, urlid } from "../utils/util";
 import { Config } from "./types/Config";
 import { CreatePlaylist } from "./types/CreatePlaylist";
 import { SearchResult } from "./types/SearchResult";
@@ -23,8 +23,10 @@ export namespace AmazonMusic {
     export async function get_amzn_music_data(opts: Opts): PromiseResult<Config> {
         try {
             if(client_cache_full()) return client_cache.client!;
+
             const response = await fetch("https://music.amazon.com/config.json", {
                 headers: {
+                    "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
                     "accept": "*/*",
                     "accept-language": "en-US,en;q=0.9",
                     "if-none-match": "W/\"7d0-ftBuOfVR2/DK+r1ZmQnASQUtmQw\"",
@@ -37,11 +39,12 @@ export namespace AmazonMusic {
                     "sec-fetch-site": "same-origin",
                     "cookie": opts.cookie_jar?.toString() as string,
                     "Referer": "https://music.amazon.com/my/library",
-                    "Referrer-Policy": "strict-origin-when-cross-origin"
+                    "Referrer-Policy": "strict-origin-when-cross-origin",
                 }
             });
 
-            const config: Config = await response.json();
+            const config: Config|ResponseError = await response.json().catch(json_catch);
+            if("error" in config) throw config.error;
             if(client_cache.enabled) client_cache.client = config;
             return config;
         } catch (error) { return { error: error as Error }; }
@@ -110,7 +113,7 @@ export namespace AmazonMusic {
                 },
                 body: body
             });
-            const show_home: ShowHome = await show_home_body.json();
+            const show_home: ShowHome = await show_home_body.json().catch(json_catch);
             return show_home;
         } catch (error) { return { error: error as Error }; }
     }
@@ -209,10 +212,11 @@ export namespace AmazonMusic {
             if ("error" in request_headers) throw request_headers.error;
             const user_hash = get_user_hash();
             const request_payload = { headers: JSON.stringify(request_headers), userHash: JSON.stringify(user_hash) };
-            const show_library: ShowLibraryHome = await (await fetch("https://na.mesk.skill.music.a2z.com/api/showLibraryHome", {
+            const show_library: ShowLibraryHome|ResponseError = await (await fetch("https://na.mesk.skill.music.a2z.com/api/showLibraryHome", {
                 method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar),
                 body: JSON.stringify(request_payload)
-            })).json();
+            })).json().catch(json_catch);
+            if("error" in show_library) return show_library;
             if (show_library.methods[0].interface !== "TemplateListInterface.v1_0.BindTemplateMethod")
                 throw new Error("TemplateListInterface not found in Show Library Home method interface");
             const playlists = show_library.methods[0].template.widgets[1].items;
@@ -262,7 +266,8 @@ export namespace AmazonMusic {
                 userHash: JSON.stringify(user_hash),
                 headers: JSON.stringify(request_headers)
             }
-            const response: SearchResult = await (await fetch("https://na.mesk.skill.music.a2z.com/api/showSearch", { method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar), body: JSON.stringify(request_payload) })).json();
+            const response: SearchResult|ResponseError = await (await fetch("https://na.mesk.skill.music.a2z.com/api/showSearch", { method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar), body: JSON.stringify(request_payload) })).json().catch(json_catch);
+            if("error" in response) return response;
 
             let song_widgets_index = 2;
             const widgets = response.methods[0].template.widgets
@@ -365,7 +370,7 @@ export namespace AmazonMusic {
         });
         // https://na.mesk.skill.music.a2z.com/api/addTracksToPlaylist?playlistId=df292c92-5c59-4a76-aa65-e893f7fbdf48&playlistTitle=Lafou&version=1&rejectDuplicate=false&userHash=%7B%22level%22%3A%22SONIC_RUSH_MEMBER%22%7D
         if(!response.ok) return {error: `Failed to create playlist with status code: ${response.status}`};
-        return await response.json() as CreatePlaylist;
+        return await response.json().catch(json_catch) as CreatePlaylist|ResponseError;
     }
     export async function delete_playlist(playlist_url: string, opts: Opts) {
         const amzn_music = opts.client ?? await get_amzn_music_data(opts);

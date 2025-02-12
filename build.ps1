@@ -47,3 +47,4 @@ node_modules\.bin\tsc.cmd -p tsconfig.json
 if ( $LASTEXITCODE -ne 0 ) { Write-ColorOutput "Failed to Compile Typescript" Red; exit; }
 eslint .
 if ( $LASTEXITCODE -ne 0 ) { Write-ColorOutput "Failed to Lint Typescript" Red; exit; }
+Write-ColorOutput "Successfully built lib-origin" Green; exit;

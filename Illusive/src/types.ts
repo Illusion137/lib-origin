@@ -1,3 +1,4 @@
+import { Proxy } from "../../origin/src";
 import { CookieJar } from "../../origin/src/utils/cookie_util"
 import { ResponseError } from "../../origin/src/utils/types"
 import { remove } from "../../origin/src/utils/util";
@@ -17,7 +18,7 @@ export type Promises = Promise<unknown>[]
 
 export interface Route<T> {"key": string, "name": string, "params": T, path: string}
 
-export type SQLType = "INTEGER" | "STRING" | "BOOLEAN";
+export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN";
 export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
                        {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
                        {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
@@ -38,6 +39,9 @@ export interface SQLTable {
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
 
+export type PrefEntry = [Prefs.PrefOptions, Prefs.Pref<unknown>];
+export type GroupSection<T> = {title: string, data: T[]};
+
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;
@@ -50,6 +54,7 @@ export interface AlphabetScroll {
 }
 export type ConvertTo = { uuid_uri: string } | { title: string };
 export interface LinkerLink {
+    link_uuid: string;
     uuid_uri: string;
     full_sample: boolean;
     to_service: MusicServiceType;
@@ -59,12 +64,14 @@ export interface LinkerLink {
 export interface DefaultPlaylist {
     name: string;
     force_order?: boolean;
+    check_existing_tracks?: boolean;
     track_function: () => Promise<Track[]>;
     four_track_function: () => Promise<Track[]>
 };
 export interface ResolvedDefaultPlaylist {
     name: string;
     force_order?: boolean;
+    check_existing_tracks?: boolean;
     four_tracks: Track[];
 };
 
@@ -141,6 +148,7 @@ export interface TrackMetaData {
 interface Basic_Track<T, U, V, X> {
     uid: string
     title: string
+    alt_title?: string
     artists: T
     duration: number
     prods?: string
@@ -167,7 +175,7 @@ interface Basic_Track<T, U, V, X> {
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
 }
-export type SQLTrackArray = [ string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
+export type SQLTrackArray = [ string, string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
 
 export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
@@ -209,6 +217,7 @@ export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], Pla
 export interface CompactPlaylistData {
     title: string
     four_track: Track[]
+	check_existing_tracks?: boolean;
     track_count: number
     type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>
@@ -314,6 +323,8 @@ export interface TrackMix { "tracks": Track[], "error"?: Error }
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
+export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
+
 export class MusicService {
     app_icon: string | number
     web_view_url?: string
@@ -322,7 +333,7 @@ export class MusicService {
     valid_playlist_url_regex: RegExp
     required_cookie_credentials: string[]
     cookie_jar_callback?: () => CookieJar
-    search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
+    search?: (query: string, opts?: SearchOpts) => Promise<MusicSearchResponse>
     search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
     explore?: () => Promise<IllusiveExplore>
     create_playlist?: (title: string) => Promise<string>
@@ -342,7 +353,7 @@ export class MusicService {
         valid_playlist_url_regex: RegExp,
         required_cookie_credentials: string[],
         cookie_jar_callback?: () => CookieJar
-        search?: (query: string, limit?: number) => Promise<MusicSearchResponse>
+        search?: (query: string, opts?: SearchOpts) => Promise<MusicSearchResponse>
         search_continuation?: (continuation_data: any) => Promise<MusicSearchResponse>
         explore?: () => Promise<IllusiveExplore>
         create_playlist?: (title: string) => Promise<string>

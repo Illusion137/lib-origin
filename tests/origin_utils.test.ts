@@ -8,7 +8,7 @@ test("encode_params", () => {
 	expect(utils.encode_params({ o: [0, 1] })).toBe("o=%5B0%2C1%5D");
 })
 
-test("", () => {
+test("is_empty", () => {
 	expect(utils.is_empty("")).toBeTruthy();
 	expect(utils.is_empty("   ")).toBeTruthy();
 	expect(utils.is_empty(undefined)).toBeTruthy();

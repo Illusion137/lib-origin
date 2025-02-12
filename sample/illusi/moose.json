@@ -1,0 +1,834 @@
+[
+    {
+        "id": 831,
+        "uid": "GunnaPpowerfeatDrakeOfficialAudio-ac7rkqf1nu79qsowldc60s61q0e7d27yfasw97a",
+        "title": "Gunna - P power (feat. Drake) [Official Audio]",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Gunna",
+                "uri": "youtube:UCAkIMkEaa9sZmjcy7mfd5lQ"
+            }
+        ],
+        "duration": 194,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "taIPXM8ICwo",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "GunnaPpowerfeatDrakeOfficialAudio-ac7rkqf1nu79qsowldc60s61q0e7d27yfasw97a.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 2,
+            "added_date": "2024-12-30T01:05:04.016Z",
+            "last_played_date": "2024-12-31T02:50:35.258Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "GunnaPpowerfeatDrakeOfficialAudio-ac7rkqf1nu79qsowldc60s61q0e7d27yfasw97a",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/taIPXM8ICwo/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 833,
+        "uid": "SayA-ac7rkprhryc174vsc8hpt9p7tymmu83qmksuft",
+        "title": "Say A'",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "A Boogie Wit da Hoodie",
+                "uri": "youtube:UCi-LzW_MRvCI8329s3Gd52A"
+            }
+        ],
+        "duration": 215,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "97qX2hktSrw",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "SayA-ac7rkprhryc174vsc8hpt9p7tymmu83qmksuft.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 1,
+            "added_date": "2024-12-30T01:05:04.006Z",
+            "last_played_date": "2024-12-31T02:54:05.772Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "SayA-ac7rkprhryc174vsc8hpt9p7tymmu83qmksuft",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/97qX2hktSrw/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 834,
+        "uid": "TURNINUP-ac7rkvni89vu6zpn809eqjv1y926208gxs92ydmqe",
+        "title": "TURNINUP",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Destroy Lonely",
+                "uri": "youtube:UCx95IwHfzVDujNhphVJAMMA"
+            }
+        ],
+        "duration": 191,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "fzhBdSRgln4",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "TURNINUP-ac7rkvni89vu6zpn809eqjv1y926208gxs92ydmqe.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.052Z",
+            "last_played_date": "2024-12-30T01:05:04.052Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "TURNINUP-ac7rkvni89vu6zpn809eqjv1y926208gxs92ydmqe",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/fzhBdSRgln4/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 835,
+        "uid": "TheBox-ac7rkvpff98wcufwaigaglt3h1kig3jbmd7lrxc",
+        "title": "The Box",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Roddy Ricch",
+                "uri": "youtube:UCC30L98-rMHfY5PJ46duOPg"
+            }
+        ],
+        "duration": 197,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "IxJjY5T9yag",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "TheBox-ac7rkvpff98wcufwaigaglt3h1kig3jbmd7lrxc.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 3,
+            "added_date": "2024-12-30T01:05:04.052Z",
+            "last_played_date": "2025-02-11T20:29:02.020Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "TheBox-ac7rkvpff98wcufwaigaglt3h1kig3jbmd7lrxc",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/IxJjY5T9yag/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 836,
+        "uid": "yvngxchrisBeenGettinMoneyLyrics-ac7rkq8ugfkuw30txsqyc1hi0vd6b92ythundd",
+        "title": "yvngxchris - Been Gettin' Money (Lyrics)",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "life plus lyrics",
+                "uri": "youtube:UCP9eeeKTJtPywypoLQX_K-w"
+            }
+        ],
+        "duration": 103,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "-V2mcRaB35M",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "yvngxchrisBeenGettinMoneyLyrics-ac7rkq8ugfkuw30txsqyc1hi0vd6b92ythundd.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 1,
+            "added_date": "2024-12-30T01:05:04.010Z",
+            "last_played_date": "2024-12-31T09:36:41.261Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "yvngxchrisBeenGettinMoneyLyrics-ac7rkq8ugfkuw30txsqyc1hi0vd6b92ythundd",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/-V2mcRaB35M/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 837,
+        "uid": "YoungNudyOldSchoolOfficialAudio-ac7rkqbpw10e85mjr43pb0820im5tubyohq4fas",
+        "title": "Young Nudy - Old School (Official Audio)",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Young Nudy",
+                "uri": "youtube:UCT8HZv2tyKqZSUjIbIW4syg"
+            }
+        ],
+        "duration": 201,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "Q1Ao-L5WFek",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "YoungNudyOldSchoolOfficialAudio-ac7rkqbpw10e85mjr43pb0820im5tubyohq4fas.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.009Z",
+            "last_played_date": "2024-12-30T01:05:04.009Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "YoungNudyOldSchoolOfficialAudio-ac7rkqbpw10e85mjr43pb0820im5tubyohq4fas",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/Q1Ao-L5WFek/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 838,
+        "uid": "ZodiacKiller-ac7rkpd0x814qyhejonuhim7tmhcso4ie35eji",
+        "title": "Zodiac Killer",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Official Khalil Faison",
+                "uri": "youtube:UCTs3GxqQcA_pbQ7CYhVoM-A"
+            }
+        ],
+        "duration": 125,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "DBWrUc8MNKQ",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "ZodiacKiller-ac7rkpd0x814qyhejonuhim7tmhcso4ie35eji.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.002Z",
+            "last_played_date": "2024-12-30T01:05:04.002Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "ZodiacKiller-ac7rkpd0x814qyhejonuhim7tmhcso4ie35eji",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/DBWrUc8MNKQ/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 839,
+        "uid": "LastDragon-ac7rksaile9a96mlmseeas8sj78vrub76g4yyr",
+        "title": "Last Dragon",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Shitty Boyz - Topic",
+                "uri": "youtube:UC665ZBOesF_bTRfqA3k6mlg"
+            }
+        ],
+        "duration": 205,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "ukx2qjhGXdA",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "LastDragon-ac7rksaile9a96mlmseeas8sj78vrub76g4yyr.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.025Z",
+            "last_played_date": "2024-12-30T01:05:04.025Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "LastDragon-ac7rksaile9a96mlmseeas8sj78vrub76g4yyr",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/ukx2qjhGXdA/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 840,
+        "uid": "CreamSoda-ac7rkoslow0ousk3x96hxumxnsnr0t6ht0g7kb",
+        "title": "Cream Soda",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Seycara Orchestral - Topic",
+                "uri": "youtube:UCGjFqcstNo97oJNwNW7A77g"
+            }
+        ],
+        "duration": 246,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "TdqcxgjryiI",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "CreamSoda-ac7rkoslow0ousk3x96hxumxnsnr0t6ht0g7kb.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:03.996Z",
+            "last_played_date": "2024-12-30T01:05:03.996Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "CreamSoda-ac7rkoslow0ousk3x96hxumxnsnr0t6ht0g7kb",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/TdqcxgjryiI/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 841,
+        "uid": "Bend-ac7rkwyz0ujy5uxh64pdkwrez83x85xq7irrge",
+        "title": "Bend",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Jace! - Topic",
+                "uri": "youtube:UCRX8uN4lv0DJafslOK13gWA"
+            }
+        ],
+        "duration": 99,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "6KBn0wpjQWA",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "Bend-ac7rkwyz0ujy5uxh64pdkwrez83x85xq7irrge.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.053Z",
+            "last_played_date": "2024-12-30T01:05:04.053Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "Bend-ac7rkwyz0ujy5uxh64pdkwrez83x85xq7irrge",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/6KBn0wpjQWA/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 842,
+        "uid": "DontyouwantmefeatSuch-ac7rkuc8ue0ed6lz9symk54h4v7iwsut78lpqwj",
+        "title": "Don't you want me (feat. Such)",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "PSYQUI - Topic",
+                "uri": "youtube:UCN6g6I3POYZnacDNvOLgJfg"
+            }
+        ],
+        "duration": 285,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "i7ouv9AyB_o",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "DontyouwantmefeatSuch-ac7rkuc8ue0ed6lz9symk54h4v7iwsut78lpqwj.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.045Z",
+            "last_played_date": "2024-12-30T01:05:04.045Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "DontyouwantmefeatSuch-ac7rkuc8ue0ed6lz9symk54h4v7iwsut78lpqwj",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/i7ouv9AyB_o/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 843,
+        "uid": "DingalingLilKeed-ac7rkut5bbroggx3ufje27ddakiok7sclendds",
+        "title": "Dingaling (Lil Keed)",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Various Artists - Topic",
+                "uri": "youtube:UCRX8uN4lv0DJafslOK13gWA"
+            }
+        ],
+        "duration": 101,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "nxlsX0qOmLQ",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "DingalingLilKeed-ac7rkut5bbroggx3ufje27ddakiok7sclendds.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.044Z",
+            "last_played_date": "2024-12-30T01:05:04.044Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "DingalingLilKeed-ac7rkut5bbroggx3ufje27ddakiok7sclendds",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/nxlsX0qOmLQ/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 845,
+        "uid": "HesMine-ac7rktg8gx45nqexu2exp6bmwutlguhyil0m2rk",
+        "title": "He's Mine",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "MoKenStef - Topic",
+                "uri": "youtube:UC-nuuyQfYBV8fpl3VsLdHQA"
+            }
+        ],
+        "duration": 255,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "N4YlYydOnWE",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "HesMine-ac7rktg8gx45nqexu2exp6bmwutlguhyil0m2rk.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.037Z",
+            "last_played_date": "2024-12-30T01:05:04.037Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "HesMine-ac7rktg8gx45nqexu2exp6bmwutlguhyil0m2rk",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/N4YlYydOnWE/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 846,
+        "uid": "LoveMeExplicit-ac7rksgyjdgoxobgecwcu2yy5k7h78k34sc23gg",
+        "title": "Love Me (Explicit)",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Various Artists - Topic",
+                "uri": "youtube:UC4IAZ3dowcXyvVYBx4hucSQ"
+            }
+        ],
+        "duration": 254,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "X_uoq5xCaFc",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "LoveMeExplicit-ac7rksgyjdgoxobgecwcu2yy5k7h78k34sc23gg.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-30T01:05:04.027Z",
+            "last_played_date": "2024-12-30T01:05:04.027Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "LoveMeExplicit-ac7rksgyjdgoxobgecwcu2yy5k7h78k34sc23gg",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/X_uoq5xCaFc/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 847,
+        "uid": "LuigisMansion-ac7rkwgnra80abpkv2r73aq47mff95i0jnkjl5d",
+        "title": "Luigi's Mansion",
+        "alt_title": "",
+        "artists": [
+            {
+                "name": "Jace! - Topic",
+                "uri": "youtube:UCRX8uN4lv0DJafslOK13gWA"
+            }
+        ],
+        "duration": 117,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 0,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "RwO_GpmEYV4",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "LuigisMansion-ac7rkwgnra80abpkv2r73aq47mff95i0jnkjl5d.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 1,
+            "added_date": "2024-12-30T01:05:04.053Z",
+            "last_played_date": "2024-12-31T09:33:39.475Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "LuigisMansion-ac7rkwgnra80abpkv2r73aq47mff95i0jnkjl5d",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/RwO_GpmEYV4/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    },
+    {
+        "id": 848,
+        "uid": "StanWillxBabyTronImmortal-c9e268pscngy35d6nhpnrke17vbjnoxb9ca4s5",
+        "title": "StanWill x BabyTron - Immortal",
+        "alt_title": "StanWill x BabyTron - Immortal",
+        "artists": [
+            {
+                "name": "StanWill",
+                "uri": "youtube:/channel/UC3gsh3QG3IPzFH4XkMsajLw"
+            }
+        ],
+        "duration": 124,
+        "prods": [],
+        "genre": "",
+        "tags": [],
+        "explicit": "NONE",
+        "unreleased": false,
+        "album": {
+            "name": "",
+            "uri": ""
+        },
+        "plays": 344000,
+        "imported_id": "",
+        "illusi_id": "",
+        "youtube_id": "6Hzhm2BLm_g",
+        "youtubemusic_id": "",
+        "soundcloud_id": 0,
+        "soundcloud_permalink": "",
+        "spotify_id": "",
+        "amazonmusic_id": "",
+        "applemusic_id": "",
+        "artwork_url": "",
+        "thumbnail_uri": "",
+        "media_uri": "StanWillxBabyTronImmortal-c9e268pscngy35d6nhpnrke17vbjnoxb9ca4s5.m4a",
+        "lyrics_uri": "",
+        "meta": {
+            "plays": 0,
+            "added_date": "2024-12-31T09:21:29.767Z",
+            "last_played_date": "2024-12-31T09:21:29.767Z"
+        },
+        "uuid": "7f9a751e-d3da-4754-81c7-93bffacf82ed",
+        "track_uid": "StanWillxBabyTronImmortal-c9e268pscngy35d6nhpnrke17vbjnoxb9ca4s5",
+        "playback": {
+            "artwork": {
+                "uri": "https://img.youtube.com/vi/6Hzhm2BLm_g/0.jpg",
+                "cache": "force-cache"
+            },
+            "added": false,
+            "successful": false
+        },
+        "downloading": {}
+    }
+]

@@ -134,7 +134,7 @@ async function catdl(){
     }
     dispatch_dlposts(cats_collection.items);
 
-    let max_refreshes = 50;
+    let max_refreshes = 200;
     while (max_refreshes-- > 0 && cats_collection.more_available) {
 		cats_collection = await Instagram.collection_posts_more({ cookie_jar, collection_id: cats_collection_id, max_id: cats_collection.next_max_id });
 		if ("error" in cats_collection) {

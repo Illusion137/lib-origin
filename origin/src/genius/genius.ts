@@ -1,3 +1,5 @@
+import { ResponseError } from "../utils/types";
+import { json_catch } from "../utils/util";
 import { Result, Search } from "./types/Search";
 
 export namespace Genius {
@@ -22,7 +24,8 @@ export namespace Genius {
             method: "GET"
         });
         if (!search_response.ok) return { error: new Error(String(search_response.status)) };
-        const search_result: Search = await search_response.json();
+        const search_result: Search|ResponseError = await search_response.json().catch(json_catch);
+        if("error" in search_result) return search_result;
         const top_hit = search_result.response.sections.find(item => item.type === "top_hit");
         if (top_hit === undefined) return { error: new Error("top_hit doesn't exist") };
         return top_hit.hits[0].result;

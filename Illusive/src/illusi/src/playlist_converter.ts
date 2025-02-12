@@ -37,7 +37,6 @@ export function track_intersection(f: Track, t: Track): boolean {
 }
 export async function playlist_tracks(uuid_uri: string) {
     if(uuid_uri === Constants.library_write_playlist) {
-        await SQLTracks.fetch_track_data();
         return GLOBALS.global_var.sql_tracks.slice();
     }
     const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
@@ -59,11 +58,25 @@ export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_u
 export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[]) {
     if("title" in to) {
         if(to_service === "Illusi") {
+            const all_playlists = await SQLPlaylists.all_playlists_data()
+            const found_playlist = all_playlists.find(playlist => playlist.title === to.title);
+            if(found_playlist !== undefined){
+                await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, tracks.map(({uid}) => uid));
+                return {ok: true};
+            }
             const playlist_uuid = await SQLPlaylists.create_playlist(to.title);
             await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
             return {ok: true};
         }
         const service = Illusive.music_service.get(to_service)!;
+        const all_playlists = await service.get_user_playlists!();
+        if("error" in all_playlists) return {ok: false};
+        const found_playlist = all_playlists.playlists.find(playlist => playlist.title.name === to.title);
+        if(found_playlist !== undefined){
+            if(found_playlist.title.uri === undefined) return {ok: false};
+            const [, playlist_id] = split_uri(found_playlist.title.uri!);
+            return await service.add_tracks_to_playlist!(await playlist_tracks_excluding_playlist(tracks, found_playlist.title.uri!), playlist_id);
+        }
         const [, playlist_id] = split_uri(await service.create_playlist!(to.title));
         return await service.add_tracks_to_playlist!(tracks, playlist_id);
     } else {
@@ -104,12 +117,12 @@ export async function sample_tracks(stracks: Track[], to: MusicServiceType) {
     const updated_tracks: Track[] = [];
     for(const track of stracks) {
         if(track.imported_id) continue;
-        const conversion_track = await Illusive.convert_track(track, to, proxies, [to]);
+        const conversion_track = await Illusive.convert_track(track, {to_music_service: to, proxies, possible_services: [to]});
         if("error" in conversion_track) { 
             Logger.log_error(conversion_track).catch(e => e); 
             continue;
         }
-        updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track));
+        updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track.track!));
     }
     return updated_tracks;
 }
@@ -123,3 +136,41 @@ export async function convert_playlist(from_tracks: Track[], to: MusicServiceTyp
     await mutilate_playlist(to, opts.to, from_tracks);
     return {ok: true};
 }
+
+// export async function playlist_tracks_test(uuid_uri: string) {
+//     const [service, id] = split_uri(uuid_uri);
+//     const playlist_tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
+//     if("error" in playlist_tracks) return [];
+//     return playlist_tracks.tracks;
+// }
+
+// export function track_intersection_test(f: Track, t: Track): boolean {
+//     if(!is_empty(f.illusi_id) && !is_empty(t.illusi_id) && f.illusi_id === t.illusi_id) return true;
+//     if(!is_empty(f.youtube_id) && !is_empty(t.youtube_id) && f.youtube_id === t.youtube_id) return true;
+//     if(!is_empty(f.youtubemusic_id) && !is_empty(t.youtubemusic_id) && f.youtubemusic_id === t.youtubemusic_id) return true;
+//     if(!is_empty(f.spotify_id) && !is_empty(t.spotify_id) && f.spotify_id === t.spotify_id) return true;
+//     if(!is_empty(f.amazonmusic_id) && !is_empty(t.amazonmusic_id) && f.amazonmusic_id === t.amazonmusic_id) return true;
+//     if(!is_empty(f.applemusic_id) && !is_empty(t.applemusic_id) && f.applemusic_id === t.applemusic_id) return true;
+//     if(!is_empty(f.soundcloud_id) && !is_empty(t.soundcloud_id) && f.soundcloud_id === t.soundcloud_id) return true;
+//     if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
+//     return false;
+// }
+// export async function playlist_tracks_excluding_playlist_test(tracks: Track[], uuid_uri: string) {
+//     const ptracks = await playlist_tracks_test(uuid_uri);
+//     return tracks.filter((f) => {
+//         for(const t of ptracks)
+//             if(track_intersection_test(f, t)) false;    
+//         return true;
+//     });
+// }
+// export async function convert_playlist_test(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts): PromiseResult<{"ok": true}> {
+//     const service = Illusive.music_service.get(to)!;
+//     if("title" in opts.to) return {error: new Error("I dont know")};
+//     const [_, playlist_id] = split_uri(opts.to.uuid_uri);
+//     const filtered_tracks = await playlist_tracks_excluding_playlist_test(from_tracks, opts.to.uuid_uri);
+//     console.log(filtered_tracks.length)
+//     console.log(playlist_id);
+//     const good = await service.add_tracks_to_playlist!(filtered_tracks, playlist_id);
+//     console.log(good);
+//     return {ok: true};
+// }

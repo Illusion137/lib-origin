@@ -4,6 +4,7 @@ export namespace ExampleObj {
     export const track_example0: Track = {
         uid: "",
         title: "",
+        alt_title: "",
         artists: [],
         duration: 0,
         prods: "",

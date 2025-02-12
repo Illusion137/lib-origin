@@ -203,7 +203,7 @@ export interface Transcoding {
 }
 
 export interface Format {
-    protocol: string
+    protocol: 'hls'|'progressive'
     mime_type: string
 }
 
@@ -423,7 +423,7 @@ export interface Transcoding {
 }
 
 export interface Format {
-    protocol: string
+    protocol: 'hls'|'progressive'
     mime_type: string
 }
 

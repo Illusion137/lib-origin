@@ -43,13 +43,13 @@ function createRange(_0x316523, _0x13fdc3, _0x15974b) {
     }
     return baseRange(_0x316523, _0x13fdc3, _0x15974b = undefined === _0x15974b ? _0x316523 < _0x13fdc3 ? 0x1 : -0x1 : toFinite(_0x15974b), false);
 }
-function getColsInGroup(_0x62a75d) {
-    if (0x1 === _0x62a75d.length) {
+function getColsInGroup(group) {
+    if (0x1 === group.length) {
         return 0x1;
     }
     var _0x53021d;
-    for (var _0x1b11cc = 0x0; _0x1b11cc < _0x62a75d.length; _0x1b11cc++) {
-        if ((_0x53021d = undefined === _0x53021d ? _0x62a75d[_0x1b11cc].y : _0x53021d) !== _0x62a75d[_0x1b11cc].y) {
+    for (var _0x1b11cc = 0x0; _0x1b11cc < group.length; _0x1b11cc++) {
+        if ((_0x53021d = undefined === _0x53021d ? group[_0x1b11cc].y : _0x53021d) !== group[_0x1b11cc].y) {
             return _0x1b11cc;
         }
     }

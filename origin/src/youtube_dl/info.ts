@@ -25,7 +25,7 @@ const LOCALE = { hl: "en", timeZone: "UTC", utcOffsetMinutes: 0 },
 const WEB_CREATOR_CONTEXT = {
 	client: {
 		clientName: "WEB_CREATOR",
-		clientVersion: "1.20240723.03.00",
+		clientVersion: "1.20241215.03.00",
 		...LOCALE
 	}
 };

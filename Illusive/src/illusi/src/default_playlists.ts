@@ -1,6 +1,6 @@
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Prefs } from '../../prefs';
-import { CompactPlaylistData, DefaultPlaylist } from "../../types";
+import { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "../../types";
 import * as GLOBALS from './globals';
 import * as SQLPlaylists from './sql/sql_playlists';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
@@ -17,7 +17,7 @@ export const default_playlists: DefaultPlaylist[] = [
         })
     },
     {
-        name: "Past Queue", force_order: true, track_function: (async () => {
+        name: "Past Queue", check_existing_tracks: true, force_order: true, track_function: (async () => {
             const tracks = GLOBALS.global_var.past_playing_tracks;
             return tracks;
         }), four_track_function: (async () => {
@@ -25,7 +25,7 @@ export const default_playlists: DefaultPlaylist[] = [
         })
     },
     {
-        name: "Recently Played", track_function: (async () => {
+        name: "Recently Played", check_existing_tracks: true, track_function: (async () => {
             const tracks = await SQLRecentlyPlayed.recently_played_tracks();
             return tracks;
         }), four_track_function: (async () => {
@@ -33,12 +33,12 @@ export const default_playlists: DefaultPlaylist[] = [
         })
     },
     {
-        name: "Formerly Played", track_function: (async () => {
+        name: "Most Played", track_function: (async () => {
             const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-            const tracks = GLOBALS.global_var.sql_tracks.slice().sort((a, b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);
+            const tracks = GLOBALS.global_var.sql_tracks.filter(track => (track.meta?.plays ?? 0) !== 0).sort((a, b) => b.meta!.plays - a.meta!.plays).slice(0, default_playlist_max_size);
             return tracks;
         }), four_track_function: (async () => {
-            return GLOBALS.global_var.sql_tracks.slice().sort((a, b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, 4);;
+            return GLOBALS.global_var.sql_tracks.filter(track => (track.meta?.plays ?? 0) !== 0).sort((a, b) => b.meta!.plays - a.meta!.plays).slice(0, 4);
         })
     },
     {
@@ -60,12 +60,12 @@ export const default_playlists: DefaultPlaylist[] = [
         })
     },
     {
-        name: "Most Played", track_function: (async () => {
+        name: "Formerly Played", track_function: (async () => {
             const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-            const tracks = GLOBALS.global_var.sql_tracks.slice().sort((a, b) => b.meta!.plays - a.meta!.plays).slice(0, default_playlist_max_size);
+            const tracks = GLOBALS.global_var.sql_tracks.slice().sort((a, b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);
             return tracks;
         }), four_track_function: (async () => {
-            return GLOBALS.global_var.sql_tracks.slice().sort((a, b) => b.meta!.plays - a.meta!.plays).slice(0, 4);
+            return GLOBALS.global_var.sql_tracks.slice().sort((a, b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, 4);;
         })
     },
     {
@@ -90,10 +90,10 @@ export async function default_compact_playlists() {
         type: "LIBRARY"
     })
     for (const default_playlist of default_playlists) {
-        if (default_playlist.name === "Recently Played") continue;
         const tracks = await default_playlist.track_function();
         illusi_playlists.push({
             title: default_playlist.name,
+	        check_existing_tracks: default_playlist.name === "Recently Played" || default_playlist.name === "Past Queue",
             four_track: tracks.slice(0, 4),
             track_count: tracks.length,
             track_callback: default_playlist.track_function,
@@ -115,4 +115,15 @@ export async function compact_playlists() {
         })
     }
     return playlists;
+}
+
+export async function resolved_default_playlists(): Promise<ResolvedDefaultPlaylist[]> {
+    return await Promise.all(default_playlists.map(async(p) => {
+        return {
+            name: p.name,
+            force_order: p.force_order,
+            check_existing_tracks: p.check_existing_tracks,
+            four_tracks: await p.four_track_function()
+        };
+    }));
 }

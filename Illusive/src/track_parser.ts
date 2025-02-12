@@ -1,68 +1,13 @@
 import { AmazonSearchTrack } from '../../origin/src/amazon_music/types/SearchResult';
 import { AmazonTrack } from '../../origin/src/amazon_music/types/ShowHomeCreateAndBindMethod';
-import { AppleTrack } from '../../origin/src/apple_music/types/TrackListSection';
-import { AppleUserPlaylistTrack } from '../../origin/src/apple_music/types/UserPlaylist';
 import * as Origin from '../../origin/src/index'
 import { Item4 } from '../../origin/src/spotify/types/Album';
 import { CollectionItem } from '../../origin/src/spotify/types/Collection';
 import { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
 import { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
-import { empty_undefined, extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_runs, parse_time } from '../../origin/src/utils/util'
-import { PlaylistPanelVideoRenderer } from '../../origin/src/youtube/types/MixResults_0';
-import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
-import { best_thumbnail, create_uri, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
-import { Runs, Track } from './types';
-
-export function track_parsed_data() {}
-
-export function parse_musi_track(track: Origin.Musi.MusiTrack): Track {
-    return {
-        uid: generate_new_uid(track.video_name),
-        title: track.video_name,
-        artists: [{name: track.video_creator, uri: null}],
-        duration: track.video_duration,
-        youtube_id: track.video_id
-    }
-}
-
-export function parse_youtube_mix_track(track: PlaylistPanelVideoRenderer): Track {
-    return {
-        uid: generate_new_uid(track.title.simpleText),
-        title: track.title.simpleText,
-        artists: [{name: parse_runs(track.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId)}],
-        duration: parse_time(track.lengthText.simpleText),
-        youtube_id: track.videoId
-    }
-}
-
-export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack, artists: Runs, album: Runs): Track {
-    return {
-        uid: generate_new_uid(parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs)),
-        title: parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs),
-        artists: youtube_music_split_artists(artists),
-        duration: parse_time(parse_runs(track.fixedColumns[0].musicResponsiveListItemFixedColumnRenderer.text.runs)),
-        album: empty_undefined(parse_runs(album)) !== undefined ? {name: parse_runs(album), uri: null} : undefined,
-        explicit: track.badges.length >= 1 && track.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
-        youtube_id: track.playlistItemData.videoId,
-        youtubemusic_id: track.playlistItemData.playlistSetVideoId
-    }
-}
-
-export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTrack): Track|undefined {
-    // const artist_runs = track.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs;
-    const album_runs = track.flexColumns[2].musicResponsiveListItemFlexColumnRenderer.text.runs;
-    if(track.playlistItemData?.videoId === undefined) return undefined;
-    return {
-        uid: generate_new_uid(parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs)),
-        title: parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs),
-        artists: youtube_music_split_artists(track.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs as Runs),
-        duration: parse_time(parse_runs(track.fixedColumns[0].musicResponsiveListItemFixedColumnRenderer.text.runs)),
-        album: empty_undefined(parse_runs(album_runs)) !== undefined ? {name: parse_runs(album_runs), uri: album_runs[0].navigationEndpoint?.browseEndpoint?.browseId !== undefined ? create_uri("youtubemusic", album_runs[0].navigationEndpoint.browseEndpoint.browseId) : null} : undefined,
-        explicit: track.badges !== undefined && track.badges.length >= 1 && track.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
-        youtube_id: track.playlistItemData.videoId,
-        youtubemusic_id: track.playlistItemData.playlistSetVideoId
-    }
-}
+import { extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_time } from '../../origin/src/utils/util'
+import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
+import { Track } from './types';
 
 export function parse_spotify_playlist_track(track: ContentItem): Track {
     return {
@@ -146,33 +91,4 @@ export function parse_amazon_music_search_track(track: AmazonSearchTrack): Track
         explicit: track.tags.includes("E") ? "EXPLICIT" : "NONE",
         amazonmusic_id: Origin.AmazonMusic.get_track_id(track)
     }
-}
-
-export function parse_apple_music_playlist_track(track: AppleTrack): Track {
-    return {
-        uid: generate_new_uid(track.title),
-        title: track.title,
-        artists: track.subtitleLinks.map(link => {
-            return {name: make_topic(link.title), uri: create_uri("applemusic", link.segue.destination.contentDescriptor.identifiers.storeAdamID)};
-        }),
-        album: track.tertiaryLinks?.[0] !== undefined ? {name: track.tertiaryLinks[0].title, uri: create_uri("applemusic", track.tertiaryLinks[0].segue.destination.contentDescriptor.identifiers.storeAdamID)} : undefined,
-        duration: Math.floor(track.duration / 1000),
-        explicit: track.showExplicitBadge ? "EXPLICIT" : "NONE",
-        applemusic_id: track.id
-    }
-}
-export function parse_apple_music_artwork(url: string, size: number = 200) {
-    return url.replace("{w}x{h}bb.{f}", `${size}x${size}bb.webp`)
-}
-export function parse_apple_music_user_playlist_track(track: AppleUserPlaylistTrack): Track {
-    return {
-        uid: generate_new_uid(track.attributes.name),
-        title: track.attributes.name,
-        artists: [{name: make_topic(track.attributes.artistName), uri: null}],
-        album: {name: track.attributes.albumName, uri: null},
-        duration: Math.floor(track.attributes.durationInMillis / 1000),
-        explicit: track.attributes.contentRating !== undefined && track.attributes.contentRating === "explicit" ? "EXPLICIT": "NONE",
-        artwork_url: parse_apple_music_artwork(track.attributes.artwork.url),
-        applemusic_id: track.id
-    };
 }

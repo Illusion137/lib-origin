@@ -17,6 +17,7 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const to_array: SQLTrackArray = [        
         track.uid ?? "",
         track.title ?? "",
+        track.alt_title ?? "",
         JSON.stringify(track.artists ?? []),
         track.duration ?? 0,
         JSON.stringify(track.prods ?? []),
@@ -60,6 +61,7 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
     return {
         uid: track.uid,
         title: track.title,
+        alt_title: new_track.title ?? new_track.alt_title,
         artists: track.artists,
         duration: new_track.duration,
         album: is_empty(track.album) ? new_track.album : track.album,
@@ -89,7 +91,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track {
         album: JSON.parse(sql_track.album!),
         prods: JSON.parse(sql_track.prods!),
         tags: JSON.parse(sql_track.tags!),
-        explicit: Boolean(sql_track.explicit),
+        explicit: sql_track.explicit,
         unreleased: Boolean(sql_track.unreleased),
         meta: {
             plays: meta.plays,
@@ -101,22 +103,31 @@ export function sql_track_to_track(sql_track: SQLTrack): Track {
     });
 }
 
-export async function mark_track_downloaded(uid: string, media_uri: string) {
+export async function mark_track_downloaded(uid: Track['uid'], media_uri: string) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = media_uri;
 }
-export async function mark_track_undownloaded(uid: string) {
+export async function mark_all_tracks_undownloaded() {
+    await Promise.all(GLOBALS.global_var.sql_tracks.map(async (track) => {
+        if(is_empty(track.media_uri)) return;
+        await SQLfs.delete_item(media_directory(track.media_uri!));
+        track.media_uri = "";
+    }));
+    await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])}`);
+}
+export async function mark_track_undownloaded(uid: Track['uid'], media_uri: string) {
+    if(is_empty(media_uri)) return;
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
+    await SQLfs.delete_item(media_directory(media_uri));
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = "";
-    await clean_directories();
 }
 export async function track_exists(track: Track) {
     for(const t of GLOBALS.global_var.sql_tracks) {
         if(!is_empty(t.illusi_id) && !is_empty(track.illusi_id) && t.illusi_id === track.illusi_id) return true;
         if(!is_empty(t.youtube_id) && !is_empty(track.youtube_id) && t.youtube_id === track.youtube_id) return true;
-        if(!is_empty(t.youtubemusic_id) && !is_empty(track.youtubemusic_id) && t.youtubemusic_id === track.youtubemusic_id) return true;
+        // if(!is_empty(t.youtubemusic_id) && !is_empty(track.youtubemusic_id) && t.youtubemusic_id === track.youtubemusic_id) return true;
         if(!is_empty(t.spotify_id) && !is_empty(track.spotify_id) && t.spotify_id === track.spotify_id) return true;
         if(!is_empty(t.amazonmusic_id) && !is_empty(track.amazonmusic_id) && t.amazonmusic_id === track.amazonmusic_id) return true;
         if(!is_empty(t.applemusic_id) && !is_empty(track.applemusic_id) && t.applemusic_id === track.applemusic_id) return true;
@@ -141,7 +152,7 @@ export async function track_from_service_id(ftrack: Track) {
     if(track.length === 0) return null;
     return sql_track_to_track(track[0] as SQLTrack);
 }
-export async function track_from_uid(uid: string) {
+export async function track_from_uid(uid: Track['uid']) {
     const track = await db_get_all_async(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return sql_track_to_track(track[0] as SQLTrack);
 }
@@ -156,13 +167,12 @@ export async function fetch_track_data() {
 export async function clear_tracks() {
     await db_exec_async('DELETE FROM tracks');
 }
-export async function fetch_track_data_from_uid(uid: string): Promise<Track> {
+export async function fetch_track_data_from_uid(uid: Track['uid']): Promise<Track> {
     const tracks: SQLTrack[] = await db_get_all_async(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return tracks.map(track => sql_track_to_track(track))[0];
 }
 
 export async function insert_all_tracks(tracks: Track[]) {
-    await fetch_track_data();
     const promise_tracks: Promises = [];
     for(const track of tracks)
         promise_tracks.push(insert_track(track));
@@ -175,10 +185,10 @@ export async function insert_track(track: Track) {
     GLOBALS.global_var.sql_tracks.push(track);
     if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
 }
-export async function update_track(track_uid: string, new_track: Track) {
+export async function update_track(track_uid: Track['uid'], new_track: Track) {
     await db_run_async(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, ExampleObj.track_example0)} ${sql_where<Track>(["uid", track_uid])}`);
 }
-export async function update_track_meta_data(track_uid: string, new_meta: TrackMetaData) {
+export async function update_track_meta_data(track_uid: Track['uid'], new_meta: TrackMetaData) {
     await db_run_async(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
 }
 
@@ -187,20 +197,18 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
     await update_track(merged_track.uid, merged_track);
     return merged_track;
 }
-export async function delete_track(uid: string) {
+export async function delete_track(uid: Track['uid']) {
     await db_run_async(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
     await clean_directories();
 }
 
 export async function restore_thumbnail_cache() {
-    await fetch_track_data();
     for(const track of GLOBALS.global_var.sql_tracks)
         if(is_empty(track.imported_id) && is_empty(track.thumbnail_uri))
             download_thumbnail(track).catch(e => e);
 }
 
 export async function clean_thumbnail_cache() {
-    await fetch_track_data();
     const files = await SQLfs.read_directory(thumbnail_directory(""));
     const all_promises: Promises = [];
     for(const file of files)
@@ -211,7 +219,6 @@ export async function clean_thumbnail_cache() {
 
 export async function clean_directories() {
     if(!Prefs.get_pref('can_clean_directories')) return;
-    await fetch_track_data();
     const thumbnail_files = await SQLfs.read_directory(thumbnail_directory(""));
     const media_files     = await SQLfs.read_directory(media_directory(""));
     const lyrics_files    = await SQLfs.read_directory(lyrics_directory(""));

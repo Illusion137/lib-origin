@@ -1,4 +1,5 @@
 import { extract_string_from_pattern, generate_new_uid, is_empty, parse_runs, parse_time } from "../../../origin/src/utils/util";
+import { PlaylistPanelVideoRenderer } from "../../../origin/src/youtube/types/MixResults_0";
 import { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
 import { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
 import { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
@@ -54,64 +55,68 @@ export function extract_youtube_title_info(track: Track) {
         clean
     }   
 }
+export function clean_youtube_title(title: string){
+    return String(title)
+    .replace(/ ?full song ?/ig, '')
+    .replace(/ ?[\(\[] ?prod\.?.+?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?dir\.?.+?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?ft\.?.+?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?feat\.?.+?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?w\/.+?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?unreleased ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?explicit ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?explicit version ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?legendado ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?full video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?video version ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?music ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?audio ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?lyrics? ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?lyrics? video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?music video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official audio ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official visual ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official lyrics? ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official lyrics? video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?exclusive music video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official music video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[].*?official music video ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?visualizer ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?visualiser ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official visualizer ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?official mv ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?reupload ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?bass boosted ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?HD ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?HQ ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?remix ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?ost ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?fanmade ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?extended ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?tik tok ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?tiktok ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?amv ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?full ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?full song ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?best version ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[] ?best ?[\)\]]/ig, '')
+    .replace(/ ?[\(\[].*?only.*?[\)\]]/ig, '')
+    .replace(/ ?[\(\[].*?remix.*?[\)\]]/ig, '')
+    .replace(/ ?[\(\[].*?clean.*?[\)\]]/ig, '')
+    .replace(/ ?[\(\[].*?by.*?[\)\]]/ig, '')
+    .replace(/unreleased/ig, '');
+}
 export function parse_youtube_title_artist(track: Track): Track {
-    const new_title = String(track.title)
-        .replace(/ ?full song ?/ig, '')
-        .replace(/ ?[\(\[] ?prod\.?.+?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?dir\.?.+?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?ft\.?.+?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?feat\.?.+?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?w\/.+?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?unreleased ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?explicit ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?explicit version ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?legendado ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?full video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?video version ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?music ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?audio ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?lyrics? ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?lyrics? video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?music video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official audio ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official visual ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official lyrics? ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official lyrics? video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?exclusive music video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official music video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[].*?official music video ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?visualizer ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?visualiser ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official visualizer ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?official mv ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?reupload ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?bass boosted ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?HD ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?HQ ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?remix ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?ost ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?fanmade ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?extended ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?tik tok ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?tiktok ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?amv ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?full ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?full song ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?best version ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[] ?best ?[\)\]]/ig, '')
-        .replace(/ ?[\(\[].*?only.*?[\)\]]/ig, '')
-        .replace(/ ?[\(\[].*?remix.*?[\)\]]/ig, '')
-        .replace(/ ?[\(\[].*?clean.*?[\)\]]/ig, '')
-        .replace(/ ?[\(\[].*?by.*?[\)\]]/ig, '')
-        .replace(/unreleased/ig, '');
+    const new_title = clean_youtube_title(track.title);
     const info = extract_youtube_title_info(track);
     const joined_artists = !is_empty(info.feats) ? track.artists.concat({name: info.feats, uri: null}) : track.artists;
     return {
         ...track,
         title: new_title,
+        alt_title: track.title,
         artists: joined_artists,
         explicit: (info.explicit ? "EXPLICIT" : 
             info.clean ? "CLEAN" : "NONE") as ExplicitMode,
@@ -120,7 +125,7 @@ export function parse_youtube_title_artist(track: Track): Track {
     }
 }
 
-export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[] {
+export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_panel_video_renderer: PlaylistPanelVideoRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[] {
     if("video_renderer" in videos) {
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
             return parse_youtube_title_artist({
@@ -143,7 +148,18 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
                 plays: youtube_views_number(parse_runs(track?.shortViewCountText?.runs ?? []))
             } as Track);
         });
-    } else return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
+    } else if("playlist_panel_video_renderer" in videos) {
+        return videos.playlist_panel_video_renderer.filter(track => !is_empty(track?.lengthText.simpleText)).map(track => { 
+            return parse_youtube_title_artist ({
+                uid: generate_new_uid(track.title.simpleText),
+                title: track.title.simpleText,
+                artists: [{name: parse_runs(track.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId)}],
+                duration: parse_time(track.lengthText.simpleText),
+                youtube_id: track.videoId
+            } as Track)
+        });
+    } 
+    else return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
         return parse_youtube_title_artist({
             uid: generate_new_uid(parse_runs(track.title.runs)),
             title: parse_runs(track.title.runs),

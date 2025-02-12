@@ -1,6 +1,7 @@
 import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
-import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, ISOString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Promises, Track } from "./types";
+import { Prefs } from "./prefs";
+import { CompactPlaylistType, GroupSection, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
@@ -52,8 +53,14 @@ export function pad_number_left(num: number, padding: number): IntString {
 }
 export function date_from(date: {year?: number, month?: number, day?: number, hour?: number, minute?: number, second?: number, ms?: number}) {
     const new_date = new Date();
-    const iso_string: ISOString = `${pad_number_left(date.year ?? new_date.getFullYear(), 4)}-${pad_number_left(date.month ?? new_date.getMonth(), 2)}-${pad_number_left(date.day ?? new_date.getDay(), 2)}T${pad_number_left(date.hour ?? new_date.getHours(), 2)}:${pad_number_left(date.minute ?? new_date.getMinutes(), 2)}:${pad_number_left(date.second ?? new_date.getSeconds(), 2)}.${pad_number_left(date.ms ?? new_date.getMilliseconds(), 3)}Z`;
-    return new Date(iso_string);
+    if(date.year) new_date.setFullYear(date.year);
+    if(date.month) new_date.setMonth(date.month);
+    if(date.day) new_date.setDate(date.day);
+    if(date.hour) new_date.setHours(date.hour);
+    if(date.minute) new_date.setMinutes(date.minute);
+    if(date.second) new_date.setSeconds(date.second);
+    if(date.ms) new_date.setMilliseconds(date.ms);
+    return new_date;
 }
 export function track_section_map(tracks: Track[]): { "char_data": string[], "section_map": Track[][] } {
     const sections_map = new Map<string, Track[]>();
@@ -77,22 +84,27 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
     }
     return {char_data: section_chars, section_map: [...sections]};
 }
+const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
 export function track_query_filter(tracks: Track[], query?: string) {
     if(!is_empty(query)) {
+        const explicit_flag = query!.includes("@ex");
+        const clean_flag = query!.includes("@cl");
         const jp_flag = query!.includes("@jp");
-        const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
+        const sc_flag = query!.includes("@sc");
 
-        query = remove(query!, /@jp ?/);
+        query = remove(query!, /@ex ?/, /@cl ?/, /@jp ?/, /@sc ?/);
 
         return tracks.filter(track => {
-            const includes_title = remove_special_chars(track.title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
+            const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
+            const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
             const includes_artist = track.artists[0].name.toUpperCase().includes(query!.toUpperCase());
             
-            const jp_test_title = jp_regex.test(track.title);
-            const jp_test_artist = jp_regex.test(track.artists[0].name);
-            const jp_test = jp_flag && (jp_test_title||jp_test_artist);
+            const jp_test = jp_flag && (jp_regex.test(title)||jp_regex.test(track.artists[0].name));
+            const clean_test = clean_flag && (track.explicit === "CLEAN");
+            const explicit_test = explicit_flag && (track.explicit === "EXPLICIT");
+            const sc_test = sc_flag && (!is_empty(track.soundcloud_id));
             
-            return !is_empty(query) && (includes_title||includes_artist) || jp_test;
+            return !is_empty(query) && (includes_title||includes_artist) || jp_test || clean_test || explicit_test || sc_test;
         });
     }
     return tracks;
@@ -170,16 +182,23 @@ export function music_service_to_music_service_uri(music_service_uri: MusicServi
         case "API":           return "api";;
     }
 }
-export function youtube_views_number(views_string: string): number {
+export function is_duration_string(str: string|undefined){
+    if(str === undefined) return false;
+    return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str);
+}
+export function is_number(str: string){
+    return !isNaN(parseFloat(str));
+}
+export function youtube_views_number(views_string?: string): number {
     if(is_empty(views_string)) return 0;
-    views_string = views_string.replace(" views", '');
+    views_string = remove(views_string!, " views",  " view", " plays", " play");
     const last_char = views_string[views_string.length - 1];
-    const sliced = views_string.slice(0, views_string.length - 1);
+
     switch(last_char) {
-        case 'B': return parseFloat(sliced) * 1000000000;
-        case 'M': return parseFloat(sliced) * 1000000;
-        case 'K': return parseFloat(sliced) * 1000;
-        default: return parseFloat(sliced);
+        case 'B': return parseFloat(views_string) * 1000000000;
+        case 'M': return parseFloat(views_string) * 1000000;
+        case 'K': return parseFloat(views_string) * 1000;
+        default: return parseFloat(views_string);
     }
 }
 export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
@@ -257,4 +276,22 @@ export function all_words(str: string) {
 }
 export function str_or_include(str1: string, str2: string) {
     return str1.includes(str2) || str2.includes(str1);
+}
+export function one_includes_word_not_other(word_group_1: string[], word_group_2: string[], needle: string){
+    return (!word_group_1.includes(needle) &&  word_group_2.includes(needle)) 
+        || ( word_group_1.includes(needle) && !word_group_2.includes(needle));
+}
+
+export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string, T[]> {
+    return items.reduce((accumulator: any, item) => {
+        const key = keyGetter(item);
+        (accumulator[key] = accumulator[key] || []).push(item);
+        return accumulator;
+    }, {});
+};
+
+export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any>['show_in_type']): GroupSection<PrefEntry>[]{
+	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter(item => (item[1].show_in_settings ?? false) && (item[1].show_in_type === show_in_type_check));
+    const groups = groupby(entries, (item) => item[1].section ?? 'Other');
+	return Object.keys(groups).map((key: string) => ({title: key, data: groups[key]}));
 }

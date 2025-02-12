@@ -30,7 +30,8 @@ export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const match_spread = [...matched];
     return match_spread.map(match => match?.[1]).filter(match => match !== undefined);
 }
-export function parse_time(clock_time: string): number {
+export function parse_time(clock_time: string|undefined): number {
+    if(clock_time === undefined) return NaN;
 	let time = 0;
 	const time_split = clock_time.split(":");
 	for(let i = 0; i < time_split.length; i++) {
@@ -62,9 +63,7 @@ export function remove_special_chars(str: string) {
     return str;
 }
 export function eval_json<T>(json: string): T {
-    let evaluated;
-    const result = eval("evaluated = " + json);
-    evaluated;
+    const result = eval("let evaluated = " + json + "; evaluated;");
     return result;
 }
 
@@ -81,7 +80,7 @@ export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string)
 	const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
 	const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
 	const sha_digest = sha1.createHash().update(data).digest("hex");
-	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}`
+	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest}_u SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest}_u SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}_u`
 	return SAPISIDHASH;
 }
 export function try_json_parse<T>(json_string: string): T|ResponseError {
@@ -91,4 +90,35 @@ export function clean_html_text(text: string) {
 	return text.replace(/&#34;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/\n/g, '');
+}
+export function json_catch(result: any){
+    return result instanceof Error ? {error: result} : result;
+}
+
+export function clean_error_stack(error: Error){
+	const at_regex = /at (.+?) /gs;
+	const matches = [...error.stack!.matchAll(at_regex)]
+	const bad_regexes: RegExp[] = [
+		/anon_0_/i,
+		/asyncGeneratorStep/i,
+		/tryCallOne/i,
+		/InternalBytecode/i,
+		/invokeCallback/i,
+		/callTimer/i,
+		/callReact/i,
+		/flushedQueue/i,
+		/_next/i,
+		/__guard/i,
+		/anonymous/i,
+		/apply/i,
+	];
+	const new_stack = matches.map(match => match[1]).filter(loc => !bad_regexes.some(regex => regex.test(loc)));
+	return error.message + " \n " + new_stack.map(item => `at ${item}`).join(' \n');
+}
+
+import { RequestInit } from 'node-fetch';
+
+export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
+    // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);
+    return undefined;
 }
