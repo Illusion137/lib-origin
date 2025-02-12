@@ -1,6 +1,6 @@
 import { ChannelResultsW } from "./types/ChannelResultsW";
 import { ChannelResultsWContinuation } from "./types/ChannelResultsWContinuation";
-import { HomeResultsW } from "./types/HomeResultsW";
+// import { HomeResultsW } from "./types/HomeResultsW";
 import { HomeResultsWContinuation } from "./types/HomeResultsWContinuation";
 import { LibraryResultsW } from "./types/LibraryResultsW";
 import { MixResults_0 } from "./types/MixResults_0";
@@ -12,12 +12,13 @@ import { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
 import { InitialData } from "./types/types";
 
 export function parse_home_contents(initial_data: InitialData) {
-    const contents = (initial_data as HomeResultsW).contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents;
+    initial_data;
+    // const contents = (initial_data as HomeResultsW).contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.richGridRenderer.contents;
     return {
-        videos: { video_renderer: contents.filter(item => item.richItemRenderer !== undefined).map(item => item.richItemRenderer!.content.videoRenderer)},
-        shorts: { shorts_renderer: contents.filter(item => item.richSectionRenderer !== undefined).map(item => item.richSectionRenderer!.content.richShelfRenderer.contents
-            .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel!)).map(item => item[0])},
-        continuation: contents.find(item => item.continuationItemRenderer !== undefined)?.continuationItemRenderer ?? null
+        // videos: { video_renderer: contents.filter(item => item.richItemRenderer !== undefined).map(item => item.richItemRenderer!.content.videoRenderer)},
+        // shorts: { shorts_renderer: contents.filter(item => item.richSectionRenderer !== undefined).map(item => item.richSectionRenderer!.content.richShelfRenderer.contents
+            // .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel!)).map(item => item[0])},
+        // continuation: contents.find(item => item.continuationItemRenderer !== undefined)?.continuationItemRenderer ?? null
     }
 }
 export function parse_home_continuation_contents(initial_data: InitialData) {

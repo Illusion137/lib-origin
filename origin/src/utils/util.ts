@@ -80,7 +80,7 @@ export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string)
 	const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
 	const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
 	const sha_digest = sha1.createHash().update(data).digest("hex");
-	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest} SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}`
+	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest}_u SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest}_u SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}_u`
 	return SAPISIDHASH;
 }
 export function try_json_parse<T>(json_string: string): T|ResponseError {

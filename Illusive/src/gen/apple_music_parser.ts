@@ -15,6 +15,7 @@ export function parse_apple_music_playlist_track(track: AppleTrack): Track {
         album: track.tertiaryLinks?.[0] !== undefined ? {name: track.tertiaryLinks[0].title, uri: create_uri("applemusic", track.tertiaryLinks[0].segue.destination.contentDescriptor.identifiers.storeAdamID)} : undefined,
         duration: Math.floor(track.duration / 1000),
         explicit: track.showExplicitBadge ? "EXPLICIT" : "NONE",
+        artwork_url: parse_apple_music_artwork(track.artwork.dictionary.url),
         applemusic_id: track.id
     }
 }

@@ -48,16 +48,16 @@ export async function youtube_add_tracks_to_playlist(tracks: Track[], playlist_u
     const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.youtube_id));
     const uris = tracks.map(track => track.youtube_id) as string[];
-    const home = await Origin.YouTube.get_home({});
+    const home = await Origin.YouTube.get_home({cookie_jar});
     if("error" in home) return false;
-    const add_response = await Origin.YouTube.add_tracks_to_playlist({cookie_jar: cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
+    const add_response = await Origin.YouTube.add_tracks_to_playlist({cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
     return add_response;
 }
 export async function youtube_delete_tracks_from_playlist(tracks: Track[], playlist_url: string) {
     const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.youtube_id));
     const uris = tracks.map(track => track.youtube_id as string );
-    const home = await Origin.YouTube.get_home({});
+    const home = await Origin.YouTube.get_home({cookie_jar});
     if("error" in home) return false;
     const deletion_response = await Origin.YouTube.remove_tracks_to_playlist({cookie_jar: cookie_jar}, home.icfg.ytcfg, playlist_url, uris);
     return deletion_response;

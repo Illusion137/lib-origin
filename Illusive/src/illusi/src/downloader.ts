@@ -35,8 +35,15 @@ export async function download_track_list(tracks: Track[]) {
         GLOBALS.global_var.download_track(track).catch(e => alert_error(e));
 }
 
-export async function batch_download(key: string) {
-    return await download_track_list(await playlist_tracks(key));
+export async function batch_download(playlist_key: string, slice?: [number, number]) {
+    return await download_track_list((await playlist_tracks(playlist_key)).slice(slice?.[0], slice?.[1]));
+}
+export async function batch_undownload(playlist_key: string, slice?: [number, number], callback?: (progress:number) => void){
+    const tracks = (await playlist_tracks(playlist_key)).slice(slice?.[0], slice?.[1]);
+    for(let i = 0; i < tracks.length; i++){
+        await SQLTracks.mark_track_undownloaded(tracks[i].uid, tracks[i].media_uri!);
+        callback?.((i+1)/tracks.length);
+    }
 }
 
 function download_error_callback(title: string, error: Error, track: Track, start_download?: SetState): "ERROR" {

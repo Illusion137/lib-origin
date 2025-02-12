@@ -136,3 +136,41 @@ export async function convert_playlist(from_tracks: Track[], to: MusicServiceTyp
     await mutilate_playlist(to, opts.to, from_tracks);
     return {ok: true};
 }
+
+// export async function playlist_tracks_test(uuid_uri: string) {
+//     const [service, id] = split_uri(uuid_uri);
+//     const playlist_tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
+//     if("error" in playlist_tracks) return [];
+//     return playlist_tracks.tracks;
+// }
+
+// export function track_intersection_test(f: Track, t: Track): boolean {
+//     if(!is_empty(f.illusi_id) && !is_empty(t.illusi_id) && f.illusi_id === t.illusi_id) return true;
+//     if(!is_empty(f.youtube_id) && !is_empty(t.youtube_id) && f.youtube_id === t.youtube_id) return true;
+//     if(!is_empty(f.youtubemusic_id) && !is_empty(t.youtubemusic_id) && f.youtubemusic_id === t.youtubemusic_id) return true;
+//     if(!is_empty(f.spotify_id) && !is_empty(t.spotify_id) && f.spotify_id === t.spotify_id) return true;
+//     if(!is_empty(f.amazonmusic_id) && !is_empty(t.amazonmusic_id) && f.amazonmusic_id === t.amazonmusic_id) return true;
+//     if(!is_empty(f.applemusic_id) && !is_empty(t.applemusic_id) && f.applemusic_id === t.applemusic_id) return true;
+//     if(!is_empty(f.soundcloud_id) && !is_empty(t.soundcloud_id) && f.soundcloud_id === t.soundcloud_id) return true;
+//     if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
+//     return false;
+// }
+// export async function playlist_tracks_excluding_playlist_test(tracks: Track[], uuid_uri: string) {
+//     const ptracks = await playlist_tracks_test(uuid_uri);
+//     return tracks.filter((f) => {
+//         for(const t of ptracks)
+//             if(track_intersection_test(f, t)) false;    
+//         return true;
+//     });
+// }
+// export async function convert_playlist_test(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts): PromiseResult<{"ok": true}> {
+//     const service = Illusive.music_service.get(to)!;
+//     if("title" in opts.to) return {error: new Error("I dont know")};
+//     const [_, playlist_id] = split_uri(opts.to.uuid_uri);
+//     const filtered_tracks = await playlist_tracks_excluding_playlist_test(from_tracks, opts.to.uuid_uri);
+//     console.log(filtered_tracks.length)
+//     console.log(playlist_id);
+//     const good = await service.add_tracks_to_playlist!(filtered_tracks, playlist_id);
+//     console.log(good);
+//     return {ok: true};
+// }

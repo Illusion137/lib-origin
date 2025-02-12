@@ -39,6 +39,9 @@ export interface SQLTable {
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
 
+export type PrefEntry = [Prefs.PrefOptions, Prefs.Pref<unknown>];
+export type GroupSection<T> = {title: string, data: T[]};
+
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;

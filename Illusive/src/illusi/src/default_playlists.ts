@@ -90,7 +90,7 @@ export async function default_compact_playlists() {
         type: "LIBRARY"
     })
     for (const default_playlist of default_playlists) {
-        const tracks = await default_playlist.four_track_function();
+        const tracks = await default_playlist.track_function();
         illusi_playlists.push({
             title: default_playlist.name,
 	        check_existing_tracks: default_playlist.name === "Recently Played" || default_playlist.name === "Past Queue",

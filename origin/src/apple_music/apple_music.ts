@@ -8,6 +8,9 @@ import { Search } from "./types/Search";
 import { SerializedServerData } from "./types/type";
 import { UserPlaylist } from "./types/UserPlaylist";
 
+// Thanks to Lafou for providing test playlists such as:
+// https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl
+
 export namespace AppleMusic {
     interface Opts { "cookie_jar"?: CookieJar }
     const client_cache = {client: {authorization: null as string|null}, enabled: true};
@@ -197,20 +200,36 @@ export namespace AppleMusic {
             }
         }
     }
-    // TODO: Fix/Update this lol
+
     export async function get_playlist_continuation(playlist_id: string, offset: number, authorization: string, opts: Opts) {
-        const params = {
-            "l": "en-US",
-            "offset": offset,
-            "art%5Burl%5D": "f",
-            "fields%5Bsongs%5D": "artistUrl,url",
-            "format%5Bresources%5D": "map",
-            "include": "catalog",
-            "platform": "web",
-        };
-        const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
-        if ("error" in playlists_response) return playlists_response;
-        return await playlists_response.json().catch(json_catch) as UserPlaylist|ResponseError;
+        try {
+            const params = {
+                "l": "en-US",
+                "offset": offset,
+                "art%5Burl%5D": "f",
+                "fields%5Bsongs%5D": "artistUrl,url",
+                "format%5Bresources%5D": "map",
+                "include": "catalog",
+                "platform": "web",
+            };
+            const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
+            if ("error" in playlists_response) throw playlists_response.error;
+            return await playlists_response.json().catch(json_catch) as UserPlaylist|ResponseError;
+        }
+        catch(e){
+            const params = {
+                "l": "en-US",
+                "offset": offset,
+                "art%5Burl%5D": "f",
+                "fields%5Bsongs%5D": "artistUrl,url",
+                "format%5Bresources%5D": "map",
+                "include": "catalog",
+                "platform": "web",
+            };
+            const playlists_response = await api_check_response(opts, authorization, `catalog/us/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
+            if ("error" in playlists_response) return playlists_response;
+            return await playlists_response.json().catch(json_catch) as UserPlaylist|ResponseError;
+        }
     }
     export async function account_playlists(opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);

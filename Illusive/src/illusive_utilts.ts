@@ -1,7 +1,7 @@
 import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
-import { CompactPlaylistType, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, Promises, Track } from "./types";
+import { CompactPlaylistType, GroupSection, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
@@ -280,4 +280,18 @@ export function str_or_include(str1: string, str2: string) {
 export function one_includes_word_not_other(word_group_1: string[], word_group_2: string[], needle: string){
     return (!word_group_1.includes(needle) &&  word_group_2.includes(needle)) 
         || ( word_group_1.includes(needle) && !word_group_2.includes(needle));
+}
+
+export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string, T[]> {
+    return items.reduce((accumulator: any, item) => {
+        const key = keyGetter(item);
+        (accumulator[key] = accumulator[key] || []).push(item);
+        return accumulator;
+    }, {});
+};
+
+export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any>['show_in_type']): GroupSection<PrefEntry>[]{
+	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter(item => (item[1].show_in_settings ?? false) && (item[1].show_in_type === show_in_type_check));
+    const groups = groupby(entries, (item) => item[1].section ?? 'Other');
+	return Object.keys(groups).map((key: string) => ({title: key, data: groups[key]}));
 }

@@ -281,11 +281,10 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
         };
     } else {
         return {
-            title: playlist_response.data.sections[0].items[0].title,
-            creator: playlist_response.data.sections[0].items[0].subtitleLinks.map(link => {
-                console.log(link.segue.destination)
+            title: playlist_response?.data?.sections[0].items[0].title,
+            creator: playlist_response?.data?.sections?.[0]?.items?.[0]?.subtitleLinks.map(link => {
                 return {name: link.title, uri: is_empty(link?.segue?.destination?.contentDescriptor?.identifiers?.storeAdamID) ? null : create_uri("applemusic", link?.segue?.destination?.contentDescriptor?.identifiers?.storeAdamID)}
-            }),
+            }) ?? [],
             artwork_url: playlist_response.data.sections[0].items[0].artwork.dictionary.url,
             tracks: playlist_response.data.sections[1].items.map(track => parse_apple_music_playlist_track(track)), 
             continuation: null

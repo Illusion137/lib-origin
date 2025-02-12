@@ -103,7 +103,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track {
     });
 }
 
-export async function mark_track_downloaded(uid: string, media_uri: string) {
+export async function mark_track_downloaded(uid: Track['uid'], media_uri: string) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = media_uri;
@@ -116,7 +116,8 @@ export async function mark_all_tracks_undownloaded() {
     }));
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])}`);
 }
-export async function mark_track_undownloaded(uid: string, media_uri: string) {
+export async function mark_track_undownloaded(uid: Track['uid'], media_uri: string) {
+    if(is_empty(media_uri)) return;
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
     await SQLfs.delete_item(media_directory(media_uri));
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
@@ -151,7 +152,7 @@ export async function track_from_service_id(ftrack: Track) {
     if(track.length === 0) return null;
     return sql_track_to_track(track[0] as SQLTrack);
 }
-export async function track_from_uid(uid: string) {
+export async function track_from_uid(uid: Track['uid']) {
     const track = await db_get_all_async(`${sql_select<Track>("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return sql_track_to_track(track[0] as SQLTrack);
 }
@@ -166,7 +167,7 @@ export async function fetch_track_data() {
 export async function clear_tracks() {
     await db_exec_async('DELETE FROM tracks');
 }
-export async function fetch_track_data_from_uid(uid: string): Promise<Track> {
+export async function fetch_track_data_from_uid(uid: Track['uid']): Promise<Track> {
     const tracks: SQLTrack[] = await db_get_all_async(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
     return tracks.map(track => sql_track_to_track(track))[0];
 }
@@ -184,10 +185,10 @@ export async function insert_track(track: Track) {
     GLOBALS.global_var.sql_tracks.push(track);
     if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
 }
-export async function update_track(track_uid: string, new_track: Track) {
+export async function update_track(track_uid: Track['uid'], new_track: Track) {
     await db_run_async(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, ExampleObj.track_example0)} ${sql_where<Track>(["uid", track_uid])}`);
 }
-export async function update_track_meta_data(track_uid: string, new_meta: TrackMetaData) {
+export async function update_track_meta_data(track_uid: Track['uid'], new_meta: TrackMetaData) {
     await db_run_async(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
 }
 
@@ -196,7 +197,7 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
     await update_track(merged_track.uid, merged_track);
     return merged_track;
 }
-export async function delete_track(uid: string) {
+export async function delete_track(uid: Track['uid']) {
     await db_run_async(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
     await clean_directories();
 }
