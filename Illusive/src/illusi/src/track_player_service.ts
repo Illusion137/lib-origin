@@ -11,15 +11,16 @@ import TrackPlayer, {
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
-import { Prefs } from '../../prefs';
 import { ISOString, Track } from '../../types';
-import { alert_error, alert_info, alert_trackplayer_error } from './alert';
+import { alert_trackplayer_error } from './alert';
 import { handle_new_track_data } from './downloader';
 import * as GLOBALS from './globals';
 import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLTracks from './sql/sql_tracks';
+import { artist_string } from '../../illusive_utilts';
+import { sample } from './sampler';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -72,32 +73,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
-    } else if(url_data.url.includes("file://") && Prefs.get_pref('track_player_file_searching')) {
-        const info = await SQLfs.info(url_data.url);
-        if(!info.exists) {
-            const docs = await SQLfs.read_directory(SQLfs.document_directory(""));
-            for(const doc of docs) {
-                if(doc.includes(track.uid)) {
-                    try {                        
-                        alert_info("FOUND MISSING FILE -> moving it to media_directory");
-                        await SQLfs.move_to_media_directory(SQLfs.document_directory(doc));
-                        break;
-                    } catch (error) {
-                        alert_error({error: error as Error});
-                        break;
-                    }
-                }
-            }
-        }
-    } else if(url_data.url.includes("file://") && Prefs.get_pref('safe_mode')){
-        const info = await SQLfs.info(url_data.url);
-        if(!info.exists) {
-            alert_error({error: new Error(`Unable to find file at ${url_data.url}`)});
-            if(Prefs.get_pref('safe_mode_undownload')){
-                await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
-            }
-            return 'skip';
-        }
     }
     const nt_response = await handle_new_track_data(track, url_data);
     if(!("error" in nt_response)) track = nt_response;
@@ -106,7 +81,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     return {
         url: url_data.url,
         title: track.title,
-        artist: track.artists[0].name,
+        artist: artist_string(track),
         album: track.album?.name,
         duration: track.duration,
         artwork: typeof (track.playback!.artwork) === "number" ? track.playback!.artwork as unknown as string : track.playback!.artwork.uri,
@@ -162,6 +137,7 @@ export async function playback_service() {
             }
 
             await SQLRecentlyPlayed.insert_recently_played_track(GLOBALS.global_var.playing_tracks[data.index]);
+            await sample();
         } catch (error) { alert_trackplayer_error({error: error as Error}); }
     });
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async (data) => {

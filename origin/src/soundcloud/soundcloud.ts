@@ -422,7 +422,6 @@ export namespace SoundCloud {
             return {ok: true};
         }
         catch(e) {
-            console.log(e);
             clearTimeout(abort);
             return {ok: false};
         }

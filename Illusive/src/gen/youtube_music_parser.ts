@@ -117,7 +117,6 @@ export function parse_youtube_music_search_top_result(card: MusicCardShelfRender
     top_result: LabledTrack|LabledArtist;
     side_contents: Track[];
 }|undefined{
-
     if(is_empty(card)) return undefined;
     const top_result: LabledTrack|LabledArtist = card!.subtitle.runs[0].text === "Artist" ? 
         {...parse_youtube_music_search_top_result_artist(card!), type: "ARTIST"} : 

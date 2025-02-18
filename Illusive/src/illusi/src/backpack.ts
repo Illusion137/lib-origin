@@ -41,6 +41,8 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
             continue;
         }
         track.track!.uid = utrack.uid;
+        track.track!.meta = utrack.meta;
+        track.track!.meta!.unavailable = false;
         tracks.push(track.track!);
     }
     return await SQLTracks.add_playback_saved_data_to_tracks(tracks);

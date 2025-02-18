@@ -85,6 +85,7 @@ export namespace YouTubeMusic {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
+			"cookie": cookie_jar?.toString(),
 			"Cookies": cookie_jar?.toString(),
 			"Referer": "https://music.youtube.com/",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
@@ -147,6 +148,7 @@ export namespace YouTubeMusic {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==",
+					"cookie": opts.cookie_jar?.toString() as string,
 					"Cookies": opts.cookie_jar?.toString() as string,
 				},
 				method: "GET"

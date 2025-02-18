@@ -40,7 +40,6 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
             SQLRecentlyPlayed.cleanup_recently_played(),
             activateKeepAwakeAsync()
         ]);
-        if(Prefs.get_pref('auto_clean_directories')) SQLTracks.clean_directories().catch(e => e);
         Prefs.pref_set_theme(set_theme);
 
         if(Prefs.get_pref('keep_soundcloud_alive')){

@@ -5,6 +5,7 @@ import { ISOString, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } fr
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from '../globals';
 import * as SQLfs from './sql_fs';
+import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 
@@ -28,7 +29,7 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
         JSON.stringify(track.album ?? {name: "", uri: ""}),
         track.plays ?? 0,
         track.imported_id ?? "",
-        track.illusi_id ?? "",
+        track.illusi_id ?? uuid.default.v4() as string,
         track.youtube_id ?? "",
         track.youtubemusic_id ?? "",
         track.soundcloud_id ?? 0,
@@ -122,6 +123,9 @@ export async function mark_track_undownloaded(uid: Track['uid'], media_uri: stri
     await SQLfs.delete_item(media_directory(media_uri));
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = "";
+}
+export async function clear_track_youtube(uid: Track['uid']) {
+    await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["youtube_id", ""])} ${sql_where<Track>(["uid", uid])}`);
 }
 export async function track_exists(track: Track) {
     for(const t of GLOBALS.global_var.sql_tracks) {
@@ -218,7 +222,6 @@ export async function clean_thumbnail_cache() {
 }
 
 export async function clean_directories() {
-    if(!Prefs.get_pref('can_clean_directories')) return;
     const thumbnail_files = await SQLfs.read_directory(thumbnail_directory(""));
     const media_files     = await SQLfs.read_directory(media_directory(""));
     const lyrics_files    = await SQLfs.read_directory(lyrics_directory(""));

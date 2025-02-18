@@ -1,11 +1,13 @@
 import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
 import { Promises, SQLAlter, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
-import { db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_where } from '../sql/sql_utils';
+import { db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_where } from '../sql/sql_utils';
 import { db, db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
 import { insert_track } from './sql_tracks';
+import { is_empty } from '../../../../../origin/src/utils/util';
+import * as uuid from 'react-native-uuid';
 
 export async function get_all_tables(database: SQLite.SQLiteDatabase) {
     const tables = await database.getAllAsync(`${sql_select("sqlite_master", "*")} ${sql_where<{type: string}>(["type", "table"])}`);
@@ -54,7 +56,7 @@ export async function fix_to_new_update() {
     await alter_sql(db_pre_1307, {table: 'recently_played_tracks', action: 'ADD', column_name: 'views', type: "INTEGER"});
 
     // UPDATE 14.0.0 BETA
-    try {        
+    try {
         const legacy_1307_tracks = await get_legacy_1307_track_data(db_pre_1307);
         const legacy_1307_playlists = await get_legacy_1307_playlists(db_pre_1307);
         const all_legacy_1307_table_names = (await get_all_tables(db_pre_1307)).map(table => table.name);
@@ -92,4 +94,17 @@ export async function fix_to_new_update() {
     await alter_sql(db, {table: 'tracks', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
     await alter_sql(db, {table: 'backpack', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
     await alter_sql(db, {table: 'recently_played_tracks', action: 'ADD', column_name: 'alt_title', type: "TEXT"});
+
+    // UPDATE 14.5.10 BETA
+    try {
+        const current_tracks = (await db_get_all_async<SQLTrack>(sql_select<Track>("tracks", "*")));
+        if(current_tracks.some(track => is_empty(track.illusi_id))){
+            for(const track of current_tracks){
+                if(is_empty(track.illusi_id)){
+                    await sql_update<Track>("tracks", {uid: track.uid}, "illusi_id", uuid.default.v4());
+                }
+            }
+            Alert.alert("Updated Tracks to 14.5.10 BETA");
+        }
+    } catch (error) {}
 }

@@ -41,6 +41,9 @@ export async function batch_download(playlist_key: string, slice?: [number, numb
 export async function batch_undownload(playlist_key: string, slice?: [number, number], callback?: (progress:number) => void){
     const tracks = (await playlist_tracks(playlist_key)).slice(slice?.[0], slice?.[1]);
     for(let i = 0; i < tracks.length; i++){
+        if(!Illusive.is_youtube(tracks[i])){
+            await SQLTracks.clear_track_youtube(tracks[i].uid);
+        }
         await SQLTracks.mark_track_undownloaded(tracks[i].uid, tracks[i].media_uri!);
         callback?.((i+1)/tracks.length);
     }
@@ -62,7 +65,7 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
                 ...track, 
                 artists: [
                     {name: track.artists[0].name, uri: create_uri("youtube", metadata.artist_id)} as NamedUUID
-                ].concat(...track.artists.slice(1))
+                ].concat(...track.artists.slice(1)),
             });
     }
     const new_metadata: TrackMetaData = {
@@ -104,7 +107,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
     wait_for(() => in_download_range(track.uid, download_queue_max_length))
         .then(async () => {
-            const is_redownloading = (Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track)) || (Prefs.get_pref('can_redownload') && Prefs.get_pref('force_redownload_conversion'));
+            const is_redownloading = (is_empty(track.media_uri) && !Illusive.is_youtube(track)) || (Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track));
             if(is_redownloading) {
                 track = {...track, youtube_id: ""};
                 if(!is_empty(track.media_uri)) await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
