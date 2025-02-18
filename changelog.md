@@ -1,3 +1,7 @@
+# Illusi 14.5.11
+ - Attempt to fix *YouTube*/*YouTube Music* cookie related bug
+ - Fixed *YouTube Music* playlist artists text bug
+ - Fixed Sampler "expo ios doesn't support isAirplaneMode()" error
 # Illusi 14.5.10
  - Added changelog
  - Fixed artist naming inconsistencies

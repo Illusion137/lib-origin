@@ -205,8 +205,9 @@ export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
     if(runs.length === 1) named_uris.push({name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri("youtubemusic", runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
     else
     for(const run of runs) {
-        if(!run.text.includes(",") && !run.text.includes("&") && !run.text.includes("and"))
-            named_uris.push({name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri("youtubemusic", runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
+        const is_year = run.text.length === 4 && !isNaN(parseInt(run.text));
+        if(!run.text.includes(",") && !run.text.includes("&") && !run.text.includes("and") && !run.text.includes(" • ") && !is_year)
+            named_uris.push({name: run.text, uri: run.navigationEndpoint !== undefined ? create_uri("youtubemusic", run.navigationEndpoint.browseEndpoint.browseId) : null });
     }
     return named_uris;
 }
