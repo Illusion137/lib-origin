@@ -50,7 +50,7 @@ export type Primitives = string|boolean|number;
 export interface QueryFlag {
     flag: string;
     description: string;
-    condition: (track: Track) => boolean;
+    condition: (track: Track, query: string) => boolean;
 }
 
 export interface AlphabetScroll {

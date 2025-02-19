@@ -12,7 +12,7 @@ import * as SQLUpdate from './sql/sql_update';
 import * as SQLUtils from './sql/sql_utils';
 import * as Origin from '../../../../origin/src/index';
 
-export async function illusi_startup(play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
+export async function illusi_startup(version: string, play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
     await catch_function_async(async() => {
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
@@ -34,7 +34,7 @@ export async function illusi_startup(play_tracks: (first_track: Track, tracks: T
         const legacy_prefs = LegacyPrefs.get_legacy_prefs();
         await Prefs.load_prefs();
         if(legacy_prefs === null) await Prefs.load_legacy_prefs(legacy_prefs);
-        await SQLUpdate.fix_to_new_update();
+        await SQLUpdate.fix_to_new_update(version);
         await SQLTracks.fetch_track_data();
         await Promise.all([
             SQLRecentlyPlayed.cleanup_recently_played(),

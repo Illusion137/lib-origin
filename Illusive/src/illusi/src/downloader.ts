@@ -9,7 +9,7 @@ import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
 import { Prefs } from '../../prefs';
-import { DownloadFromIdResult, DownloadTrackResult, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
+import { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
 import { alert_error } from './alert';
 import * as GLOBALS from './globals';
 import { playlist_tracks } from './playlist_converter';
@@ -69,7 +69,11 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             });
     }
     const new_metadata: TrackMetaData = {
-        ...track.meta ?? ({} as any),
+        ...(!is_empty(track.meta) ? track.meta! : ({
+            plays: 0,
+            added_date: new Date().toISOString() as ISOString,
+            last_played_date: new Date().toISOString() as ISOString
+        })),
         age_restricted: metadata.age_restricted,
         chapters: metadata.chapters,
         songs: metadata.songs,

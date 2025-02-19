@@ -1,7 +1,7 @@
 import { is_empty, remove, remove_special_chars, remove_topic, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
-import { QUERY_FLAGS } from "./query_flags";
+import { ANTI_QUERY_FLAG_PREFIX, QUERY_FLAGS } from "./query_flags";
 import { CompactPlaylistType, GroupSection, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
@@ -88,10 +88,11 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
 
 export function track_query_filter(tracks: Track[], query?: string) {
     if(!is_empty(query)) {
+        const matched_anti_query_flags = QUERY_FLAGS.filter(flag => query?.includes(ANTI_QUERY_FLAG_PREFIX + flag.flag));
+        query = remove(query!, ...matched_anti_query_flags.map(flag => RegExp(`${ANTI_QUERY_FLAG_PREFIX}${flag.flag} ?`, 'gi')));
         const matched_query_flags = QUERY_FLAGS.filter(flag => query?.includes(flag.flag));
-
-        query = remove(query!, ...matched_query_flags.map(flag => RegExp(`${flag.flag} ?`, 'gi')));
-
+        query = remove(query, ...matched_anti_query_flags.map(flag => RegExp(`${flag.flag} ?`, 'gi')));
+        
         return tracks.filter(track => {
             if(is_empty(query)) return false;
             const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
@@ -102,7 +103,10 @@ export function track_query_filter(tracks: Track[], query?: string) {
             const includes_album = track.album?.name.toUpperCase().includes(query?.toUpperCase() ?? "") ?? false;
             if(includes_album) return true;
             
-            const matches_any_flag = matched_query_flags.some(flag =>  flag.condition(track));
+            const matches_any_anti_flag = matched_anti_query_flags.some(flag =>  !flag.condition(track, query!));
+            if(matches_any_anti_flag) return true;
+            
+            const matches_any_flag = matched_query_flags.some(flag =>  flag.condition(track, query!));
             return matches_any_flag;
         });
     }
@@ -304,4 +308,19 @@ export function artist_string(track: Track): string{
     return names.length
         ? names.join(', ') + ' & ' + final_name
             : final_name;
+}
+
+export function version_greater_than(version: string, other_version: string): boolean{
+    try {
+        const [major, minor, patch] = version.split('.').map(parseInt);
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(parseInt);
+        if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
+        if(major > other_major) return true;
+        if(major === other_major && minor > other_minor) return true;
+        if(major === other_major && minor === other_minor && patch > other_patch) return true;
+        return false;
+    }
+    catch(e) {
+        return false;
+    }
 }

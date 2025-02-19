@@ -8,6 +8,8 @@ import * as SQLfs from './sql_fs';
 import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
+import { ResponseError } from "../../../../../origin/src/utils/types";
+import { alert_error } from "../alert";
 
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
@@ -21,7 +23,7 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
         track.alt_title ?? "",
         JSON.stringify(track.artists ?? []),
         track.duration ?? 0,
-        JSON.stringify(track.prods ?? []),
+        track.prods ?? "",
         track.genre ?? "",
         JSON.stringify(track.tags ?? []),
         track.explicit ?? "NONE",
@@ -29,7 +31,7 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
         JSON.stringify(track.album ?? {name: "", uri: ""}),
         track.plays ?? 0,
         track.imported_id ?? "",
-        track.illusi_id ?? uuid.default.v4() as string,
+        track.illusi_id ?? uuid.default.v4(),
         track.youtube_id ?? "",
         track.youtubemusic_id ?? "",
         track.soundcloud_id ?? 0,
@@ -85,23 +87,32 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
         meta: track.meta
     }
 }
-export function sql_track_to_track(sql_track: SQLTrack): Track {
-    const meta: TrackMetaData = JSON.parse(sql_track.meta!);
-    return Object.assign(sql_track, {
-        artists: JSON.parse(sql_track.artists),
-        album: JSON.parse(sql_track.album!),
-        prods: JSON.parse(sql_track.prods!),
-        tags: JSON.parse(sql_track.tags!),
-        explicit: sql_track.explicit,
-        unreleased: Boolean(sql_track.unreleased),
-        meta: {
-            plays: meta.plays,
-            added_date: meta.added_date,
-            last_played_date: meta.last_played_date
-        },
-        playback: {artwork: Illusive.get_track_artwork(document_directory(""), sql_track as unknown as Track), added: false, successful: false},
-        downloading: {}
-    });
+export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
+    try {
+        const meta: TrackMetaData = JSON.parse(sql_track.meta!);
+        return Object.assign(sql_track, {
+            artists: JSON.parse(sql_track.artists),
+            album: JSON.parse(sql_track.album!),
+            prods: sql_track.prods?.trim(),
+            tags: JSON.parse(sql_track.tags!),
+            explicit: sql_track.explicit,
+            unreleased: Boolean(sql_track.unreleased),
+            meta: {
+                plays: meta.plays ?? 0,
+                added_date: meta.added_date ?? new Date(0).toISOString(),
+                last_played_date: meta.last_played_date ?? new Date(0).toISOString()
+            },
+            playback: {artwork: Illusive.get_track_artwork(document_directory(""), sql_track as unknown as Track), added: false, successful: false},
+            downloading: {}
+        });
+    } catch (error) {
+        return {error: new Error((error as Error).message, {'cause': JSON.stringify(sql_track)})};
+    }
+}
+export function sql_tracks_to_tracks(sql_tracks: SQLTrack[]): Track[]{
+    const mapped = sql_tracks.map(sql_track_to_track);
+    mapped.filter(track => "error" in track).forEach(err => alert_error(err));
+    return mapped.filter(track => !("error" in track)) as Track[];
 }
 
 export async function mark_track_downloaded(uid: Track['uid'], media_uri: string) {
@@ -166,14 +177,14 @@ export async function track_uid_exists(track: Track) {
 }
 export async function fetch_track_data() {
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
-    GLOBALS.global_var.sql_tracks = tracks.map(track => sql_track_to_track(track));
+    GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
 }
 export async function clear_tracks() {
     await db_exec_async('DELETE FROM tracks');
 }
 export async function fetch_track_data_from_uid(uid: Track['uid']): Promise<Track> {
     const tracks: SQLTrack[] = await db_get_all_async(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
-    return tracks.map(track => sql_track_to_track(track))[0];
+    return sql_tracks_to_tracks(tracks)[0];
 }
 
 export async function insert_all_tracks(tracks: Track[]) {

@@ -20,7 +20,7 @@ export namespace Prefs {
         description?: string
         show_in_type?: ShowInSettings
     };
-    const user_uuid = uuid.default.v4() as string;
+    const user_uuid = uuid.default.v4();
     export const prefs = {
         legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as Pref<string>,
         youtube_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
@@ -30,6 +30,7 @@ export namespace Prefs {
         amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as Pref<string>,
+        latest_version:                        {default_value: "0.0.0", current_value: "0.0.0", type: "STRING"} as Pref<string>,
         recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as Pref<string[]>,
         last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as Pref<number>,
         linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as Pref<LinkerLink[]>,
@@ -120,8 +121,8 @@ export namespace Prefs {
     export async function save_pref<T extends PrefOptions>(pref: T, value: (typeof prefs)[T]['default_value']) {
         switch(prefs[pref].type) {
             case "STRING":       await AsyncStorage.setItem(pref, value as string); break;
-            case "BOOLEAN":      await AsyncStorage.setItem(pref, String(value)); break;
-            case "NUMBER":       await AsyncStorage.setItem(pref, String(value)); break;
+            case "BOOLEAN":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "NUMBER":       await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
             case "COOKIE_JAR":   await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
             case "STRING_ARRAY": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
             case "LINKER_LINKS": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;

@@ -1,3 +1,8 @@
+# Illusi 14.5.12
+ - More search queries
+ - Version checking to improve startup time
+ - Fix Sampler
+ - Improved Error handling
 # Illusi 14.5.11
  - Attempt to fix *YouTube*/*YouTube Music* cookie related bug
  - Fixed *YouTube Music* playlist artists text bug

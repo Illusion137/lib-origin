@@ -1,9 +1,9 @@
 import * as Origin from '../../../../origin/src/index';
 import { is_empty } from "../../../../origin/src/utils/util";
 import { Illusive } from "../../illusive";
-import { create_uri, random_of, shuffle_array } from "../../illusive_utilts";
+import { random_of, shuffle_array } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
-import { DownloadFromIdResult, MusicServiceType, NamedUUID, Track, TrackMetaData } from "../../types";
+import { DownloadFromIdResult, ISOString, MusicServiceType, Track, TrackMetaData } from "../../types";
 import * as GLOBALS from './globals';
 import { Logger } from "./logger";
 import * as SQLTracks from './sql/sql_tracks';
@@ -75,22 +75,17 @@ export async function sample_tracks_service(sample_tracks: Track[], to: MusicSer
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata'], unavailable: boolean) {
     if(metadata === undefined) return;
     if(!await SQLTracks.track_exists(track)) return;
-    if(track.artists[0].uri === null) {
-        await SQLTracks.update_track(track.uid, 
-            {
-                ...track, 
-                artists: [
-                    {name: track.artists[0].name, uri: create_uri("youtube", metadata.artist_id)} as NamedUUID
-                ].concat(...track.artists.slice(1)),
-            });
-    }
     const new_metadata: TrackMetaData = {
-        ...track.meta ?? ({} as any),
+        ...(!is_empty(track.meta) ? track.meta! : ({
+            plays: 0,
+            added_date: new Date().toISOString() as ISOString,
+            last_played_date: new Date().toISOString() as ISOString
+        })),
         age_restricted: metadata.age_restricted,
         chapters: metadata.chapters,
         songs: metadata.songs,
         unavailable: unavailable,
-        last_sampled_date: new Date().toISOString()
+        last_sampled_date: new Date().toISOString() as ISOString
     }
     track.meta = new_metadata;
     await SQLTracks.update_track_meta_data(track.uid, new_metadata);
