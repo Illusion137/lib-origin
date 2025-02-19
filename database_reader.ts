@@ -4,6 +4,7 @@ import stracks from './sample/illusi/illusi-db-1400.tracks.json';
 const sql_tracks: SQLTrack[] = stracks as any as SQLTrack[];
 // import { SQLTrack } from './Illusive/src/types';
 
+//https://stackoverflow.com/questions/5491858/how-to-export-sqlite-to-json
 export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
     try {
         const meta: TrackMetaData = JSON.parse(sql_track.meta!);

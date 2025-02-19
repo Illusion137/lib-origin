@@ -134,7 +134,7 @@ export async function fix_to_new_update(version: string) {
                         await sql_update<Track>("tracks", {uid: track.uid}, "prods", track.prods?.trim() ?? "");
                     }
                 }
-                Alert.alert("Updated Tracks to 14.5.10 BETA");
+                Alert.alert("Updated Tracks to 14.5.11 BETA");
             }
         } catch (error) {}
     }
