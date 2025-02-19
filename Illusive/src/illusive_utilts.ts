@@ -91,7 +91,7 @@ export function track_query_filter(tracks: Track[], query?: string) {
         const matched_anti_query_flags = QUERY_FLAGS.filter(flag => query?.includes(ANTI_QUERY_FLAG_PREFIX + flag.flag));
         query = remove(query!, ...matched_anti_query_flags.map(flag => RegExp(`${ANTI_QUERY_FLAG_PREFIX}${flag.flag} ?`, 'gi')));
         const matched_query_flags = QUERY_FLAGS.filter(flag => query?.includes(flag.flag));
-        query = remove(query, ...matched_anti_query_flags.map(flag => RegExp(`${flag.flag} ?`, 'gi')));
+        query = remove(query, ...matched_query_flags.map(flag => RegExp(`${flag.flag} ?`, 'gi')));
         
         return tracks.filter(track => {
             if(is_empty(query)) return false;
