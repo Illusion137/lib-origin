@@ -77,7 +77,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
         creator: youtube_music_split_artists(playlist_response.data.playlist_data?.subtitle?.runs as Runs),
         artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
         date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
-        tracks: playlist_response.data.tracks.map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
+        tracks: playlist_response.data.tracks.filter(item => item !== undefined).map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
         continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "PLAYLIST"} as YouTubeMusicPlaylistContinuation
     };
 }
@@ -88,7 +88,7 @@ export async function youtube_music_get_playlist_continuation(opts: YouTubeMusic
     const parsed_playlist = playlist_response as unknown as PlaylistResults_1;
     if(parsed_playlist?.continuationContents?.musicPlaylistShelfContinuation === undefined) return {tracks: [], continuation: null};
     return {
-        tracks: parsed_playlist.continuationContents.musicPlaylistShelfContinuation.contents.map(track => 
+        tracks: parsed_playlist.continuationContents.musicPlaylistShelfContinuation.contents.filter(item => item !== undefined).map(track => 
             opts.type === "PLAYLIST" ? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack) :
                 parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs)
         ).filter(item => item !== undefined),

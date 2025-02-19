@@ -26,7 +26,7 @@ export function create_link(link: {
     to_service: MusicServiceType
 }): LinkerLink {
     return {
-        link_uuid: uuid.default.v4() as string,
+        link_uuid: uuid.default.v4(),
         full_sample: link.full_sample,
         to: link.to,
         to_service: link.to_service,

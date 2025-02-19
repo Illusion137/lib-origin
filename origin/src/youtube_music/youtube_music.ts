@@ -55,7 +55,7 @@ export namespace YouTubeMusic {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date) {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, retry: boolean) {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
 		return {
 			"User-Agent": user_agent,
@@ -85,9 +85,13 @@ export namespace YouTubeMusic {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"Cookies": cookie_jar?.toString(),
 			"Referer": "https://music.youtube.com/",
-			"Referrer-Policy": "strict-origin-when-cross-origin"
+			"Referrer-Policy": "strict-origin-when-cross-origin",
+			...(retry ? {
+				"cookie": cookie_jar?.toString()
+			} : {
+				"Cookies": cookie_jar?.toString()
+			})
 		}
 	}
 	function get_payload_context(ytcfg: YTCFG, epoch: Date) {
@@ -121,7 +125,7 @@ export namespace YouTubeMusic {
 		const ytcfg: YTCFG = eval_json(extracted as string);
 		return ytcfg;
 	}
-	async function get_initial_data_config(opts: Opts, url: string): Promise<ICFG | ResponseError> {
+	async function get_initial_data_config(opts: Opts, url: string, retry = false): Promise<ICFG | ResponseError> {
 		try {
 			const page_response = await fetch(url, {
 				headers: {
@@ -147,7 +151,11 @@ export namespace YouTubeMusic {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==",
-					"Cookies": opts.cookie_jar?.toString() as string,
+					...(retry ? {
+						"cookie": opts.cookie_jar?.toString() as string
+					} : {
+						"Cookies": opts.cookie_jar?.toString() as string
+					})
 				},
 				method: "GET"
 			});
@@ -156,7 +164,12 @@ export namespace YouTubeMusic {
 				initial_data: extract_initial_data(page_html),
 				ytcfg: extract_ytcfg(page_html)
 			};
-		} catch (error) { return { error: error as Error }; }
+		} catch (error) {
+			if(retry === false){
+				return get_initial_data_config(opts, url, true);
+			}
+			return { error: error as Error }; 
+		}
 	}
     interface ICFGData<T> { icfg: ICFG, data: T }
 	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
@@ -244,13 +257,14 @@ export namespace YouTubeMusic {
 		if ("error" in response) return response;
 		return (await response.json()) as ContinuedResults_0;
 	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
+	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false) {
 		if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
-		const headers = get_post_headers(opts.cookie_jar, epoch);
+		const headers = get_post_headers(opts.cookie_jar, epoch, retry);
 		const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(merged_payload) });
+		if(!response.ok && retry === false) return post_check_response(opts, ytcfg, path, payload, true);
 		return response;
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {

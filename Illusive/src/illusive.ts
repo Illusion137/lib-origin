@@ -206,9 +206,9 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio");
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!);
-        const yt_music = Prefs.get_pref('prefer_youtube_music') && Illusive.music_service.get("YouTube Music")!.has_credentials();
-        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : yt_music ? "YouTube Music" : "YouTube";
-        const new_track_data = await convert_track(track, {to_music_service: to_service});
+        const yt_music = Prefs.get_pref('prefer_youtube_music');
+        const to_service: MusicServiceType = yt_music ? "YouTube Music" : Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+        const new_track_data = await convert_track(track, {to_music_service: to_service, possible_services: yt_music && Prefs.get_pref('force_explicit_conversion') ? ['YouTube Music'] : undefined});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
         const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
@@ -334,14 +334,12 @@ export namespace Illusive {
         possible_services: MusicServiceType[];
     }
     
-    function convert_track_default_opts(opts: ConvertTrackOptsNull): ConvertTrackOpts {
-        const yt_music = Prefs.get_pref('prefer_youtube_music') && Illusive.music_service.get("YouTube Music")!.has_credentials();
-        opts.to_music_service = opts.to_music_service ?? (
-            Prefs.get_pref('prefer_soundcloud') ? 
-                "SoundCloud" : 
-                    yt_music ? 
-                    "YouTube Music" : 
-                "YouTube");
+    export function convert_track_default_opts(opts: ConvertTrackOptsNull): ConvertTrackOpts {
+        const yt_music = Prefs.get_pref('prefer_youtube_music');
+        opts.to_music_service = opts.to_music_service ?? ( 
+            yt_music ? "YouTube Music"
+            : Prefs.get_pref('prefer_soundcloud') ? 
+                "SoundCloud" : "YouTube");
         opts.deep_convert = opts.deep_convert ?? false;
         opts.proxies = opts.proxies ?? [];
         opts.possible_services = opts.possible_services ?? (
@@ -352,7 +350,7 @@ export namespace Illusive {
                 ["YouTube", "SoundCloud"]);
         return opts as ConvertTrackOpts;
     }
-    
+
     export function is_youtube(track: Track) {
         return !!track.youtube_id && !track.amazonmusic_id && !track.applemusic_id && !track.soundcloud_id && !track.spotify_id;
     }

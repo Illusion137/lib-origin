@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, urlid } from "../utils/util";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { CreatePlaylist } from "./types/CreatePlaylist";
@@ -11,12 +11,6 @@ import { YTCFG } from "./types/YTCFG";
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent_windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
-	
-	const SAPISID_VERSIONS = {
-		v1: sapisid_hash_auth0,
-		v2: sapisid_hash_auth1,
-	}
-
 	interface Opts { cookie_jar?: CookieJar, agent?: any };
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
@@ -54,14 +48,14 @@ export namespace YouTube {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, sapisid_version?: keyof typeof SAPISID_VERSIONS) {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string) {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
 		if (SAPISID === undefined) throw new Error("SAPISID doesn't exist");
 		return {
 			"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
-			"authorization": SAPISID_VERSIONS[sapisid_version ?? "v1"](SAPISID, epoch, 'https://www.youtube.com'),
+			"authorization": sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com'),
 			"content-type": "application/json",
 			"priority": "u=1, i",
 			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
@@ -168,7 +162,7 @@ export namespace YouTube {
 			};
 		} catch (error) { return { error: error as Error }; }
 	}
-	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents, user_agent_windows); }
+	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
 	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_channel_contents> { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_channel_contents); }
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
@@ -192,18 +186,18 @@ export namespace YouTube {
 			return (await response.json()) as ContinuedResults_0;
 		} catch (error) { return { error: error as Error } }
 	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, sapisid_version?: keyof typeof SAPISID_VERSIONS) {
+	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
 		try {
 			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch, undefined, sapisid_version), body: JSON.stringify(merged_payload) });
+			const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}
-	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, sapisid_version?: keyof typeof SAPISID_VERSIONS) {
-		const response = await post_check_response(opts, ytcfg, path, payload, sapisid_version);
+	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
+		const response = await post_check_response(opts, ytcfg, path, payload);
 		if ("error" in response) return false;
 		return response.ok;
 	}
@@ -218,7 +212,7 @@ export namespace YouTube {
 			actions,
 			playlistId: playlist_id
 		}
-		return await post_check_succeed(opts, ytcfg, "browse/edit_playlist?prettyPrint=false", payload, "v2");
+		return await post_check_succeed(opts, ytcfg, "browse/edit_playlist?prettyPrint=false", payload);
 	}
 	export async function like_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/like"); }
 	export async function dislike_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/dislike"); }

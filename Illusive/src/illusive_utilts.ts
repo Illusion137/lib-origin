@@ -1,6 +1,7 @@
-import { is_empty, remove, remove_special_chars, urlid } from "../../origin/src/utils/util";
+import { is_empty, remove, remove_special_chars, remove_topic, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
+import { ANTI_QUERY_FLAG_PREFIX, QUERY_FLAGS } from "./query_flags";
 import { CompactPlaylistType, GroupSection, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
@@ -84,27 +85,31 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
     }
     return {char_data: section_chars, section_map: [...sections]};
 }
-const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
+
 export function track_query_filter(tracks: Track[], query?: string) {
     if(!is_empty(query)) {
-        const explicit_flag = query!.includes("@ex");
-        const clean_flag = query!.includes("@cl");
-        const jp_flag = query!.includes("@jp");
-        const sc_flag = query!.includes("@sc");
-
-        query = remove(query!, /@ex ?/, /@cl ?/, /@jp ?/, /@sc ?/);
-
+        const matched_anti_query_flags = QUERY_FLAGS.filter(flag => query?.includes(ANTI_QUERY_FLAG_PREFIX + flag.flag));
+        query = remove(query!, ...matched_anti_query_flags.map(flag => RegExp(`${ANTI_QUERY_FLAG_PREFIX}${flag.flag} ?`, 'gi')));
+        const matched_query_flags = QUERY_FLAGS.filter(flag => query?.includes(flag.flag));
+        query = remove(query, ...matched_query_flags.map(flag => RegExp(`${flag.flag} ?`, 'gi')));
+        
         return tracks.filter(track => {
-            const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
-            const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
-            const includes_artist = track.artists[0].name.toUpperCase().includes(query!.toUpperCase());
+            if(is_empty(query) && matched_anti_query_flags.length === 0 && matched_query_flags.length === 0) return false;
+            if(!is_empty(query)){
+                const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
+                const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
+                if(includes_title) return true;
+                const includes_artist = artist_string(track).toUpperCase().includes(query!.toUpperCase());
+                if(includes_artist) return true;
+                const includes_album = track.album?.name.toUpperCase().includes(query?.toUpperCase() ?? "") ?? false;
+                if(includes_album) return true;
+            }
             
-            const jp_test = jp_flag && (jp_regex.test(title)||jp_regex.test(track.artists[0].name));
-            const clean_test = clean_flag && (track.explicit === "CLEAN");
-            const explicit_test = explicit_flag && (track.explicit === "EXPLICIT");
-            const sc_test = sc_flag && (!is_empty(track.soundcloud_id));
+            const matches_any_anti_flag = matched_anti_query_flags.some(flag =>  !flag.condition(track, query!));
+            if(matches_any_anti_flag) return true;
             
-            return !is_empty(query) && (includes_title||includes_artist) || jp_test || clean_test || explicit_test || sc_test;
+            const matches_any_flag = matched_query_flags.some(flag =>  flag.condition(track, query!));
+            return matches_any_flag;
         });
     }
     return tracks;
@@ -206,8 +211,9 @@ export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
     if(runs.length === 1) named_uris.push({name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri("youtubemusic", runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
     else
     for(const run of runs) {
-        if(!run.text.includes(",") && !run.text.includes("&") && !run.text.includes("and"))
-            named_uris.push({name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri("youtubemusic", runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
+        const is_year = run.text.length === 4 && !isNaN(parseInt(run.text));
+        if(!run.text.includes(",") && !run.text.includes("&") && !run.text.includes("and") && !run.text.includes(" • ") && !is_year)
+            named_uris.push({name: run.text, uri: run.navigationEndpoint !== undefined ? create_uri("youtubemusic", run.navigationEndpoint.browseEndpoint.browseId) : null });
     }
     return named_uris;
 }
@@ -294,4 +300,29 @@ export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any
 	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter(item => (item[1].show_in_settings ?? false) && (item[1].show_in_type === show_in_type_check));
     const groups = groupby(entries, (item) => item[1].section ?? 'Other');
 	return Object.keys(groups).map((key: string) => ({title: key, data: groups[key]}));
+}
+
+export function artist_string(track: Track): string{
+    if(is_empty(track)) return "";
+    if(track.artists.length <= 1) return remove_topic(track.artists[0].name).trim();
+    const names = track.artists.map(artist => remove_topic(artist.name).trim());
+    const final_name = names.pop()!;
+    return names.length
+        ? names.join(', ') + ' & ' + final_name
+            : final_name;
+}
+
+export function version_greater_than(version: string, other_version: string): boolean{
+    try {
+        const [major, minor, patch] = version.split('.').map(parseInt);
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(parseInt);
+        if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
+        if(major > other_major) return true;
+        if(major === other_major && minor > other_minor) return true;
+        if(major === other_major && minor === other_minor && patch > other_patch) return true;
+        return false;
+    }
+    catch(e) {
+        return false;
+    }
 }

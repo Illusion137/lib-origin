@@ -47,6 +47,12 @@ export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;
 export type Primitives = string|boolean|number;
 
+export interface QueryFlag {
+    flag: string;
+    description: string;
+    condition: (track: Track, query: string) => boolean;
+}
+
 export interface AlphabetScroll {
     all_alphabet_fast_scroll_locations: number[],
     current_position: number,
@@ -136,12 +142,14 @@ export interface TrackMetaData {
     added_date: ISOString;
     last_played_date: ISOString;
     downloaded_date?: ISOString;
+    last_sampled_date?: ISOString;
     begdur?: number;
     enddur?: number;
     nsplit?: number;
     age_restricted?: boolean;
     chapters?: Chapter[];
     songs?: YTDescriptionSong[];
+    unavailable?: boolean;
 }
 // Regex
 // \s+.+?: (.+?)\n

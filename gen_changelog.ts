@@ -1,0 +1,68 @@
+export const CHANGELOG = `# Illusi 14.5.12
+ - More search queries
+ - Version checking to improve startup time
+ - Fix Sampler
+ - Improved Error handling
+# Illusi 14.5.11
+ - Attempt to fix *YouTube*/*YouTube Music* cookie related bug
+ - Fixed *YouTube Music* playlist artists text bug
+ - Fixed Sampler "expo ios doesn't support isAirplaneMode()" error
+# Illusi 14.5.10
+ - Added changelog
+ - Fixed artist naming inconsistencies
+ - Removed unnecessary preferences
+   - \`safe_mode\`
+   - \`safe_mode_undownload\`
+   - \`track_player_file_searchings\`
+   - \`force_redownload_conversion\`
+   - \`can_clean_directories\`
+   - \`auto_clean_directories\`
+ - Added more preferences descriptions
+ - Fixed *YouTube Music* searching bug
+ - Fixed *YouTube Music* cookie related bug
+ - Improved re-downloading music
+ - Improved Illusi-conversion algorithm
+ - Fixed bug where Illusi-shortcut wouldn't work unless app was already open
+ - Added Illusi-shortcut for Library and auto-playlists
+ - Fixed bug where custom theme color wouldn't display properly
+ - Fixed insane fps drop when added tracks to a playlist from your library
+ - Fix all tracks that lack an illusi-id
+ - Added Sampler; allows Illusi to automatically find unavailable videos
+ - Unavailable track tag while track is downloaded
+ - Added \`ExtrasDanger\` screen
+ - Added \`ExtrasHelp\` screen which currently shows Query Flags
+ - Added \`ExtrasChangelog\` screen
+ - Fixed \`force_explicit_conversion\` preference allowing multiple conversion services
+# Illusi 14.4.10
+ - Fixed *Apple Music* playlist fetching without an account
+ - Better *YouTube* link parsing 
+ - Update cookie jar with fetch fix 
+ - *Soundcloud* apipost fix 
+ - *Soundcloud* try_connect_session on startup (if enabled
+ - More *Soundcloud* cookie checks
+ - Added \`AddToPlaylistModal\`
+ - Fixed \`EditPlaylist\` instant crash
+ - Working around *Soundcloud* losing cookies after session
+ - No need for *YouTube Music* cookies when searching
+# Illusi 14.3.9 (*Github*)
+ - Added \`CompactArtist\` verified icon
+ - Added light mode
+ - Added custom theme framework
+ - Added theming
+ - Fixing color based bugs
+ - Better searching
+ - Added Musi-based explore page
+ - Added add to playlist
+ - Can add from recently_played tracks
+ - Fixed adding from past_queue
+ - Lyrics screen
+ - Audioplayer settings screen
+ - Working on search screen 
+ - Working on linking
+ - Better error messages
+ - Add_from_modal experimental
+ - Most_played filter
+ - Soundcloud search flag
+ - Support check_existing_tracks for default playlists
+ - Improved playlist_converter
+ - Fixed trackplayer track metadata bug`;

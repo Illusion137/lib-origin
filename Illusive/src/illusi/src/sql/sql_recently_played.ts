@@ -3,7 +3,7 @@ import { all_promises } from "../../../illusive_utilts";
 import { Prefs } from "../../../prefs";
 import { SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
-import { sql_track_to_track, track_from_uid, track_to_sqllite_insertion, track_uid_exists } from "./sql_tracks";
+import { sql_tracks_to_tracks, track_from_uid, track_to_sqllite_insertion, track_uid_exists } from "./sql_tracks";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select, sql_where } from "./sql_utils";
 
 export async function insert_recently_played_track(track: Track) {
@@ -12,11 +12,11 @@ export async function insert_recently_played_track(track: Track) {
 }
 export async function recently_played_tracks(limit?: number): Promise<Track[]> {
     const recently_played_sql_tracks: SQLTrack[] = await db_get_all_async<SQLTrack>(sql_select<Track>("recently_played_tracks", "*", limit, "DESC"));
-    const recently_played_tracks = recently_played_sql_tracks.map(track => sql_track_to_track(track));
+    const recently_played_tracks = sql_tracks_to_tracks(recently_played_sql_tracks);
     for(let i = 0; i < recently_played_tracks.length; i++) {
         const exists = await track_uid_exists(recently_played_tracks[i]);
         if(exists)
-            recently_played_tracks[i] = await track_from_uid(recently_played_tracks[i].uid);
+            recently_played_tracks[i] = await track_from_uid(recently_played_tracks[i].uid) as Track;
         else if(!is_empty(recently_played_tracks[i].imported_id)) recently_played_tracks.splice(i, 1);
     }
     return recently_played_tracks;

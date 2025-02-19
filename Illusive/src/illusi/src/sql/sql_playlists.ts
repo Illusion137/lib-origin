@@ -3,7 +3,7 @@ import { all_promises, array_exclude, array_include, array_mask, track_query_fil
 import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
-import { sql_track_to_track } from "./sql_tracks";
+import { sql_tracks_to_tracks } from "./sql_tracks";
 import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { sort_playlist_tracks } from "../playlist";
 
@@ -16,7 +16,7 @@ function playlist_to_sqllite_insertion(playlist: Playlist) {
         playlist.thumbnail_uri ?? "", 
         playlist.sort ?? "OLDEST", 
         playlist.public ?? false, 
-        playlist.public_uuid ?? (uuid.default.v4() as string), 
+        playlist.public_uuid ?? uuid.default.v4(), 
         JSON.stringify(playlist.inherited_playlists ?? []), 
         JSON.stringify(playlist.inherited_searchs ?? []), 
         JSON.stringify(playlist.linked_playlists ?? []), 
@@ -54,7 +54,7 @@ export async function unique_playlist_uuids_from_playlist_tracks(){
 }
 export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids = new Set<string>(), skip_inheritance = false) {
     const playlist = await db_get_all_async<SQLTrack>(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
-    let tracks: Track[] = playlist.map(track => sql_track_to_track(track)); 
+    let tracks: Track[] = sql_tracks_to_tracks(playlist); 
     if(skip_inheritance) return tracks;
     seen_playlist_uuids.add(playlist_uuid);
     const cplaylist_data = await playlist_data(playlist_uuid, true);
@@ -131,7 +131,7 @@ export async function create_playlist(title: string, cuuid?: string): Promise<st
         if(count > 0)
             title = `${title} ${count}`;
     }
-    const playlist_uuid = cuuid ?? uuid.default.v4() as string;
+    const playlist_uuid = cuuid ?? uuid.default.v4();
     await db_run_async(sql_insert_values("playlists", ExampleObj.playlist_example0), playlist_to_sqllite_insertion({ uuid: playlist_uuid, title }));
     return playlist_uuid;
 }
