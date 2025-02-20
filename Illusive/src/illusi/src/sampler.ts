@@ -41,7 +41,7 @@ export function unsampled_tracks_service(service: MusicServiceType, tracks: Trac
 export function unsampled_tracks_meta(tracks: Track[]) {
     return tracks.filter(track => (
         new Date(new Date().getTime() - (is_empty(track.meta?.last_sampled_date) ? 
-            new Date(0) 
+            new Date(0)
                 : new Date(track.meta!.last_sampled_date!)).getTime()).getTime() > (30 * 24 * 60 * 60 * 1000)
     ));
 }
@@ -73,7 +73,6 @@ export async function sample_tracks_service(sample_tracks: Track[], to: MusicSer
 }
 
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata'], unavailable: boolean) {
-    if(metadata === undefined) return;
     if(!await SQLTracks.track_exists(track)) return;
     const new_metadata: TrackMetaData = {
         ...(!is_empty(track.meta) ? track.meta! : ({
@@ -81,9 +80,11 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             added_date: new Date().toISOString() as ISOString,
             last_played_date: new Date().toISOString() as ISOString
         })),
-        age_restricted: metadata.age_restricted,
-        chapters: metadata.chapters,
-        songs: metadata.songs,
+        ...(is_empty(metadata) ? {} : {
+            age_restricted: metadata!.age_restricted,
+            chapters: metadata!.chapters,
+            songs: metadata!.songs,
+        }),
         unavailable: unavailable,
         last_sampled_date: new Date().toISOString() as ISOString
     }

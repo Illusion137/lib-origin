@@ -6,6 +6,7 @@ import * as GLOBALS from "../globals";
 import { sql_tracks_to_tracks } from "./sql_tracks";
 import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { sort_playlist_tracks } from "../playlist";
+import { Prefs } from "../../../prefs";
 
 function playlist_to_sqllite_insertion(playlist: Playlist) {
     const to_array: SQLPlaylistArray = [
@@ -35,8 +36,8 @@ export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: str
     await Promise.all(promises);
 }
 
-export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks = false): Promise<Playlist> {
-    const tracks = ignore_tracks ? [] : await playlist_tracks(sql_playlist.uuid, new Set<string>(), true);
+export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks = false, ignore_inheritance = true): Promise<Playlist> {
+    const tracks = ignore_tracks ? [] : await playlist_tracks(sql_playlist.uuid, new Set<string>(), ignore_inheritance);
     return Object.assign(sql_playlist, {
         inherited_playlists: JSON.parse(sql_playlist.inherited_playlists ?? "[]"),
         linked_playlists: JSON.parse(sql_playlist.linked_playlists ?? "[]"),
@@ -102,8 +103,9 @@ export async function delete_track_from_all_playlists(track_uid: string) {
 }
 
 export async function all_playlists_data() {
+    const ignore_inheritance = !Prefs.get_pref('playlist_inheritance_preview');
     const playlists = await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"));
-    return Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist)) );
+    return Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, false, ignore_inheritance)) );
 }
 export async function all_playlists_names(): Promise<{"title": string}[]> {
     return await db_get_all_async<{"title": string}>(sql_select<Playlist>("playlists", "title"));

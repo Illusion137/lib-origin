@@ -75,6 +75,7 @@ export namespace Prefs {
         force_explicit_conversion:             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
         can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
         can_redownload_batch:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
+        playlist_inheritance_preview:          {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "If-Enabled; The Playlists tab will show all your inheritance in your playlists; Slightly slower performance when opening Playlists tab"}  as Pref<boolean>,
 
         // Settings that have a chance of breaking things; use with caution; all disabled by default
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,

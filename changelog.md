@@ -1,3 +1,7 @@
+# Illusi 14.6.12
+ - A whole lot more search queries
+ - Support for search queries with parameters; but only one at a time
+ - New pref:`playlist_inheritance_preview`
 # Illusi 14.5.12
  - More search queries
  - Version checking to improve startup time

@@ -95,7 +95,7 @@ export function track_query_filter(tracks: Track[], query?: string) {
         
         return tracks.filter(track => {
             if(is_empty(query) && matched_anti_query_flags.length === 0 && matched_query_flags.length === 0) return false;
-            if(!is_empty(query)){
+            if(!is_empty(query) && matched_query_flags.length === 0 && matched_anti_query_flags.length === 0){
                 const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
                 const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
                 if(includes_title) return true;

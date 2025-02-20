@@ -26,9 +26,9 @@ export function get_first_word_num(query: string): number{
 const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
 export const QUERY_FLAGS: QueryFlag[] = [
     {
-        flag: '@enone',
+        flag: '@en',
         condition: (track) => track.explicit === "NONE",
-        description: "All tracks that are found without a explicit tag"
+        description: "All tracks that are found without a explicit tag",
     },
     {
         flag: '@ex',
@@ -56,12 +56,12 @@ export const QUERY_FLAGS: QueryFlag[] = [
         description: "All tracks that include a YouTube ID"
     },
     {
-        flag: '@ytm',
+        flag: '@ym',
         condition: (track) => !is_empty(track.youtubemusic_id),
         description: "All tracks that include a YouTube Music ID"
     },
     {
-        flag: '@amm',
+        flag: '@am',
         condition: (track) => !is_empty(track.amazonmusic_id),
         description: "All tracks that include a Amazon Music ID"
     },
@@ -86,12 +86,12 @@ export const QUERY_FLAGS: QueryFlag[] = [
         description: "All tracks that include a Media URI"
     },
     {
-        flag: '@thdl',
+        flag: '@tdl',
         condition: (track) => !is_empty(track.thumbnail_uri),
         description: "All tracks that include a Thumbnail URI"
     },
     {
-        flag: '@lydl',
+        flag: '@ldl',
         condition: (track) => !is_empty(track.lyrics_uri),
         description: "All tracks that include a Lyrics URI"
     },
@@ -120,4 +120,64 @@ export const QUERY_FLAGS: QueryFlag[] = [
         condition: (track, query) => track.duration <= get_first_word_num(query),
         description: "All tracks that are found with a duration (in seconds) less than or equal to the input"
     },
+    {
+        flag: '@vwg',
+        condition: (track, query) => (track.plays ?? 0) >= get_first_word_num(query),
+        description: "All tracks that are found with more views greater than or equal to the input"
+    },
+    {
+        flag: '@vwl',
+        condition: (track, query) => (track.plays ?? 0) <= get_first_word_num(query),
+        description: "All tracks that are found with more views less than or equal to the input"
+    },
+    {
+        flag: '@plg',
+        condition: (track, query) => (track.meta?.plays ?? 0) >= get_first_word_num(query),
+        description: "All tracks that are found with more plays greater than or equal to the input"
+    },
+    {
+        flag: '@pll',
+        condition: (track, query) => (track.meta?.plays ?? 0) <= get_first_word_num(query),
+        description: "All tracks that are found with more plays less than or equal to the input"
+    },
+    {
+        flag: '@lsdg',
+        condition: (track, query) => (new Date(track.meta?.last_sampled_date ?? 0)).getTime() >= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be sampled after (x) days ago"
+    },
+    {
+        flag: '@lsdl',
+        condition: (track, query) => (new Date(track.meta?.last_sampled_date ?? 0)).getTime() <= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be sampled before (x) days ago"
+    },
+    {
+        flag: '@addg',
+        condition: (track, query) => (new Date(track.meta?.added_date ?? 0)).getTime() >= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be added after (x) days ago"
+    },
+    {
+        flag: '@addl',
+        condition: (track, query) => (new Date(track.meta?.added_date ?? 0)).getTime() <= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be added before (x) days ago"
+    },
+    {
+        flag: '@lpdg',
+        condition: (track, query) => (new Date(track.meta?.last_played_date ?? 0)).getTime() >= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be played after (x) days ago"
+    },
+    {
+        flag: '@lpdl',
+        condition: (track, query) => (new Date(track.meta?.last_played_date ?? 0)).getTime() <= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be played before (x) days ago"
+    },
+    {
+        flag: '@ddg',
+        condition: (track, query) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() >= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be downloaded after (x) days ago"
+    },
+    {
+        flag: '@ddl',
+        condition: (track, query) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() <= new Date().getTime() - (get_first_word_num(query) * 1000 * 60 * 60 * 24),
+        description: "All tracks that are found to be downloaded before (x) days ago"
+    }
 ];
