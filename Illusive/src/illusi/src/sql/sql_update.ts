@@ -121,8 +121,8 @@ export async function fix_to_new_update(version: string) {
         } catch (error) {}
     }
 
-    // UPDATE 14.5.11 BETA
-    if(!version_greater_than(version, "14.5.11")){
+    // UPDATE 14.5.12 BETA
+    if(!version_greater_than(version, "14.5.12")){
         try {
             const current_tracks = (await db_get_all_async<SQLTrack>(sql_select<Track>("tracks", "*")));
             if(current_tracks.some(track => track.prods === "[]")){
@@ -134,7 +134,7 @@ export async function fix_to_new_update(version: string) {
                         await sql_update<Track>("tracks", {uid: track.uid}, "prods", track.prods?.trim() ?? "");
                     }
                 }
-                Alert.alert("Updated Tracks to 14.5.11 BETA");
+                Alert.alert("Updated Tracks to 14.5.12 BETA");
             }
         } catch (error) {}
     }
