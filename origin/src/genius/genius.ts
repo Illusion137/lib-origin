@@ -57,7 +57,7 @@ export namespace Genius {
         const lyrics_containers_matches = [...html.matchAll(extract_lyrics_containers_regex)];
         const lyrics_containers_string = lyrics_containers_matches.map(match => match[1]).join('');
 
-        const extracted_lyrics = lyrics_containers_string.replace(/<br\/>/g, '\n').replace(/<span>/g, '').replace(/<span.+?>/g, '').replace(/<\/span>/g, '').replace(/<a.+?>/g, '').replace(/<\/a>/g, '').replace(/ ?&#x27;/g, "'").replace(/ +/g, ' ').replace(/\(<i>(.+?)<\/i>\n? ?\)/g, '$1').replace(/(\n ?)+/g, '\n').replace(/\n,/g, ',');
+        const extracted_lyrics = lyrics_containers_string.replace(/<br\/>/g, '\n').replace(/<span>/g, '').replace(/<span.+?>/g, '').replace(/<\/span>/g, '').replace(/<a.+?>/g, '').replace(/<\/a>/g, '').replace(/ ?&#x27;/g, "'").replace(/ +/g, ' ').replace(/\(<i>(.+?)<\/i>\n? ?\)/g, '$1').replace(/(\n ?)+/g, '\n').replace(/\n,/g, ',').replace(/&quot;/g,'"');
         return extracted_lyrics;
     }
 }

@@ -53,7 +53,7 @@ export function urlid(url: string, ...remove_links: (string|RegExp)[]) {
 }
 export function make_topic(title: string) { return `${title} - Topic`; }
 export function remove_topic(title: string) { return title.replace(" - Topic", ''); }
-export function is_empty(value: unknown) { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && value.trim() === "") || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
+export function is_empty(value: unknown) { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 export function remove(str: string, ...rs: (string|RegExp)[]) { for(const r of rs) str = str.replace(r, ''); return str; }
@@ -75,9 +75,23 @@ export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string)
 	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest}`
 	return SAPISIDHASH;
 }
-export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN: string) {
-	const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
-	const data_string = [time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
+// https://stackoverflow.com/questions/79378674/figuring-out-google-hashing-algorithm-for-sapisidhash-used-on-youtube-subscribe
+/*
+	Here's how the hash is generated:
+	sha1([DATASYNC_ID, TIMESTAMP, SAPISID, ORIGIN].join(" "))
+	WITH:
+	DATASYNC_ID = ytcfg.data_.DATASYNC_ID.split('||')[0]
+	TIMESTAMP = Math.floor(new Date().getTime() / 1E3)
+	SAPISID = cookies['SAPISID']
+	ORIGIN = "https://www.youtube.com"
+	The authorization header seems to be a repeat of {TIMESTAMP}_{sha1_hash}_u for each of SAPISIDHASH, SAPISID1PHASH and SAPISID3PHASH:
+	authorization: SAPISIDHASH {TIMESTAMP}_{sha1_hash}_u SAPISID1PHASH {TIMESTAMP}_{sha1_hash}_u SAPISID3PHASH {TIMESTAMP}_{sha1_hash}_u
+*/
+export function sapisid_hash_auth1(SAPISID: string, epoch: Date, ytcfg: YTCFG, ORIGIN: string) {
+	const time_stamp_seconds_str = Math.floor(epoch.getTime() / 1E3);
+	const datasync_id = (ytcfg.DATASYNC_ID ?? (ytcfg as any).data_.DATASYNC_ID).split('||')[0];
+
+	const data_string = [datasync_id, time_stamp_seconds_str, SAPISID, ORIGIN].join(' ');
 	const data = Uint8Array.from(Array.from(data_string).map(letter => letter.charCodeAt(0)));
 	const sha_digest = sha1.createHash().update(data).digest("hex");
 	const SAPISIDHASH = `SAPISIDHASH ${time_stamp_seconds_str}_${sha_digest}_u SAPISID1PHASH ${time_stamp_seconds_str}_${sha_digest}_u SAPISID3PHASH ${time_stamp_seconds_str}_${sha_digest}_u`
@@ -117,6 +131,7 @@ export function clean_error_stack(error: Error){
 }
 
 import { RequestInit } from 'node-fetch';
+import { YTCFG } from '../youtube/types/YTCFG';
 
 export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
     // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);

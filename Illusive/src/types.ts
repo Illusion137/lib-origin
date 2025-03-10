@@ -8,7 +8,12 @@ import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
 
-export type SQLTables = "sqlite_master" | "tracks" | "recently_played_tracks" | "backpack" | "playlists" | "playlists_tracks";
+export type SQLTables = "sqlite_master" 
+    | "tracks" | "tracks_deleted" 
+    | "recently_played_tracks" | "recently_played_tracks_deleted" 
+    | "backpack" | "backpack_deleted" 
+    | "playlists" | "playlists_deleted"
+    | "playlists_tracks" | "playlists_tracks_deleted";
 export interface ImageArtwork {
     uri: string
     cache: ArtworkCacheType
@@ -18,7 +23,7 @@ export type Promises = Promise<unknown>[]
 
 export interface Route<T> {"key": string, "name": string, "params": T, path: string}
 
-export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN";
+export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN" | "DATETIME";
 export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
                        {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
                        {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
@@ -29,6 +34,8 @@ export type DownloadTrackResult = "GOOD" | "ERROR";
 export type SetState = any;
 
 export type SortType = "ALPHABETICAL" | "NEWEST" | "OLDEST"
+
+export type BottomAlertType = "GOOD"|"INFO"|"WARN";
 
 export interface SQLTable {
     name: string
@@ -229,6 +236,7 @@ export interface CompactPlaylistData {
     track_count: number
     type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>
+    thumbnail_uri?: string
 }
 export interface SerializedCompactPlaylistData {
     title: string;
@@ -291,12 +299,14 @@ export interface MusicSearchResponse {
 
 export interface MusicServiceArtist {
     name: string
+    latest_release?: Track
     tracks: Track[]
     tracks_continuation: () => Track[]
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
     background_artwork_url?: string
     profile_artwork_url?: string
+    similar_artists: CompactArtist[]
 }
 export interface YTDescriptionSong {
     artwork_url: string,

@@ -3,7 +3,7 @@ import { is_empty } from "../../../../origin/src/utils/util";
 import { Illusive } from "../../illusive";
 import { random_of, shuffle_array } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
-import { DownloadFromIdResult, ISOString, MusicServiceType, Track, TrackMetaData } from "../../types";
+import { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "../../types";
 import * as GLOBALS from './globals';
 import { Logger } from "./logger";
 import * as SQLTracks from './sql/sql_tracks';
@@ -54,6 +54,10 @@ export async function next_sample_tracks_service(ingore_services: MusicServiceTy
     return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
 }
 export async function next_sample_tracks_meta() {
+    // if(GLOBALS.global_var.sql_tracks.some(track => !is_empty(track.youtube_id) && track.artists[0].uri === null)){
+    //     const unsampled = GLOBALS.global_var.sql_tracks.filter(track => !is_empty(track.youtube_id) && track.artists[0].uri === null);
+    //     return shuffle_array(unsampled).slice(0, Prefs.get_pref('tracks_per_sample'));
+    // }
     const tracks: Track[] = unsampled_tracks_meta(GLOBALS.global_var.sql_tracks);
     return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
 }
@@ -116,6 +120,55 @@ export async function sample_tracks_meta(sample_tracks: Track[]){
             continue;
         }
     }
+}
+
+async function super_speed_sample_unavailable_tracks(tracks: Track[]) {
+    return await Promise.all(tracks.map(async(track) => {
+        if(is_empty(track.youtube_id)) return;
+        const thumbnail_uri = Illusive.get_youtube_lowest_quality_thumbnail_uri(track.youtube_id!);
+        const response = await fetch(thumbnail_uri);
+        if(!response.ok){
+            if(is_empty(track.media_uri)){
+                await SQLBackpack.add_to_backpack(track.uid);
+                alert_error(`Quick-Sampler found track that is now unavailable and is now put in your backpack: \n${JSON.stringify({title: track.title, uid: track.uid})}`);
+            }
+            else {
+                const new_metadata: TrackMetaData = {
+                    ...track.meta!,
+                    unavailable: true
+                }
+                track.meta = new_metadata;
+                await SQLTracks.update_track_meta_data(track.uid, new_metadata);
+            }
+        }
+    }));
+}
+export async function speed_sample_unavailable_tracks(tracks: Track[], super_speed: boolean = false){
+    if(super_speed) { 
+        await super_speed_sample_unavailable_tracks(tracks);
+        return;
+    }
+    const promises: Promises = [];
+    for(const track of tracks){
+        if(is_empty(track.youtube_id)) continue;
+        const thumbnail_uri = Illusive.get_youtube_lowest_quality_thumbnail_uri(track.youtube_id!);
+        const response = await fetch(thumbnail_uri);
+        if(!response.ok){
+            if(is_empty(track.media_uri)){
+                promises.push(SQLBackpack.add_to_backpack(track.uid));
+                alert_error(`Quick-Sampler found track that is now unavailable and is now put in your backpack: \n${JSON.stringify({title: track.title, uid: track.uid})}`);
+            }
+            else {
+                const new_metadata: TrackMetaData = {
+                    ...track.meta!,
+                    unavailable: true
+                }
+                track.meta = new_metadata;
+                promises.push(SQLTracks.update_track_meta_data(track.uid, new_metadata));
+            }
+        }
+    }
+    await Promise.all(promises);
 }
 
 export async function sample(){

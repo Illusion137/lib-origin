@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { CreatePlaylist } from "./types/CreatePlaylist";
@@ -48,14 +48,14 @@ export namespace YouTube {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string) {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ) {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
 		if (SAPISID === undefined) throw new Error("SAPISID doesn't exist");
 		return {
 			"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
-			"authorization": sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com'),
+			"authorization": ytcfg !== undefined ? sapisid_hash_auth1(SAPISID, epoch, ytcfg, 'https://www.youtube.com') : sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com'),
 			"content-type": "application/json",
 			"priority": "u=1, i",
 			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
@@ -170,34 +170,29 @@ export namespace YouTube {
 	export async function get_library(opts: Opts): PromiseICFGData<typeof Parser.parse_library_contents> { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
 	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation, path?: string) {
 		try {
-			// ctoken: next_con.continuationEndpoint.continuationCommand.token,
-			// continutation: next_con.continuationEndpoint.continuationCommand.token,
-			// type: "next",
-			// itct: next_con.continuationEndpoint.clickTrackingParams,
-			// prettyPrint: false
 			const query_params = {
 				prettyPrint: false
 			}
 			const payload = {
 				continuation: next_con.continuationEndpoint.continuationCommand.token,
 			};
-			const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload);
+			const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
 			if ("error" in response) throw response.error;
 			return (await response.json()) as ContinuedResults_0;
 		} catch (error) { return { error: error as Error } }
 	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
+	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		try {
 			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch), body: JSON.stringify(merged_payload) });
+			const response = await fetch(url, { method: "POST", headers: get_post_headers(opts.cookie_jar, epoch, undefined, new_auth ? ytcfg : undefined), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}
-	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
-		const response = await post_check_response(opts, ytcfg, path, payload);
+	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
+		const response = await post_check_response(opts, ytcfg, path, payload, new_auth);
 		if ("error" in response) return false;
 		return response.ok;
 	}
@@ -205,14 +200,14 @@ export namespace YouTube {
 		const payload = {
 			target: { videoId: video_id },
 		}
-		return await post_check_succeed(opts, ytcfg, `${like_path}?prettyPrint=false`, payload);
+		return await post_check_succeed(opts, ytcfg, `${like_path}?prettyPrint=false`, payload, true);
 	}
 	export async function post_edit_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, actions: object[]) {
 		const payload = {
 			actions,
 			playlistId: playlist_id
 		}
-		return await post_check_succeed(opts, ytcfg, "browse/edit_playlist?prettyPrint=false", payload);
+		return await post_check_succeed(opts, ytcfg, "browse/edit_playlist?prettyPrint=false", payload, true);
 	}
 	export async function like_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/like"); }
 	export async function dislike_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/dislike"); }
@@ -223,7 +218,7 @@ export namespace YouTube {
 			privacyStatus: privacy,
 			videoIds: []
 		}
-		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
+		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload, true);
 		if ("error" in response) return response;
 		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
 		return await response.json() as CreatePlaylist;
@@ -232,7 +227,7 @@ export namespace YouTube {
 		const payload = {
 			playlistId: playlist_urlid(playlist_id)
 		}
-		return await post_check_succeed(opts, ytcfg, "playlist/delete?prettyPrint=false", payload);
+		return await post_check_succeed(opts, ytcfg, "playlist/delete?prettyPrint=false", payload, true);
 	}
 	export async function add_tracks_to_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, video_ids: string[]) {
 		const actions = video_ids.map((video_id) => ({ addedVideoId: video_id, action: "ACTION_ADD_VIDEO", dedupeOption: "DEDUPE_OPTION_CHECK" }));

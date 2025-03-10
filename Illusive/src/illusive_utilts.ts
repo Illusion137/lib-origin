@@ -2,7 +2,8 @@ import { is_empty, remove, remove_special_chars, remove_topic, urlid } from "../
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
 import { ANTI_QUERY_FLAG_PREFIX, QUERY_FLAGS } from "./query_flags";
-import { CompactPlaylistType, GroupSection, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
+import { seeded_rand } from "./seeding";
+import { CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
@@ -274,6 +275,10 @@ export function random_of<T>(arr: T[]): T {
     const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
     return arr[randidx];
 }
+export function seeded_random_of<T>(gen: () => number, arr: T[]): T {
+    const randidx = Math.floor(gen() * (Math.floor(arr.length) - 0) + 0);
+    return arr[randidx];
+}
 export async function all_promises(promises: Promises) {
     return await Promise.all(promises);
 }
@@ -324,5 +329,53 @@ export function version_greater_than(version: string, other_version: string): bo
     }
     catch(e) {
         return false;
+    }
+}
+
+const tint_color_list: HexColor[] = [
+    '#ff1100',
+    '#ff8800',
+    '#ffea00',
+    '#bfff00',
+    '#59ff00',
+    '#00ff2f',
+    '#00ff99',
+    '#00ccff',
+    '#0066ff',
+    '#0015ff',
+    '#4c00ff',
+    '#9000ff',
+    '#c800ff',
+    '#ee00ff',
+    '#ff00bf',
+    '#ff0084',
+    '#ff003c',
+    '#8f4a4a',
+    '#888f4a',
+    '#688f4a',
+    '#4a8f58',
+    '#4a8f7f',
+    '#4a788f',
+    '#4a598f',
+    '#614a8f',
+    '#7b4a8f',
+    '#8f4a87',
+    '#8f4a65',
+    '#8f4a51'
+];
+
+export function generate_unique_track_tints(tracks: Track[], tint_table: Map<Track['uid'], HexColor>){
+    const with_album = tracks.filter(track => !is_empty(track.album?.name));
+    const grouped = groupby(with_album, track => track.album?.name);
+    for(const key of Object.keys(grouped)){
+        if(grouped[key].length > 1){
+            const tints_clone = [...tint_color_list];
+            const gen = seeded_rand(grouped[key][0].album?.name ?? "");
+            for(const track of grouped[key]){
+                const tint = seeded_random_of(gen, tints_clone);
+                tints_clone.splice(tints_clone.indexOf(tint), 1);
+                tint_table.set(track.uid, tint);
+            }
+        }
     }
 }

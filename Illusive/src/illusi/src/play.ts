@@ -34,7 +34,11 @@ export async function push_track_to_playing_queue(track_data: Track) {
     if(!GLOBALS.global_var.is_playing) return;
     const track_index = await TrackPlayer.getActiveTrackIndex();
     if(track_index === null || track_index === undefined) return;
-    const track: Track = Object.assign({}, track_data); // TODO: Investigate DeepCopy with JSON.parse(JSON.stringify(track_data))
+    const track: Track = JSON.parse(JSON.stringify(track_data));
+    if(!is_empty(track.playback)){
+        track.playback!.added = false;
+        track.playback!.successful = false;
+    }
     GLOBALS.global_var.playing_tracks.splice(track_index + 1 + GLOBALS.global_var.playing_queue.length, 0, track);
     GLOBALS.global_var.playing_queue.push(track.uid);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

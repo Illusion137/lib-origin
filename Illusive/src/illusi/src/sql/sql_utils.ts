@@ -48,8 +48,10 @@ export async function db_get_all_async<T>(source: string, ...params: SQLite.SQLi
     }
 }
 
-export async function sql_update<T extends Record<string, any>>(table: SQLTables, item: {uid: string}, key: keyof T, value: any) {
-    return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]))
+export async function sql_update<T extends Record<string, any>>(table: SQLTables, item: {uid: string}|{id:number}, key: keyof T, value: any) {
+    if(!("uid" in item))
+        return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{id: string}>(["id", item.id]));
+    return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]));
 }
 export async function create_table<T extends Record<string, any>>(table: SQLTables, obj: T) {
     await db.execAsync(sql_create_table<T>(table, obj));
@@ -75,7 +77,7 @@ export function sql_set<T extends Record<string, any>>(...args: [keyof T, Primit
     return `SET ${args.map(arg => `${String(arg[0])}=${typeof arg[1] === "string" ? `'${sql_serialize(arg[1])}'`: arg[1]}`).join(' AND ')}`;
 }
 export function sql_create_table<T extends Record<string, any>>(table: SQLTables, obj: T) {
-    return `CREATE TABLE IF NOT EXISTS ${table} ${obj_to_sql_table("id INTEGER PRIMARY KEY", obj, true)}`;
+    return `CREATE TABLE IF NOT EXISTS ${table} ${obj_to_sql_table("id INTEGER PRIMARY KEY, Timestamp DATETIME", obj, true)}`;
 }
 export function sql_delete_from(table: SQLTables) {
     return `DELETE FROM ${table}`;
@@ -203,11 +205,46 @@ export async function destroy_all_tables() {
 export async function recreate_all_tables() {
     // await destroy_all_tables();
 
-    await create_table("tracks",                 ExampleObj.track_example0);
-    await create_table("recently_played_tracks", ExampleObj.track_example0);
-    await create_table("backpack",               ExampleObj.track_example0);
-    await create_table("playlists",              ExampleObj.playlist_example0);
-    await create_table("playlists_tracks",       ExampleObj.playlists_tracks_example0);
-    // await db.execAsync([{sql: 'CREATE TABLE IF NOT EXISTS audiobooks (id INTEGER PRIMARY KEY, uid STRING, title STRING, media_uri STRING, thumbnail_uri STRING, subtitle_uri STRING, chapters_json STRING, extra_json STRING)', args: []}], false);
+    await create_table("tracks",                         ExampleObj.track_example0);
+    await create_table("tracks_deleted",                 ExampleObj.track_example0);
+    await create_table("recently_played_tracks",         ExampleObj.track_example0);
+    await create_table("recently_played_tracks_deleted", ExampleObj.track_example0);
+    await create_table("backpack",                       ExampleObj.track_example0);
+    await create_table("backpack_deleted",               ExampleObj.track_example0);
+    await create_table("playlists",                      ExampleObj.playlist_example0);
+    await create_table("playlists_deleted",              ExampleObj.playlist_example0);
+    await create_table("playlists_tracks",               ExampleObj.playlists_tracks_example0);
+    await create_table("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0);
+
     await create_default_directories();
+}
+
+export async function create_timestamp_triggers_if_not_exists(table: SQLTables){
+    const triggers = await db_get_all_async<{name: string}>("select name from sqlite_master where type = 'trigger';");
+    if(triggers.map(trigger => trigger.name).includes(`${table}_insert_Timestamp_Trigger`)) return;
+    await db_exec_async(`
+    CREATE TRIGGER ${table}_insert_Timestamp_Trigger
+    AFTER INSERT ON ${table}
+    BEGIN
+    UPDATE ${table} SET Timestamp =STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') WHERE id = NEW.id;
+    END;
+
+    CREATE TRIGGER ${table}_update_Timestamp_Trigger
+    AFTER UPDATE On ${table}
+    BEGIN
+        UPDATE ${table} SET Timestamp = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') WHERE id = NEW.id;
+    END;   
+    `);
+}
+export async function create_delete_triggers_if_not_exists(watch_table: SQLTables, copy_table: SQLTables, key: string){
+    const triggers = await db_get_all_async<{name: string}>("SELECT name from sqlite_master WHERE type = 'trigger';");
+    if(triggers.map(trigger => trigger.name).includes(`${watch_table}_deleted_Trigger`)) return;
+    await db_exec_async(`
+        CREATE TRIGGER ${watch_table}_deleted_Trigger
+        BEFORE DELETE ON ${watch_table}
+        FOR EACH ROW
+        BEGIN
+            INSERT INTO ${copy_table} SELECT * FROM ${watch_table} WHERE ${key} = OLD.${key};
+        END;
+    `);
 }

@@ -1,6 +1,6 @@
 import { Constants } from "../../constants";
 import { Prefs } from "../../prefs";
-import { Downloading, DownloadTrackResult, NamedUUID, Playlist, SetState, TimedCache, Track } from "../../types";
+import { BottomAlertType, Downloading, DownloadTrackResult, HexColor, NamedUUID, Playlist, SetState, TimedCache, Track } from "../../types";
 
 export const downloading: Downloading[] = [];
 
@@ -17,5 +17,7 @@ export const global_var = {
     download_track: async(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult|void> => {track;progress_updater;start_download;set_finished_downloaded;},
     playlist_cache: new TimedCache<string, {tracks: Track[], playlist_data: Playlist & {creator?: NamedUUID[]}, continuation?: unknown}>(Constants.playlist_cache_duration_seconds * 1000),
     set_theme: (_: Prefs.Theme) => {},
-    selected_playlists_uuids: new Set<string>()
+    selected_playlists_uuids: new Set<string>(),
+    bottom_alert: (text: string, type: BottomAlertType) => {text; type;},
+    tint_table: new Map<Track['uid'], HexColor>()
 };

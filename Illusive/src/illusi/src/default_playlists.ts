@@ -111,7 +111,8 @@ export async function compact_playlists() {
             four_track: playlist.visual_data!.four_track!,
             track_count: playlist.visual_data!.track_count!,
             track_callback: async () => await SQLPlaylists.playlist_tracks(playlist.uuid),
-            type: "PLAYLIST"
+            type: "PLAYLIST",
+            thumbnail_uri: playlist.thumbnail_uri
         })
     }
     return playlists;

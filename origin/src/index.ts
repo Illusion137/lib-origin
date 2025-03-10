@@ -12,8 +12,10 @@ import { Spotify } from "./spotify/spotify"
 import { YouTube } from "./youtube/youtube"
 import { YouTubeDL } from './youtube_dl/index'
 import { YouTubeMusic } from "./youtube_music/youtube_music"
+import { Illusi } from "./illusi/illusi"
 
 export {
+    Illusi,
     Proxy,
     Musi,
     ProIP,
@@ -27,5 +29,5 @@ export {
     AppleMusic,
     Genius,
     Musixmatch,
-    Google,
+    Google
 }

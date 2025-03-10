@@ -21,11 +21,12 @@ export namespace Illusive {
     export const imported_thumbnail: number = require('./assets/imported_thumbnail.png');
 
     export const sqlite_directory       = "SQLite/";
+    export const custom_thumbnail_archive_path = "custom_thumbnail_archive/";
     export const thumbnail_archive_path = "thumbnail_archive/";
     export const media_archive_path     = "media_archive/";
     export const lyrics_archive_path    = "lyrics_archive/";
 
-    export const default_directories = [thumbnail_archive_path, media_archive_path, lyrics_archive_path];
+    export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path];
     export const default_directories_wsql = default_directories.concat(sqlite_directory);
     
     const illusi = new MusicService(
@@ -233,6 +234,9 @@ export namespace Illusive {
         return {tracks: mix_response.tracks, new_track_data: new_track_data.track};
     }
 
+    export function get_youtube_lowest_quality_thumbnail_uri(video_id: string){
+        return `https://i.ytimg.com/vi/${video_id}/default.jpg`;
+    } 
     export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {
         const uris_descending = [
             `https://i.ytimg.com/vi/${video_id}/maxresdefault.jpg`,
@@ -292,8 +296,8 @@ export namespace Illusive {
     export async function get_suggestions(query: string) { return await Origin.Google.get_suggestions(query); }
 
     export async function get_track_lryics(track: Track) {
-        if(is_youtube(track) && !((track?.artists?.[0]?.name ?? "").includes(" - Topic"))) return {error: new Error('Track is pure YouTube')};
-        const search_response = await Origin.Genius.search(`${remove_topic(track.artists[0].name)} ${track.title}`);
+        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
+        const search_response = await Origin.Genius.search(`${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`);
         if("error" in search_response) return search_response;
         const lyrics_response = await Origin.Genius.get_lyrics(search_response);
         return lyrics_response;

@@ -25,8 +25,8 @@ export namespace YouTubeMusic {
 	export function get_sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN = 'https://music.youtube.com') {
 		return sapisid_hash_auth0(SAPISID, epoch, ORIGIN);
 	}
-	export function get_sapisid_hash_auth1(SAPISID: string, epoch: Date, ORIGIN = 'https://music.youtube.com') {
-		return sapisid_hash_auth1(SAPISID, epoch, ORIGIN);
+	export function get_sapisid_hash_auth1(SAPISID: string, epoch: Date, ytcfg: object, ORIGIN = 'https://music.youtube.com') {
+		return sapisid_hash_auth1(SAPISID, epoch, ytcfg as any, ORIGIN);
 	}
 
 	export function get_ad_signal_params(epoch: Date) {

@@ -125,16 +125,28 @@ export async function youtube_music_search(query: string, _?: SearchOpts): Promi
         switch(parse_runs(shelf.title.runs)){
             case "Songs":
             case "Videos":
-                tracks.push(...shelf.contents.map(item => parse_youtube_music_search_top_result_contents_track(item.musicResponsiveListItemRenderer)));
+                try {
+                    tracks.push(...shelf.contents.map(item => parse_youtube_music_search_top_result_contents_track(item.musicResponsiveListItemRenderer)));
+                }
+                catch(e){}
                 break;
             case "Albums":
-                albums.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
+                try {
+                    albums.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
+                }
+                catch(e){}
                 break;
             case "Community playlists":
-                playlists.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
+                try {
+                    playlists.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
+                }
+                catch(e){}
                 break;
             case "Artists":
-                artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer)));
+                try {
+                    artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer)));
+                }
+                catch(e){}
                 break;
             case "Podcasts": 
             case "Episodes": 

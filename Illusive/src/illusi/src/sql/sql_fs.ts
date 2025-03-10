@@ -10,9 +10,17 @@ function forward_item(item: string) {
 export function cache_directory(path: string) { return FileSystem.cacheDirectory + path; }
 export function document_directory(path: string) { return FileSystem.documentDirectory + path; }
 export function sqlite_directory(item: string) { return document_directory(Illusive.sqlite_directory) + forward_item(item); }
+export function custom_thumbnail_directory(item: string) { return document_directory(Illusive.custom_thumbnail_archive_path) + forward_item(item); }
 export function thumbnail_directory(item: string) { return document_directory(Illusive.thumbnail_archive_path) + forward_item(item); }
 export function media_directory(item: string) { return document_directory(Illusive.media_archive_path) + forward_item(item); }
 export function lyrics_directory(item: string) { return document_directory(Illusive.lyrics_archive_path) + forward_item(item); }
+
+async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
+    const base_name = path.basename(new_name ?? item);
+    await FileSystem.copyAsync({from: item, to: dir_func(base_name)});
+    return dir_func(base_name);
+}
+
 
 async function move_to(item: string, dir_func: (item: string) => string, new_name?: string) {
     const base_name = path.basename(new_name ?? item);
@@ -20,6 +28,8 @@ async function move_to(item: string, dir_func: (item: string) => string, new_nam
     return dir_func(base_name);
 }
 
+export async function copy_to_custom_thumbnail_directory(item: string, new_name?: string) { return await copy_to(item, custom_thumbnail_directory, new_name); }
+export async function move_to_custom_thumbnail_directory(item: string, new_name?: string) { return await move_to(item, custom_thumbnail_directory, new_name); }
 export async function move_to_thumbnail_directory(item: string, new_name?: string) { return await move_to(item, thumbnail_directory, new_name); }
 export async function move_to_media_directory(item: string, new_name?: string) { return await move_to(item, media_directory, new_name); }
 export async function move_to_lyrics_directory(item: string, new_name?: string) { return await move_to(item, lyrics_directory, new_name); }

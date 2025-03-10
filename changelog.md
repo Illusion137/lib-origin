@@ -2,6 +2,30 @@
  - A whole lot more search queries
  - Support for search queries with parameters; but only one at a time
  - New pref:`playlist_inheritance_preview`
+ - New pref:`speed_sample_super_speed`
+ - New pref:`compact_playlists`
+ - Audioplayer rework; less bugs more features
+ - Audioplayer `+ Add` works
+ - Add To Playist non-experimental now
+ - Speed Sampler by sampling `YouTube` thumbnails
+ - Imported Track acting like YouTube track fix
+ - Added `ScrollView` to Help Screen
+ - Added `Clean Directories` in `Danger Zone` screen
+ - Added `Keep / Delete` in Extras (In Development)
+ - Fixed bug relating to track tags
+ - Rename `Search` to `Explore`
+ - Sampler divide and conquer
+ - Fixed Sampler not ignoring unneeded tracks (SOON)
+ - Potentailly fixed bug relating to adding tracks to queue
+ - Slighlty Smoothing Searching
+ - Slighlty Less Worse Light Theme
+ - Preping for Search Rework
+ - Preping for Linker
+ - Logging Timestamps of all Database Transactions for Illusi's soon expansion & syncing data
+ - Last Synced time at bottom of `ExtraScreen`
+ - Album Track Tint Pref
+ - Custom Thumbnails for tracks and playlists
+ - Bottom Alert
 # Illusi 14.5.12
  - More search queries
  - Version checking to improve startup time

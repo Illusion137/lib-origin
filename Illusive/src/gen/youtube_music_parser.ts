@@ -59,8 +59,10 @@ export function parse_youtube_music_search_playlist(playlist: SearchMusicRespons
     const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
     const title_runs = title_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
 
+    const album_endpoint = playlist.overlay?.musicItemThumbnailOverlayRenderer.content.musicPlayButtonRenderer.playNavigationEndpoint.watchEndpoint.playlistId ?? playlist.navigationEndpoint.browseEndpoint?.canonicalBaseUrl?.replace('"/playlist?list=', '') ?? title_runs[0].navigationEndpoint?.browseEndpoint?.browseId.replace('"/playlist?list=', '');
+
     return {
-        title: {name: parse_runs(title_runs), uri: title_runs[0].navigationEndpoint === undefined ? null : create_uri("youtubemusic", title_runs[0].navigationEndpoint.browseEndpoint!.browseId)},
+        title: {name: parse_runs(title_runs), uri: album_endpoint === undefined ? null : create_uri("youtubemusic", album_endpoint)},
         artist: artists.map(artist => ({name: artist.text, uri: artist.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtubemusic", artist.navigationEndpoint?.browseEndpoint?.browseId)})),
         artwork_thumbnails: playlist.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails,
         explicit: playlist.badges !== undefined && playlist.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE"
@@ -92,6 +94,13 @@ function parse_youtube_music_search_top_result_artist(card: MusicCardShelfRender
         is_official_artist_channel: false
     }
 }
+function parse_youtube_music_search_top_result_album(card: SearchMusicResponsiveListItemRenderer): CompactPlaylist{
+    return {
+        title: {name: card.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs[0].text, uri: null},
+        artist: [{name: card.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs[0].text, uri: null}],
+        explicit: card.badges !== undefined && card.badges.length >= 1 && card.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
+    }
+} parse_youtube_music_search_top_result_album;
 function parse_youtube_music_search_top_result_track(card: MusicCardShelfRenderer): Track{
     const title = parse_runs(card.title.runs);
     const subtitle_items = card.subtitle.runs.filter(item => item.text !== " • ");
@@ -112,15 +121,19 @@ function parse_youtube_music_search_top_result_track(card: MusicCardShelfRendere
 
 type LabledTrack = Track & {type: "TRACK"};
 type LabledArtist = CompactArtist & {type: "ARTIST"};
+type LabledAlbum = CompactPlaylist & {type: "ALBUM"};
 
 export function parse_youtube_music_search_top_result(card: MusicCardShelfRenderer|undefined): {
-    top_result: LabledTrack|LabledArtist;
+    top_result: LabledTrack|LabledArtist|LabledAlbum;
     side_contents: Track[];
 }|undefined{
     if(is_empty(card)) return undefined;
-    const top_result: LabledTrack|LabledArtist = card!.subtitle.runs[0].text === "Artist" ? 
+    const top_result: LabledTrack|LabledArtist|LabledAlbum| undefined = card!.subtitle.runs[0].text === "Artist" ? 
         {...parse_youtube_music_search_top_result_artist(card!), type: "ARTIST"} : 
+        card!.subtitle.runs[0].text === "Album" ? undefined :
+        // {...parse_youtube_music_search_top_result_album(card!), type: "ALBUM"} : 
         {...parse_youtube_music_search_top_result_track(card!), type: "TRACK"};
+    if(top_result === undefined) return undefined;
     const side_contents: Track[] = card!.contents === undefined ? [] : 
         card!.contents
             .filter(item => item?.musicResponsiveListItemRenderer?.playlistItemData?.videoId !== undefined)

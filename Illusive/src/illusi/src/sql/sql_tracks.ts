@@ -9,7 +9,7 @@ import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { ResponseError } from "../../../../../origin/src/utils/types";
-import { alert_error } from "../alert";
+import { alert_error, alert_info } from "../alert";
 
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
@@ -138,8 +138,8 @@ export async function mark_track_undownloaded(uid: Track['uid'], media_uri: stri
 export async function clear_track_youtube(uid: Track['uid']) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["youtube_id", ""])} ${sql_where<Track>(["uid", uid])}`);
 }
-export async function track_exists(track: Track) {
-    for(const t of GLOBALS.global_var.sql_tracks) {
+export function track_exist_in_other(tracks: Track[], track: Track){
+    for(const t of tracks) {
         if(!is_empty(t.illusi_id) && !is_empty(track.illusi_id) && t.illusi_id === track.illusi_id) return true;
         if(!is_empty(t.youtube_id) && !is_empty(track.youtube_id) && t.youtube_id === track.youtube_id) return true;
         // if(!is_empty(t.youtubemusic_id) && !is_empty(track.youtubemusic_id) && t.youtubemusic_id === track.youtubemusic_id) return true;
@@ -150,6 +150,9 @@ export async function track_exists(track: Track) {
         if(!is_empty(t.imported_id) && !is_empty(track.imported_id) && t.imported_id === track.imported_id) return true;
     }
     return false;
+}
+export async function track_exists(track: Track) {
+    return track_exist_in_other(GLOBALS.global_var.sql_tracks, track);
 }
 export async function track_from_service_id(ftrack: Track) {
     const potential_keys: (keyof Track)[] = ["youtube_id", "youtubemusic_id", "spotify_id", "amazonmusic_id", "applemusic_id", "soundcloud_id"];
@@ -214,7 +217,6 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
 }
 export async function delete_track(uid: Track['uid']) {
     await db_run_async(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
-    await clean_directories();
 }
 
 export async function restore_thumbnail_cache() {
@@ -237,20 +239,22 @@ export async function clean_directories() {
     const media_files     = await SQLfs.read_directory(media_directory(""));
     const lyrics_files    = await SQLfs.read_directory(lyrics_directory(""));
 
-    const thumbnail_uris = GLOBALS.global_var.sql_tracks.map(({thumbnail_uri}) => thumbnail_uri).filter(item => item !== undefined);
-    const media_uris = GLOBALS.global_var.sql_tracks.map(({media_uri}) => media_uri).filter(item => item !== undefined);
-    const lyrics_uris = GLOBALS.global_var.sql_tracks.map(({lyrics_uri}) => lyrics_uri).filter(item => item !== undefined);
+    const thumbnail_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({thumbnail_uri}) => thumbnail_uri).filter(item => item !== undefined));
+    const media_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({media_uri}) => media_uri).filter(item => item !== undefined));
+    const lyrics_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({lyrics_uri}) => lyrics_uri).filter(item => item !== undefined));
 
     const files_to_delete: Promises = [];
 
     for(const file of thumbnail_files)
-        if(!thumbnail_uris.includes(file))
+        if(!thumbnail_uri_set.has(file))
             files_to_delete.push(SQLfs.delete_item(thumbnail_directory(file)));
     for(const file of media_files)
-        if(!media_uris.includes(file))
+        if(!media_uri_set.has(file))
             files_to_delete.push(SQLfs.delete_item(media_directory(file)));
     for(const file of lyrics_files)
-        if(!lyrics_uris.includes(file))
+        if(!lyrics_uri_set.has(file))
             files_to_delete.push(SQLfs.delete_item(lyrics_directory(file)));
+    
+    alert_info(`Cleaned ${files_to_delete.length} files`);
     await Promise.all(files_to_delete);
 }

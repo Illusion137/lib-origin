@@ -3,7 +3,7 @@ import { all_promises, array_exclude, array_include, array_mask, track_query_fil
 import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
-import { sql_tracks_to_tracks } from "./sql_tracks";
+import { sql_tracks_to_tracks, track_exist_in_other } from "./sql_tracks";
 import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { sort_playlist_tracks } from "../playlist";
 import { Prefs } from "../../../prefs";
@@ -85,6 +85,16 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
 export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string) {
     const count = await db_get_all_async<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
     return count.length !== 0;
+}
+
+export async function deep_track_exists_in_playlist(playlist_uuid: string, track: Track){
+    const tracks = await playlist_tracks(playlist_uuid, new Set(), true);
+    return track_exist_in_other(tracks, track);
+}
+
+export async function deep_tracks_exists_in_playlist(playlist_uuid: string, tracks: Track[]): Promise<boolean[]>{
+    const ptracks = await playlist_tracks(playlist_uuid, new Set(), true);
+    return tracks.map(track => track_exist_in_other(ptracks, track));
 }
 
 export async function insert_all_tracks_playlist(playlist_uuid: string, track_uids: string[]) {
