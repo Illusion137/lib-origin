@@ -5,6 +5,7 @@ interface GetInfoOptions {
 	lang?: string;
 	requestCallback?: (res: Response) => {};
 	requestOptions?: any;
+	playerClients?: Array<"WEB_EMBEDDED" | "TV" | "IOS" | "ANDROID" | "WEB">;
 }
 export type YTDLQuality = 'lowest' | 'highest' | 'highestaudio' | 'lowestaudio' | 'highestvideo' | 'lowestvideo' | `${number}` | string[] | number[] | string & {} | number & {}
 interface ChooseFormatOptions {

@@ -10,6 +10,7 @@ import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from './gen/soundcloud_parser';
 import { parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from './gen/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from './gen/youtube_parser';
+import { youtube_music_get_playlist } from './get_playlist';
 import { best_thumbnail, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
 import { parse_amazon_music_search_track, parse_spotify_search_track } from './track_parser';
@@ -103,7 +104,7 @@ export async function youtube_music_search(query: string, _?: SearchOpts): Promi
     const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
     const search_response = await Origin.YouTubeMusic.search({cookie_jar}, query);
     if("error" in search_response) return default_search(search_response);
-    const top_result = parse_youtube_music_search_top_result(search_response.data.contents.find(item => item.musicCardShelfRenderer !== undefined)?.musicCardShelfRenderer);
+    const top_result = await parse_youtube_music_search_top_result(search_response.data.contents.find(item => item.musicCardShelfRenderer !== undefined)?.musicCardShelfRenderer, youtube_music_get_playlist);
     const results = search_response.data.contents.filter(item => item.musicShelfRenderer !== undefined).map(item => item.musicShelfRenderer!);
     
     const tracks: IllusiveTypes.Track[] = [];
@@ -111,12 +112,19 @@ export async function youtube_music_search(query: string, _?: SearchOpts): Promi
     const albums: CompactPlaylist[] = [];
     const artists: CompactArtist[] = [];
     
-    if(top_result?.top_result.type === "TRACK"){
-        tracks.push(top_result.top_result);
+    switch(top_result?.top_result.type){
+        case "TRACK": 
+            tracks.push(top_result.top_result);
+            break;
+        case "ALBUM": 
+            albums.push(top_result.top_result);
+            break;
+        case "ARTIST": 
+            artists.push(top_result.top_result);
+            break;
+        default: break;
     }
-    else if(top_result?.top_result.type === "ARTIST"){
-        artists.push(top_result.top_result);
-    }
+
     if((top_result?.side_contents.length ?? 0) > 0){
         tracks.push(...top_result!.side_contents);
     }
@@ -125,28 +133,19 @@ export async function youtube_music_search(query: string, _?: SearchOpts): Promi
         switch(parse_runs(shelf.title.runs)){
             case "Songs":
             case "Videos":
-                try {
-                    tracks.push(...shelf.contents.map(item => parse_youtube_music_search_top_result_contents_track(item.musicResponsiveListItemRenderer)));
-                }
-                catch(e){}
+                tracks.push(...shelf.contents.map(item => parse_youtube_music_search_top_result_contents_track(item.musicResponsiveListItemRenderer)));
                 break;
             case "Albums":
-                try {
-                    albums.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
-                }
-                catch(e){}
+                albums.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
                 break;
             case "Community playlists":
-                try {
-                    playlists.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
-                }
-                catch(e){}
+                playlists.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
+                break;
+            case "Profiles":
+                artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer, false)));
                 break;
             case "Artists":
-                try {
-                    artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer)));
-                }
-                catch(e){}
+                artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer, true)));
                 break;
             case "Podcasts": 
             case "Episodes": 

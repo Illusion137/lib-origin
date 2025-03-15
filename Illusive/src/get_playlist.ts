@@ -12,7 +12,7 @@ import * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Cont
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
 import * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
-import { parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from './gen/apple_music_parser';
+import { clean_album_title, parse_apple_music_album_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from './gen/apple_music_parser';
 import { musi_parse_track } from './gen/musi_parser';
 import { soundcloud_parse_track } from './gen/soundcloud_parser';
 import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './gen/youtube_music_parser';
@@ -20,7 +20,7 @@ import { youtube_parse_playlist_header, youtube_parse_videos } from './gen/youtu
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
 import { Prefs } from './prefs';
 import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './track_parser';
-import { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs } from './types'
+import { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from './types';
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist {
     return {...(error !== undefined ? {error: [error]} : {}), title: "", tracks: [], continuation: null}
@@ -72,14 +72,26 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
             continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "ALBUM", artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
         };
     }
-    return { // Playlist
-        title: parse_runs(playlist_response.data.playlist_data.title.runs),
-        creator: youtube_music_split_artists(playlist_response.data.playlist_data?.subtitle?.runs as Runs),
-        artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
-        date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
-        tracks: playlist_response.data.tracks.filter(item => item !== undefined).map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
-        continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "PLAYLIST"} as YouTubeMusicPlaylistContinuation
-    };
+    try {
+        return { // Playlist
+            title: parse_runs(playlist_response.data.playlist_data.title.runs),
+            creator: youtube_music_split_artists(playlist_response.data.playlist_data?.subtitle?.runs as Runs),
+            artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
+            date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
+            tracks: playlist_response.data.tracks.filter(item => item !== undefined).map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
+            continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "PLAYLIST"} as YouTubeMusicPlaylistContinuation
+        };
+    }
+    catch(e) {
+        return {
+            title: parse_runs(playlist_response.data.playlist_data.title.runs),
+            creator: youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
+            artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
+            date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
+            tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs)),
+            continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "ALBUM", artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
+        };
+    }
 }
 export async function youtube_music_get_playlist_continuation(opts: YouTubeMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
@@ -257,38 +269,56 @@ export async function soundcloud_get_playlist_continuation(opts: SoundcloudPlayl
 interface AppleMusicPlaylistContinuation {"playlist_id": string, "offset": number, "total": number, "authorization": string}
 export async function apple_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
-    const playlist_response = await Origin.AppleMusic.get_playlist(url, {cookie_jar});
-    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
-    if("resources" in playlist_response.data) { // User Playlist
-        const playlist_data_main_key = get_main_key(playlist_response.data.resources.playlists);
-        const playlist_data = playlist_response.data.resources.playlists[playlist_data_main_key];
-        const playlist_songs = playlist_response.data.resources['library-songs'] ?? playlist_response.data.resources['songs'];
-        const playlist_id = Origin.AppleMusic.playlist_urlid(url);
-        const song_keys = Object.keys(playlist_songs);
-
-        const __playlists__ = playlist_response.data.resources["library-playlists"] ?? playlist_response.data.resources["playlists"];
-        const playlist_meta_main_key = get_main_key(__playlists__);
-
-        const total_songs = __playlists__[playlist_meta_main_key].relationships?.tracks?.meta?.total ?? song_keys.length;
+    if(url.includes("/album")){
+        const playlist_response = await Origin.AppleMusic.get_album(url, {});
+        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+        const playlist_header = playlist_response.data.sections.find(item => item.id.includes('album-detail-header'))?.items[0];
+        const title = clean_album_title(playlist_header?.title ?? "");
+        const album_data: NamedUUID = {name: title, uri: create_uri("applemusic", playlist_response.data.canonicalURL)};
+        const artist_data: NamedUUID = {name: playlist_header?.subtitleLinks?.[0].title ?? "", uri: playlist_header?.subtitleLinks?.[0].segue?.destination.contentDescriptor.url === undefined ? null :create_uri("applemusic", playlist_header?.subtitleLinks?.[0].segue?.destination.contentDescriptor.url)};
+        const artwork_url = parse_apple_music_artwork(playlist_header?.artwork?.dictionary.url);
         return {
-            title: playlist_data.attributes.name,
-            creator: [{name: playlist_data.attributes.curatorName, uri: null}],
-            artwork_url: parse_apple_music_artwork(playlist_data.attributes?.artwork?.url),
-            description: playlist_data.attributes?.description?.standard,
-            date: playlist_data.attributes.lastModifiedDate as ISOString,
-            tracks: song_keys.map(key => parse_apple_music_user_playlist_track(playlist_songs[key])), 
-            continuation: 0 + song_keys.length >= total_songs ? null : {playlist_id, offset: 0 + song_keys.length, total: total_songs, authorization: playlist_response.authorization} as AppleMusicPlaylistContinuation
-        };
-    } else {
-        return {
-            title: playlist_response?.data?.sections[0].items[0].title,
-            creator: playlist_response?.data?.sections?.[0]?.items?.[0]?.subtitleLinks.map(link => {
-                return {name: link.title, uri: is_empty(link?.segue?.destination?.contentDescriptor?.identifiers?.storeAdamID) ? null : create_uri("applemusic", link?.segue?.destination?.contentDescriptor?.identifiers?.storeAdamID)}
-            }) ?? [],
-            artwork_url: playlist_response.data.sections[0].items[0].artwork.dictionary.url,
-            tracks: playlist_response.data.sections[1].items.map(track => parse_apple_music_playlist_track(track)), 
+            title: title,
+            creator: [artist_data],
+            artwork_url: artwork_url,
+            tracks: playlist_response.data.sections.find(item => item.id.includes("track-list - "))?.items.map(item => parse_apple_music_album_track(item, album_data, artist_data, artwork_url ?? '')) ?? [], 
             continuation: null
         };
+    }
+    else {
+        const playlist_response = await Origin.AppleMusic.get_playlist(url, {cookie_jar});
+        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+        if("resources" in playlist_response.data) { // User Playlist
+            const playlist_data_main_key = get_main_key(playlist_response.data.resources.playlists);
+            const playlist_data = playlist_response.data.resources.playlists[playlist_data_main_key];
+            const playlist_songs = playlist_response.data.resources['library-songs'] ?? playlist_response.data.resources['songs'];
+            const playlist_id = Origin.AppleMusic.playlist_urlid(url);
+            const song_keys = Object.keys(playlist_songs);
+    
+            const __playlists__ = playlist_response.data.resources["library-playlists"] ?? playlist_response.data.resources["playlists"];
+            const playlist_meta_main_key = get_main_key(__playlists__);
+    
+            const total_songs = __playlists__[playlist_meta_main_key].relationships?.tracks?.meta?.total ?? song_keys.length;
+            return {
+                title: playlist_data.attributes.name,
+                creator: [{name: playlist_data.attributes.curatorName, uri: null}],
+                artwork_url: parse_apple_music_artwork(playlist_data.attributes?.artwork?.url),
+                description: playlist_data.attributes?.description?.standard,
+                date: playlist_data.attributes.lastModifiedDate as ISOString,
+                tracks: song_keys.map(key => parse_apple_music_user_playlist_track(playlist_songs[key])), 
+                continuation: 0 + song_keys.length >= total_songs ? null : {playlist_id, offset: 0 + song_keys.length, total: total_songs, authorization: playlist_response.authorization} as AppleMusicPlaylistContinuation
+            };
+        } else {
+            return {
+                title: playlist_response?.data?.sections[0].items[0].title,
+                creator: playlist_response?.data?.sections?.[0]?.items?.[0]?.subtitleLinks.map(link => {
+                    return {name: link.title, uri: is_empty(link?.segue?.destination?.contentDescriptor?.identifiers?.storeAdamID) ? null : create_uri("applemusic", link?.segue?.destination?.contentDescriptor?.identifiers?.storeAdamID)}
+                }) ?? [],
+                artwork_url: playlist_response.data.sections[0].items[0].artwork.dictionary.url,
+                tracks: playlist_response.data.sections[1].items.map(track => parse_apple_music_playlist_track(track)), 
+                continuation: null
+            };
+        }
     }
 }
 export async function apple_music_get_playlist_continuation(opts: AppleMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {

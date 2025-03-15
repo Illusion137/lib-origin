@@ -49,6 +49,7 @@ export namespace Prefs {
         show_track_duration:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
         use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
         use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
+        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
         compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; Your playlists in the 'Playlist' screen will become smaller", section: "Visual"} as Pref<boolean>,
         share_as_original:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When sharing a track if downloaded it'll still share the song from the original source", section: "Interactions"} as Pref<boolean>,
         prioritize_youtube_thumbnail:          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
@@ -85,6 +86,7 @@ export namespace Prefs {
         album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as Pref<boolean>,
         keep_soundcloud_alive:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
         fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
+        quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as Pref<boolean>,
         dev_mode:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)"}  as Pref<boolean>,
     };
     const user_uuid_key: PrefOptions = "user_uuid";

@@ -10,6 +10,7 @@ import { document_directory, lyrics_directory, media_directory, thumbnail_direct
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { ResponseError } from "../../../../../origin/src/utils/types";
 import { alert_error, alert_info } from "../alert";
+import { clean_album_title } from "../../../gen/apple_music_parser";
 
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
@@ -47,6 +48,34 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     ];
     return to_array;
 }
+
+export async function fixup(track: Track, t: Track){
+    let update = false;
+    if(JSON.stringify(track.album).length > JSON.stringify(t.album).length || clean_album_title(t.album?.name ?? "--NULLISH--") === track.album?.name){
+        t.album = track.album;
+        update = true;
+    }
+    if(JSON.stringify(track.artists).length > JSON.stringify(t.artists).length){
+        t.artists = track.artists;
+        update = true;
+    }
+    if(update) await update_track(t.uid, t);
+}
+export async function check_fixerupper_track(track: Track){
+    if(!Prefs.get_pref('quick_fixer_upper')) return;
+    const promises: Promises = [];
+    for(const t of GLOBALS.global_var.sql_tracks){
+        if(track.uid === t.uid) continue;
+        if(!is_empty(track.applemusic_id) && !is_empty(t.applemusic_id) && track.applemusic_id === t.applemusic_id){
+            promises.push(fixup(track, t));
+        }
+        if(!is_empty(track.youtube_id) && !is_empty(t.youtube_id) && track.youtube_id === t.youtube_id){
+            promises.push(fixup(track, t));
+        }
+    }
+    return await Promise.all(promises);
+}
+
 export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
     return await Promise.all(
         tracks.map(async(track) => {
@@ -55,7 +84,8 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
                 added: false,
                 successful: false
             }
-            track.downloading_data = {saved: await track_exists(track), progress: 0, playlist_saved: false}
+            track.downloading_data = {saved: await track_exists(track), progress: 0, playlist_saved: false};
+            check_fixerupper_track(track).catch(e => e);
             return track;
         })
     );
@@ -181,6 +211,10 @@ export async function track_uid_exists(track: Track) {
 export async function fetch_track_data() {
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
+}
+export async function get_tracks(){
+    const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
+    return sql_tracks_to_tracks(tracks);;
 }
 export async function clear_tracks() {
     await db_exec_async('DELETE FROM tracks');

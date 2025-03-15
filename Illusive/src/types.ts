@@ -259,6 +259,7 @@ export interface CompactPlaylist {
     date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType
+    album_type?: "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP"
 }
 export interface CompactArtist {
     name: NamedUUID
@@ -299,14 +300,17 @@ export interface MusicSearchResponse {
 
 export interface MusicServiceArtist {
     name: string
-    latest_release?: Track
+    latest_release?: CompactPlaylist
     tracks: Track[]
-    tracks_continuation: () => Track[]
+    tracks_continuation?: () => Track[]
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
+    singles_eps: CompactPlaylist[]
+    appears_on?: CompactPlaylist[]
     background_artwork_url?: string
     profile_artwork_url?: string
-    similar_artists: CompactArtist[]
+    similar_artists: CompactArtist[],
+    error?: MaybeErrors
 }
 export interface YTDescriptionSong {
     artwork_url: string,
@@ -363,6 +367,8 @@ export class MusicService {
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
+    get_artist?: (id: string) => Promise<MusicServiceArtist>
+    get_latest_release?: (id: string) => Promise<CompactPlaylist|undefined>
     constructor(s: {
         app_icon: string | number,
         web_view_url?: string,
@@ -381,8 +387,10 @@ export class MusicService {
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
         get_playlist: (url: string) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
-        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
-        get_track_mix?: (id: string) => Promise<TrackMix>
+        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
+        get_track_mix?: (id: string) => Promise<TrackMix>,
+        get_artist?: (id: string) => Promise<MusicServiceArtist>,
+        get_latest_release?: (id: string) => Promise<CompactPlaylist|undefined>,
     }) {
         this.app_icon = s.app_icon
         this.web_view_url = s.web_view_url;
@@ -403,6 +411,8 @@ export class MusicService {
         this.get_playlist_continuation = s.get_playlist_continuation
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
+        this.get_artist = s.get_artist;
+        this.get_latest_release = s.get_latest_release;
     }
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;

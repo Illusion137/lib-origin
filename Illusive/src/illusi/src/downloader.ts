@@ -145,9 +145,12 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                         await sound_temp.unloadAsync();
                         if (meta_data.isLoaded === false)
                             throw new Error('No load');
-                        const downloaded_duration = (meta_data.durationMillis ?? 0) / 1000;
+                        const downloaded_duration = Math.floor((meta_data.durationMillis ?? 0) / 1000);
                         if (Math.round(downloaded_duration) < 3)
                             throw new Error(`Invalid Duration: ${downloaded_duration}`);
+                        else if(isNaN(track.duration)){
+                            await SQLTracks.update_track(track.uid, {...track, duration: downloaded_duration})
+                        }
                         else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))
                             throw new Error(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`);
 

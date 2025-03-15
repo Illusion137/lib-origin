@@ -3,10 +3,11 @@ import { all_promises, array_exclude, array_include, array_mask, track_query_fil
 import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
-import { sql_tracks_to_tracks, track_exist_in_other } from "./sql_tracks";
+import { get_tracks, sql_tracks_to_tracks, track_exist_in_other } from "./sql_tracks";
 import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { sort_playlist_tracks } from "../playlist";
 import { Prefs } from "../../../prefs";
+import { is_empty } from "../../../../../origin/src/utils/util";
 
 function playlist_to_sqllite_insertion(playlist: Playlist) {
     const to_array: SQLPlaylistArray = [
@@ -70,9 +71,8 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
             }
         }
     }
-    if(cplaylist_data.inherited_searchs!.length === 0) return tracks;
     for(const inherited_search of cplaylist_data.inherited_searchs!) {
-        const inherited_tracks = track_query_filter(GLOBALS.global_var.sql_tracks, inherited_search.query);
+        const inherited_tracks = track_query_filter(is_empty(GLOBALS.global_var.sql_tracks) ? await get_tracks(): GLOBALS.global_var.sql_tracks, inherited_search.query);
         switch (inherited_search.mode) {
             case "INCLUDE": tracks = array_include<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
             case "EXCLUDE": tracks = array_exclude<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;

@@ -95,6 +95,16 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
     track.meta = new_metadata;
     await SQLTracks.update_track_meta_data(track.uid, new_metadata);
 }
+export async function handle_incoming_youtube_music_track_data(track: Track, new_track: Track) {
+    if(!await SQLTracks.track_exists(track)) return;
+    track.alt_title = track.title;
+    track.title = new_track.title;
+    track.artists = new_track.artists;
+    track.album = new_track.album;
+    track.explicit = new_track.explicit;
+    track.youtubemusic_id = new_track.youtubemusic_id;
+    await SQLTracks.update_track(track.uid, track);
+}
 export async function sample_tracks_meta(sample_tracks: Track[]){
     for(const track of sample_tracks) {
         try {            
@@ -181,4 +191,8 @@ export async function sample(){
     // else {
         // await sample_tracks_service(await next_sample_tracks_service([]), random_of(loggedin_services()));
     // }
+}
+
+export async function mass_sample_youtube_to_youtube_music(){
+    await Illusive.mass_convert_youtube_to_youtube_music(GLOBALS.global_var.sql_tracks, handle_incoming_youtube_music_track_data);
 }

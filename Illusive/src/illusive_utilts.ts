@@ -189,8 +189,8 @@ export function music_service_to_music_service_uri(music_service_uri: MusicServi
     }
 }
 export function is_duration_string(str: string|undefined){
-    if(str === undefined) return false;
-    return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str);
+    if(is_empty(str)) return false;
+    return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str!);
 }
 export function is_number(str: string){
     return !isNaN(parseFloat(str));
@@ -208,6 +208,7 @@ export function youtube_views_number(views_string?: string): number {
     }
 }
 export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
+    if(is_empty(runs)) return [];
     const named_uris: NamedUUID[] = [];
     if(runs.length === 1) named_uris.push({name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri("youtubemusic", runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
     else
@@ -309,8 +310,9 @@ export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any
 
 export function artist_string(track: Track): string{
     if(is_empty(track)) return "";
-    if(track.artists.length <= 1) return remove_topic(track.artists[0].name).trim();
-    const names = track.artists.map(artist => remove_topic(artist.name).trim());
+    if(track.artists.length === 0) return "";
+    if(track.artists.length <= 1) return remove_topic(track.artists?.[0].name ?? "").trim();
+    const names = track.artists.map(artist => remove_topic(artist?.name ?? "").trim());
     const final_name = names.pop()!;
     return names.length
         ? names.join(', ') + ' & ' + final_name
@@ -330,6 +332,17 @@ export function version_greater_than(version: string, other_version: string): bo
     catch(e) {
         return false;
     }
+}
+
+export function single_case(str: string): string{
+    const split = str.toLowerCase().split('');
+    split[0] = split?.[0].toUpperCase();
+    return split.join('');
+}
+
+export function tracks_with_artist(tracks: Track[], artist_name: string){
+    if(is_empty(artist_name)) return [];
+    return tracks.filter(track => artist_string(track).toLowerCase().includes(artist_name.toLowerCase()));
 }
 
 const tint_color_list: HexColor[] = [
@@ -378,4 +391,13 @@ export function generate_unique_track_tints(tracks: Track[], tint_table: Map<Tra
             }
         }
     }
+}
+
+export function is_topic(str: string){
+    return str.endsWith(" - Topic");
+}
+
+export function clean_title(title: string){
+    const cleaned = remove(title, /\(.+?\)/gi, /\[.+?\]/gi).trim();
+    return cleaned;
 }

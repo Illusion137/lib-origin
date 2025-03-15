@@ -24,13 +24,15 @@ export const getFunctions = (html5playerfile: string, options: DownloadOptions):
 }
 
 // NewPipeExtractor regexps
-const DECIPHER_NAME_REGEXPS = [
-	"\\bm=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\)",
-	"\\bc&&\\(c=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(c\\)\\)",
-	'(?:\\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*\\{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)',
-	'([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;',
-];
-
+const DECIPHER_NAME_REGEXPS = {
+	"\\b([a-zA-Z0-9_$]+)&&\\(\\1=([a-zA-Z0-9_$]{2,})\\(decodeURIComponent\\(\\1\\)\\)": 2,
+	'([a-zA-Z0-9_$]+)\\s*=\\s*function\\(\\s*([a-zA-Z0-9_$]+)\\s*\\)\\s*{\\s*\\2\\s*=\\s*\\2\\.split\\(\\s*""\\s*\\)\\s*;\\s*[^}]+;\\s*return\\s+\\2\\.join\\(\\s*""\\s*\\)': 1,
+	'/(?:\\b|[^a-zA-Z0-9_$])([a-zA-Z0-9_$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)(?:;[a-zA-Z0-9_$]{2}\\.[a-zA-Z0-9_$]{2}\\(a,\\d+\\))?/': 1,
+	"\\bm=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\)": 1,
+	"\\bc&&\\(c=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(c\\)\\)": 1,
+	'(?:\\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*\\{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)': 1,
+	'([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;': 1,
+  };
 // LavaPlayer regexps
 const VARIABLE_PART = "[a-zA-Z_\\$][a-zA-Z_0-9]*";
 const VARIABLE_PART_DEFINE = `\\"?${VARIABLE_PART}\\"?`;
@@ -54,15 +56,14 @@ const HELPER_REGEXP = `var (${VARIABLE_PART})=\\{((?:(?:${VARIABLE_PART_DEFINE}$
 const SCVR = "[a-zA-Z0-9$_]";
 const MCR = `${SCVR}+`;
 const AAR = "\\[(\\d+)]";
-const N_TRANSFORM_NAME_REGEXPS = [
-    // NewPipeExtractor regexps
-    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\).+\\|\\|(${MCR})\\(""\\)`,
-    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\)&&\\(${MCR}=(${MCR})${AAR}`,
-    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\).+\\|\\|(${MCR})\\(""\\)`,
-    `${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\)&&\\(${MCR}=(${MCR})\\[(\\d+)]`,
-    `\\(${SCVR}=String\\.fromCharCode\\(110\\),${SCVR}=${SCVR}\\.get\\(${SCVR}\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`,
-    `\\.get\\("n"\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`,
-];
+const N_TRANSFORM_NAME_REGEXPS = {
+	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\).+\\|\\|(${MCR})\\(""\\)`]: 1,
+	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\)&&\\(${MCR}=(${MCR})${AAR}`]: 1,
+	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\).+\\|\\|(${MCR})\\(""\\)`]: 1,
+	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\)&&\\(${MCR}=(${MCR})\\[(\\d+)]`]: 1,
+	[`\\(${SCVR}=String\\.fromCharCode\\(110\\),${SCVR}=${SCVR}\\.get\\(${SCVR}\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`]: 1,
+	[`\\.get\\("n"\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`]: 1,
+};
 
 // LavaPlayer regexps
 const N_TRANSFORM_REGEXP =
@@ -81,18 +82,15 @@ const matchRegex = (regex: string, str: string) => {
 	if (!match) throw new Error(`Could not match ${regex}`);
 	return match;
 };
+const matchGroup = (regex: string, str: string, idx = 0) => matchRegex(regex, str)[idx];
 
-const matchFirst = (regex: string, str: string) => matchRegex(regex, str)[0];
-
-const matchGroup1 = (regex: string, str: string) => matchRegex(regex, str)[1];
-
-const getFuncName = (body: string, regexps: string[]) => {
+const getFuncName = (body: string, regexps: Record<string, number>) => {
 	let fn;
-	for (const regex of regexps) {
+	for (const [regex, idx] of Object.entries(regexps)) {
 		try {
-			fn = matchGroup1(regex, body);
+			fn = matchGroup(regex, body, idx as unknown as number);
 			try {
-				fn = matchGroup1(`${fn.replace(/\$/g, '\\$')}=\\[([a-zA-Z0-9$\\[\\]]{2,})\\]`, body);
+				fn = matchGroup(`${fn.replace(/\$/g, "\\$")}=\\[([a-zA-Z0-9$\\[\\]]{2,})\\]`, body, 1);
 			} catch (err) {
 				// Function name is not inside an array
 			}
@@ -101,15 +99,15 @@ const getFuncName = (body: string, regexps: string[]) => {
 			continue;
 		}
 	}
-	if (!fn || fn.includes('[')) throw Error();
+	if (!fn || fn.includes("[")) throw Error("Could not match");
 	return fn;
 };
 
 const DECIPHER_FUNC_NAME = 'DisTubeDecipherFunc';
 const extractDecipherFunc = (body: string) => {
 	try {
-		const helperObject = matchFirst(HELPER_REGEXP, body);
-		const decipherFunc = matchFirst(DECIPHER_REGEXP, body);
+		const helperObject = matchGroup(HELPER_REGEXP, body, 0);
+		const decipherFunc = matchGroup(DECIPHER_REGEXP, body, 0);
 		const resultFunc = `var ${DECIPHER_FUNC_NAME}=${decipherFunc};`;
 		const callerFunc = `${DECIPHER_FUNC_NAME}(${DECIPHER_ARGUMENT});`;
 		return helperObject + resultFunc + callerFunc;
@@ -122,10 +120,10 @@ const extractDecipherWithName = (body: string) => {
 	try {
 		const decipherFuncName = getFuncName(body, DECIPHER_NAME_REGEXPS);
 		const funcPattern = `(${decipherFuncName.replace(/\$/g, '\\$')}=function\\([a-zA-Z0-9_]+\\)\\{.+?\\})`;
-		const decipherFunc = `var ${matchGroup1(funcPattern, body)};`;
-		const helperObjectName = matchGroup1(';([A-Za-z0-9_\\$]{2,})\\.\\w+\\(', decipherFunc);
+		const decipherFunc = `var ${matchGroup(funcPattern, body, 1)};`;
+		const helperObjectName = matchGroup(";([A-Za-z0-9_\\$]{2,})\\.\\w+\\(", decipherFunc, 1);
 		const helperPattern = `(var ${helperObjectName.replace(/\$/g, '\\$')}=\\{[\\s\\S]+?\\}\\};)`;
-		const helperObject = matchGroup1(helperPattern, body);
+		const helperObject = matchGroup(helperPattern, body, 1);
 		const callerFunc = `${decipherFuncName}(${DECIPHER_ARGUMENT});`;
 		return helperObject + decipherFunc + callerFunc;
 	} catch (e) {
@@ -164,7 +162,7 @@ const extractDecipher = (body: string) => {
 const N_TRANSFORM_FUNC_NAME = 'DisTubeNTransformFunc';
 const extractNTransformFunc = (body: string) => {
 	try {
-		const nFunc = matchFirst(N_TRANSFORM_REGEXP, body);
+		const nFunc = matchGroup(N_TRANSFORM_REGEXP, body, 0);
 		const resultFunc = `var ${N_TRANSFORM_FUNC_NAME}=${nFunc}`;
 		const callerFunc = `${N_TRANSFORM_FUNC_NAME}(${N_ARGUMENT});`;
 		return resultFunc + callerFunc;
@@ -177,7 +175,7 @@ const extractNTransformWithName = (body: string) => {
 	try {
 		const nFuncName = getFuncName(body, N_TRANSFORM_NAME_REGEXPS);
         const funcPattern = `(${nFuncName.replace(/\$/g, "\\$")}=function\\([a-zA-Z0-9_]+\\)\\{.+?\\})`;
-		const nTransformFunc = `var ${matchGroup1(funcPattern, body)};`;
+		const nTransformFunc = `var ${matchGroup(funcPattern, body, 1)};`;
 		const callerFunc = `${nFuncName}(${N_ARGUMENT});`;
 		return nTransformFunc + callerFunc;
 	} catch (e) {
@@ -189,7 +187,7 @@ let nTransformWarning = false;
 const extractNTransform = (body: string) => {
 	// Faster: extractNTransformFunc
 	const nTransformFunc = getExtractFunctions([extractNTransformFunc, extractNTransformWithName], body, code =>
-        code.replace(/if\(typeof \S+==="undefined"\)return \S+;/, ""),
+        code.replace(/if\s*\(\s*typeof\s*[\w$]+\s*===?.*?\)\s*return\s+[\w$]+\s*;?/, ""),
     );
 	if (!nTransformFunc && !nTransformWarning) {
 		// This is optional, so we can continue if it's not found, but it will bottleneck the download.

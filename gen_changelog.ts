@@ -23,6 +23,9 @@ export const CHANGELOG = `# Illusi 14.6.12
  - Preping for Linker
  - Logging Timestamps of all Database Transactions for Illusi's soon expansion & syncing data
  - Last Synced time at bottom of \`ExtraScreen\`
+ - Album Track Tint Pref
+ - Custom Thumbnails for tracks and playlists
+ - Bottom Alert
 # Illusi 14.5.12
  - More search queries
  - Version checking to improve startup time

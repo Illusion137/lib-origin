@@ -19,7 +19,7 @@ export async function illusi_startup(version: string, play_tracks: (first_track:
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.set_theme = set_theme;
         GLOBALS.global_var.bottom_alert = bottom_alert;
-        await ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET);
+        ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET).catch(e => e);
         const statistics_callback = (statistics: ffmpeg.Statistics) => {
             const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.getSessionId());
             if (dlidx === -1) return;

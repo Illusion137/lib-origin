@@ -47,7 +47,7 @@ export function parse_runs(runs: ({text: string}[]) | undefined ): string {
 }
 export function empty_undefined(str: string) { return is_empty(str) ? undefined : str; }
 export function urlid(url: string, ...remove_links: (string|RegExp)[]) { 
-    let id = url.replace("https://", "").replace("www.", "").replace("http://", '');
+    let id = url.replace("https://", "").replace("www.", "").replace("http://", '').replace('https:','');
     for(const link of remove_links) { id = id.replace(link, ""); }
     return id;
 }
@@ -128,6 +128,15 @@ export function clean_error_stack(error: Error){
 	];
 	const new_stack = matches.map(match => match[1]).filter(loc => !bad_regexes.some(regex => regex.test(loc)));
 	return error.message + " \n " + new_stack.map(item => `at ${item}`).join(' \n');
+}
+
+export function safe_date_iso(date: Date): string{
+	try {
+		return date.toISOString();
+	}
+	catch(e) {
+		return new Date(0).toISOString();
+	}
 }
 
 import { RequestInit } from 'node-fetch';
