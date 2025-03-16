@@ -80,7 +80,9 @@ export namespace Illusive {
             add_tracks_to_playlist: youtube_add_tracks_to_playlist,
             delete_tracks_from_playlist: youtube_delete_tracks_from_playlist,
             get_track_mix: get_youtube_track_mix,
-            download_from_id: youtube_download_from_id
+            download_from_id: youtube_download_from_id,
+            get_artist: youtube_music_get_artist,
+            get_latest_release: youtube_music_get_latest_release
         });
     const youtube_music = new MusicService(
         {

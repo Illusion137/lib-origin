@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
 import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
-import { create_timestamp_triggers_if_not_exists, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_where } from '../sql/sql_utils';
+import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_where } from '../sql/sql_utils';
 import { db, db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
@@ -10,6 +10,7 @@ import { is_empty } from '../../../../../origin/src/utils/util';
 import * as uuid from 'react-native-uuid';
 import { Prefs } from '../../../prefs';
 import { version_greater_than } from '../../../illusive_utilts';
+import { ExampleObj } from '../example_objs';
 
 export async function get_all_tables(database: SQLite.SQLiteDatabase) {
     const tables = await database.getAllAsync(`${sql_select("sqlite_master", "*")} ${sql_where<{type: string}>(["type", "table"])}`);
@@ -140,41 +141,49 @@ export async function fix_to_new_update(version: string) {
     }
 
     if(!version_greater_than(version, "14.6.12")){
+        // await db_exec_async( sql_drop_table("backpack_deleted") );
+        // await db_exec_async( sql_drop_table("playlists_deleted") );
+        // await db_exec_async( sql_drop_table("playlists_tracks_deleted") );
+        // await db_exec_async( sql_drop_table("recently_played_tracks_deleted") );
+        // await db_exec_async( sql_drop_table("tracks_deleted") );
+
         // await db_exec_async("DROP TRIGGER tracks_deleted_Trigger");
         // await db_exec_async("DROP TRIGGER playlists_deleted_Trigger");
         // await db_exec_async("DROP TRIGGER playlists_tracks_deleted_Trigger");
         // await db_exec_async("DROP TRIGGER recently_played_tracks_deleted_Trigger");
         // await db_exec_async("DROP TRIGGER backpack_deleted_Trigger");
 
+        // return;
+
         await alter_sql(db, {table: 'tracks', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'tracks_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await create_timestamp_triggers_if_not_exists("tracks");
         await create_timestamp_triggers_if_not_exists("tracks_deleted");
-        // await create_delete_triggers_if_not_exists("tracks", "tracks_deleted", "uid");
+        await create_delete_triggers_if_not_exists("tracks", "tracks_deleted", ExampleObj.track_example0);
 
         await alter_sql(db, {table: 'playlists', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'playlists_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await create_timestamp_triggers_if_not_exists("playlists");
         await create_timestamp_triggers_if_not_exists("playlists_deleted");
-        // await create_delete_triggers_if_not_exists("playlists", "playlists_deleted", "uuid");
+        await create_delete_triggers_if_not_exists("playlists", "playlists_deleted", ExampleObj.playlist_example0);
         
         await alter_sql(db, {table: 'playlists_tracks', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'playlists_tracks_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await create_timestamp_triggers_if_not_exists("playlists_tracks");
         await create_timestamp_triggers_if_not_exists("playlists_tracks_deleted");
-        // await create_delete_triggers_if_not_exists("playlists_tracks", "playlists_tracks_deleted", "id");
+        await create_delete_triggers_if_not_exists("playlists_tracks", "playlists_tracks_deleted", ExampleObj.playlists_tracks_example0);
         
         await alter_sql(db, {table: 'recently_played_tracks', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'recently_played_tracks_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await create_timestamp_triggers_if_not_exists("recently_played_tracks");
         await create_timestamp_triggers_if_not_exists("recently_played_tracks_deleted");
-        // await create_delete_triggers_if_not_exists("recently_played_tracks", "recently_played_tracks_deleted", "uid");
+        await create_delete_triggers_if_not_exists("recently_played_tracks", "recently_played_tracks_deleted", ExampleObj.track_example0);
 
         await alter_sql(db, {table: 'backpack', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'backpack_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await create_timestamp_triggers_if_not_exists("backpack");
         await create_timestamp_triggers_if_not_exists("backpack_deleted");
-        // await create_delete_triggers_if_not_exists("backpack", "backpack_deleted", "uid");
+        await create_delete_triggers_if_not_exists("backpack", "backpack_deleted", ExampleObj.track_example0);
 
         type Timestamped<T> = T & {Timestamp: string; id: number};
 

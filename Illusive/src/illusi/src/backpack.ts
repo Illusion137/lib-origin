@@ -1,5 +1,6 @@
 import * as SQLTracks from '../../../../Illusive/src/illusi/src/sql/sql_tracks';
 import * as Origin from '../../../../origin/src/index';
+import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { Prefs } from "../../prefs";
@@ -14,11 +15,11 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
         return [];
     }
     const fastpack = Prefs.get_pref('fastpack') && unavailable_tracks.length >= Constants.fastpack_track_threshold;
-    const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+    const to_service: MusicServiceType = Prefs.get_pref('prefer_youtube_music') ? 'YouTube Music' : Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
     if(fastpack) {
         let proxies: Origin.Proxy.Proxy[] = [];
         const promise_tracks: ReturnType<typeof Illusive.convert_track>[] = [];
-        const fetched_proxies = await Origin.Proxy.get_proxy_list();
+        const fetched_proxies = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https === true);
         if(!("error" in fetched_proxies)) {
             proxies = fetched_proxies;
         } else await Logger.log_error(fetched_proxies);
@@ -31,7 +32,8 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
             if("error" in resolved_tracks[i]) continue;
             (resolved_tracks[i] as Illusive.MaxTrack).track!.uid = unavailable_tracks[i].uid;
         }
-        return resolved_tracks.filter(track => !("error" in track)).map(item => (item as Illusive.MaxTrack).track) as Track[];
+        const tracks = resolved_tracks.filter(track => !("error" in track)).filter(track => !is_empty(track)).map(item => (item as Illusive.MaxTrack).track) as Track[];
+        return await SQLTracks.add_playback_saved_data_to_tracks(tracks);
     }
     const tracks: Track[] = [];
     for(const utrack of unavailable_tracks) {

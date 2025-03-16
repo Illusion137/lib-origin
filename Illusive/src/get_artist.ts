@@ -6,7 +6,7 @@ import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, 
 import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from "./gen/youtube_music_parser";
 import { best_thumbnail, create_uri } from "./illusive_utilts";
 import { Prefs } from "./prefs";
-import { MusicServiceArtist, NamedUUID } from "./types";
+import { ArtistOpts, MusicServiceArtist, NamedUUID } from "./types";
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
@@ -27,8 +27,8 @@ function default_artist(error?: ResponseError): MusicServiceArtist{
     };
 }
 
-export async function youtube_music_get_artist(id: string): Promise<MusicServiceArtist>{
-    const artist_response = await YouTubeMusic.get_artist({cookie_jar: get_cookie_jar('youtube_music_cookie_jar')}, id);
+export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist>{
+    const artist_response = await YouTubeMusic.get_artist({cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy}, id);
     if("error" in artist_response) return default_artist(artist_response);
 
     const artist_info: NamedUUID = {name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer.title.runs), uri: create_uri("youtubemusic", artist_response.data.artist_id ?? id)};
@@ -63,8 +63,8 @@ export async function youtube_music_get_artist(id: string): Promise<MusicService
     };
 }
 
-export async function apple_music_get_artist(id: string): Promise<MusicServiceArtist>{
-    const artist_response = await AppleMusic.get_artist(id, {cookie_jar: get_cookie_jar('apple_music_cookie_jar')});
+export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist>{
+    const artist_response = await AppleMusic.get_artist(id, {cookie_jar: get_cookie_jar('apple_music_cookie_jar'), proxy: opts?.proxy});
     if("error" in artist_response) return default_artist(artist_response);
 
     const artist_info: NamedUUID = {name: artist_response.data.pageMetrics.pageFields.pageDetails.content, uri: create_uri("applemusic", urlid(artist_response.data.canonicalURL))};

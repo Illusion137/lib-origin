@@ -15,7 +15,7 @@ import { Wifi } from './wifi_utils';
 export async function get_proxies(sample_length: number){
     const proxies: Origin.Proxy.Proxy[] = [];
     if(Prefs.get_pref("fastpack") && sample_length > 4) {
-        const proxy_list = await Origin.Proxy.get_proxy_list();
+        const proxy_list = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https === true);
         if(!("error" in proxy_list)) proxies.push(...proxy_list);
     }
     return proxies;

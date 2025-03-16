@@ -33,7 +33,15 @@ export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "ERROR";
 export type SetState = any;
 
-export type SortType = "ALPHABETICAL" | "NEWEST" | "OLDEST"
+export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE" 
+    | "NEWEST" | "OLDEST" 
+    | "DURATION_HILOW" | "DURATION_LOWHI" 
+    | "PLAYS_HILOW" | "PLAYS_LOWHI" 
+    | "VIEWS_HILOW" | "VIEWS_LOWHI"
+    | "ADDED_DATE_HILOW" | "ADDED_DATE_LOWHI"
+    | "DOWNLOAD_DATE_HILOW" | "DOWNLOAD_DATE_LOWHI"
+    | "LAST_PLAYED_DATE_HILOW" | "LAST_PLAYED_DATE_LOWHI"
+    | "LAST_SAMPLED_DATE_HILOW" | "LAST_SAMPLED_DATE_LOWHI"
 
 export type BottomAlertType = "GOOD"|"INFO"|"WARN";
 
@@ -346,6 +354,7 @@ export interface TrackMix { "tracks": Track[], "error"?: Error }
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
 export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
+export type ArtistOpts = {proxy?: Proxy.Proxy};
 
 export class MusicService {
     app_icon: string | number
@@ -367,8 +376,8 @@ export class MusicService {
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
-    get_artist?: (id: string) => Promise<MusicServiceArtist>
-    get_latest_release?: (id: string) => Promise<CompactPlaylist|undefined>
+    get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
+    get_latest_release?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist|undefined>
     constructor(s: {
         app_icon: string | number,
         web_view_url?: string,
@@ -389,8 +398,8 @@ export class MusicService {
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
         download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
-        get_artist?: (id: string) => Promise<MusicServiceArtist>,
-        get_latest_release?: (id: string) => Promise<CompactPlaylist|undefined>,
+        get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
+        get_latest_release?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist|undefined>,
     }) {
         this.app_icon = s.app_icon
         this.web_view_url = s.web_view_url;

@@ -177,15 +177,15 @@ export function music_service_uri_to_music_service(music_service_uri: MusicServi
 }
 export function music_service_to_music_service_uri(music_service_uri: MusicServiceType): MusicServiceURI {
     switch(music_service_uri) {
-        case "Illusi":        return "illusi";;
-        case "Musi":          return "musi";;
-        case "YouTube":       return "youtube";;
-        case "YouTube Music": return "youtubemusic";;
-        case "Spotify":       return "spotify";;
-        case "Amazon Music":  return "amazonmusic";;
-        case "Apple Music":   return "applemusic";;
-        case "SoundCloud":    return "soundcloud";;
-        case "API":           return "api";;
+        case "Illusi":        return "illusi";
+        case "Musi":          return "musi";
+        case "YouTube":       return "youtube";
+        case "YouTube Music": return "youtubemusic";
+        case "Spotify":       return "spotify";
+        case "Amazon Music":  return "amazonmusic";
+        case "Apple Music":   return "applemusic";
+        case "SoundCloud":    return "soundcloud";
+        case "API":           return "api";
     }
 }
 export function is_duration_string(str: string|undefined){

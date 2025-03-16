@@ -236,15 +236,16 @@ export async function create_timestamp_triggers_if_not_exists(table: SQLTables){
     END;   
     `);
 }
-export async function create_delete_triggers_if_not_exists(watch_table: SQLTables, copy_table: SQLTables, key: string){
+export async function create_delete_triggers_if_not_exists<T extends Record<string, any>>(watch_table: SQLTables, copy_table: SQLTables, obj: T){
     const triggers = await db_get_all_async<{name: string}>("SELECT name from sqlite_master WHERE type = 'trigger';");
     if(triggers.map(trigger => trigger.name).includes(`${watch_table}_deleted_Trigger`)) return;
+    const keys = Object.keys(obj).filter(key => obj[key] !== undefined);
     await db_exec_async(`
         CREATE TRIGGER ${watch_table}_deleted_Trigger
         BEFORE DELETE ON ${watch_table}
         FOR EACH ROW
         BEGIN
-            INSERT INTO ${copy_table} SELECT * FROM ${watch_table} WHERE ${key} = OLD.${key};
+            INSERT INTO ${copy_table} (${keys.join(', ')}) VALUES (${keys.map(key => `OLD.${key}`).join(', ')});
         END;
     `);
 }

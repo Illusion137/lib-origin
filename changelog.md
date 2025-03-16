@@ -1,4 +1,4 @@
-# Illusi 14.6.12
+# Illusi 15.0.0
  - A whole lot more search queries
  - Support for search queries with parameters; but only one at a time
  - New pref:`playlist_inheritance_preview`
@@ -25,7 +25,15 @@
  - Last Synced time at bottom of `ExtraScreen`
  - Album Track Tint Pref
  - Custom Thumbnails for tracks and playlists
- - Bottom Alert
+ - Added Bottom Alert
+ - Added Edit Track
+ - Added Trim Track
+ - Added FastPack
+ - Added Artist Watch
+ - Added Artists
+ - Added Albums
+ - Added New Releases / Altered Explore Page
+ - + More (will update eventually)
 # Illusi 14.5.12
  - More search queries
  - Version checking to improve startup time

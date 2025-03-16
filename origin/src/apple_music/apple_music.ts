@@ -9,12 +9,14 @@ import { Playlist } from "./types/Playlist";
 import { Search } from "./types/Search";
 import { SerializedServerData } from "./types/type";
 import { UserPlaylist } from "./types/UserPlaylist";
+import fetch from "../utils/orifetch";
+import { Proxy } from "../proxy/proxy";
 
 // Thanks to Lafou for providing test playlists such as:
 // https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl
 
 export namespace AppleMusic {
-    interface Opts { "cookie_jar"?: CookieJar }
+    interface Opts { "cookie_jar"?: CookieJar, "proxy"?: Proxy.Proxy }
     const client_cache = {client: {authorization: null as string|null}, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
@@ -63,6 +65,7 @@ export namespace AppleMusic {
             credentials: "include",
             body: null,
             redirect: 'follow',
+            proxy: opts.proxy,
             method: "GET",
         });
         return response;
@@ -114,6 +117,7 @@ export namespace AppleMusic {
             },
             body: null,
             redirect: 'follow',
+            proxy: opts.proxy,
             method: "GET"
         });
         if (!response.ok) return { error: new Error(String(response.status)) };
@@ -125,7 +129,7 @@ export namespace AppleMusic {
         try {
             if(opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
             const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params as Record<string, string>)}`;
-            const response = await fetch(url, { method, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts) });
+            const response = await fetch(url, { method, proxy: opts.proxy, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts) });
             return response;
         } catch (error) { return { error: error as Error } }
     }

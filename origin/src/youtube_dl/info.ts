@@ -301,14 +301,14 @@ const parseFormats = (player_response: any) => {
  * @returns {Promise<Object>}
  */
 export const getInfo = async (id: string, options: DownloadOptions): Promise<VideoInfo> => {
-	const info = await exports.getBasicInfo(id, options);
+	const info = await getBasicInfo(id, options);
 	const funcs = [];
   
 	// Fill in HTML5 player URL
 	info.html5player =
 	  info.html5player ||
 	  getHTML5player(await getWatchHTMLPageBody(id, options)) ||
-	  getHTML5player(await getEmbedPageBody(id, options));
+	  getHTML5player(await getEmbedPageBody(id, options))!;
   
 	if (!info.html5player) {
 	  throw Error("Unable to find html5player file");

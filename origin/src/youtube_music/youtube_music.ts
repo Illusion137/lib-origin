@@ -10,12 +10,14 @@ import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { InitialData } from './types/types';
 import { YTCFG } from "./types/YTCFG";
 import { YTError } from "./types/Error";
+import fetch from "../utils/orifetch";
+import { Proxy } from "../proxy/proxy";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
 
-	interface Opts { cookie_jar?: CookieJar, agent?: any }
+	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy }
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
 		initial_data: InitialData[],
@@ -165,7 +167,8 @@ export namespace YouTubeMusic {
 						"Cookies": opts.cookie_jar?.toString() as string
 					})
 				},
-				method: "GET"
+				method: "GET",
+				proxy: opts.proxy
 			});
 			const page_html = await page_response.text();
 			return {
@@ -194,7 +197,7 @@ export namespace YouTubeMusic {
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://music.youtube.com/", Parser.parse_home_contents); }
 	export async function get_explore(opts: Opts): PromiseICFGData<typeof Parser.parse_explore_contents> { return await parse_initial(opts, "https://music.youtube.com/explore", Parser.parse_explore_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, playlist_url_or_browse_url(playlist_id), Parser.parse_playlist_contents); }
-	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_artist_contents> { return await parse_initial(opts, `https://music.youtube.com/channel/${artist_id}`, Parser.parse_artist_contents); }
+	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_artist_contents> { return await parse_initial(opts, `https://music.youtube.com/channel/${artist_id.replace('/channel/', '')}`, Parser.parse_artist_contents); }
 	export async function get_artist_tracks(opts: Opts, artist_id: string) {
 		const artist_response = await get_artist(opts, artist_id);
 		if ("error" in artist_response) return artist_response;
@@ -228,7 +231,7 @@ export namespace YouTubeMusic {
 		return browse_data.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].gridRenderer.items.map(item => item.musicTwoRowItemRenderer);
 	}
 	export async function get_only_artist_albums(opts: Opts, ytcfg: YTCFG, artist_id: string) {
-		const browse_endpoint: string = "MPAD" + artist_id;
+		const browse_endpoint: string = "MPAD" + artist_id.replace('/channel/', '');
 		const payload = { browseId: browse_endpoint };
 		const browse_response = await post_check_response(opts, ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
@@ -293,7 +296,7 @@ export namespace YouTubeMusic {
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
 		const headers = get_post_headers(opts.cookie_jar, epoch, retry);
-		const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(merged_payload) });
+		const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
 		if(!response.ok && retry === false) return post_check_response(opts, ytcfg, path, payload, true);
 		return response;
 	}
