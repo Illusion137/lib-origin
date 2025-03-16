@@ -1,24 +1,31 @@
 import { CookieJar } from "../utils/cookie_util";
 import { ResponseError } from "../utils/types";
 import { encode_params, extract_string_from_pattern, json_catch, try_json_parse, urlid } from "../utils/util";
+import { Album } from "./types/Album";
 import { CreatePlaylist } from "./types/CreatePlaylist";
+import { GetArtistData } from "./types/GetArtist";
 import { MyPlaylists } from "./types/MyPlaylists";
 import { Playlist } from "./types/Playlist";
 import { Search } from "./types/Search";
 import { SerializedServerData } from "./types/type";
 import { UserPlaylist } from "./types/UserPlaylist";
+import fetch from "../utils/orifetch";
+import { Proxy } from "../proxy/proxy";
 
 // Thanks to Lafou for providing test playlists such as:
 // https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl
 
 export namespace AppleMusic {
-    interface Opts { "cookie_jar"?: CookieJar }
+    interface Opts { "cookie_jar"?: CookieJar, "proxy"?: Proxy.Proxy }
     const client_cache = {client: {authorization: null as string|null}, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
     export function client_cache_full() { return client_cache.enabled && client_cache.client.authorization !== null}
     export function playlist_urlid(playlist_url: string) {
-        return urlid(playlist_url, "music.apple.com/", "us/", "library/", "playlist/", "?l=en-US", /.+?\//);
+        return urlid(playlist_url, "music.apple.com/", "us/", "library/", "album/", "playlist/", "?l=en-US", /.+?\//);
+    }
+    export function artist_urlid(playlist_url: string) {
+        return urlid(playlist_url, "music.apple.com/", "us/", "artist/", "playlist/", "?l=en-US", /.+?\//);
     }
     export async function extract_serialized_server_data(html: string, opts: Opts) {
         const serialized_server_data_regex = /<script type=\"application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
@@ -57,7 +64,9 @@ export namespace AppleMusic {
             referrerPolicy: "strict-origin-when-cross-origin",
             credentials: "include",
             body: null,
-            method: "GET"
+            redirect: 'follow',
+            proxy: opts.proxy,
+            method: "GET",
         });
         return response;
     }
@@ -107,6 +116,8 @@ export namespace AppleMusic {
                 "cookie": opts.cookie_jar?.toString() as string,
             },
             body: null,
+            redirect: 'follow',
+            proxy: opts.proxy,
             method: "GET"
         });
         if (!response.ok) return { error: new Error(String(response.status)) };
@@ -118,7 +129,7 @@ export namespace AppleMusic {
         try {
             if(opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
             const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params as Record<string, string>)}`;
-            const response = await fetch(url, { method, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts) });
+            const response = await fetch(url, { method, proxy: opts.proxy, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts) });
             return response;
         } catch (error) { return { error: error as Error } }
     }
@@ -156,6 +167,41 @@ export namespace AppleMusic {
         const search_result: Search|ResponseError = await api_search_response.json().catch(json_catch);
         if("error" in search_result) return search_result;
         return {data: search_result, authorization: search_response.authorization};
+    }
+    export async function get_artist(artist_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/artist/${artist_urlid(artist_id)}`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as GetArtistData, authorization: artist_response.authorization};
+    }
+    export async function get_artist_tracks(artist_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/artist/${artist_urlid(artist_id)}/see-all?section=top-songs`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as unknown, authorization: artist_response.authorization};
+    }
+    export async function get_artist_singles(artist_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/artist/${artist_urlid(artist_id)}/see-all?section=singles`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as unknown, authorization: artist_response.authorization};
+    }
+    export async function get_artist_albums(artist_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/artist/${artist_urlid(artist_id)}/see-all?section=full-albums`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as unknown, authorization: artist_response.authorization};
+    }
+    export async function get_artist_appears_on(artist_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/artist/${artist_urlid(artist_id)}/see-all?section=appears-on-albums`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as unknown, authorization: artist_response.authorization};
+    }
+    export async function get_artist_similar_artists(artist_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/artist/${artist_urlid(artist_id)}/see-all?section=similar-artists`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as unknown, authorization: artist_response.authorization};
+    }
+    export async function get_album(album_id: string, opts: Opts){
+        const artist_response = await get_serialized_server_data(`https://music.apple.com/us/album/${playlist_urlid(album_id)}`, opts);
+        if("error" in artist_response) return artist_response;
+        return {data: artist_response.data[0].data as Album, authorization: artist_response.authorization};
     }
     export async function get_playlist(playlist_path: string, opts: Opts) {
         const playlist_response = await get_serialized_server_data(`https://music.apple.com/${urlid(playlist_path, "music.apple.com/")}`, opts);

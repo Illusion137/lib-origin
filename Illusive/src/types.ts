@@ -8,7 +8,12 @@ import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
 
-export type SQLTables = "sqlite_master" | "tracks" | "recently_played_tracks" | "backpack" | "playlists" | "playlists_tracks";
+export type SQLTables = "sqlite_master" 
+    | "tracks" | "tracks_deleted" 
+    | "recently_played_tracks" | "recently_played_tracks_deleted" 
+    | "backpack" | "backpack_deleted" 
+    | "playlists" | "playlists_deleted"
+    | "playlists_tracks" | "playlists_tracks_deleted";
 export interface ImageArtwork {
     uri: string
     cache: ArtworkCacheType
@@ -18,7 +23,7 @@ export type Promises = Promise<unknown>[]
 
 export interface Route<T> {"key": string, "name": string, "params": T, path: string}
 
-export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN";
+export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN" | "DATETIME";
 export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
                        {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
                        {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
@@ -28,7 +33,17 @@ export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "ERROR";
 export type SetState = any;
 
-export type SortType = "ALPHABETICAL" | "NEWEST" | "OLDEST"
+export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE" 
+    | "NEWEST" | "OLDEST" 
+    | "DURATION_HILOW" | "DURATION_LOWHI" 
+    | "PLAYS_HILOW" | "PLAYS_LOWHI" 
+    | "VIEWS_HILOW" | "VIEWS_LOWHI"
+    | "ADDED_DATE_HILOW" | "ADDED_DATE_LOWHI"
+    | "DOWNLOAD_DATE_HILOW" | "DOWNLOAD_DATE_LOWHI"
+    | "LAST_PLAYED_DATE_HILOW" | "LAST_PLAYED_DATE_LOWHI"
+    | "LAST_SAMPLED_DATE_HILOW" | "LAST_SAMPLED_DATE_LOWHI"
+
+export type BottomAlertType = "GOOD"|"INFO"|"WARN";
 
 export interface SQLTable {
     name: string
@@ -229,6 +244,7 @@ export interface CompactPlaylistData {
     track_count: number
     type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>
+    thumbnail_uri?: string
 }
 export interface SerializedCompactPlaylistData {
     title: string;
@@ -251,6 +267,7 @@ export interface CompactPlaylist {
     date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType
+    album_type?: "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP"
 }
 export interface CompactArtist {
     name: NamedUUID
@@ -291,12 +308,17 @@ export interface MusicSearchResponse {
 
 export interface MusicServiceArtist {
     name: string
+    latest_release?: CompactPlaylist
     tracks: Track[]
-    tracks_continuation: () => Track[]
+    tracks_continuation?: () => Track[]
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
+    singles_eps: CompactPlaylist[]
+    appears_on?: CompactPlaylist[]
     background_artwork_url?: string
     profile_artwork_url?: string
+    similar_artists: CompactArtist[],
+    error?: MaybeErrors
 }
 export interface YTDescriptionSong {
     artwork_url: string,
@@ -332,6 +354,7 @@ export interface TrackMix { "tracks": Track[], "error"?: Error }
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
 export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
+export type ArtistOpts = {proxy?: Proxy.Proxy};
 
 export class MusicService {
     app_icon: string | number
@@ -353,6 +376,8 @@ export class MusicService {
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
+    get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
+    get_latest_release?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist|undefined>
     constructor(s: {
         app_icon: string | number,
         web_view_url?: string,
@@ -371,8 +396,10 @@ export class MusicService {
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
         get_playlist: (url: string) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
-        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
-        get_track_mix?: (id: string) => Promise<TrackMix>
+        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
+        get_track_mix?: (id: string) => Promise<TrackMix>,
+        get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
+        get_latest_release?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist|undefined>,
     }) {
         this.app_icon = s.app_icon
         this.web_view_url = s.web_view_url;
@@ -393,6 +420,8 @@ export class MusicService {
         this.get_playlist_continuation = s.get_playlist_continuation
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
+        this.get_artist = s.get_artist;
+        this.get_latest_release = s.get_latest_release;
     }
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;

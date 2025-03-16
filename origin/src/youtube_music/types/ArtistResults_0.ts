@@ -1,3 +1,5 @@
+import { Badge } from "./ExploreResults_0"
+
 export type ArtistResults_0 = Root2[]
 
 export interface Root2 {
@@ -317,7 +319,7 @@ export interface Content2 {
 
 export interface MusicShelfRenderer {
 	title: Title
-	contents: Content3[]
+	contents: ArtistTopTrack[]
 	trackingParams: string
 	bottomText: BottomText
 	bottomEndpoint: BottomEndpoint
@@ -352,12 +354,13 @@ export interface BrowseEndpointContextMusicConfig2 {
 	pageType: string
 }
 
-export interface Content3 {
+export interface ArtistTopTrack {
 	musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer
 }
 
 export interface MusicResponsiveListItemRenderer {
 	trackingParams: string
+	badges?: Badge[]
 	thumbnail: Thumbnail
 	flexColumns: FlexColumn[]
 	menu: Menu
@@ -764,7 +767,7 @@ export interface MusicShelfDividerRenderer {
 
 export interface MusicCarouselShelfRenderer {
 	header: Header2
-	contents: Content4[]
+	contents: ArtistCarouselContent[]
 	trackingParams: string
 	itemSize: string
 }
@@ -864,7 +867,7 @@ export interface AccessibilityData8 {
 	label: string
 }
 
-export interface Content4 {
+export interface ArtistCarouselContent {
 	musicTwoRowItemRenderer: MusicTwoRowItemRenderer
 }
 
@@ -877,6 +880,7 @@ export interface MusicTwoRowItemRenderer {
 	trackingParams: string
 	menu: Menu2
 	thumbnailOverlay?: ThumbnailOverlay
+	subtitleBadges?: SubtitleBadge[]
 }
 
 export interface ThumbnailRenderer {

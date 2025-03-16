@@ -11,6 +11,8 @@ import { Library } from "./types/Library";
 import { ProfileData } from "./types/ProfileData";
 import { SearchResult } from "./types/SearchResult";
 import { UserPlaylist } from "./types/UserPlaylist";
+import fetch from "../utils/orifetch";
+import { Proxy } from "../proxy/proxy";
 
 export namespace Spotify {
     interface ClientSession {
@@ -32,7 +34,7 @@ export namespace Spotify {
         client_token: ClientToken 
     }
 
-    interface Opts { cookie_jar?: CookieJar, client?: Client }
+    interface Opts { cookie_jar?: CookieJar, client?: Client, proxy?: Proxy.Proxy }
     const client_cache = {client: null as Client|null, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
@@ -95,7 +97,7 @@ export namespace Spotify {
                 },
                 referrerPolicy: "strict-origin-when-cross-origin",
                 body: null,
-                method: "GET"
+                method: "GET",
             });
 
             const session_regex = /<script id="session" data-testid="session" type="application\/json">(.+?)<\/script>/is

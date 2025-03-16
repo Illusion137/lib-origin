@@ -1,7 +1,7 @@
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
 import * as ffmpeg from 'ffmpeg-kit-react-native';
 import { Prefs } from '../../prefs';
-import { Track } from '../../types';
+import { BottomAlertType, Track } from '../../types';
 import { download_track } from './downloader'
 import * as GLOBALS from './globals';
 import { catch_function_async } from './illusi_utils';
@@ -11,13 +11,15 @@ import * as SQLTracks from './sql/sql_tracks';
 import * as SQLUpdate from './sql/sql_update';
 import * as SQLUtils from './sql/sql_utils';
 import * as Origin from '../../../../origin/src/index';
+import { generate_unique_track_tints } from '../../illusive_utilts';
 
-export async function illusi_startup(version: string, play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void) {
+export async function illusi_startup(version: string, play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void, bottom_alert: (text: string, type: BottomAlertType) => void) {
     await catch_function_async(async() => {
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.set_theme = set_theme;
-        await ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET);
+        GLOBALS.global_var.bottom_alert = bottom_alert;
+        ffmpeg.FFmpegKitConfig.setLogLevel(ffmpeg.Level.AV_LOG_QUIET).catch(e => e);
         const statistics_callback = (statistics: ffmpeg.Statistics) => {
             const dlidx = GLOBALS.downloading.findIndex(item => item.execution_id === statistics.getSessionId());
             if (dlidx === -1) return;
@@ -40,6 +42,9 @@ export async function illusi_startup(version: string, play_tracks: (first_track:
             SQLRecentlyPlayed.cleanup_recently_played(),
             activateKeepAwakeAsync()
         ]);
+        if(Prefs.get_pref('album_track_tinting')){
+            generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table);
+        }
         Prefs.pref_set_theme(set_theme);
 
         if(Prefs.get_pref('keep_soundcloud_alive')){

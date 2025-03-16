@@ -1,13 +1,15 @@
 import * as Origin from '../../origin/src/index'
 import { PromiseResult, ResponseError } from "../../origin/src/utils/types";
-import { is_empty, remove_topic } from "../../origin/src/utils/util";
+import { is_empty, json_catch, remove_topic } from "../../origin/src/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "./add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
+import { apple_music_get_artist, youtube_music_get_artist } from './get_artist';
+import { apple_music_get_latest_release, youtube_music_get_latest_release } from './get_latest_release';
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "./get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "./get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "./get_user_playlist";
-import { all_words, one_includes_word_not_other, random_of, shuffle_array, str_or_include } from "./illusive_utilts";
+import { all_words, artist_string, clean_title, is_topic, number_epsilon_distance, one_includes_word_not_other, random_of, shuffle_array, str_or_include } from "./illusive_utilts";
 import { Prefs } from "./prefs";
 import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
 import { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicService, MusicServiceType, Track } from "./types";
@@ -21,11 +23,12 @@ export namespace Illusive {
     export const imported_thumbnail: number = require('./assets/imported_thumbnail.png');
 
     export const sqlite_directory       = "SQLite/";
+    export const custom_thumbnail_archive_path = "custom_thumbnail_archive/";
     export const thumbnail_archive_path = "thumbnail_archive/";
     export const media_archive_path     = "media_archive/";
     export const lyrics_archive_path    = "lyrics_archive/";
 
-    export const default_directories = [thumbnail_archive_path, media_archive_path, lyrics_archive_path];
+    export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path];
     export const default_directories_wsql = default_directories.concat(sqlite_directory);
     
     const illusi = new MusicService(
@@ -77,7 +80,9 @@ export namespace Illusive {
             add_tracks_to_playlist: youtube_add_tracks_to_playlist,
             delete_tracks_from_playlist: youtube_delete_tracks_from_playlist,
             get_track_mix: get_youtube_track_mix,
-            download_from_id: youtube_download_from_id
+            download_from_id: youtube_download_from_id,
+            get_artist: youtube_music_get_artist,
+            get_latest_release: youtube_music_get_latest_release
         });
     const youtube_music = new MusicService(
         {
@@ -96,7 +101,9 @@ export namespace Illusive {
             create_playlist: youtube_music_create_playlist,
             delete_playlist: youtube_music_delete_playlist,
             add_tracks_to_playlist: youtube_music_add_tracks_to_playlist,
-            delete_tracks_from_playlist: youtube_music_delete_tracks_from_playlist
+            delete_tracks_from_playlist: youtube_music_delete_tracks_from_playlist,
+            get_artist: youtube_music_get_artist,
+            get_latest_release: youtube_music_get_latest_release
         });
     const spotify = new MusicService(
         {
@@ -152,7 +159,9 @@ export namespace Illusive {
             create_playlist: apple_music_create_playlist,
             delete_playlist: apple_music_delete_playlist,
             add_tracks_to_playlist: apple_music_add_tracks_to_playlist,
-            delete_tracks_from_playlist: apple_music_delete_tracks_from_playlist
+            delete_tracks_from_playlist: apple_music_delete_tracks_from_playlist,
+            get_artist: apple_music_get_artist,
+            get_latest_release: apple_music_get_latest_release
         });
     const soundcloud = new MusicService(
         {
@@ -233,6 +242,9 @@ export namespace Illusive {
         return {tracks: mix_response.tracks, new_track_data: new_track_data.track};
     }
 
+    export function get_youtube_lowest_quality_thumbnail_uri(video_id: string){
+        return `https://i.ytimg.com/vi/${video_id}/default.jpg`;
+    } 
     export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {
         const uris_descending = [
             `https://i.ytimg.com/vi/${video_id}/maxresdefault.jpg`,
@@ -273,8 +285,12 @@ export namespace Illusive {
     export function get_track_artwork(document_directory: string, track: Track): Artwork {
         if(!is_empty(track.imported_id))
             return imported_thumbnail;
-        if(!is_empty(track.thumbnail_uri))
-            return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
+        if(!is_empty(track.thumbnail_uri)){
+            if(track.thumbnail_uri!.includes(track.uid))
+                return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
+            else
+                return {uri: document_directory + custom_thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
+        }
         if(Prefs.get_pref('prioritize_youtube_thumbnail')) {
             if(!is_empty(track.youtube_id))
                 return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};
@@ -292,8 +308,8 @@ export namespace Illusive {
     export async function get_suggestions(query: string) { return await Origin.Google.get_suggestions(query); }
 
     export async function get_track_lryics(track: Track) {
-        if(is_youtube(track) && !((track?.artists?.[0]?.name ?? "").includes(" - Topic"))) return {error: new Error('Track is pure YouTube')};
-        const search_response = await Origin.Genius.search(`${remove_topic(track.artists[0].name)} ${track.title}`);
+        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
+        const search_response = await Origin.Genius.search(`${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`);
         if("error" in search_response) return search_response;
         const lyrics_response = await Origin.Genius.get_lyrics(search_response);
         return lyrics_response;
@@ -466,5 +482,37 @@ export namespace Illusive {
             smart_search_storage.push(track);
         }
         return smart_search_storage;
+    }
+
+    export async function mass_convert_youtube_to_youtube_music(tracks: Track[], callback: ( track: Track, new_track: Track ) => Promise<void>){
+        for(const track of tracks){
+            const dont_convert = 
+                is_empty(track.youtube_id) || 
+                track.explicit === "EXPLICIT" || 
+                !is_empty(track.album?.name) || 
+                !is_topic(track.artists[0].name);
+            const guess_title = track.title.toLowerCase().replace(`${track.artists[0].name.toLowerCase()} - `, '');
+            const just_kidding_do_convert = guess_title.length !== track.title.length 
+                && track.explicit === "NONE" 
+                && is_empty(track.album?.name)
+                && !is_empty(track.youtube_id);
+            if(dont_convert && !just_kidding_do_convert){
+                continue;
+            }
+            const query = remove_topic(track.artists[0].name) + " " + guess_title;
+            const searched: MusicSearchResponse|ResponseError = await youtube_music_search(query).catch(json_catch);
+            if("error" in searched){
+                continue;
+            }
+            const found = just_kidding_do_convert === false ? searched.tracks.find(t => t.youtube_id === track.youtube_id) : 
+                searched.tracks.find(t => 
+                    number_epsilon_distance(t.duration, track.duration, 3) && 
+                    str_or_include(clean_title(track.title).toLowerCase(), clean_title(t.title).toLowerCase()) &&
+                    str_or_include(artist_string(track).toLowerCase(), artist_string(t).toLowerCase())
+                );
+            if(!is_empty(found)){
+                await callback(track, found!);
+            }
+        }
     }
 }

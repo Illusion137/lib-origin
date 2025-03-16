@@ -52,5 +52,5 @@ export async function fetch_linked_playlists(links: LinkerLink[]) {
     if(!Prefs.get_pref("enable_linker")) return;
     if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return;
     for(const link of links)
-        await convert_playlist(await playlist_tracks(link.uuid_uri), link.to_service, {to: link.to, full_sample: link.full_sample});
+        await convert_playlist(await playlist_tracks(link.uuid_uri), link.to_service, {to: link.to, full_sample: link.full_sample, divide_and_conquer: false});
 }

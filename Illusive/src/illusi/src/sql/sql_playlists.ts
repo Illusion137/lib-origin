@@ -3,9 +3,11 @@ import { all_promises, array_exclude, array_include, array_mask, track_query_fil
 import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
-import { sql_tracks_to_tracks } from "./sql_tracks";
+import { get_tracks, sql_tracks_to_tracks, track_exist_in_other } from "./sql_tracks";
 import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
 import { sort_playlist_tracks } from "../playlist";
+import { Prefs } from "../../../prefs";
+import { is_empty } from "../../../../../origin/src/utils/util";
 
 function playlist_to_sqllite_insertion(playlist: Playlist) {
     const to_array: SQLPlaylistArray = [
@@ -35,8 +37,8 @@ export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: str
     await Promise.all(promises);
 }
 
-export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks = false): Promise<Playlist> {
-    const tracks = ignore_tracks ? [] : await playlist_tracks(sql_playlist.uuid, new Set<string>(), true);
+export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks = false, ignore_inheritance = true): Promise<Playlist> {
+    const tracks = ignore_tracks ? [] : await playlist_tracks(sql_playlist.uuid, new Set<string>(), ignore_inheritance);
     return Object.assign(sql_playlist, {
         inherited_playlists: JSON.parse(sql_playlist.inherited_playlists ?? "[]"),
         linked_playlists: JSON.parse(sql_playlist.linked_playlists ?? "[]"),
@@ -69,9 +71,8 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
             }
         }
     }
-    if(cplaylist_data.inherited_searchs!.length === 0) return tracks;
     for(const inherited_search of cplaylist_data.inherited_searchs!) {
-        const inherited_tracks = track_query_filter(GLOBALS.global_var.sql_tracks, inherited_search.query);
+        const inherited_tracks = track_query_filter(is_empty(GLOBALS.global_var.sql_tracks) ? await get_tracks(): GLOBALS.global_var.sql_tracks, inherited_search.query);
         switch (inherited_search.mode) {
             case "INCLUDE": tracks = array_include<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
             case "EXCLUDE": tracks = array_exclude<Track>(tracks, inherited_tracks, (a: Track,b: Track) => a.uid === b.uid); break;
@@ -84,6 +85,16 @@ export async function playlist_tracks(playlist_uuid: string, seen_playlist_uuids
 export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string) {
     const count = await db_get_all_async<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
     return count.length !== 0;
+}
+
+export async function deep_track_exists_in_playlist(playlist_uuid: string, track: Track){
+    const tracks = await playlist_tracks(playlist_uuid, new Set(), true);
+    return track_exist_in_other(tracks, track);
+}
+
+export async function deep_tracks_exists_in_playlist(playlist_uuid: string, tracks: Track[]): Promise<boolean[]>{
+    const ptracks = await playlist_tracks(playlist_uuid, new Set(), true);
+    return tracks.map(track => track_exist_in_other(ptracks, track));
 }
 
 export async function insert_all_tracks_playlist(playlist_uuid: string, track_uids: string[]) {
@@ -102,8 +113,9 @@ export async function delete_track_from_all_playlists(track_uid: string) {
 }
 
 export async function all_playlists_data() {
+    const ignore_inheritance = !Prefs.get_pref('playlist_inheritance_preview');
     const playlists = await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"));
-    return Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist)) );
+    return Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, false, ignore_inheritance)) );
 }
 export async function all_playlists_names(): Promise<{"title": string}[]> {
     return await db_get_all_async<{"title": string}>(sql_select<Playlist>("playlists", "title"));

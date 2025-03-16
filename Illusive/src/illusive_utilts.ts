@@ -2,7 +2,8 @@ import { is_empty, remove, remove_special_chars, remove_topic, urlid } from "../
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
 import { ANTI_QUERY_FLAG_PREFIX, QUERY_FLAGS } from "./query_flags";
-import { CompactPlaylistType, GroupSection, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
+import { seeded_rand } from "./seeding";
+import { CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
 
 export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
@@ -95,7 +96,7 @@ export function track_query_filter(tracks: Track[], query?: string) {
         
         return tracks.filter(track => {
             if(is_empty(query) && matched_anti_query_flags.length === 0 && matched_query_flags.length === 0) return false;
-            if(!is_empty(query)){
+            if(!is_empty(query) && matched_query_flags.length === 0 && matched_anti_query_flags.length === 0){
                 const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
                 const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
                 if(includes_title) return true;
@@ -176,20 +177,20 @@ export function music_service_uri_to_music_service(music_service_uri: MusicServi
 }
 export function music_service_to_music_service_uri(music_service_uri: MusicServiceType): MusicServiceURI {
     switch(music_service_uri) {
-        case "Illusi":        return "illusi";;
-        case "Musi":          return "musi";;
-        case "YouTube":       return "youtube";;
-        case "YouTube Music": return "youtubemusic";;
-        case "Spotify":       return "spotify";;
-        case "Amazon Music":  return "amazonmusic";;
-        case "Apple Music":   return "applemusic";;
-        case "SoundCloud":    return "soundcloud";;
-        case "API":           return "api";;
+        case "Illusi":        return "illusi";
+        case "Musi":          return "musi";
+        case "YouTube":       return "youtube";
+        case "YouTube Music": return "youtubemusic";
+        case "Spotify":       return "spotify";
+        case "Amazon Music":  return "amazonmusic";
+        case "Apple Music":   return "applemusic";
+        case "SoundCloud":    return "soundcloud";
+        case "API":           return "api";
     }
 }
 export function is_duration_string(str: string|undefined){
-    if(str === undefined) return false;
-    return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str);
+    if(is_empty(str)) return false;
+    return /^((\d+:)?\d{1,2}:)?\d{2}$/gm.test(str!);
 }
 export function is_number(str: string){
     return !isNaN(parseFloat(str));
@@ -207,6 +208,7 @@ export function youtube_views_number(views_string?: string): number {
     }
 }
 export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
+    if(is_empty(runs)) return [];
     const named_uris: NamedUUID[] = [];
     if(runs.length === 1) named_uris.push({name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri("youtubemusic", runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
     else
@@ -274,6 +276,10 @@ export function random_of<T>(arr: T[]): T {
     const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
     return arr[randidx];
 }
+export function seeded_random_of<T>(gen: () => number, arr: T[]): T {
+    const randidx = Math.floor(gen() * (Math.floor(arr.length) - 0) + 0);
+    return arr[randidx];
+}
 export async function all_promises(promises: Promises) {
     return await Promise.all(promises);
 }
@@ -304,8 +310,9 @@ export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any
 
 export function artist_string(track: Track): string{
     if(is_empty(track)) return "";
-    if(track.artists.length <= 1) return remove_topic(track.artists[0].name).trim();
-    const names = track.artists.map(artist => remove_topic(artist.name).trim());
+    if(track.artists.length === 0) return "";
+    if(track.artists.length <= 1) return remove_topic(track.artists?.[0].name ?? "").trim();
+    const names = track.artists.map(artist => remove_topic(artist?.name ?? "").trim());
     const final_name = names.pop()!;
     return names.length
         ? names.join(', ') + ' & ' + final_name
@@ -325,4 +332,72 @@ export function version_greater_than(version: string, other_version: string): bo
     catch(e) {
         return false;
     }
+}
+
+export function single_case(str: string): string{
+    const split = str.toLowerCase().split('');
+    split[0] = split?.[0].toUpperCase();
+    return split.join('');
+}
+
+export function tracks_with_artist(tracks: Track[], artist_name: string){
+    if(is_empty(artist_name)) return [];
+    return tracks.filter(track => artist_string(track).toLowerCase().includes(artist_name.toLowerCase()));
+}
+
+const tint_color_list: HexColor[] = [
+    '#ff1100',
+    '#ff8800',
+    '#ffea00',
+    '#bfff00',
+    '#59ff00',
+    '#00ff2f',
+    '#00ff99',
+    '#00ccff',
+    '#0066ff',
+    '#0015ff',
+    '#4c00ff',
+    '#9000ff',
+    '#c800ff',
+    '#ee00ff',
+    '#ff00bf',
+    '#ff0084',
+    '#ff003c',
+    '#8f4a4a',
+    '#888f4a',
+    '#688f4a',
+    '#4a8f58',
+    '#4a8f7f',
+    '#4a788f',
+    '#4a598f',
+    '#614a8f',
+    '#7b4a8f',
+    '#8f4a87',
+    '#8f4a65',
+    '#8f4a51'
+];
+
+export function generate_unique_track_tints(tracks: Track[], tint_table: Map<Track['uid'], HexColor>){
+    const with_album = tracks.filter(track => !is_empty(track.album?.name));
+    const grouped = groupby(with_album, track => track.album?.name);
+    for(const key of Object.keys(grouped)){
+        if(grouped[key].length > 1){
+            const tints_clone = [...tint_color_list];
+            const gen = seeded_rand(grouped[key][0].album?.name ?? "");
+            for(const track of grouped[key]){
+                const tint = seeded_random_of(gen, tints_clone);
+                tints_clone.splice(tints_clone.indexOf(tint), 1);
+                tint_table.set(track.uid, tint);
+            }
+        }
+    }
+}
+
+export function is_topic(str: string){
+    return str.endsWith(" - Topic");
+}
+
+export function clean_title(title: string){
+    const cleaned = remove(title, /\(.+?\)/gi, /\[.+?\]/gi).trim();
+    return cleaned;
 }

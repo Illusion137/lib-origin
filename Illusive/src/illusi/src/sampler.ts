@@ -3,7 +3,7 @@ import { is_empty } from "../../../../origin/src/utils/util";
 import { Illusive } from "../../illusive";
 import { random_of, shuffle_array } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
-import { DownloadFromIdResult, ISOString, MusicServiceType, Track, TrackMetaData } from "../../types";
+import { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "../../types";
 import * as GLOBALS from './globals';
 import { Logger } from "./logger";
 import * as SQLTracks from './sql/sql_tracks';
@@ -15,7 +15,7 @@ import { Wifi } from './wifi_utils';
 export async function get_proxies(sample_length: number){
     const proxies: Origin.Proxy.Proxy[] = [];
     if(Prefs.get_pref("fastpack") && sample_length > 4) {
-        const proxy_list = await Origin.Proxy.get_proxy_list();
+        const proxy_list = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https === true);
         if(!("error" in proxy_list)) proxies.push(...proxy_list);
     }
     return proxies;
@@ -41,7 +41,7 @@ export function unsampled_tracks_service(service: MusicServiceType, tracks: Trac
 export function unsampled_tracks_meta(tracks: Track[]) {
     return tracks.filter(track => (
         new Date(new Date().getTime() - (is_empty(track.meta?.last_sampled_date) ? 
-            new Date(0) 
+            new Date(0)
                 : new Date(track.meta!.last_sampled_date!)).getTime()).getTime() > (30 * 24 * 60 * 60 * 1000)
     ));
 }
@@ -54,6 +54,10 @@ export async function next_sample_tracks_service(ingore_services: MusicServiceTy
     return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
 }
 export async function next_sample_tracks_meta() {
+    // if(GLOBALS.global_var.sql_tracks.some(track => !is_empty(track.youtube_id) && track.artists[0].uri === null)){
+    //     const unsampled = GLOBALS.global_var.sql_tracks.filter(track => !is_empty(track.youtube_id) && track.artists[0].uri === null);
+    //     return shuffle_array(unsampled).slice(0, Prefs.get_pref('tracks_per_sample'));
+    // }
     const tracks: Track[] = unsampled_tracks_meta(GLOBALS.global_var.sql_tracks);
     return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
 }
@@ -73,7 +77,6 @@ export async function sample_tracks_service(sample_tracks: Track[], to: MusicSer
 }
 
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata'], unavailable: boolean) {
-    if(metadata === undefined) return;
     if(!await SQLTracks.track_exists(track)) return;
     const new_metadata: TrackMetaData = {
         ...(!is_empty(track.meta) ? track.meta! : ({
@@ -81,14 +84,26 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             added_date: new Date().toISOString() as ISOString,
             last_played_date: new Date().toISOString() as ISOString
         })),
-        age_restricted: metadata.age_restricted,
-        chapters: metadata.chapters,
-        songs: metadata.songs,
+        ...(is_empty(metadata) ? {} : {
+            age_restricted: metadata!.age_restricted,
+            chapters: metadata!.chapters,
+            songs: metadata!.songs,
+        }),
         unavailable: unavailable,
         last_sampled_date: new Date().toISOString() as ISOString
     }
     track.meta = new_metadata;
     await SQLTracks.update_track_meta_data(track.uid, new_metadata);
+}
+export async function handle_incoming_youtube_music_track_data(track: Track, new_track: Track) {
+    if(!await SQLTracks.track_exists(track)) return;
+    track.alt_title = track.title;
+    track.title = new_track.title;
+    track.artists = new_track.artists;
+    track.album = new_track.album;
+    track.explicit = new_track.explicit;
+    track.youtubemusic_id = new_track.youtubemusic_id;
+    await SQLTracks.update_track(track.uid, track);
 }
 export async function sample_tracks_meta(sample_tracks: Track[]){
     for(const track of sample_tracks) {
@@ -117,6 +132,55 @@ export async function sample_tracks_meta(sample_tracks: Track[]){
     }
 }
 
+async function super_speed_sample_unavailable_tracks(tracks: Track[]) {
+    return await Promise.all(tracks.map(async(track) => {
+        if(is_empty(track.youtube_id)) return;
+        const thumbnail_uri = Illusive.get_youtube_lowest_quality_thumbnail_uri(track.youtube_id!);
+        const response = await fetch(thumbnail_uri);
+        if(!response.ok){
+            if(is_empty(track.media_uri)){
+                await SQLBackpack.add_to_backpack(track.uid);
+                alert_error(`Quick-Sampler found track that is now unavailable and is now put in your backpack: \n${JSON.stringify({title: track.title, uid: track.uid})}`);
+            }
+            else {
+                const new_metadata: TrackMetaData = {
+                    ...track.meta!,
+                    unavailable: true
+                }
+                track.meta = new_metadata;
+                await SQLTracks.update_track_meta_data(track.uid, new_metadata);
+            }
+        }
+    }));
+}
+export async function speed_sample_unavailable_tracks(tracks: Track[], super_speed: boolean = false){
+    if(super_speed) { 
+        await super_speed_sample_unavailable_tracks(tracks);
+        return;
+    }
+    const promises: Promises = [];
+    for(const track of tracks){
+        if(is_empty(track.youtube_id)) continue;
+        const thumbnail_uri = Illusive.get_youtube_lowest_quality_thumbnail_uri(track.youtube_id!);
+        const response = await fetch(thumbnail_uri);
+        if(!response.ok){
+            if(is_empty(track.media_uri)){
+                promises.push(SQLBackpack.add_to_backpack(track.uid));
+                alert_error(`Quick-Sampler found track that is now unavailable and is now put in your backpack: \n${JSON.stringify({title: track.title, uid: track.uid})}`);
+            }
+            else {
+                const new_metadata: TrackMetaData = {
+                    ...track.meta!,
+                    unavailable: true
+                }
+                track.meta = new_metadata;
+                promises.push(SQLTracks.update_track_meta_data(track.uid, new_metadata));
+            }
+        }
+    }
+    await Promise.all(promises);
+}
+
 export async function sample(){
     if(!Prefs.get_pref('enable_sampler')) return;
     if(Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()) return;
@@ -127,4 +191,8 @@ export async function sample(){
     // else {
         // await sample_tracks_service(await next_sample_tracks_service([]), random_of(loggedin_services()));
     // }
+}
+
+export async function mass_sample_youtube_to_youtube_music(){
+    await Illusive.mass_convert_youtube_to_youtube_music(GLOBALS.global_var.sql_tracks, handle_incoming_youtube_music_track_data);
 }

@@ -6,6 +6,7 @@ bin/**
 ignore/**
 node_modules
 scratch
+scratch*
 scratch.**
 translate
 catids.txt

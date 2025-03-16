@@ -764,6 +764,7 @@ export interface WatchEndpointMusicConfig3 {
 
 export interface BrowseEndpoint5 {
     browseId: string
+    canonicalBaseUrl?: string
     browseEndpointContextSupportedConfigs: BrowseEndpointContextSupportedConfigs5
 }
 

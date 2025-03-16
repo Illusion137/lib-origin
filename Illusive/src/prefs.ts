@@ -3,11 +3,11 @@ import * as uuid from "react-native-uuid";
 import { CookieJar } from "../../origin/src/utils/cookie_util";
 import { Constants } from './constants';
 import * as LegacyPrefs from './illusi/src/legacy/1307/legacy_prefs';
-import { HexColor, LinkerLink } from './types';
+import { CompactPlaylist, HexColor, LinkerLink } from './types';
 
 export namespace Prefs {
     export type PossibleThemes = keyof typeof themes;
-    type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING" | "LINKER_LINKS";
+    type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING" | "LINKER_LINKS" | "COMPACT_PLAYLISTS";
     type ShowInSettings = "MISC"|"EXPERIMENTAL";
     export interface Pref<T> {
         default_value: T
@@ -30,6 +30,9 @@ export namespace Prefs {
         amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as Pref<string>,
+        last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
+        new_releases_last_refreshed:           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
+        new_releases_persistant_cache:         {default_value: [], current_value: [], type: "COMPACT_PLAYLISTS"} as Pref<CompactPlaylist[]>,
         latest_version:                        {default_value: "0.0.0", current_value: "0.0.0", type: "STRING"} as Pref<string>,
         recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as Pref<string[]>,
         last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as Pref<number>,
@@ -48,6 +51,7 @@ export namespace Prefs {
         show_track_duration:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
         use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
         use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
+        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
         compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; Your playlists in the 'Playlist' screen will become smaller", section: "Visual"} as Pref<boolean>,
         share_as_original:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When sharing a track if downloaded it'll still share the song from the original source", section: "Interactions"} as Pref<boolean>,
         prioritize_youtube_thumbnail:          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
@@ -63,6 +67,7 @@ export namespace Prefs {
         default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as Pref<number>,
         recently_played_max_size:              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as Pref<number>,
         download_queue_max_length:             {default_value: 5, current_value: 5, type: "NUMBER", range: {start: 1, end: 10}, show_in_settings: true, section: "Automation"} as Pref<number>,
+        new_releases_amount:                   {default_value: 30, current_value: 30, type: "NUMBER",  range: {start: 0, end: 100}, show_in_settings: true, section: "Search"}       as Pref<number>,
         auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
         only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
         auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
@@ -75,13 +80,16 @@ export namespace Prefs {
         force_explicit_conversion:             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
         can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
         can_redownload_batch:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
+        playlist_inheritance_preview:          {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "If-Enabled; The Playlists tab will show all your inheritance in your playlists; Slightly slower performance when opening Playlists tab"}  as Pref<boolean>,
+        speed_sample_super_speed:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "If-Enabled; The Playlists tab will show all your inheritance in your playlists; Slightly slower performance when opening Playlists tab"}  as Pref<boolean>,
 
         // Settings that have a chance of breaking things; use with caution; all disabled by default
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
         enable_sampler:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
-        add_from_modal:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Other"}  as Pref<boolean>,
+        album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as Pref<boolean>,
         keep_soundcloud_alive:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
         fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
+        quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as Pref<boolean>,
         dev_mode:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)"}  as Pref<boolean>,
     };
     const user_uuid_key: PrefOptions = "user_uuid";
@@ -107,12 +115,14 @@ export namespace Prefs {
         for(const key of keys) {
             if(all_keys.includes(key))
                 switch(prefs[key].type) {
-                    case "STRING":       prefs[key].current_value = (await AsyncStorage.getItem(key))!; break;
-                    case "BOOLEAN":      prefs[key].current_value = await AsyncStorage.getItem(key) === "true" ? true : false; break;
-                    case "NUMBER":       prefs[key].current_value = parseInt((await AsyncStorage.getItem(key))!); break;
-                    case "COOKIE_JAR":   prefs[key].current_value = CookieJar.fromString((await AsyncStorage.getItem(key))!); break;
-                    case "STRING_ARRAY": prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
-                    case "LINKER_LINKS": prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
+                    case "STRING":            prefs[key].current_value = (await AsyncStorage.getItem(key))!; break;
+                    case "BOOLEAN":           prefs[key].current_value = await AsyncStorage.getItem(key) === "true" ? true : false; break;
+                    case "NUMBER":            prefs[key].current_value = parseInt((await AsyncStorage.getItem(key))!); break;
+                    case "DATE":              prefs[key].current_value = new Date( await AsyncStorage.getItem(key) as string ); break;
+                    case "COOKIE_JAR":        prefs[key].current_value = CookieJar.fromString((await AsyncStorage.getItem(key))!); break;
+                    case "STRING_ARRAY":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
+                    case "LINKER_LINKS":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
+                    case "COMPACT_PLAYLISTS": prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
                 }
             else prefs[key].current_value = prefs[key].default_value;
         }
@@ -120,12 +130,14 @@ export namespace Prefs {
     
     export async function save_pref<T extends PrefOptions>(pref: T, value: (typeof prefs)[T]['default_value']) {
         switch(prefs[pref].type) {
-            case "STRING":       await AsyncStorage.setItem(pref, value as string); break;
-            case "BOOLEAN":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            case "NUMBER":       await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            case "COOKIE_JAR":   await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
-            case "STRING_ARRAY": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            case "LINKER_LINKS": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "STRING":            await AsyncStorage.setItem(pref, value as string); break;
+            case "BOOLEAN":           await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "NUMBER":            await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "DATE":              await AsyncStorage.setItem(pref, (value as Date).toISOString()); break;
+            case "COOKIE_JAR":        await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
+            case "STRING_ARRAY":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "LINKER_LINKS":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+            case "COMPACT_PLAYLISTS": await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
         }
         await load_prefs();
     }
@@ -208,17 +220,17 @@ export namespace Prefs {
             secondary: '#fc00c9',
             background: '#eeeeee',
             primary_dark: '#1a184f',
-            card: '#f2f2f2',
+            card: '#ffffff',
             title: '#000000',
             text: '#000000',
             subtext: '#60676e',
             deeptext: '#606060',
             border: '#222222',
             notification: '#1313ff',
-            shelf: '#c0bad6',
+            shelf: '#ffffff',
             tabInactive: '#5b5b78',
             line: '#303040',
-            searchInput: '#b7a1d4',
+            searchInput: '#bbbbbb',
             searchPlaceholder: '#8080a0',
             inactive: '#5b5b78',
             red: '#FF0000',
@@ -226,7 +238,7 @@ export namespace Prefs {
             orange: '#FF7F50',
             playingSong: '#7a71ab',
             playScreen: '#7a71ab',
-            track: '#d0cae6',
+            track: '#dddddd',
             highlightPressColor: '#bbaaff',
             black: "#000000"
         },

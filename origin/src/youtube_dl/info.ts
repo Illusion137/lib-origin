@@ -22,22 +22,14 @@ const AGE_RESTRICTED_URLS = [
 const LOCALE = { hl: "en", timeZone: "UTC", utcOffsetMinutes: 0 },
 	CHECK_FLAGS = { contentCheckOk: true, racyCheckOk: true };
 
-const WEB_CREATOR_CONTEXT = {
-	client: {
-		clientName: "WEB_CREATOR",
-		clientVersion: "1.20241215.03.00",
-		...LOCALE
-	}
-};
-
 const getPlaybackContext = async (html5player: string, options: DownloadOptions) => {
 	const body = await utils.request(html5player, options);
-	const mo = body.match(/signatureTimestamp:(\d+)/);
+	const mo = body.match(/(signatureTimestamp|sts):(\d+)/);
 
 	return {
 		contentPlaybackContext: {
 			html5Preference: "HTML5_PREF_WANTS",
-			signatureTimestamp: mo ? mo[1] : undefined
+			signatureTimestamp: mo[2]
 		}
 	};
 }
@@ -55,47 +47,73 @@ const parseAdditionalManifests = (player_response: VideoInfo["player_response"],
 	}
 	return manifests;
 }
-const fetchWebCreatorPlayer = async (videoId: string, html5player: string, options: DownloadOptions) => {
 
+const WEB_EMBEDDED_CONTEXT = {
+	client: {
+	  clientName: "WEB_EMBEDDED_PLAYER",
+	  clientVersion: "1.20240723.01.00",
+	  ...LOCALE,
+	},
+};
+
+const TVHTML5_CONTEXT = {
+	client: {
+	  clientName: "TVHTML5",
+	  "clientVersion": "7.20241201.18.00",
+	  ...LOCALE
+	}
+  };
+  
+  const fetchWebEmbeddedPlayer = async (videoId: string, info: Record<string, any>, options: DownloadOptions) => {
 	const payload = {
-		context: WEB_CREATOR_CONTEXT,
-		videoId,
-		playbackContext: await getPlaybackContext(html5player, options),
-		...CHECK_FLAGS
+	  context: WEB_EMBEDDED_CONTEXT,
+	  videoId,
+	  playbackContext: await getPlaybackContext(info.html5player, options),
+	  ...CHECK_FLAGS,
 	};
+	return await playerAPI(videoId, payload, options);
+  };
 
-	return await playerAPI(videoId, payload, undefined, options);
-}
-const playerAPI = async (videoId: string, payload: object, userAgent: string | undefined, options: any) => {
-
+const fetchTvPlayer = async (videoId: string, info: Record<string, any>, options: DownloadOptions) => {
+	const payload = {
+		context: TVHTML5_CONTEXT,
+		videoId,
+		playbackContext: await getPlaybackContext(info.html5player, options),
+		...CHECK_FLAGS,
+	};
+	options.requestOptions.headers['X-Goog-Visitor-Id'] = getVisitorData(info);
+ 
+	return await playerAPI(videoId, payload, options);
+};
+	
+const playerAPI = async (videoId: string, payload: object, options: any) => {
 	const { jar, dispatcher } = options.agent;
 	const opts = {
 		requestOptions: {
-			method: 'POST',
-			dispatcher,
-			query: {
-				prettyPrint: false,
-				t: utils.generateClientPlaybackNonce(12),
-				id: videoId,
-			},
-			headers: {
-				'Content-Type': 'application/json',
-				"cookie": jar.getCookieStringSync('https://www.youtube.com'),
-				'User-Agent': userAgent,
-				'X-Goog-Api-Format-Version': '2',
-			},
-			body: JSON.stringify(payload),
+		  method: "POST",
+		  dispatcher,
+		  query: {
+			prettyPrint: false,
+			t: utils.generateClientPlaybackNonce(12),
+			id: videoId,
+		  },
+		  headers: {
+			"Content-Type": "application/json",
+			Cookie: jar.getCookieStringSync("https://www.youtube.com"),
+			"X-Goog-Api-Format-Version": "2",
+		  },
+		  body: JSON.stringify(payload),
 		},
-	};
-	const response = await utils.request('https://youtubei.googleapis.com/youtubei/v1/player', opts) as Record<string, any>;
-	const playErr = utils.playError(response);
-	if (playErr) throw playErr;
-	if (!response.videoDetails || videoId !== response.videoDetails.videoId) {
-		const err: any = new Error('Malformed response from YouTube');
+	  };
+	  const response= await utils.request("https://youtubei.googleapis.com/youtubei/v1/player", opts) as Record<string, any>;
+	  const playErr = utils.playError(response);
+	  if (playErr) throw playErr;
+	  if (!response.videoDetails || videoId !== response.videoDetails.videoId) {
+		const err: any = new Error("Malformed response from YouTube");
 		err.response = response;
 		throw err;
-	}
-	return response;
+	  }
+	  return response;
 }
 
 /**
@@ -156,10 +174,10 @@ const getWatchHTMLPageBody = (id: string, options: any) => {
 	return watchPageCache.getOrSet(url, () => utils.request(url, options));
 };
 
-const EMBED_URL = 'https://www.youtube.com/embed/';
-const getEmbedPageBody = (id: string, options: any) => {
-	const embedUrl = `${EMBED_URL + id}?hl=${options.lang || 'en'}`;
-	return utils.request(embedUrl, options);
+const EMBED_URL = "https://www.youtube.com/embed/";
+const getEmbedPageBody = (id: any, options: any) => {
+  const embedUrl = `${EMBED_URL + id}?hl=${options.lang || "en"}`;
+  return utils.request(embedUrl, options) as Promise<string>;
 };
 
 const getHTML5player = (body: string) => {
@@ -283,54 +301,81 @@ const parseFormats = (player_response: any) => {
  * @returns {Promise<Object>}
  */
 export const getInfo = async (id: string, options: DownloadOptions): Promise<VideoInfo> => {
-	// utils.applyIPv6Rotations(options);
-	utils.applyDefaultHeaders(options);
 	const info = await getBasicInfo(id, options);
-	const funcs: Promise<any>[] = [];
-
+	const funcs = [];
+  
 	// Fill in HTML5 player URL
-	info.html5player = info.html5player ||
-		getHTML5player(await getWatchHTMLPageBody(id, options)) || getHTML5player(await getEmbedPageBody(id, options) as string)!;
-
+	info.html5player =
+	  info.html5player ||
+	  getHTML5player(await getWatchHTMLPageBody(id, options)) ||
+	  getHTML5player(await getEmbedPageBody(id, options))!;
+  
 	if (!info.html5player) {
-		throw Error('Unable to find html5player file');
+	  throw Error("Unable to find html5player file");
 	}
-
-	const html5player = new URL(info.html5player, BASE_URL).toString();
-
+  
+	info.html5player = new URL(info.html5player, BASE_URL).toString();
+  
 	try {
-		if (info.videoDetails.age_restricted) throw Error('Cannot download age restricted videos with mobile clients');
-		const responses = await Promise.allSettled([
-			fetchWebCreatorPlayer(id, html5player, options),
-			fetchIosJsonPlayer(id, options),
-			fetchAndroidJsonPlayer(id, options)
-		]);
-		info.formats = ([] as AVFormat[]).concat(...responses.map((r: any) => parseFormats(r.value)));
-		if (info.formats.length === 0) throw new Error('Player JSON API failed');
-
-		funcs.push(sig.decipherFormats(info.formats, html5player, options));
-
-		for (const resp of responses) {
-			if (resp.status !== "fulfilled") continue;
-			if (resp.value) {
-				funcs.push(...parseAdditionalManifests(resp.value as VideoInfo["player_response"], options));
-			}
-		}
-	} catch (_) {
-		console.warn('error in player API; falling back to web-scraping')
-		// Bring back web-scraping for now. TODO: tv client
-		funcs.push(sig.decipherFormats(parseFormats(info.player_response), html5player, options));
+	  if (options.playerClients?.includes("WEB")) {
+		funcs.push(sig.decipherFormats(parseFormats(info.player_response), info.html5player, options));
 		funcs.push(...parseAdditionalManifests(info.player_response));
+	  }
+	  if (info.videoDetails.age_restricted) throw Error("Cannot download age restricted videos with mobile clients");
+	  const promises = [];
+	  if (options.playerClients?.includes("WEB_EMBEDDED")) promises.push(fetchWebEmbeddedPlayer(id, info, options));
+	  if (options.playerClients?.includes("TV")) promises.push(fetchTvPlayer(id, info, options));
+	  if (options.playerClients?.includes("IOS")) promises.push(fetchIosJsonPlayer(id, options));
+	  if (options.playerClients?.includes("ANDROID")) promises.push(fetchAndroidJsonPlayer(id, options));
+	  const responses = await Promise.allSettled(promises);
+  
+	  info.formats = ([] as any[]).concat(
+		...(await Promise.all(
+		  responses.map(async (r: any) => {
+			if (r.value) return parseFormats(r.value);
+			return [];
+		  })
+		))
+	  );
+	  
+	  if (info.formats.length === 0) throw new Error("Player JSON API failed");
+	  info.formats = info.formats.flat().filter((f: any) => f !== undefined);
+  
+	  funcs.push(sig.decipherFormats(info.formats, info.html5player, options));
+  
+	  for (const resp of responses as any[]) {
+		if (resp.value) {
+		  funcs.push(...parseAdditionalManifests(resp.value, options));
+		}
+	  }
+	} catch (_) {
+	  if (!options.playerClients?.includes("WEB")) {
+		funcs.push(sig.decipherFormats(parseFormats(info.player_response), info.html5player, options));
+		funcs.push(...parseAdditionalManifests(info.player_response));
+	  }
 	}
-
+  
 	const results = await Promise.all(funcs);
 	info.formats = Object.values(Object.assign({}, ...results));
 	info.formats = info.formats.map(formatUtils.addFormatMeta);
 	info.formats.sort(formatUtils.sortFormats);
-
+  
 	info.full = true;
 	return info;
 };
+
+const getVisitorData = (info: any, _options?: any) => {
+	for (const respKey of ['player_response', 'response']) {
+	  try {
+		return info[respKey].responseContext.serviceTrackingParams
+			.find((x: any) => x.service === 'GFEEDBACK').params
+			.find((x: any) => x.key === 'visitor_data').value;
+	  }
+	  catch { /* not present */ }
+	}
+	return undefined;
+  }
+  
 
 const IOS_CLIENT_VERSION = '19.28.1',
 	IOS_DEVICE_MODEL = 'iPhone16,2',
