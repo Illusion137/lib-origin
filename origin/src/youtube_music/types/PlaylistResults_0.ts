@@ -43,6 +43,31 @@ export interface Content {
     musicPlaylistShelfRenderer: MusicPlaylistShelfRenderer
 }
 
+export interface ContinuationItemRenderer {
+    trigger: string
+    continuationEndpoint: ContinuationEndpoint
+}
+
+export interface ContinuationEndpoint {
+  clickTrackingParams: string
+  commandMetadata: CommandMetadata27
+  continuationCommand: ContinuationCommand
+}
+
+export interface CommandMetadata27 {
+  webCommandMetadata: WebCommandMetadata27
+}
+
+export interface WebCommandMetadata27 {
+  sendPost: boolean
+  apiUrl: string
+}
+
+export interface ContinuationCommand {
+  token: string
+  request: string
+}
+
 export interface MusicPlaylistShelfRenderer {
     playlistId: string
     contents: Content2[]
@@ -54,6 +79,7 @@ export interface MusicPlaylistShelfRenderer {
 
 export interface Content2 {
     musicResponsiveListItemRenderer: YouTubeMusicPlaylistTrack
+    continuationItemRenderer?: ContinuationItemRenderer
 }
 
 export interface YouTubeMusicPlaylistTrack {

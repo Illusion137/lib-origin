@@ -1,4 +1,4 @@
-import { Playlist, PlaylistsTracks, Track } from "../../types";
+import { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, Track } from "../../types";
 
 export namespace ExampleObj {
     export const track_example0: Track = {
@@ -50,5 +50,27 @@ export namespace ExampleObj {
     export const playlists_tracks_example0: PlaylistsTracks = {
         uuid: "",
         track_uid: ""
+    }
+    export const new_releases_example0: CompactPlaylist = {
+        title: {name: "", uri: null},
+        artist: [],
+        artwork_url: "",
+        artwork_thumbnails: [],
+        explicit: "NONE",
+        album_type: "ALBUM",
+        type: "ALBUM",
+        date: "" as ISOString,
+        song_track: {} as never
+    }
+    export const seen_new_releases_example0: CompactPlaylist & {Timestamp: string} = {
+        title: {name: "", uri: null},
+        artist: [],
+        artwork_url: "",
+        artwork_thumbnails: [],
+        explicit: "NONE",
+        album_type: "ALBUM",
+        type: "ALBUM",
+        date: "" as ISOString,
+        Timestamp: ""
     }
 }

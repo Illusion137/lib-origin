@@ -8,7 +8,8 @@ import { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
 
-export type SQLTables = "sqlite_master" 
+export type SQLTables = "sqlite_master"
+    | "new_releases" | "seen_new_releases"
     | "tracks" | "tracks_deleted" 
     | "recently_played_tracks" | "recently_played_tracks_deleted" 
     | "backpack" | "backpack_deleted" 
@@ -259,15 +260,24 @@ export interface PlaylistsTracks {
 
 export type MaybeErrors = ResponseError[] | undefined;
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
-export interface CompactPlaylist {
-    title: NamedUUID
-    artist: NamedUUID[]
-    artwork_thumbnails?: IllusiveThumbnail[]
+export interface Basic_CompactPlaylist<T, U, V, W> {
+    title: T
+    artist: U
+    artwork_thumbnails?: V
     artwork_url?: string
     date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType
-    album_type?: "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP"
+    album_type?: "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG"
+    song_track?: W
+}
+export type SQLCompactPlaylist = Basic_CompactPlaylist<string, string, string, string>;
+export type CompactPlaylist = Basic_CompactPlaylist<NamedUUID, NamedUUID[], IllusiveThumbnail[], Track>;
+export interface SQLTimestampedCompactPlaylist extends SQLCompactPlaylist {
+    Timestamp: string
+}
+export interface TimestampedCompactPlaylist extends CompactPlaylist {
+    Timestamp: string
 }
 export interface CompactArtist {
     name: NamedUUID
@@ -377,7 +387,7 @@ export class MusicService {
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
-    get_latest_release?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist|undefined>
+    get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>
     constructor(s: {
         app_icon: string | number,
         web_view_url?: string,
@@ -399,7 +409,7 @@ export class MusicService {
         download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
-        get_latest_release?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist|undefined>,
+        get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>,
     }) {
         this.app_icon = s.app_icon
         this.web_view_url = s.web_view_url;
@@ -413,15 +423,21 @@ export class MusicService {
         this.explore = s.explore;
         this.create_playlist = s.create_playlist;
         this.delete_playlist = s.delete_playlist;
-        this.add_tracks_to_playlist = s.add_tracks_to_playlist;
-        this.delete_tracks_from_playlist = s.delete_tracks_from_playlist;
+        this.add_tracks_to_playlist = s.add_tracks_to_playlist !== undefined ? async(tracks: Track[], playlist_uri: string) =>  {
+            if(tracks.length === 0) return true;
+            return await s.add_tracks_to_playlist!(tracks, playlist_uri);
+        } : undefined;
+        this.delete_tracks_from_playlist = s.delete_tracks_from_playlist !== undefined ? async(tracks: Track[], playlist_uri: string) =>  {
+            if(tracks.length === 0) return true;
+            return await s.delete_tracks_from_playlist!(tracks, playlist_uri);
+        } : undefined;
         this.get_user_playlists = s.get_user_playlists;
         this.get_playlist = s.get_playlist;
         this.get_playlist_continuation = s.get_playlist_continuation
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
         this.get_artist = s.get_artist;
-        this.get_latest_release = s.get_latest_release;
+        this.get_latest_releases = s.get_latest_releases;
     }
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;

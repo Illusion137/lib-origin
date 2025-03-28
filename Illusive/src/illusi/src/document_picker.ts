@@ -50,7 +50,10 @@ export async function upload_playlist_thumbnail_document(playlist: Playlist, cal
         
         await SQLfs.delete_folder_of_file(thumbnail_uri.fileCopyUri);
         if(callback !== undefined) await callback(playlist);
-    } catch (error) { handle_document_picker_error(error); }
+    } catch (error) { 
+        if((error as Error)?.message.includes("cancelled")) return;
+        alert_error({error: error as Error});
+    }
 }
 
 export async function upload_track_thumbnail(track: Track, callback: (track: Track) => Promise<void>) {

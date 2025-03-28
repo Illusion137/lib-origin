@@ -36,6 +36,8 @@ export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTr
     if(track.playlistItemData?.videoId === undefined) return undefined;
     if(youtube_music_split_artists(artist_column.musicResponsiveListItemFlexColumnRenderer.text.runs as Runs).length === 0)
         throw new Error("No YouTube Music Split Artists");
+    if(includes_plays_text(parse_runs(album_runs)))
+        throw new Error("YouTube Music Album is plays");
     return {
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs),

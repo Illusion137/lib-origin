@@ -50,14 +50,13 @@ export namespace YouTube {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ) {
-		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
-		if (SAPISID === undefined) throw new Error("SAPISID doesn't exist");
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
+		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
 		return {
 			"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
-			"authorization": ytcfg !== undefined ? sapisid_hash_auth1(SAPISID, epoch, ytcfg, 'https://www.youtube.com') : sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com'),
+			"authorization": SAPISID === undefined ? undefined : (ytcfg !== undefined ? sapisid_hash_auth1(SAPISID, epoch, ytcfg, 'https://www.youtube.com') : sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com')),
 			"content-type": "application/json",
 			"priority": "u=1, i",
 			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",

@@ -105,6 +105,9 @@ export async function insert_track_playlist(playlist_uuid: string, track_uid: st
     await db_run_async(sql_insert_values("playlists_tracks", ExampleObj.playlists_tracks_example0), [playlist_uuid, track_uid]);
 }
 
+export async function delete_all_tracks_playlist(playlist_uuid: string, track_uids: string[]) {
+    await Promise.all( track_uids.map( async(track_uid) => delete_track_playlist(playlist_uuid, track_uid) ) );
+}
 export async function delete_track_playlist(playlist_uuid: string, track_uid: string) {
     await db_run_async(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
 }
@@ -115,7 +118,7 @@ export async function delete_track_from_all_playlists(track_uid: string) {
 export async function all_playlists_data() {
     const ignore_inheritance = !Prefs.get_pref('playlist_inheritance_preview');
     const playlists = await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"));
-    return Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, false, ignore_inheritance)) );
+    return await Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, false, ignore_inheritance)) );
 }
 export async function all_playlists_names(): Promise<{"title": string}[]> {
     return await db_get_all_async<{"title": string}>(sql_select<Playlist>("playlists", "title"));

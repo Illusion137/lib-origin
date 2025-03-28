@@ -304,10 +304,9 @@ export const getInfo = async (id: string, options: DownloadOptions): Promise<Vid
 	const info = await getBasicInfo(id, options);
 	const funcs = [];
   
-	// Fill in HTML5 player URL
 	info.html5player =
 	  info.html5player ||
-	  getHTML5player(await getWatchHTMLPageBody(id, options)) ||
+	  getHTML5player(await getWatchHTMLPageBody(id, options))! ||
 	  getHTML5player(await getEmbedPageBody(id, options))!;
   
 	if (!info.html5player) {
@@ -316,51 +315,90 @@ export const getInfo = async (id: string, options: DownloadOptions): Promise<Vid
   
 	info.html5player = new URL(info.html5player, BASE_URL).toString();
   
+	let bestPlayerResponse = null;
+  
 	try {
-	  if (options.playerClients?.includes("WEB")) {
-		funcs.push(sig.decipherFormats(parseFormats(info.player_response), info.html5player, options));
-		funcs.push(...parseAdditionalManifests(info.player_response));
-	  }
-	  if (info.videoDetails.age_restricted) throw Error("Cannot download age restricted videos with mobile clients");
 	  const promises = [];
 	  if (options.playerClients?.includes("WEB_EMBEDDED")) promises.push(fetchWebEmbeddedPlayer(id, info, options));
 	  if (options.playerClients?.includes("TV")) promises.push(fetchTvPlayer(id, info, options));
 	  if (options.playerClients?.includes("IOS")) promises.push(fetchIosJsonPlayer(id, options));
 	  if (options.playerClients?.includes("ANDROID")) promises.push(fetchAndroidJsonPlayer(id, options));
-	  const responses = await Promise.allSettled(promises);
   
-	  info.formats = ([] as any[]).concat(
-		...(await Promise.all(
-		  responses.map(async (r: any) => {
-			if (r.value) return parseFormats(r.value);
-			return [];
-		  })
-		))
-	  );
-	  
-	  if (info.formats.length === 0) throw new Error("Player JSON API failed");
-	  info.formats = info.formats.flat().filter((f: any) => f !== undefined);
+	  if (promises.length > 0) {
+		const responses = await Promise.allSettled(promises);
+		const successfulResponses = responses
+		  .filter(r => r.status === "fulfilled")
+		  .map(r => r.value)
+		  .filter(r => r);
   
-	  funcs.push(sig.decipherFormats(info.formats, info.html5player, options));
+		console.log(`Found ${successfulResponses.length} successful responses from clients`);
   
-	  for (const resp of responses as any[]) {
-		if (resp.value) {
-		  funcs.push(...parseAdditionalManifests(resp.value, options));
+		if (successfulResponses.length > 0) {
+		  bestPlayerResponse = successfulResponses[0];
+		  funcs.push(sig.decipherFormats(parseFormats(bestPlayerResponse), info.html5player, options));
+		  funcs.push(...parseAdditionalManifests(bestPlayerResponse as any, options));
 		}
 	  }
-	} catch (_) {
-	  if (!options.playerClients?.includes("WEB")) {
+  
+	  if (!bestPlayerResponse && options.playerClients?.includes("WEB")) {
+		bestPlayerResponse = info.player_response;
 		funcs.push(sig.decipherFormats(parseFormats(info.player_response), info.html5player, options));
-		funcs.push(...parseAdditionalManifests(info.player_response));
+		funcs.push(...parseAdditionalManifests(info.player_response, options));
 	  }
+	} catch (error) {
+	  console.error("Error fetching formats:", error);
+  
+	  if (!bestPlayerResponse && options.playerClients?.includes("WEB")) {
+		bestPlayerResponse = info.player_response;
+		funcs.push(sig.decipherFormats(parseFormats(info.player_response), info.html5player, options));
+		funcs.push(...parseAdditionalManifests(info.player_response, options));
+	  }
+	}
+  
+	if (funcs.length === 0) {
+	  throw new Error("Failed to find any playable formats");
 	}
   
 	const results = await Promise.all(funcs);
 	info.formats = Object.values(Object.assign({}, ...results));
-	info.formats = info.formats.map(formatUtils.addFormatMeta);
+  
+	info.formats = info.formats.filter((format: any) => format && format.url && format.mimeType);
+  
+	if (info.formats.length === 0) {
+	  throw new Error("No playable formats found");
+	}
+  
+  
+	info.formats = info.formats.map((format: any) => {
+	  const enhancedFormat = formatUtils.addFormatMeta(format);
+  
+	  if (!enhancedFormat.audioBitrate && enhancedFormat.hasAudio) {
+		enhancedFormat.audioBitrate = 0; //estimateAudioBitrate(enhancedFormat);
+	  }
+  
+	  if (!enhancedFormat.isHLS && enhancedFormat.mimeType &&
+		  (enhancedFormat.mimeType.includes('hls') ||
+		   enhancedFormat.mimeType.includes('x-mpegURL') ||
+		   enhancedFormat.mimeType.includes('application/vnd.apple.mpegurl'))) {
+		enhancedFormat.isHLS = true;
+	  }
+  
+	  return enhancedFormat;
+	});
+  
 	info.formats.sort(formatUtils.sortFormats);
   
+	const bestFormat = info.formats.find((format: any) => format.hasVideo && format.hasAudio) ||
+					   info.formats.find((format: any) => format.hasVideo) ||
+					   info.formats.find((format: any) => format.hasAudio) ||
+					   info.formats[0];
+  
+	(info as any).bestFormat = bestFormat;
+	(info as any).videoUrl = bestFormat.url;
+	(info as any).selectedFormat = bestFormat;
+  
 	info.full = true;
+  
 	return info;
 };
 

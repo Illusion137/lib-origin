@@ -209,7 +209,11 @@ export async function fix_to_new_update(version: string) {
                 await sql_update<Timestamped<PlaylistsTracks>>("playlists_tracks", playlist_tracks, "Timestamp", "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')");
             }
         }
+    }
 
+    if(!version_greater_than(version, "15.1.0")){
+        await alter_sql(db, {table: 'seen_new_releases', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
+        await create_timestamp_triggers_if_not_exists("seen_new_releases");
     }
 
     await Prefs.save_pref('latest_version', version);

@@ -4,8 +4,8 @@ import { is_empty, json_catch, remove_topic } from "../../origin/src/utils/util"
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "./add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
-import { apple_music_get_artist, youtube_music_get_artist } from './get_artist';
-import { apple_music_get_latest_release, youtube_music_get_latest_release } from './get_latest_release';
+import { apple_music_get_artist, soundcloud_get_artist, youtube_music_get_artist } from './get_artist';
+import { apple_music_get_latest_releases, soundcloud_get_latest_releases, youtube_music_get_latest_releases } from './get_latest_releases';
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "./get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "./get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "./get_user_playlist";
@@ -82,7 +82,7 @@ export namespace Illusive {
             get_track_mix: get_youtube_track_mix,
             download_from_id: youtube_download_from_id,
             get_artist: youtube_music_get_artist,
-            get_latest_release: youtube_music_get_latest_release
+            get_latest_releases: youtube_music_get_latest_releases
         });
     const youtube_music = new MusicService(
         {
@@ -103,7 +103,7 @@ export namespace Illusive {
             add_tracks_to_playlist: youtube_music_add_tracks_to_playlist,
             delete_tracks_from_playlist: youtube_music_delete_tracks_from_playlist,
             get_artist: youtube_music_get_artist,
-            get_latest_release: youtube_music_get_latest_release
+            get_latest_releases: youtube_music_get_latest_releases
         });
     const spotify = new MusicService(
         {
@@ -161,7 +161,7 @@ export namespace Illusive {
             add_tracks_to_playlist: apple_music_add_tracks_to_playlist,
             delete_tracks_from_playlist: apple_music_delete_tracks_from_playlist,
             get_artist: apple_music_get_artist,
-            get_latest_release: apple_music_get_latest_release
+            get_latest_releases: apple_music_get_latest_releases
         });
     const soundcloud = new MusicService(
         {
@@ -183,7 +183,9 @@ export namespace Illusive {
             add_tracks_to_playlist: soundcloud_add_tracks_to_playlist,
             delete_tracks_from_playlist: soundcloud_delete_tracks_from_playlist,
             get_track_mix: get_soundcloud_track_mix,
-            download_from_id: soundcloud_download_from_id
+            download_from_id: soundcloud_download_from_id,
+            get_artist: soundcloud_get_artist,
+            get_latest_releases: soundcloud_get_latest_releases
         });
     const api = new MusicService(
         {
@@ -283,14 +285,14 @@ export namespace Illusive {
     }
 
     export function get_track_artwork(document_directory: string, track: Track): Artwork {
-        if(!is_empty(track.imported_id))
-            return imported_thumbnail;
         if(!is_empty(track.thumbnail_uri)){
             if(track.thumbnail_uri!.includes(track.uid))
                 return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
             else
                 return {uri: document_directory + custom_thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
         }
+        if(!is_empty(track.imported_id))
+            return imported_thumbnail;
         if(Prefs.get_pref('prioritize_youtube_thumbnail')) {
             if(!is_empty(track.youtube_id))
                 return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};

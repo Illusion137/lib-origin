@@ -12,6 +12,7 @@ import { YTCFG } from "./types/YTCFG";
 import { YTError } from "./types/Error";
 import fetch from "../utils/orifetch";
 import { Proxy } from "../proxy/proxy";
+import { ContinuationItemRenderer } from "./types/PlaylistResults_0";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -57,13 +58,13 @@ export namespace YouTubeMusic {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, retry: boolean) {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg: YTCFG, retry: boolean): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
 		return {
 			"User-Agent": user_agent,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
-			"authorization": get_sapisid_hash_auth0(SAPISID ?? "", epoch),
+			"authorization": SAPISID === undefined ? undefined : get_sapisid_hash_auth1(SAPISID, epoch, ytcfg),
 			"content-type": "application/json",
 			"priority": "u=1, i",
 			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
@@ -129,10 +130,11 @@ export namespace YouTubeMusic {
 	}
 
 	function playlist_url_or_browse_url(id: string): string{
+		id = playlist_urlid(id);
 		if(id.includes('OLAK5uy') || id === "LM" || id === "WL" || id === "LL" || id.includes('PLnIB0XeUqT')){
-			return `https://music.youtube.com/playlist?list=${playlist_urlid(id)}`;
+			return `https://music.youtube.com/playlist?list=${id}`;
 		}
-		return `https://music.youtube.com/browse/${playlist_urlid(id)}`;
+		return `https://music.youtube.com/browse/${id}`;
 	}
 
 	async function get_initial_data_config(opts: Opts, url: string, retry = false): Promise<ICFG | ResponseError> {
@@ -277,15 +279,23 @@ export namespace YouTubeMusic {
 		};
 	}
 
-	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation) {
-		const query_params = {
+	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation|ContinuationItemRenderer) {
+		const query_params = Array.isArray(next_con) ? {
 			ctoken: next_con[0].nextContinuationData.continuation,
 			continutation: next_con[0].nextContinuationData.continuation,
 			type: "next",
 			itct: next_con[0].nextContinuationData.clickTrackingParams,
 			prettyPrint: false
+		} : {
+			ctoken: next_con.continuationEndpoint.continuationCommand.token,
+			continutation: next_con.continuationEndpoint.continuationCommand.token,
+			type: "next",
+			itct: next_con.continuationEndpoint.clickTrackingParams,
+			prettyPrint: false
+		}
+		const payload = {
+			continuation: query_params.ctoken,
 		};
-		const payload = {};
 		const response = await post_check_response(opts, ytcfg, `browse?${encode_params(query_params)}`, payload);
 		if ("error" in response) return response;
 		return (await response.json()) as ContinuedResults_0;
@@ -295,7 +305,7 @@ export namespace YouTubeMusic {
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
-		const headers = get_post_headers(opts.cookie_jar, epoch, retry);
+		const headers = get_post_headers(opts.cookie_jar, epoch, ytcfg, retry);
 		const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
 		if(!response.ok && retry === false) return post_check_response(opts, ytcfg, path, payload, true);
 		return response;

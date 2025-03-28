@@ -25,17 +25,13 @@ import { sample } from './sampler';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
-let setup_calls = 0;
 export async function setup_track_player(): Promise<boolean> {
-    if(setup_calls % 2 == 1) {
-        GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
-        let index = 0;
-        try {
-            index = await TrackPlayer.getActiveTrackIndex() ?? 0;
-        } catch (error) {}
-        GLOBALS.global_var.past_track_index = index;
-    }
-    setup_calls++;
+    GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
+    let index = 0;
+    try {
+        index = await TrackPlayer.getActiveTrackIndex() ?? 0;
+    } catch (error) {}
+    GLOBALS.global_var.past_track_index = index;
     try {
         await TrackPlayer.getActiveTrackIndex();
     } catch (error) {         

@@ -1,8 +1,8 @@
 import axios, { AxiosError } from "axios";
 import { Proxy } from "../proxy/proxy";
 
+
 export default async function fetch<T = unknown>(input: string, init?: RequestInit & {proxy?: Proxy.Proxy}): Promise<Response> {
-    // return await fetch(input, init);
     try {
         const response = await axios<T>({
             url: input,

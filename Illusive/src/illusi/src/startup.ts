@@ -15,6 +15,9 @@ import { generate_unique_track_tints } from '../../illusive_utilts';
 
 export async function illusi_startup(version: string, play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void, bottom_alert: (text: string, type: BottomAlertType) => void) {
     await catch_function_async(async() => {
+        // console.log(((await db.runAsync( SQLUtils.sql_drop_table("new_releases") )).changes));
+        // console.log(((await db.runAsync( SQLUtils.sql_drop_table("seen_new_releases") )).changes));
+
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.set_theme = set_theme;

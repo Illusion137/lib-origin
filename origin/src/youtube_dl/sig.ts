@@ -16,12 +16,20 @@ export const cache = new Cache(1);
  */
 export const getFunctions = (html5playerfile: string, options: DownloadOptions): Promise<[vmScript, vmScript]> => {
 	return cache.getOrSet(html5playerfile, async () => {
+		// Rewrite tce player script URLs to non-tce variant
+		if (html5playerfile.includes("/player_ias_tce.vflset/")) {
+			console.debug("jsUrl URL points to tce-variant player script, rewriting to non-tce.");
+			html5playerfile = html5playerfile.replace("/player_ias_tce.vflset/", "/player_ias.vflset/");
+		}
 		const body = await utils.request(html5playerfile, options);
 		const functions = extractFunctions(body as string);
 		cache.set(html5playerfile, functions);
 		return functions;
 	});
 }
+
+// Updated VARIABLE_PART based on the Java code
+const VARIABLE_PART = "[a-zA-Z_\\$][a-zA-Z_0-9\\$]*";
 
 // NewPipeExtractor regexps
 const DECIPHER_NAME_REGEXPS = {
@@ -32,9 +40,9 @@ const DECIPHER_NAME_REGEXPS = {
 	"\\bc&&\\(c=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(c\\)\\)": 1,
 	'(?:\\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*\\{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)': 1,
 	'([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;': 1,
-  };
-// LavaPlayer regexps
-const VARIABLE_PART = "[a-zA-Z_\\$][a-zA-Z_0-9]*";
+};
+
+// LavaPlayer regexps - update to use the new VARIABLE_PART
 const VARIABLE_PART_DEFINE = `\\"?${VARIABLE_PART}\\"?`;
 const BEFORE_ACCESS = '(?:\\[\\"|\\.)';
 const AFTER_ACCESS = '(?:\\"\\]|)';

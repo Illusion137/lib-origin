@@ -302,6 +302,21 @@ export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string,
     }, {});
 };
 
+export function music_service_track_primary_key(type: MusicServiceType): keyof Track{
+    switch(type){
+        case "Musi":
+        case "YouTube Music":
+        case "YouTube": return "youtube_id";
+        case "Spotify": return "spotify_id";
+        case "SoundCloud": return "soundcloud_id";
+        case "Apple Music": return "applemusic_id";
+        case "Amazon Music": return "amazonmusic_id";
+        case "Illusi": return "illusi_id";
+        case "API": return "uid";
+        default: return "uid";
+    }
+}
+
 export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any>['show_in_type']): GroupSection<PrefEntry>[]{
 	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter(item => (item[1].show_in_settings ?? false) && (item[1].show_in_type === show_in_type_check));
     const groups = groupby(entries, (item) => item[1].section ?? 'Other');
@@ -345,36 +360,48 @@ export function tracks_with_artist(tracks: Track[], artist_name: string){
     return tracks.filter(track => artist_string(track).toLowerCase().includes(artist_name.toLowerCase()));
 }
 
+// https://mokole.com/palette.html
 const tint_color_list: HexColor[] = [
-    '#ff1100',
-    '#ff8800',
-    '#ffea00',
-    '#bfff00',
-    '#59ff00',
-    '#00ff2f',
-    '#00ff99',
-    '#00ccff',
-    '#0066ff',
-    '#0015ff',
-    '#4c00ff',
-    '#9000ff',
-    '#c800ff',
-    '#ee00ff',
-    '#ff00bf',
-    '#ff0084',
-    '#ff003c',
-    '#8f4a4a',
-    '#888f4a',
-    '#688f4a',
-    '#4a8f58',
-    '#4a8f7f',
-    '#4a788f',
-    '#4a598f',
-    '#614a8f',
-    '#7b4a8f',
-    '#8f4a87',
-    '#8f4a65',
-    '#8f4a51'
+    '#a9a9a9',
+    '#2f4f4f',
+    '#556b2f',
+    '#a0522d',
+    '#800000',
+    '#006400',
+    '#808000',
+    '#483d8b',
+    '#3cb371',
+    '#008b8b',
+    '#4682b4',
+    '#000080',
+    '#9acd32',
+    '#32cd32',
+    '#daa520',
+    '#8b008b',
+    '#b03060',
+    '#ff4500',
+    '#ff8c00',
+    '#ffd700',
+    '#0000cd',
+    '#00ff00',
+    '#00fa9a',
+    '#dc143c',
+    '#00ffff',
+    '#00bfff',
+    '#f4a460',
+    '#9370db',
+    '#a020f0',
+    '#adff2f',
+    '#ff00ff',
+    '#1e90ff',
+    '#f0e68c',
+    '#fa8072',
+    '#dda0dd',
+    '#afeeee',
+    '#ee82ee',
+    '#ffdab9',
+    '#ff69b4',
+    '#ffb6c1',
 ];
 
 export function generate_unique_track_tints(tracks: Track[], tint_table: Map<Track['uid'], HexColor>){

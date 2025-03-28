@@ -76,6 +76,17 @@ export async function check_fixerupper_track(track: Track){
     return await Promise.all(promises);
 }
 
+function find_track_in_globals(track: Track){
+    if(GLOBALS.global_var.sql_tracks.some(t => t.uid === track.uid)) return undefined;
+    if(!is_empty(track.youtube_id)) return GLOBALS.global_var.sql_tracks.find(t => t.youtube_id === track.youtube_id);
+    if(!is_empty(track.soundcloud_id)) return GLOBALS.global_var.sql_tracks.find(t => t.soundcloud_id === track.soundcloud_id);
+    if(!is_empty(track.spotify_id)) return GLOBALS.global_var.sql_tracks.find(t => t.spotify_id === track.spotify_id);
+    if(!is_empty(track.amazonmusic_id)) return GLOBALS.global_var.sql_tracks.find(t => t.amazonmusic_id === track.amazonmusic_id);
+    if(!is_empty(track.applemusic_id)) return GLOBALS.global_var.sql_tracks.find(t => t.applemusic_id === track.applemusic_id);
+    if(!is_empty(track.spotify_id)) return GLOBALS.global_var.sql_tracks.find(t => t.spotify_id === track.spotify_id);
+    return undefined;
+}
+
 export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
     return await Promise.all(
         tracks.map(async(track) => {
@@ -84,7 +95,14 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
                 added: false,
                 successful: false
             }
-            track.downloading_data = {saved: await track_exists(track), progress: 0, playlist_saved: false};
+            const saved = await track_exists(track);
+            track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
+            if(saved && Prefs.get_pref('media_files_on_albums')) {
+                const found_track = find_track_in_globals(track);
+                track.media_uri = found_track?.media_uri;
+                track.thumbnail_uri = found_track?.thumbnail_uri;
+                track.lyrics_uri = found_track?.lyrics_uri;
+            }
             check_fixerupper_track(track).catch(e => e);
             return track;
         })
@@ -128,6 +146,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
             explicit: sql_track.explicit,
             unreleased: Boolean(sql_track.unreleased),
             meta: {
+                ...meta,
                 plays: meta.plays ?? 0,
                 added_date: meta.added_date ?? new Date(0).toISOString(),
                 last_played_date: meta.last_played_date ?? new Date(0).toISOString()
