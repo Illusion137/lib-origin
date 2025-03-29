@@ -1,4 +1,4 @@
-import { empty_undefined, generate_new_uid, is_empty, parse_runs, parse_time, remove } from '../../../origin/src/utils/util'
+import { empty_undefined, generate_new_uid, is_empty, parse_runs, parse_time } from '../../../origin/src/utils/util'
 import { NavigationEndpoint } from '../../../origin/src/youtube/types/ChannelResultsW';
 import { find_album_year } from '../../../origin/src/youtube_music/parser';
 import { ArtistCarouselContent, ArtistTopTrack } from '../../../origin/src/youtube_music/types/ArtistResults_0';
@@ -11,7 +11,7 @@ const responsive_item_types = ["Song", "Video", "Single", "Album", "Playlist", "
 
 function includes_plays_text(ptext: string){
     if(ptext === undefined) return false;
-    return remove(ptext, ' play', ' plays', ' view', ' views').length !== ptext.length;
+    return ptext.endsWith(' plays') || ptext.endsWith(' views');
 }
 
 export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack, artists: Runs, album: Runs): Track {

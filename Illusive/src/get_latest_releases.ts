@@ -23,7 +23,7 @@ export async function youtube_music_get_latest_releases(id: string, opts?: Artis
 
     const potential_all_albums_singles = "error" in artist_albums_response ? [] : artist_albums_response.data.map(item => parse_youtube_music_artist_album({musicTwoRowItemRenderer: item}, artist_info));
     
-    return potential_all_albums_singles.length <= 0 ? undefined : potential_all_albums_singles;
+    return potential_all_albums_singles.length <= 0 ? undefined : potential_all_albums_singles.slice(0, 4);
 }
 
 export async function apple_music_get_latest_releases(id: string, opts?: ArtistOpts): Promise<CompactPlaylist[]|undefined>{

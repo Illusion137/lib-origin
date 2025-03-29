@@ -9,7 +9,7 @@ import { Prefs } from "./prefs";
 type ArtworkCacheType = 'force-cache';
 
 export type SQLTables = "sqlite_master"
-    | "new_releases" | "seen_new_releases"
+    | "new_releases"
     | "tracks" | "tracks_deleted" 
     | "recently_played_tracks" | "recently_played_tracks_deleted" 
     | "backpack" | "backpack_deleted" 

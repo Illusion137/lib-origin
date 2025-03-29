@@ -99,6 +99,7 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
             track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
             if(saved && Prefs.get_pref('media_files_on_albums')) {
                 const found_track = find_track_in_globals(track);
+                if(found_track) track.uid = found_track.uid;
                 track.media_uri = found_track?.media_uri;
                 track.thumbnail_uri = found_track?.thumbnail_uri;
                 track.lyrics_uri = found_track?.lyrics_uri;
@@ -179,6 +180,8 @@ export async function mark_all_tracks_undownloaded() {
 }
 export async function mark_track_undownloaded(uid: Track['uid'], media_uri: string) {
     if(is_empty(media_uri)) return;
+    const found = GLOBALS.global_var.sql_tracks.find(track => track.uid === uid);
+    if(found && !is_empty(found.imported_id)) return;
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
     await SQLfs.delete_item(media_directory(media_uri));
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);

@@ -1,4 +1,6 @@
-export const CHANGELOG = `# Illusi 15.1.0
+export const CHANGELOG = `# Illusi 15.1.1
+  - Misc bug fixes
+# Illusi 15.1.0
  - YTDL sig fixes
  - New pref:\`media_files_on_albums\`
  - New pref:\`force_youtube_18_quality\`

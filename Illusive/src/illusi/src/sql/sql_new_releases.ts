@@ -3,8 +3,11 @@ import { Prefs } from "../../../prefs";
 import { CompactPlaylist, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select } from "./sql_utils";
+import * as SQLTracks from './sql_tracks';
 
 export function compact_playlist_to_sqllite_insertion(compact_playlist: CompactPlaylist){
+    if(compact_playlist.song_track) delete compact_playlist.song_track.playback;
+    if(compact_playlist.song_track) delete compact_playlist.song_track.downloading_data;
     return [
         JSON.stringify(compact_playlist.title),
         JSON.stringify(compact_playlist.artist),
@@ -18,7 +21,7 @@ export function compact_playlist_to_sqllite_insertion(compact_playlist: CompactP
     ];
 }
 
-export function sql_compact_playlist_to_compact_playlist(playlist: SQLCompactPlaylist): CompactPlaylist{
+export async function sql_compact_playlist_to_compact_playlist(playlist: SQLCompactPlaylist): Promise<CompactPlaylist>{
     const title = try_json_parse<NamedUUID>(playlist.title);
     const artist = try_json_parse<NamedUUID[]>(playlist.artist);
     const artwork_thumbnails = is_empty(playlist.artwork_thumbnails) ? undefined : try_json_parse<IllusiveThumbnail[]>(playlist.artwork_thumbnails!);
@@ -28,23 +31,19 @@ export function sql_compact_playlist_to_compact_playlist(playlist: SQLCompactPla
         title: "error" in title ? {name: "UNKNOWN", uri: null} : title,
         artist: "error" in artist ? [] : artist,
         artwork_thumbnails: artwork_thumbnails === undefined || "error" in artwork_thumbnails ? undefined : artwork_thumbnails,
-        song_track: song_track === undefined || song_track === null || "error" in song_track ? undefined : song_track
+        song_track: song_track === undefined || song_track === null || "error" in song_track ? undefined : (await SQLTracks.add_playback_saved_data_to_tracks([song_track]))[0]
     }
 }
 
 export async function get_all_new_releases(){
-    return (await db_get_all_async<SQLCompactPlaylist>(sql_select<SQLCompactPlaylist>("new_releases", "*"))).map(sql_compact_playlist_to_compact_playlist);
-}
-export async function get_all_seen_new_releases(){
-    return (await db_get_all_async<SQLTimestampedCompactPlaylist>(sql_select<SQLTimestampedCompactPlaylist>("seen_new_releases", "*"))).map(sql_compact_playlist_to_compact_playlist) as TimestampedCompactPlaylist[];
+    return await Promise.all((await db_get_all_async<SQLTimestampedCompactPlaylist>(sql_select<SQLTimestampedCompactPlaylist>("new_releases", "*"))).map(sql_compact_playlist_to_compact_playlist)) as TimestampedCompactPlaylist[];
 }
 
 export async function get_not_seen_new_releases(expiration_ms: number): Promise<CompactPlaylist[]>{
-    const seen_new_releases = await get_all_seen_new_releases();
-    const seen_map = new Map<string, Date>(seen_new_releases.map(seen => ([seen.title.uri ?? "UNKNOWN", new Date(seen.Timestamp)]) ) );
-    const all = await get_all_new_releases();
+    const new_releases = await get_all_new_releases();
+    const seen_map = new Map<string, Date>(new_releases.map(seen => ([seen.title.uri ?? "UNKNOWN", new Date(seen.Timestamp)]) ) );
 
-    return all.filter(album => {
+    return new_releases.filter(album => {
         if(!seen_map.has(album.title.uri ?? "")) return true;
         return seen_map.get(album.title.uri ?? "")!.getTime() + expiration_ms > new Date().getTime();
     });
@@ -57,7 +56,6 @@ export async function insert_all_into_new_releases(new_releases: CompactPlaylist
     // await delete_all_from_new_releases();
     for(const new_release of new_releases){
         await db_run_async(sql_insert_values("new_releases", ExampleObj.new_releases_example0), compact_playlist_to_sqllite_insertion(new_release));
-        await db_run_async(sql_insert_values("seen_new_releases", ExampleObj.new_releases_example0), compact_playlist_to_sqllite_insertion(new_release));
     }
 }
 

@@ -1,3 +1,5 @@
+# Illusi 15.1.1
+  - Misc bug fixes
 # Illusi 15.1.0
  - YTDL sig fixes
  - New pref:`media_files_on_albums`

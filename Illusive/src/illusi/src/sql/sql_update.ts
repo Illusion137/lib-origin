@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
 import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
-import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_where } from '../sql/sql_utils';
+import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_exec_async, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_where } from '../sql/sql_utils';
 import { db, db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
@@ -211,9 +211,17 @@ export async function fix_to_new_update(version: string) {
         }
     }
 
-    if(!version_greater_than(version, "15.1.0")){
-        await alter_sql(db, {table: 'seen_new_releases', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
-        await create_timestamp_triggers_if_not_exists("seen_new_releases");
+    if(!version_greater_than(version, "15.1.1")){
+        try {
+            await alter_sql(db, {table: 'new_releases', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
+            await create_timestamp_triggers_if_not_exists("new_releases");
+            if((await get_all_tables(db)).find(item => item.name === "seen_new_releases")){
+                await db_exec_async(sql_drop_table("seen_new_releases" as any));
+                Alert.alert("Updated Tracks to 15.1.1 BETA");
+            }
+        } catch (error) {
+            
+        }
     }
 
     await Prefs.save_pref('latest_version', version);

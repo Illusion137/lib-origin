@@ -226,7 +226,6 @@ export async function recreate_all_tables() {
     await create_table("playlists_tracks",               ExampleObj.playlists_tracks_example0);
     await create_table("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0);
     await db.execAsync(sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"));
-    await db.execAsync(sql_create_table<CompactPlaylist>("seen_new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"));
 
     await create_default_directories();
 }
