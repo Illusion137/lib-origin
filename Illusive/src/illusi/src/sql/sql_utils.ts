@@ -218,7 +218,6 @@ export async function recreate_all_tables() {
     await create_table("tracks",                         ExampleObj.track_example0);
     await create_table("tracks_deleted",                 ExampleObj.track_example0);
     await create_table("recently_played_tracks",         ExampleObj.track_example0);
-    await create_table("recently_played_tracks_deleted", ExampleObj.track_example0);
     await create_table("backpack",                       ExampleObj.track_example0);
     await create_table("backpack_deleted",               ExampleObj.track_example0);
     await create_table("playlists",                      ExampleObj.playlist_example0);

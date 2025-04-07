@@ -41,10 +41,10 @@ export async function illusi_startup(version: string, play_tracks: (first_track:
         if(legacy_prefs === null) await Prefs.load_legacy_prefs(legacy_prefs);
         await SQLUpdate.fix_to_new_update(version);
         await SQLTracks.fetch_track_data();
-        await Promise.all([
+        Promise.all([
             SQLRecentlyPlayed.cleanup_recently_played(),
             activateKeepAwakeAsync()
-        ]);
+        ]).catch(e => e);
         if(Prefs.get_pref('album_track_tinting')){
             generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table);
         }

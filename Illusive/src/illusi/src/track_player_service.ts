@@ -140,7 +140,7 @@ export async function playback_service() {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
 
-            if (data.position / data.duration >= .75 && !updated_metadata_mutex) {
+            if (data.position / (illusi_track.meta?.enddur ?? data.duration) >= .75 && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid) as Track;
                 if(is_empty(current_track.meta!.plays)) current_track.meta!.plays = 0;

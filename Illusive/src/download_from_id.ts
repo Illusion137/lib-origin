@@ -13,7 +13,9 @@ export async function soundcloud_download_from_id(permalink: string, _: string):
     return {url: url}
 }
 export async function youtube_download_from_id(video_id: string, quality: string): Promise<DownloadFromIdResult|ResponseError> {
-    const ytdl_opts: DownloadOptions = {quality: Prefs.get_pref('force_youtube_18_quality') ? "18" : quality as YTDLQuality, playerClients: ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"]};
+    const ytdl_opts: DownloadOptions = {
+        quality: Prefs.get_pref('force_youtube_18_quality') ? "18" : quality as YTDLQuality, 
+        playerClients: ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"]};
     try {
         try {            
             const av_result = await Origin.YouTubeDL.ytdl(video_id, ytdl_opts);

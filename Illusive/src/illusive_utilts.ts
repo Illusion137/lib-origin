@@ -219,6 +219,21 @@ export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
     }
     return named_uris;
 }
+export function tracks_include(original: Track[], incoming: Track[]): Track[]{
+    const original_seen_uid_set = new Set(original.map(({uid}) => uid));
+    return [...original, ...incoming.filter(({uid}) => !original_seen_uid_set.has(uid))];
+}
+export function tracks_exclude(original: Track[], incoming: Track[]): Track[]{
+    const incoming_seen_uid_set = new Set(incoming.map(({uid}) => uid));
+    return original.filter(({uid}) => !incoming_seen_uid_set.has(uid));
+}
+export function tracks_mask(original: Track[], incoming: Track[]): Track[]{
+    const original_seen_uid_set = new Set(original.map(({uid}) => uid));
+    const incoming_seen_uid_set = new Set(incoming.map(({uid}) => uid));
+    const to_add = incoming.filter(({uid}) => !original_seen_uid_set.has(uid));
+    const to_remove = new Set(original.filter(({uid}) => incoming_seen_uid_set.has(uid)).map(({uid}) => uid));
+    return [...original.filter(({uid}) => !to_remove.has(uid)), ...to_add];
+}
 export function array_include<T>(a: T[], b: T[], compare_same: (a: T, b: T) => boolean) {
     const array: T[] = [...a];
     for(const b0 of b) {
@@ -336,8 +351,8 @@ export function artist_string(track: Track): string{
 
 export function version_greater_than(version: string, other_version: string): boolean{
     try {
-        const [major, minor, patch] = version.split('.').map(parseInt);
-        const [other_major, other_minor, other_patch] = other_version.split('.').map(parseInt);
+        const [major, minor, patch] = version.split('.').map(item => parseInt(item));
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(item => parseInt(item));
         if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
         if(major > other_major) return true;
         if(major === other_major && minor > other_minor) return true;
@@ -345,6 +360,7 @@ export function version_greater_than(version: string, other_version: string): bo
         return false;
     }
     catch(e) {
+        console.log(e);
         return false;
     }
 }

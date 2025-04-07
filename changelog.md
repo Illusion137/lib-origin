@@ -1,3 +1,5 @@
+# Illusi 15.1.2
+  - More Misc bug fixes
 # Illusi 15.1.1
   - Misc bug fixes
 # Illusi 15.1.0

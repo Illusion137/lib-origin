@@ -176,8 +176,6 @@ export async function fix_to_new_update(version: string) {
         await alter_sql(db, {table: 'recently_played_tracks', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'recently_played_tracks_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await create_timestamp_triggers_if_not_exists("recently_played_tracks");
-        await create_timestamp_triggers_if_not_exists("recently_played_tracks_deleted");
-        await create_delete_triggers_if_not_exists("recently_played_tracks", "recently_played_tracks_deleted", ExampleObj.track_example0);
 
         await alter_sql(db, {table: 'backpack', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
         await alter_sql(db, {table: 'backpack_deleted', action: "ADD", column_name: 'Timestamp', type: "DATETIME"}); 
@@ -218,6 +216,18 @@ export async function fix_to_new_update(version: string) {
             if((await get_all_tables(db)).find(item => item.name === "seen_new_releases")){
                 await db_exec_async(sql_drop_table("seen_new_releases" as any));
                 Alert.alert("Updated Tracks to 15.1.1 BETA");
+            }
+        } catch (error) {
+            
+        }
+    }
+
+    if(!version_greater_than(version, "15.1.2")){
+        try {
+            if((await get_all_tables(db)).find(item => item.name === "recently_played_tracks_deleted")){
+                await db_exec_async("DROP TRIGGER recently_played_tracks_deleted_Trigger");
+                await db_exec_async(sql_drop_table("recently_played_tracks_deleted"));
+                Alert.alert("Updated Tracks to 15.1.2 BETA");
             }
         } catch (error) {
             

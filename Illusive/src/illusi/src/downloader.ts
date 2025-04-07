@@ -133,8 +133,9 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             }
             try {
                 if (start_download !== undefined) start_download(true);
-                const new_uri = SQLfs.media_directory(track.uid + '.m4a');
-                ffmpeg.FFmpegKit.executeAsync(`-y -i ${download_uri.url} ${new_uri}`, async (execution) => {
+                const media_uri = track.uid + '.aac';
+                const new_uri = SQLfs.media_directory(media_uri);
+                ffmpeg.FFmpegKit.executeAsync(`-y -i ${download_uri.url} -vn ${new_uri}`, async (execution) => {
                     try {
                         const retcode = (await execution.getReturnCode()).getValue();
                         if(retcode !== Constants.ffmpeg_retcode_success)
@@ -154,7 +155,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                         else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))
                             throw new Error(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`);
 
-                        await SQLTracks.mark_track_downloaded(track.uid, track.uid + '.m4a');
+                        await SQLTracks.mark_track_downloaded(track.uid, media_uri);
 
                         const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                         GLOBALS.downloading.splice(item_index, 1);
