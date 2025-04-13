@@ -7,7 +7,7 @@ import * as GLOBALS from './globals';
 import { catch_function_async } from './illusi_utils';
 import * as LegacyPrefs from './legacy/1307/legacy_prefs';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
-import * as SQLTracks from './sql/sql_tracks';
+// import * as SQLTracks from './sql/sql_tracks';
 import * as SQLUpdate from './sql/sql_update';
 import * as SQLUtils from './sql/sql_utils';
 import * as Origin from '../../../../origin/src/index';
@@ -33,14 +33,20 @@ export async function illusi_startup(version: string, play_tracks: (first_track:
             }
         };
         ffmpeg.FFmpegKitConfig.enableStatisticsCallback(statistics_callback);
-        
-        await SQLUtils.recreate_all_tables();
 
-        const legacy_prefs = LegacyPrefs.get_legacy_prefs();
-        await Prefs.load_prefs();
-        if(legacy_prefs === null) await Prefs.load_legacy_prefs(legacy_prefs);
+        await Promise.all(
+            [
+                SQLUtils.recreate_all_tables(),
+                (async() => {        
+                    const legacy_prefs = LegacyPrefs.get_legacy_prefs();
+                    await Prefs.load_prefs();
+                    if(legacy_prefs === null) await Prefs.load_legacy_prefs(legacy_prefs);
+                })(),
+            ]
+        )
         await SQLUpdate.fix_to_new_update(version);
-        await SQLTracks.fetch_track_data();
+        // await SQLTracks.fetch_track_data();
+
         Promise.all([
             SQLRecentlyPlayed.cleanup_recently_played(),
             activateKeepAwakeAsync()

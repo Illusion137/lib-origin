@@ -19,6 +19,7 @@
         "strictNullChecks": true,
         "noImplicitReturns": true,
         "skipLibCheck": true,
+        "allowJs": true
     },
     "exclude": ["node_modules/**"],
     "lib": [

@@ -8,6 +8,7 @@ import { Track } from "../../types";
 import { alert_error } from "./alert";
 import * as GLOBALS from "./globals";
 import * as SQLTracks from "./sql/sql_tracks";
+import { recreate } from '../../illusive_utilts';
 
 export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];
@@ -34,7 +35,7 @@ export async function push_track_to_playing_queue(track_data: Track) {
     if(!GLOBALS.global_var.is_playing) return;
     const track_index = await TrackPlayer.getActiveTrackIndex();
     if(track_index === null || track_index === undefined) return;
-    const track: Track = JSON.parse(JSON.stringify(track_data));
+    const track = recreate(track_data);
     if(!is_empty(track.playback)){
         track.playback!.added = false;
         track.playback!.successful = false;

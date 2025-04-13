@@ -444,3 +444,7 @@ export function clean_title(title: string){
     const cleaned = remove(title, /\(.+?\)/gi, /\[.+?\]/gi).trim();
     return cleaned;
 }
+
+export function recreate<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
+}

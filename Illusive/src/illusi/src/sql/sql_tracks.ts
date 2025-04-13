@@ -97,7 +97,7 @@ export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
             }
             const saved = await track_exists(track);
             track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
-            if(saved && Prefs.get_pref('media_files_on_albums')) {
+            if(saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri) && Prefs.get_pref('media_files_on_albums')) {
                 const found_track = find_track_in_globals(track);
                 if(found_track) track.uid = found_track.uid;
                 track.media_uri = found_track?.media_uri;

@@ -169,7 +169,7 @@ export async function download_track(track: Track, progress_updater?: SetState, 
                     } catch (error) {
                         download_error_callback("Failed To Download:", error as Error, track, start_download);
                     }
-                }).then(ff_session => {
+                }, () => {}, () => {}).then(ff_session => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
                         GLOBALS.downloading[item_index].execution_id = ff_session.getSessionId();
@@ -186,6 +186,6 @@ export async function ffcache_yt(url: string, track: Track) {
     const hls_out_uri = SQLfs.cache_directory(`playlist_${track.youtube_id}.m3u8`);
     const hls_segments = SQLfs.cache_directory(`file_${track.youtube_id}__%d.m4a`);
     const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
-    ffmpeg.FFmpegKit.executeAsync(cmd, () => {}).catch(e => e);
+    ffmpeg.FFmpegKit.executeAsync(cmd, () => {}, () => {}, () => {}).catch(e => e);
     return hls_out_uri;
 }
