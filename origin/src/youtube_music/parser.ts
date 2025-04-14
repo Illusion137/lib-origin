@@ -11,7 +11,7 @@ export function parse_home_contents(initial_data: InitialData[]) {
     const contents: HomeResults_0[] = initial_data as unknown as HomeResults_0[];
     return {
         contents: contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents,
-        continuation: contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.continuations[0].nextContinuationData
+        continuation: contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.continuations[0]?.nextContinuationData
     }
 }
 export function parse_explore_contents(initial_data: InitialData) {
@@ -40,15 +40,16 @@ export function parse_playlist_contents(initial_data: InitialData[]) {
             inner_contents.musicPlaylistShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer) :
             inner_contents.musicShelfRenderer.contents.map(item => item.musicResponsiveListItemRenderer),
         playlist_data: playlist_data_contents.musicResponsiveHeaderRenderer !== undefined ? playlist_data_contents.musicResponsiveHeaderRenderer : playlist_data_contents.musicEditablePlaylistDetailHeaderRenderer.header.musicResponsiveHeaderRenderer,
-        continuation: inner_contents.musicPlaylistShelfRenderer !== undefined ? 
-            inner_contents.musicPlaylistShelfRenderer.continuations === undefined ? null :
-                inner_contents.musicPlaylistShelfRenderer.continuations : null
+        continuation: inner_contents?.musicPlaylistShelfRenderer?.continuations ?? 
+                inner_contents?.musicPlaylistShelfRenderer?.continuations ?? 
+                inner_contents?.musicPlaylistShelfRenderer?.contents?.find(item => item?.continuationItemRenderer)?.continuationItemRenderer ??
+                null
     }
 }
 export function parse_artist_contents(initial_data: InitialData[]) {
     const contents: ArtistResults_0 = initial_data as unknown as ArtistResults_0;
     return {
-        top_shelf: contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.filter(item => item.musicShelfRenderer !== undefined)[0].musicShelfRenderer as MusicShelfRenderer,
+        top_shelf: contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.find(item => item.musicShelfRenderer !== undefined)?.musicShelfRenderer as MusicShelfRenderer,
         shelfs: contents[1].contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents.filter(item => item.musicCarouselShelfRenderer !== undefined).map(item => item.musicCarouselShelfRenderer) as MusicCarouselShelfRenderer[],
         artist_id: contents[1].responseContext.serviceTrackingParams[0].params.find(item => item.key === "browse_id")?.value,
         header: contents[1].header

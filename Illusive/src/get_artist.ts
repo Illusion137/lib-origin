@@ -1,8 +1,9 @@
-import { AppleMusic, YouTubeMusic } from "../../origin/src";
+import { AppleMusic, SoundCloud, YouTubeMusic } from "../../origin/src";
 import { CookieJar } from "../../origin/src/utils/cookie_util";
 import { ResponseError } from "../../origin/src/utils/types";
-import { parse_runs, urlid } from "../../origin/src/utils/util";
+import { make_topic, parse_runs, urlid } from "../../origin/src/utils/util";
 import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from "./gen/apple_music_parser";
+import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from "./gen/soundcloud_parser";
 import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from "./gen/youtube_music_parser";
 import { best_thumbnail, create_uri } from "./illusive_utilts";
 import { Prefs } from "./prefs";
@@ -85,5 +86,33 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
         tracks: latest_release_and_top_songs?.items.map(item => parse_apple_music_artist_track(item, artist_info)) ?? [],
         background_artwork_url: undefined,
         profile_artwork_url: parse_apple_music_artwork(artist_response.data.sections[0].items[0].artwork?.dictionary.url, artist_response.data.sections[0].items[0].artwork?.dictionary.width)
+    };
+}
+
+export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
+    const artist_id = await SoundCloud.permalink_to_artist_id({artist_permalink: id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy});
+    if("error" in artist_id) return default_artist(artist_id);
+
+    const [artist_tracks_response, artist_albums_response, artist_playlists_response] = await Promise.all([
+        SoundCloud.get_artist("TRACKS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 40, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy, client_id: artist_id.client_id}),
+        SoundCloud.get_artist("ALBUMS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy, client_id: artist_id.client_id}),
+        SoundCloud.get_artist("PLAYLISTS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy, client_id: artist_id.client_id}),
+    ])
+
+    if("error" in artist_tracks_response) return default_artist(artist_tracks_response);
+    if("error" in artist_albums_response) return default_artist(artist_albums_response);
+    if("error" in artist_playlists_response) return default_artist(artist_playlists_response);
+
+    const tracks = artist_tracks_response.artist_data.collection.map(item => soundcloud_parse_track(item));
+    return {
+        name: make_topic(artist_id.hydration.data.username),
+        albums: artist_albums_response?.artist_data?.collection?.map(soundcloud_parse_playlist) ?? [],
+        playlists: artist_playlists_response?.artist_data?.collection?.map(soundcloud_parse_playlist) ?? [],
+        latest_release: tracks.length <= 0 ? undefined : soundcloud_parse_track_to_song(tracks[0], artist_tracks_response.artist_data.collection[0]),
+        tracks: tracks ?? [],
+        singles_eps: [],
+        similar_artists: [],
+        background_artwork_url: undefined,
+        profile_artwork_url: artist_id.hydration.data.avatar_url
     };
 }

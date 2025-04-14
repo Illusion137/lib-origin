@@ -25,7 +25,7 @@ export async function upload_sqlite_db() {
 
 export async function upload_playlist_thumbnail(playlist: Playlist, callback: (playlist: Playlist) => Promise<void>) {
     try {
-        const img = await ImagePicker.openPicker({mediaType: 'photo'});
+        const img = await ImagePicker.openPicker({mediaType: 'photo', forceJpg: true});
         if(img.sourceURL === undefined) throw new Error("sourceURL is null");
         if(img.filename === undefined) throw new Error("filename is undefined");
         await SQLfs.copy_to_custom_thumbnail_directory(img.sourceURL, img.filename);
@@ -50,12 +50,15 @@ export async function upload_playlist_thumbnail_document(playlist: Playlist, cal
         
         await SQLfs.delete_folder_of_file(thumbnail_uri.fileCopyUri);
         if(callback !== undefined) await callback(playlist);
-    } catch (error) { handle_document_picker_error(error); }
+    } catch (error) { 
+        if((error as Error)?.message.includes("cancelled")) return;
+        alert_error({error: error as Error});
+    }
 }
 
 export async function upload_track_thumbnail(track: Track, callback: (track: Track) => Promise<void>) {
     try {
-        const img = await ImagePicker.openPicker({mediaType: 'photo'});
+        const img = await ImagePicker.openPicker({mediaType: 'photo', forceJpg: true});
         if(img.sourceURL === undefined) throw new Error("sourceURL is null");
         if(img.filename === undefined) throw new Error("filename is undefined");
         await SQLfs.copy_to_custom_thumbnail_directory(img.sourceURL, img.filename);
@@ -64,7 +67,10 @@ export async function upload_track_thumbnail(track: Track, callback: (track: Tra
         
         if(callback !== undefined) await callback(track);
         await ImagePicker.clean();
-    } catch (error) { handle_document_picker_error(error); }
+    } catch (error) { 
+        if((error as Error)?.message.includes("cancelled")) return;
+        alert_error({error: error as Error});
+    }
 }
 
 export async function upload_music_files(callback: () => Promise<void>) {

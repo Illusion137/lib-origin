@@ -4,7 +4,7 @@ import { is_empty } from "../../../../../origin/src/utils/util";
 import { Illusive } from '../../../illusive';
 import { extract_file_extension } from '../../../illusive_utilts';
 import { Prefs } from '../../../prefs';
-import { Primitives, SQLTables, Track } from "../../../types";
+import { CompactPlaylist, Primitives, SQLTables, Track } from "../../../types";
 import { ExampleObj } from '../example_objs';
 import * as GLOBALS from '../globals';
 import { db, db_path, reasign_db } from './database';
@@ -16,8 +16,10 @@ export async function db_exec_async(source: string){
     try {
         await db.execAsync(source);
     } catch (error) {
-        alert_error({error: error as Error});
-        alert_error(`SQL: ${source}`);
+        if(!(error as Error).message.includes("UNIQUE constraint failed")){
+            alert_error({error: error as Error});
+            alert_error(`SQL: ${source}`);
+        }
     }
 }
 export async function db_run_async(source: string, params?: SQLite.SQLiteBindParams) {
@@ -26,16 +28,20 @@ export async function db_run_async(source: string, params?: SQLite.SQLiteBindPar
             await db.runAsync(source, params);
         else await db.runAsync(source);
     } catch (error) {
-        alert_error({error: error as Error});
-        alert_error(`SQL: ${source}`);
+        if(!(error as Error).message.includes("UNIQUE constraint failed")){
+            alert_error({error: error as Error});
+            alert_error(`SQL: ${source}`);
+        }
     }
 }
 export function db_get_all_sync<T>(source: string, ...params: SQLite.SQLiteVariadicBindParams) {
     try {
         return db.getAllSync<T>(source, params);
     } catch (error) {
-        alert_error({error: error as Error});
-        alert_error(`SQL: ${source}`);
+        if(!(error as Error).message.includes("UNIQUE constraint failed")){
+            alert_error({error: error as Error});
+            alert_error(`SQL: ${source}`);
+        }
         return [];
     }
 }
@@ -43,7 +49,10 @@ export async function db_get_all_async<T>(source: string, ...params: SQLite.SQLi
     try {
         return await db.getAllAsync<T>(source, params);
     } catch (error) {
-        alert_error({error: error as Error});
+        if(!(error as Error).message.includes("UNIQUE constraint failed")){
+            alert_error({error: error as Error});
+            alert_error(`SQL: ${source}`);
+        }
         return [];
     }
 }
@@ -201,6 +210,7 @@ export async function destroy_all_tables() {
     console.log(((await db.runAsync( sql_drop_table("backpack") )).changes));
     console.log(((await db.runAsync( sql_drop_table("playlists") )).changes));
     console.log(((await db.runAsync( sql_drop_table("playlists_tracks") )).changes));
+    console.log(((await db.runAsync( sql_drop_table("playlists_tracks") )).changes));
 }
 export async function recreate_all_tables() {
     // await destroy_all_tables();
@@ -208,13 +218,13 @@ export async function recreate_all_tables() {
     await create_table("tracks",                         ExampleObj.track_example0);
     await create_table("tracks_deleted",                 ExampleObj.track_example0);
     await create_table("recently_played_tracks",         ExampleObj.track_example0);
-    await create_table("recently_played_tracks_deleted", ExampleObj.track_example0);
     await create_table("backpack",                       ExampleObj.track_example0);
     await create_table("backpack_deleted",               ExampleObj.track_example0);
     await create_table("playlists",                      ExampleObj.playlist_example0);
     await create_table("playlists_deleted",              ExampleObj.playlist_example0);
     await create_table("playlists_tracks",               ExampleObj.playlists_tracks_example0);
     await create_table("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0);
+    await db.execAsync(sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"));
 
     await create_default_directories();
 }

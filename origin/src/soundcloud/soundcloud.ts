@@ -1,3 +1,4 @@
+import { Proxy } from "../proxy/proxy";
 import { CookieJar } from "../utils/cookie_util";
 import { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../utils/types";
 import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../utils/util";
@@ -5,7 +6,7 @@ import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration
 import { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
 
 export namespace SoundCloud {
-    interface Opts { cookie_jar?: CookieJar, client_id?: (string|ResponseError) }
+    interface Opts { cookie_jar?: CookieJar, client_id?: (string|ResponseError), proxy?: Proxy.Proxy }
     let app_version = 1727431820;
     const client_cache = {client: {client_id: null as null|string, user_id: null as null|string}, enabled: true};
 
@@ -253,21 +254,31 @@ export namespace SoundCloud {
             case "REPOSTS": return "reposts";
         }
     }
-    export async function get_artist(mode: "POPULAR_TRACKS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "TRACKS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "REPOSTS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "ALBUMS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: "PLAYLISTS", opts: Opts & { "artist_id": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: ArtistMode = "ALL", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist|User|Track>> {
+
+    export async function permalink_to_artist_id(opts: Opts & {"artist_permalink": string}){
+        let user_hyrdration: HydratableUser = {} as never;
+        const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.artist_permalink)}`, opts);
+        if("error" in hydration) return hydration;
+        opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id; 
+        if (typeof opts.client_id === "object") return opts.client_id;
+        user_hyrdration = hydration.hydration.find((hydratable) => hydratable.hydratable == "user") as HydratableUser;
+        return {id: String(user_hyrdration.data.id), hydration: user_hyrdration, client_id: opts.client_id};
+    }
+
+    export async function get_artist(mode: "POPULAR_TRACKS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
+    export async function get_artist(mode: "TRACKS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
+    export async function get_artist(mode: "REPOSTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
+    export async function get_artist(mode: "ALBUMS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
+    export async function get_artist(mode: "PLAYLISTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
+    export async function get_artist(mode: ArtistMode = "ALL", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist|User|Track>> {
         let artist_id = clean_permalink(opts.artist_id);
         let user_hyrdration: HydratableUser = {} as never;
         if(!is_empty(opts.artist_permalink)) {
-            const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.artist_permalink)}`, opts);
-            if("error" in hydration) return hydration;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id; 
-            if (typeof opts.client_id === "object") return opts.client_id;
-            user_hyrdration = hydration.hydration.find((hydratable) => hydratable.hydratable == "user") as HydratableUser;
-            artist_id = String(user_hyrdration.data.id);
+            const potential_artist_id = await permalink_to_artist_id({artist_permalink: opts.artist_permalink!});
+            if("error" in potential_artist_id) return potential_artist_id;
+            artist_id = potential_artist_id.id;
+            user_hyrdration = potential_artist_id.hydration;
+            opts.client_id = potential_artist_id.client_id;
         }
         const params = {
             ...get_locale_params(opts),
@@ -275,6 +286,7 @@ export namespace SoundCloud {
             limit: opts.limit ?? 20,
             offset: opts.offset ?? 0,
         }
+        //
         const repost_mode_str = mode === "REPOSTS" ? "stream/" : "";
         const artist_response = await fetch(`https://api-v2.soundcloud.com/${repost_mode_str}users/${artist_id}/${artist_mode_to_api_method(mode ?? "ALL")}?${encode_params(params)}`, api_method_options(opts.cookie_jar) );
         if(!artist_response.ok) return {error: new Error(`${artist_response.status} : ${artist_response.statusText}`)};

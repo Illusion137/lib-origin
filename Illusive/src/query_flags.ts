@@ -111,6 +111,11 @@ export const QUERY_FLAGS: QueryFlag[] = [
         description: "All tracks that are found to be age-restricted"
     },
     {
+        flag: '@trim',
+        condition: (track) => !is_empty(track.meta?.begdur) || !is_empty(track.meta?.enddur),
+        description: "All tracks that are found to be trimmed"
+    },
+    {
         flag: '@drg',
         condition: (track, query) => track.duration >= get_first_word_num(query),
         description: "All tracks that are found with a duration (in seconds) greater than or equal to the input"

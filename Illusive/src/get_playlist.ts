@@ -11,7 +11,9 @@ import * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
 import * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Continuation";
 import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
 import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
+import { PlaylistResults_3 } from '../../origin/src/youtube_music/types/PlaylistResults_3';
 import * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
+import * as YTMUSIC_CONTINUATION_RENDERER from "../../origin/src/youtube/types/PlaylistResults_0";
 import { clean_album_title, parse_apple_music_album_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from './gen/apple_music_parser';
 import { musi_parse_track } from './gen/musi_parser';
 import { soundcloud_parse_track } from './gen/soundcloud_parser';
@@ -56,7 +58,7 @@ export async function youtube_get_playlist_continuation(opts: YouTubePlaylistCon
     return {tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: {ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation} as YouTubePlaylistContinuation}
 }
 
-interface YouTubeMusicPlaylistContinuation {"ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs}
+interface YouTubeMusicPlaylistContinuation {"ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation|YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs}
 
 export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
@@ -97,22 +99,44 @@ export async function youtube_music_get_playlist_continuation(opts: YouTubeMusic
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
     const playlist_response = await Origin.YouTubeMusic.get_continuation({cookie_jar}, opts.ytcfg, opts.continuation);
     if("error" in playlist_response) return {tracks: [], continuation: null, error: [playlist_response]};
-    const parsed_playlist = playlist_response as unknown as PlaylistResults_1;
-    if(parsed_playlist?.continuationContents?.musicPlaylistShelfContinuation === undefined) return {tracks: [], continuation: null};
-    return {
-        tracks: parsed_playlist.continuationContents.musicPlaylistShelfContinuation.contents.filter(item => item !== undefined).map(track => 
-            opts.type === "PLAYLIST" ? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack) :
-                parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs)
-        ).filter(item => item !== undefined),
-        continuation: {
-            ytcfg: opts.ytcfg, 
-            continuation: parsed_playlist.continuationContents?.musicPlaylistShelfContinuation?.continuations === undefined ? null :
-                parsed_playlist.continuationContents?.musicPlaylistShelfContinuation.continuations,
-            type: opts.type,
-            artist: opts.artist,
-            album: opts.album
-        } as YouTubeMusicPlaylistContinuation
-    };
+    const parsed_playlist = playlist_response as unknown as PlaylistResults_1|PlaylistResults_3;
+    if("continuationContents" in parsed_playlist){
+        if(parsed_playlist?.continuationContents?.musicPlaylistShelfContinuation === undefined) return {tracks: [], continuation: null};
+        return {
+            tracks: parsed_playlist.continuationContents.musicPlaylistShelfContinuation.contents.filter(item => item !== undefined).map(track => 
+                opts.type === "PLAYLIST" ? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack) :
+                    parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs)
+            ).filter(item => item !== undefined),
+            continuation: {
+                ytcfg: opts.ytcfg, 
+                continuation: parsed_playlist.continuationContents?.musicPlaylistShelfContinuation?.continuations === undefined ? null :
+                    parsed_playlist.continuationContents?.musicPlaylistShelfContinuation.continuations,
+                type: opts.type,
+                artist: opts.artist,
+                album: opts.album
+            } as YouTubeMusicPlaylistContinuation
+        };
+    }
+    else {
+        if(parsed_playlist?.onResponseReceivedActions?.[0] === undefined) return {tracks: [], continuation: null};
+        const contents = parsed_playlist.onResponseReceivedActions[0]?.appendContinuationItemsAction?.continuationItems;
+        if(contents === undefined) return {tracks: [], continuation: null};
+        const next_continuation = contents.find(item => "continuationItemRenderer" in item);
+        return {
+            tracks: contents.filter(item => item !== undefined).map(track => 
+                opts.type === "PLAYLIST" ? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack) :
+                    parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs)
+            ).filter(item => item !== undefined),
+            continuation: next_continuation === undefined ? null : {
+                ytcfg: opts.ytcfg, 
+                continuation: next_continuation.continuationItemRenderer === undefined ? null :
+                    next_continuation.continuationItemRenderer,
+                type: opts.type,
+                artist: opts.artist,
+                album: opts.album
+            } as YouTubeMusicPlaylistContinuation
+        };
+    }
 }
 
 interface SpotifyPlaylistContinuation {"client": Origin.Spotify.Client, "id": string, "current": number, "total": number, "limit": number, "type": "ALBUM" | "PLAYLIST" | "COLLECTION"}

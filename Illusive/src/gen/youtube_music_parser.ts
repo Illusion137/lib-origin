@@ -1,4 +1,4 @@
-import { empty_undefined, generate_new_uid, is_empty, parse_runs, parse_time, remove } from '../../../origin/src/utils/util'
+import { empty_undefined, generate_new_uid, is_empty, parse_runs, parse_time } from '../../../origin/src/utils/util'
 import { NavigationEndpoint } from '../../../origin/src/youtube/types/ChannelResultsW';
 import { find_album_year } from '../../../origin/src/youtube_music/parser';
 import { ArtistCarouselContent, ArtistTopTrack } from '../../../origin/src/youtube_music/types/ArtistResults_0';
@@ -11,7 +11,7 @@ const responsive_item_types = ["Song", "Video", "Single", "Album", "Playlist", "
 
 function includes_plays_text(ptext: string){
     if(ptext === undefined) return false;
-    return remove(ptext, ' play', ' plays', ' view', ' views').length !== ptext.length;
+    return ptext.endsWith(' plays') || ptext.endsWith(' views');
 }
 
 export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack, artists: Runs, album: Runs): Track {
@@ -36,6 +36,8 @@ export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTr
     if(track.playlistItemData?.videoId === undefined) return undefined;
     if(youtube_music_split_artists(artist_column.musicResponsiveListItemFlexColumnRenderer.text.runs as Runs).length === 0)
         throw new Error("No YouTube Music Split Artists");
+    if(includes_plays_text(parse_runs(album_runs)))
+        throw new Error("YouTube Music Album is plays");
     return {
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs),

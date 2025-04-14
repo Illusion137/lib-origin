@@ -25,17 +25,13 @@ import { sample } from './sampler';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
 
-let setup_calls = 0;
 export async function setup_track_player(): Promise<boolean> {
-    if(setup_calls % 2 == 1) {
-        GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
-        let index = 0;
-        try {
-            index = await TrackPlayer.getActiveTrackIndex() ?? 0;
-        } catch (error) {}
-        GLOBALS.global_var.past_track_index = index;
-    }
-    setup_calls++;
+    GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
+    let index = 0;
+    try {
+        index = await TrackPlayer.getActiveTrackIndex() ?? 0;
+    } catch (error) {}
+    GLOBALS.global_var.past_track_index = index;
     try {
         await TrackPlayer.getActiveTrackIndex();
     } catch (error) {         
@@ -144,7 +140,7 @@ export async function playback_service() {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
 
-            if (data.position / data.duration >= .75 && !updated_metadata_mutex) {
+            if (data.position / (illusi_track.meta?.enddur ?? data.duration) >= .75 && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid) as Track;
                 if(is_empty(current_track.meta!.plays)) current_track.meta!.plays = 0;

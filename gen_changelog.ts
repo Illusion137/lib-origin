@@ -1,4 +1,44 @@
-export const CHANGELOG = `# Illusi 15.0.0
+export const CHANGELOG = `# Illusi 15.1.2
+  - More Misc bug fixes
+# Illusi 15.1.1
+  - Misc bug fixes
+# Illusi 15.1.0
+ - YTDL sig fixes
+ - New pref:\`media_files_on_albums\`
+ - New pref:\`force_youtube_18_quality\`
+ - Refactored get_latest_release -> get_latest_releases
+ - SoundCloud get_artist
+ - SoundCloud get_latest_releases
+ - Fixed bug related to adding custom thumbnails to imported tracks
+ - Fixed bug relating to errors thrown when cancelling an imported thumbnail onto a playlist
+ - Fixed bug related to parsing YouTube Music tracks albums
+ - Fixed bug related to 'Past-Queue' only working half of the time
+ - Fixed bug related to YouTube Music playlist parsing
+ - Fixed bug related to YouTube Music playlist continuation parsing
+ - Fixed bug related to YouTube Music auth; migrated to auth1
+ - Fixed bug relating to YouTube/YouTubeMusic post requests without cookies
+ - Fixed bug relating to trying to load shortcut for default playlist to early
+ - Fixed bug relating to being unable to goto Artist from CompactArtistComponent
+ - Fixed bug relating to search in Library disappearing on page reload
+ - Fixed bug relating to shared tracks in artist page not properly displaying downloaded_info
+ - Fixed bugs relating to things not updating in AlbumList and TrackComponent because of states not updating properly
+ - Added @trim query flag that shows trimmed songs
+ - Added song support for Album component
+ - Added AlbumGridRenderer to view all NewReleases in a larger view
+ - Improved ExtrasScreen by blocking off things that are under construction and giving them a construction icon
+ - Improved Album Tinting Colors
+ - Improved Artist Watch
+ - Improved Artist page layout
+ - Improved playing track before adding to playlist by starting the track 20% in to skip intros
+ - Improved Playlist Converter to allow for deleting tracks that are no-longer there
+ - Improved BottomNotifications by inserting haptic feedback
+ - Improved wait times when loading PlaylistsScreen consecutive times
+ - Moved NewReleases from being stored in AsyncStorage to SQLite
+ - Adjusted track tint percent
+ - NewReleases supports cutoff time for when to mark album as seen
+ - Removed ArtistWatch & CustomExplore Screen
+
+# Illusi 15.0.0
  - A whole lot more search queries
  - Support for search queries with parameters; but only one at a time
  - New pref:\`playlist_inheritance_preview\`
