@@ -1,4 +1,4 @@
-import { jsdom_document } from "../utils/jsdom";
+import { jsdom_document, map_html_collection } from "../utils/jsdom";
 import { PromiseResult } from "../utils/types";
 import { encode_params, google_query } from "../utils/util";
 import { decode_image_base64 } from "./img_decoder";
@@ -8,12 +8,6 @@ import { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageS
 
 export namespace MangaReader {
     const base_url = "https://mangareader.to";
-    function map_html_collection<T>(collection: HTMLCollection|NodeListOf<Element>, callback: (el: Element) => T) {
-        const result: T[] = [];
-        for(let i = 0; i < collection.length; i++)
-            result.push(callback(collection[i]));
-        return result;
-    }
     function parse_chapter_item(el: Element): ChapterItem {
         return {
             no: parseInt(el.getAttribute("data-number")!),
