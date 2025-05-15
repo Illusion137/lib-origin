@@ -9,12 +9,14 @@ export function generate_new_uid(prefix_name: string) {
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
-export function encode_params(data: Record<string, unknown>) {
+export function encode_params(data: Record<string, unknown>, query?: [string, string]) {
 	const encoded_params: string[] = [];
 	for(const key of Object.keys(data)) {
 		const param = data[key];
 		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : param as string|number|boolean )}`);
 	}
+	if(query) 
+		encoded_params.push(`${query[0]}=${query[1]}`);
 	return encoded_params.join('&');
 }
 export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
@@ -137,6 +139,9 @@ export function safe_date_iso(date: Date): string{
 	catch(e) {
 		return new Date(0).toISOString();
 	}
+}
+export function base_response_fail_msg(response: Response){
+	return `response failed to ${response.url} with status code: ${response.status}; msg: ${response.statusText}`;
 }
 
 import { RequestInit } from 'node-fetch';

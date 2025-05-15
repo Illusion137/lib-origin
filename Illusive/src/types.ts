@@ -519,29 +519,3 @@ export class PQueue<T> {
     get length() { return this.tail - this.head; }
     get is_empty() { return this.length === 0; }
 }
-
-export class TimedCache<K, V> {
-    lifespan_milliseconds?: number
-    store: { created_at: Date, key: K, value: V }[]
-    constructor(lifespan_seconds?: number) {
-        this.lifespan_milliseconds = lifespan_seconds;
-        this.store = [];
-    }
-    add(key: K, value: V) {
-        this.clear_expired();
-        this.store.push({created_at: new Date(), key, value});
-    }
-    get(key: K) {
-        this.clear_expired();
-        return this.store.find(item => item.key === key)?.value;
-    }
-    update(key: K, value: V) {
-        this.clear_expired();
-        const i = this.store.findIndex(item => item.key === key);
-        if(i === -1) this.add(key, value);
-        this.store[i].value = value;
-    }
-    clear_expired() {
-        this.store = this.store.filter(item => item.created_at.getTime() + (this.lifespan_milliseconds ?? Prefs.get_pref('playlist_cache_seconds')) > new Date().getTime())
-    }
-}

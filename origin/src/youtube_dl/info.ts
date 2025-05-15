@@ -2,7 +2,7 @@ const sax = require('./PATCH/sax/index');
 import Cache from './cache';
 import * as formatUtils from './format-utils';
 import * as extras from './info-extras';
-import * as sig from './sig';
+import * as sig from './sig__';
 import { AVFormat, DownloadOptions, VideoInfo } from './types';
 import * as urlUtils from './url-utils';
 import * as utils from './utils';
@@ -36,7 +36,7 @@ const getPlaybackContext = async (html5player: string, options: DownloadOptions)
 
 const parseAdditionalManifests = (player_response: VideoInfo["player_response"], options: DownloadOptions = {}) => {
      const streamingData = player_response && player_response.streamingData,
-          manifests = [];
+          manifests: any[] = [];
      if (streamingData) {
           if (streamingData.dashManifestUrl) {
                manifests.push(getDashManifest(streamingData.dashManifestUrl, options));
@@ -317,10 +317,10 @@ export const getInfo = async (id: string, options: DownloadOptions): Promise<Vid
 
      info.html5player = new URL(info.html5player, BASE_URL).toString();
 
-     const formatPromises = [];
+     const formatPromises: any[] = [];
 
      try {
-          const clientPromises = [];
+          const clientPromises: any[] = [];
 
           if (options.playerClients?.includes("WEB_EMBEDDED")) clientPromises.push(fetchWebEmbeddedPlayer(id, info, options));
           if (options.playerClients?.includes("TV")) clientPromises.push(fetchTvPlayer(id, info, options));
@@ -340,7 +340,7 @@ export const getInfo = async (id: string, options: DownloadOptions): Promise<Vid
                          formatPromises.push(sig.decipherFormats(formats, info.html5player, options));
                     }
 
-                    const manifestPromises = parseAdditionalManifests(response as any, options);
+                    const manifestPromises = parseAdditionalManifests(response, options);
                     formatPromises.push(...manifestPromises);
                }
           }
