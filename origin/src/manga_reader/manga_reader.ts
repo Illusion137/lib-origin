@@ -1,4 +1,4 @@
-import { jsdom_document } from "../utils/jsdom";
+import { jsdom_document, map_html_collection } from "../utils/jsdom";
 import { PromiseResult } from "../utils/types";
 import { encode_params, google_query, base_response_fail_msg } from "../utils/util";
 import { decode_image_base64 } from "./img_decoder";
@@ -13,13 +13,6 @@ export namespace MangaReader {
         return `MangaReader: ${gen_response_error_msg.caller} ${base_response_fail_msg(response)}`
     }
 
-    function map_html_collection<T>(collection: HTMLCollection|NodeListOf<Element>|undefined, callback: (el: Element) => T) {
-        if(!collection) return [];
-        const result: T[] = [];
-        for(let i = 0; i < collection.length; i++)
-            result.push(callback(collection[i]));
-        return result;
-    }
     function parse_chapter_item(el: Element): ChapterItem {
         return {
             no: parseInt(el.getAttribute("data-number")!),
