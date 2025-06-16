@@ -103,13 +103,12 @@ export function milliseconds_of(time: {days?: number, hours?: number, minutes?: 
 		+ ((time.minutes ?? 0) * 1000 * 60)
 		+ ((time.seconds ?? 0) * 1000)
 }
-// export function cached_function(func: )
-// function cached_function<T extends (...args: any[]) => any>(func: T): T {
-// 	const timed_cache: TimedCache<Parameters<T>[0], ReturnType<T>> = new TimedCache(10000);
-// 	return await timed_cache.return_update(func.arguments[0], func);
-// }
-// const bar = cached_function(remove_special_chars);
-// bar("");
+export function empty_join(vals: any[], join_with: string) {
+    return vals.filter(vals => !is_empty(vals)).join(join_with);
+}
+export function empty_join_dot(vals: any[]) {
+    return empty_join(vals, " • ");
+}
 
 export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
 	const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);

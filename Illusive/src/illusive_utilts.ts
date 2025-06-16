@@ -370,12 +370,6 @@ export function array_mask<T>(a: T[], b: T[], compare_same: (a: T, b: T) => bool
 export function escape_regexpresion(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
-export function empty_join(vals: any[], join_with: string) {
-    return vals.filter(vals => !is_empty(vals)).join(join_with);
-}
-export function empty_join_dot(vals: any[]) {
-    return empty_join(vals, " • ");
-}
 // playlist_duration_to_string(tracks.map(({duration}) => duration).reduce(function(prev, cur) { return prev + cur; }, 0))
 export function track_durations(tracks: Track[]) {
     return tracks.map(({duration}) => duration);
