@@ -1,6 +1,6 @@
 import { Proxy } from "../../origin/src";
 import { CookieJar } from "../../origin/src/utils/cookie_util"
-import { ResponseError } from "../../origin/src/utils/types"
+import { ResponseError, TimedCache } from "../../origin/src/utils/types"
 import { remove } from "../../origin/src/utils/util";
 import { Chapter } from "../../origin/src/youtube_dl/types";
 import { Constants } from "./constants";
@@ -63,10 +63,13 @@ export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;
 export type Primitives = string|boolean|number;
 
-export interface QueryFlag {
+export type AlbumSortMode = "NEWEST"|"OLDEST"|"MOST_PLAYED_ARTISTS"|"LEAST_PLAYED_ARTISTS";
+
+export interface QueryFlag<T> {
     flag: string;
     description: string;
-    condition: (track: Track, query: string) => boolean;
+    condition: (obj: T, args: string[]) => boolean;
+    args?: number;
 }
 
 export interface AlphabetScroll {
@@ -204,7 +207,7 @@ export type SQLTrackArray = [ string, string, string, string, number, string, st
 export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
-export type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK";
+export type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK" | "INTERSECTION";
 export interface InheritedPlaylist {
     uuid: string
     mode: PlaylistInheritanceMode
@@ -223,6 +226,7 @@ interface Basic_Playlist<T, U, V, X> {
     title: string
     description?: string
     pinned?: boolean
+    archived?: boolean
     thumbnail_uri?: string
     sort?: SortType
     public?: boolean
@@ -233,7 +237,7 @@ interface Basic_Playlist<T, U, V, X> {
     visual_data?: V
     date?: string
 }
-export type SQLPlaylistArray = [ string, string, string, boolean, string, SortType, boolean, string, string, string, string, string ];
+export type SQLPlaylistArray = [ string, string, string, boolean, boolean, string, SortType, boolean, string, string, string, string, string ];
 
 export type SQLPlaylist = Basic_Playlist<string, string, string, string>
 export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], PlaylistVisualData, InheritedSearch[]>
@@ -284,6 +288,7 @@ export interface CompactArtist {
     profile_artwork_url?: string
     is_official_artist_channel: boolean
 }
+export type SearchSuggestion = string|Track;
 export interface MusicServicePlaylistBase {
     title: string
     creator?: NamedUUID[]
@@ -366,6 +371,7 @@ export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compa
 export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
 export type ArtistOpts = {proxy?: Proxy.Proxy};
 
+const search_cache: TimedCache<string, MusicSearchResponse> = new TimedCache<string, MusicSearchResponse>(Constants.playlist_cache_duration_seconds * 1000);
 export class MusicService {
     app_icon: string | number
     web_view_url?: string
@@ -387,6 +393,7 @@ export class MusicService {
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
+    get_new_releases?: () => Promise<CompactPlaylist[]>
     get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>
     constructor(s: {
         app_icon: string | number,
@@ -409,6 +416,7 @@ export class MusicService {
         download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
+        get_new_releases?: () => Promise<CompactPlaylist[]>
         get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>,
     }) {
         this.app_icon = s.app_icon
@@ -418,7 +426,11 @@ export class MusicService {
         this.required_cookie_credentials = s.required_cookie_credentials;
         this.link_text = s.link_text;
         this.cookie_jar_callback = s.cookie_jar_callback;
-        this.search = s.search;
+        this.search = Constants.use_illusive_cahce ? async(query: string, opts?: SearchOpts) => {
+            const result = await s.search!(query, opts);
+            search_cache.update(query, result);
+            return result;
+        } : s.search;
         this.search_continuation = s.search_continuation;
         this.explore = s.explore;
         this.create_playlist = s.create_playlist;
@@ -437,6 +449,7 @@ export class MusicService {
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
         this.get_artist = s.get_artist;
+        this.get_new_releases = s.get_new_releases;
         this.get_latest_releases = s.get_latest_releases;
     }
     has_credentials() {

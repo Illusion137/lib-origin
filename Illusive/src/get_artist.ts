@@ -32,7 +32,7 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
     const artist_response = await YouTubeMusic.get_artist({cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy}, id);
     if("error" in artist_response) return default_artist(artist_response);
 
-    const artist_info: NamedUUID = {name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer.title.runs), uri: create_uri("youtubemusic", artist_response.data.artist_id ?? id)};
+    const artist_info: NamedUUID = {name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs), uri: create_uri("youtubemusic", artist_response.data.artist_id ?? id)};
 
     const artist_albums_response_promise = YouTubeMusic.get_only_artist_albums({cookie_jar: get_cookie_jar('youtube_music_cookie_jar')}, artist_response.icfg.ytcfg, artist_response.data.artist_id ?? id);
     const artist_tracks_response_promise = YouTubeMusic.get_only_artist_tracks({cookie_jar: get_cookie_jar('youtube_music_cookie_jar')}, artist_response);
@@ -44,19 +44,19 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
     const potential_all_single_eps = potential_all_albums_singles.filter(item => item.album_type === "SINGLE" || item.album_type === "EP" || item.album_type === "SINGLE/EP");
 
     return {
-        name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer.title.runs),
+        name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs),
         albums: potential_all_albums.length === 0 ? artist_response.data.shelfs
-            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs) === "Albums")
+            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs) === "Albums")
             ?.contents.map(item => parse_youtube_music_artist_album(item, artist_info)) ?? [] : potential_all_albums,
         singles_eps: potential_all_single_eps.length === 0 ? artist_response.data.shelfs
-            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).includes("Single"))
+            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).includes("Single"))
             ?.contents.map(item => parse_youtube_music_artist_album(item, artist_info)) ?? [] : potential_all_single_eps,
         playlists: artist_response.data.shelfs
-            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes("playlists"))
+            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes("playlists"))
             ?.contents.map(item => parse_youtube_music_artist_album(item, artist_info)) ?? [],
         latest_release: !("error" in artist_albums_response) && artist_albums_response.data?.[0] !== undefined ? parse_youtube_music_artist_album({musicTwoRowItemRenderer: artist_albums_response.data?.[0]}, artist_info) : undefined,
         similar_artists: artist_response.data.shelfs
-            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes("might also like") || parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes("similar"))
+            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes("might also like") || parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes("similar"))
             ?.contents.map(parse_youtube_music_artist_similar_artist) ?? [],
         tracks: !("error" in artist_tracks_response) ? (artist_tracks_response.data.tracks).map(parse_youtube_music_artist_tracks_track).filter(item => item !== undefined) : (artist_response.data?.top_shelf?.contents?.map(parse_youtube_music_artist_track) ?? []),
         background_artwork_url: best_thumbnail(artist_response.data.header?.musicImmersiveHeaderRenderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url,

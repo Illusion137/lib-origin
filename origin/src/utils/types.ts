@@ -24,6 +24,15 @@ export class TimedCache<K, V> {
         if(i === -1) this.add(key, value);
         this.store[i].value = value;
     }
+    async return_update(key: K, else_value: () => Promise<V>): Promise<V> {
+        let value;
+        if((value = this.get(key))){
+            return value;
+        }
+        const new_value = await else_value();
+        this.update(key, new_value);
+        return new_value;
+    }
     clear_expired() {
         this.store = this.store.filter(item => item.created_at.getTime() + (this.lifespan_milliseconds) > new Date().getTime())
     }

@@ -1,5 +1,5 @@
 import * as uuid from "react-native-uuid";
-import { all_promises, track_query_filter, tracks_exclude, tracks_include, tracks_mask } from "../../../illusive_utilts";
+import { all_promises, track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "../../../illusive_utilts";
 import { InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
@@ -15,6 +15,7 @@ function playlist_to_sqllite_insertion(playlist: Playlist) {
         playlist.title ?? "", 
         playlist.description ?? "", 
         playlist.pinned ?? false, 
+        playlist.archived ?? false, 
         playlist.thumbnail_uri ?? "", 
         playlist.sort ?? "OLDEST", 
         playlist.public ?? false, 
@@ -77,26 +78,28 @@ export async function playlist_tracks(playlist_uuid: string, playlist_no_visual_
     if(skip_inheritance) return tracks;
     seen_playlist_uuids.add(playlist_uuid);
     const cplaylist_data = playlist_no_visual_data ? playlist_no_visual_data : await playlist_data(playlist_uuid, "IGNORE");
-    tracks = sort_playlist_tracks(cplaylist_data.sort!, tracks);
+    if(cplaylist_data === undefined) return tracks;
     for(const inherited_playlist of cplaylist_data.inherited_playlists!) {
         if(!seen_playlist_uuids.has(inherited_playlist.uuid)) {
             const inherited_tracks = await playlist_tracks(inherited_playlist.uuid, undefined, seen_playlist_uuids);
             switch (inherited_playlist.mode) {
-                case "INCLUDE": tracks = tracks_include(tracks, inherited_tracks); break;
-                case "EXCLUDE": tracks = tracks_exclude(tracks, inherited_tracks); break;
-                case "MASK"   : tracks = tracks_mask(tracks, inherited_tracks);
+                case "INCLUDE"     : tracks = tracks_include(tracks, inherited_tracks); break;
+                case "EXCLUDE"     : tracks = tracks_exclude(tracks, inherited_tracks); break;
+                case "MASK"        : tracks = tracks_mask(tracks, inherited_tracks); break;
+                case "INTERSECTION": tracks = tracks_intersection(tracks, inherited_tracks); break;
             }
         }
     }
     for(const inherited_search of cplaylist_data.inherited_searchs!) {
         const inherited_tracks = track_query_filter(is_empty(GLOBALS.global_var.sql_tracks) ? await get_tracks() : GLOBALS.global_var.sql_tracks, inherited_search.query);
         switch (inherited_search.mode) {
-            case "INCLUDE": tracks = tracks_include(tracks, inherited_tracks); break;
-            case "EXCLUDE": tracks = tracks_exclude(tracks, inherited_tracks); break;
-            case "MASK"   : tracks = tracks_mask(tracks, inherited_tracks);
+            case "INCLUDE"     : tracks = tracks_include(tracks, inherited_tracks); break;
+            case "EXCLUDE"     : tracks = tracks_exclude(tracks, inherited_tracks); break;
+            case "MASK"        : tracks = tracks_mask(tracks, inherited_tracks); break;
+            case "INTERSECTION": tracks = tracks_intersection(tracks, inherited_tracks); break;
         }
     }
-    return tracks;
+    return sort_playlist_tracks(cplaylist_data.sort!, tracks);
 }
 
 export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string) {
@@ -154,6 +157,7 @@ export function playlist_name_sync(playlist_uuid: string) {
 }
 export async function playlist_data(playlist_uuid: string, ignore_tracks: IgnoreTracks = "NO_IGNORE") {
     const playlists = await db_get_all_async<SQLPlaylist>(`${sql_select<Playlist>("playlists", "*")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    if(playlists.length === 0) return undefined;
     return await sql_playlist_to_playlist(playlists[0], ignore_tracks);
 }
 export async function update_playlist(playlist_uuid: string, new_playlist: Playlist) {
@@ -187,6 +191,18 @@ export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
         await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", true])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
     else
         await db_exec_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["pinned", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+}
+export async function public_private_playlist(playlist_uuid: string, is_public: boolean) {
+    if(is_public)
+        await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["public", true])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    else
+        await db_exec_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["public", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+}
+export async function archive_playlist(playlist_uuid: string, archive: boolean) {
+    if(archive)
+        await db_run_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["archived", true])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
+    else
+        await db_exec_async(`${sql_update_table("playlists")} ${sql_set<Playlist>(["archived", false])} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
 }
 export async function is_playlist_pinned(playlist_uuid: string): Promise<boolean> {
     const playlists = await db_get_all_async<{pinned: boolean}>(`${sql_select<Playlist>("playlists", "pinned")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);

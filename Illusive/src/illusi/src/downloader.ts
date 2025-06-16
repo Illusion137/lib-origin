@@ -48,6 +48,12 @@ export async function batch_undownload(playlist_key: string, slice?: [number, nu
         callback?.((i+1)/tracks.length);
     }
 }
+export async function undownload_track(track: Track){
+    if(!Illusive.is_youtube(track)){
+        await SQLTracks.clear_track_youtube(track.uid);
+    }
+    await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
+}
 
 function download_error_callback(title: string, error: Error, track: Track, start_download?: SetState): "ERROR" {
     if (start_download !== undefined) start_download(false);
