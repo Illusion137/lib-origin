@@ -11,7 +11,9 @@ import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_
 import { ResponseError } from "../../../../../origin/src/utils/types";
 import { alert_error, alert_info } from "../alert";
 import { clean_album_title } from "../../../gen/apple_music_parser";
+import { generate_unique_track_tints } from "../../../illusive_utilts";
 
+const bad_artist_names = [',', '&', 'and'];
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
     const meta: TrackMetaData = {
         added_date: new Date().toISOString() as ISOString,
@@ -22,7 +24,7 @@ export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
         track.uid ?? "",
         track.title ?? "",
         track.alt_title ?? "",
-        JSON.stringify(track.artists ?? []),
+        JSON.stringify(track.artists.filter(artist => !bad_artist_names.includes(artist.name.trim())) ?? []),
         track.duration ?? 0,
         track.prods ?? "",
         track.genre ?? "",
@@ -87,26 +89,28 @@ function find_track_in_globals(track: Track){
     return undefined;
 }
 
+export async function add_playback_saved_data_to_track(track: Track){
+    track.playback = {
+        artwork: Illusive.get_track_artwork(document_directory(""), track),
+        added: false,
+        successful: false
+    }
+    const saved = await track_exists(track);
+    track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
+    if(saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri) && Prefs.get_pref('media_files_on_albums')) {
+        const found_track = find_track_in_globals(track);
+        if(found_track) track.uid = found_track.uid;
+        track.media_uri = found_track?.media_uri;
+        track.thumbnail_uri = found_track?.thumbnail_uri;
+        track.lyrics_uri = found_track?.lyrics_uri;
+    }
+    check_fixerupper_track(track).catch(e => e);
+    return track;
+}
+
 export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
     return await Promise.all(
-        tracks.map(async(track) => {
-            track.playback = {
-                artwork: Illusive.get_track_artwork(document_directory(""), track),
-                added: false,
-                successful: false
-            }
-            const saved = await track_exists(track);
-            track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
-            if(saved && Prefs.get_pref('media_files_on_albums')) {
-                const found_track = find_track_in_globals(track);
-                if(found_track) track.uid = found_track.uid;
-                track.media_uri = found_track?.media_uri;
-                track.thumbnail_uri = found_track?.thumbnail_uri;
-                track.lyrics_uri = found_track?.lyrics_uri;
-            }
-            check_fixerupper_track(track).catch(e => e);
-            return track;
-        })
+        tracks.map(add_playback_saved_data_to_track)
     );
 }
 export function merge_track_with_new_track(track: Track, new_track: Track): Track {
@@ -140,7 +144,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
     try {
         const meta: TrackMetaData = JSON.parse(sql_track.meta!);
         return Object.assign(sql_track, {
-            artists: JSON.parse(sql_track.artists),
+            artists: JSON.parse(sql_track.artists).filter(artist => !bad_artist_names.includes(artist.name.trim())),
             album: JSON.parse(sql_track.album!),
             prods: sql_track.prods?.trim(),
             tags: JSON.parse(sql_track.tags!),
@@ -230,9 +234,15 @@ export async function track_uid_exists(track: Track) {
     const count_sql = await db_get_all_async(`${sql_select<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
     return count_sql.length !== 0;
 }
+let time_since_last_fetched_track_data = new Date();
 export async function fetch_track_data() {
+    if(time_since_last_fetched_track_data.getTime() + 5000 < new Date().getTime()) return;
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
+    time_since_last_fetched_track_data = new Date();
+    if(Prefs.get_pref('album_track_tinting')){
+        generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table);
+    }
 }
 export async function get_tracks(){
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
@@ -290,7 +300,7 @@ export async function clean_thumbnail_cache() {
     await Promise.all(all_promises);
 }
 
-export async function clean_directories() {
+export async function clean_directories_itemized(){
     const thumbnail_files = await SQLfs.read_directory(thumbnail_directory(""));
     const media_files     = await SQLfs.read_directory(media_directory(""));
     const lyrics_files    = await SQLfs.read_directory(lyrics_directory(""));
@@ -299,18 +309,23 @@ export async function clean_directories() {
     const media_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({media_uri}) => media_uri).filter(item => item !== undefined));
     const lyrics_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({lyrics_uri}) => lyrics_uri).filter(item => item !== undefined));
 
-    const files_to_delete: Promises = [];
+    const files_to_delete = {
+        thumbnails: thumbnail_files.filter(file => !thumbnail_uri_set.has(file)).map(file => thumbnail_directory(file)),
+        media: media_files.filter(file => !media_uri_set.has(file)).map(file => media_directory(file)),
+        lyrics: lyrics_files.filter(file => !lyrics_uri_set.has(file)).map(file => lyrics_directory(file)),
+    };
 
-    for(const file of thumbnail_files)
-        if(!thumbnail_uri_set.has(file))
-            files_to_delete.push(SQLfs.delete_item(thumbnail_directory(file)));
-    for(const file of media_files)
-        if(!media_uri_set.has(file))
-            files_to_delete.push(SQLfs.delete_item(media_directory(file)));
-    for(const file of lyrics_files)
-        if(!lyrics_uri_set.has(file))
-            files_to_delete.push(SQLfs.delete_item(lyrics_directory(file)));
-    
-    alert_info(`Cleaned ${files_to_delete.length} files`);
-    await Promise.all(files_to_delete);
+    return files_to_delete;
+}
+
+export async function clean_directories() {
+    const deletion_promises: Promises = [];
+    const files_to_delete = await clean_directories_itemized();
+
+    files_to_delete.thumbnails.forEach(file => deletion_promises.push(SQLfs.delete_item(file)));
+    files_to_delete.media.forEach(file => deletion_promises.push(SQLfs.delete_item(file)));
+    files_to_delete.lyrics.forEach(file => deletion_promises.push(SQLfs.delete_item(file)));
+
+    alert_info(`Cleaned ${deletion_promises.length} files`);
+    await Promise.all(deletion_promises);
 }

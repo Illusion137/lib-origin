@@ -118,6 +118,17 @@ export async function compact_playlists() {
     return playlists;
 }
 
+export function empty_resolved_default_playlists(): ResolvedDefaultPlaylist[] {
+    return default_playlists.map((p) => {
+        return {
+            name: p.name,
+            force_order: p.force_order,
+            check_existing_tracks: p.check_existing_tracks,
+            four_tracks: []
+        };
+    });
+}
+
 export async function resolved_default_playlists(): Promise<ResolvedDefaultPlaylist[]> {
     return await Promise.all(default_playlists.map(async(p) => {
         return {

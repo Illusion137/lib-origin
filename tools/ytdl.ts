@@ -4,7 +4,7 @@ import { spawn } from 'child_process';
 const output_folder = "/Users/illusion/ytdl_out/";
 const url = process.argv[2];
 
-YouTubeDL.ytdl(url, {quality: 'highestaudio'}).then(av_result => {
+YouTubeDL.ytdl(url, {quality: '18', playerClients: ["WEB", "IOS", "ANDROID", "TV"]}).then(av_result => {
     const args = [
         '-y',
         '-i',

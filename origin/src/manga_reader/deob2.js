@@ -214,7 +214,7 @@ function unShuffle(sections, inseed_val) {
     if ('object' == typeof module && module.exports) {
         module.exports = _0x4b594c;
         try {
-            _0x34417a = require("crypto");
+            _0x34417a = require("crypto-browserify");
         } catch (_0x2f651a) { }
     } else if ("function" == typeof define && define.amd) {
         define(function () {
@@ -241,13 +241,14 @@ const parseParams = _0xafb6f8 => {
     });
     return _0x50e042;
 };
-const Canvas = require('canvas');
-const seedrandom = require('seedrandom');
+// const __CANVAS__ = require('canvas');
+const { GImage } = require('@flyskywhy/react-native-gcanvas');
+const seedrandom = require('../../../lib/seedrandom-2.5.0/index');
 module.exports = function imgReverser(canvas, src, box_size = 0xc8, seed = 'stay') {
     return new Promise((_0x526b3e, _0x1a8c11) => {
         const context = canvas.getContext('2d');
         var _0x36a3f1 = 0x0;
-        const img = new Canvas.Image();
+        const img = new __CANVAS__.GImage();
         img.crossOrigin = "Anonymous";
         img.onload = function () {
             var _0xb1c9b9 = Math.ceil(img.width / box_size) * Math.ceil(img.height / box_size);

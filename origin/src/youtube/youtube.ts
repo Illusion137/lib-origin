@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth1, urlid } from "../utils/util";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { CreatePlaylist } from "./types/CreatePlaylist";
@@ -52,11 +52,12 @@ export namespace YouTube {
 	}
 	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
+		tuser_agent;
 		return {
-			"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
+			"User-Agent": user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
-			"authorization": SAPISID === undefined ? undefined : (ytcfg !== undefined ? sapisid_hash_auth1(SAPISID, epoch, ytcfg, 'https://www.youtube.com') : sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com')),
+			"authorization": SAPISID === undefined ? undefined : sapisid_hash_auth1(SAPISID, epoch, ytcfg!, 'https://www.youtube.com'),
 			"content-type": "application/json",
 			"priority": "u=1, i",
 			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
@@ -80,7 +81,8 @@ export namespace YouTube {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"Cookies": cookie_jar?.toString(),
+			"cookie": 'LOGIN_INFO=AFmmF2swRgIhALNJvfm8Up5Tj_BadW8QYLeIqHfNM1JQenwsGOX-cWuVAiEAn98JoCTJdKNKJgNg0_MM0jcChKFFSRqZlWOTh-ylo-c:QUQ3MjNmeUk2MWtPQ0NPR3ZoUHU1bXNYMFJ3dkNZaXNqblBPWWxhZ0NCME56TkoyODRSMW1aOFRHa2l6Tjl5THQ2YjJGVDBCcUZVV0tyOHVBUUppMXBLQTZqUFlKZ2ZWVGJLdDJwaEdNTDJGQndKTnNOa2JoS3N0OXlHVTBUN1VkdlZxcnhYM1NFcnpKRU1VeENJbXlxRGpURFEtSU5DaVF3; VISITOR_INFO1_LIVE=RltITlzgDmw; VISITOR_PRIVACY_METADATA=CgJVUxIEGgAgRg%3D%3D; _gcl_au=1.1.1566958452.1741420594; PREF=f6=40000080&f4=4000000&tz=America.Phoenix&f7=100&repeat=NONE&autoplay=true&volume=13; SID=g.a000wggdkIeXZm3T7cmO_WbRK5dHUN2jd9LmUKpli4_mo27wShPUxu0jXCzcGVKQjmgI6l0b-QACgYKARoSARQSFQHGX2Mi5aaop-Zh0KZqwa_m7kLBRxoVAUF8yKp7QWFH3ibT_JkrJvkj8MmN0076; __Secure-1PSID=g.a000wggdkIeXZm3T7cmO_WbRK5dHUN2jd9LmUKpli4_mo27wShPUKwFTjgJ_69LUsy-BFIfGigACgYKAXASARQSFQHGX2Mi2SpFX3E0sWPEghIawJfkURoVAUF8yKrBy_lNHTM16CngPhwCh6Kl0076; __Secure-3PSID=g.a000wggdkIeXZm3T7cmO_WbRK5dHUN2jd9LmUKpli4_mo27wShPUaK9xsOcZGM28vN8ouSniUgACgYKAVsSARQSFQHGX2MiY7dl9D1EU4q3Bx557hm3shoVAUF8yKrbk7FeU3MZ8nW1Do-Q1pyM0076; HSID=AuLlC8FBPXO-Emmy1; SSID=AKpcPnQ-EQFPpdr5d; APISID=QHMAvsToI2Z1nufN/AKzK8sNe3JK5uH0rG; SAPISID=BShJ0k6u1GSSOOEr/As7gsQ79VQZuHyPyW; __Secure-1PAPISID=BShJ0k6u1GSSOOEr/As7gsQ79VQZuHyPyW; __Secure-3PAPISID=BShJ0k6u1GSSOOEr/As7gsQ79VQZuHyPyW; YSC=eGfqzXuVHbA; __Secure-ROLLOUT_TOKEN=CIqP5vnE3-SF_AEQn6LOxc-DiwMYm6LrpdrCjQM%3D; __Secure-1PSIDTS=sidts-CjIBjplskDbUs3IAsut1xSI4C0XqobTsAI9kWbUZd6RMLiipiIsJiKMM23vEc6uTsNG_AxAA; __Secure-3PSIDTS=sidts-CjIBjplskDbUs3IAsut1xSI4C0XqobTsAI9kWbUZd6RMLiipiIsJiKMM23vEc6uTsNG_AxAA; CONSISTENCY=AKreu9u2AOrCRBMbO8xCc1eeJc_LjfzkKFd1oiqhqmwXv3nYm9OFYAsx9qZ-rUV240qEPn3DldgQ_LVsqQiZp4rjwk8bSrWQzKw_6r1_FBH0bFhvG-G9rS_pU9PmHszsknMPll1-qbSrtTxj02XfFOztQep6JjFpLjVXzQgf-edi9vkcl5NGe1Xo58aLU1_sYI7GGD4Of-hwK23HS_2joZ4Hs1_fXI1ON4VnlgOc0-qDHYyE3mvjMjEvKfKE-FNrRrbUBp5hMIdYeVt0O44J7fZdBg; SIDCC=AKEyXzVOrZT6whYT1cJSndBSCSh1PoH9KO6-YRZLgPmEfukPtaUdOFvoqi2oqS_AEl7_Tr_UPw; __Secure-1PSIDCC=AKEyXzUfdc0SV26zTYGo1avoYQYa-jRtyEbiCBOaSUG1tUOqypcJAAkamxwunbTa7wPV08dHEQ; __Secure-3PSIDCC=AKEyXzWKOOEupeh_MfBpLaoaOrbqZ86UhmyBGzUllFIXFMzzcJfOa7XsZ_YC7NVD7s_WaBg902o',
+			// cookie_jar?.toString(),
 			"Referer": "https://www.youtube.com",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
 		}
@@ -113,10 +115,11 @@ export namespace YouTube {
 	}
 	async function get_initial_data_config(opts: Opts, url: string, tuser_agent?: string): Promise<ICFG | ResponseError> {
 		try {
+			tuser_agent;
 			const page_response = await fetch(url, {
 				headers: {
 					'authority': 'www.youtube.com',
-					"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
+					"User-Agent": user_agent_windows,
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
 					"accept-language": "en-US,en;q=0.9",
 					"cache-control": "max-age=0",
@@ -139,7 +142,8 @@ export namespace YouTube {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQjkr84BCOW1zgEIwrbOAQjZt84BCJ66zgEInrvOARi9rs4BGJyxzgE=",
-					"Cookies": opts.cookie_jar?.toString() as string,
+					"cookie": 'LOGIN_INFO=AFmmF2swRgIhALNJvfm8Up5Tj_BadW8QYLeIqHfNM1JQenwsGOX-cWuVAiEAn98JoCTJdKNKJgNg0_MM0jcChKFFSRqZlWOTh-ylo-c:QUQ3MjNmeUk2MWtPQ0NPR3ZoUHU1bXNYMFJ3dkNZaXNqblBPWWxhZ0NCME56TkoyODRSMW1aOFRHa2l6Tjl5THQ2YjJGVDBCcUZVV0tyOHVBUUppMXBLQTZqUFlKZ2ZWVGJLdDJwaEdNTDJGQndKTnNOa2JoS3N0OXlHVTBUN1VkdlZxcnhYM1NFcnpKRU1VeENJbXlxRGpURFEtSU5DaVF3; VISITOR_INFO1_LIVE=RltITlzgDmw; VISITOR_PRIVACY_METADATA=CgJVUxIEGgAgRg%3D%3D; _gcl_au=1.1.1566958452.1741420594; PREF=f6=40000080&f4=4000000&tz=America.Phoenix&f7=100&repeat=NONE&autoplay=true&volume=13; SID=g.a000wggdkIeXZm3T7cmO_WbRK5dHUN2jd9LmUKpli4_mo27wShPUxu0jXCzcGVKQjmgI6l0b-QACgYKARoSARQSFQHGX2Mi5aaop-Zh0KZqwa_m7kLBRxoVAUF8yKp7QWFH3ibT_JkrJvkj8MmN0076; __Secure-1PSID=g.a000wggdkIeXZm3T7cmO_WbRK5dHUN2jd9LmUKpli4_mo27wShPUKwFTjgJ_69LUsy-BFIfGigACgYKAXASARQSFQHGX2Mi2SpFX3E0sWPEghIawJfkURoVAUF8yKrBy_lNHTM16CngPhwCh6Kl0076; __Secure-3PSID=g.a000wggdkIeXZm3T7cmO_WbRK5dHUN2jd9LmUKpli4_mo27wShPUaK9xsOcZGM28vN8ouSniUgACgYKAVsSARQSFQHGX2MiY7dl9D1EU4q3Bx557hm3shoVAUF8yKrbk7FeU3MZ8nW1Do-Q1pyM0076; HSID=AuLlC8FBPXO-Emmy1; SSID=AKpcPnQ-EQFPpdr5d; APISID=QHMAvsToI2Z1nufN/AKzK8sNe3JK5uH0rG; SAPISID=BShJ0k6u1GSSOOEr/As7gsQ79VQZuHyPyW; __Secure-1PAPISID=BShJ0k6u1GSSOOEr/As7gsQ79VQZuHyPyW; __Secure-3PAPISID=BShJ0k6u1GSSOOEr/As7gsQ79VQZuHyPyW; YSC=eGfqzXuVHbA; __Secure-ROLLOUT_TOKEN=CIqP5vnE3-SF_AEQn6LOxc-DiwMYm6LrpdrCjQM%3D; __Secure-1PSIDTS=sidts-CjIBjplskDbUs3IAsut1xSI4C0XqobTsAI9kWbUZd6RMLiipiIsJiKMM23vEc6uTsNG_AxAA; __Secure-3PSIDTS=sidts-CjIBjplskDbUs3IAsut1xSI4C0XqobTsAI9kWbUZd6RMLiipiIsJiKMM23vEc6uTsNG_AxAA; CONSISTENCY=AKreu9u2AOrCRBMbO8xCc1eeJc_LjfzkKFd1oiqhqmwXv3nYm9OFYAsx9qZ-rUV240qEPn3DldgQ_LVsqQiZp4rjwk8bSrWQzKw_6r1_FBH0bFhvG-G9rS_pU9PmHszsknMPll1-qbSrtTxj02XfFOztQep6JjFpLjVXzQgf-edi9vkcl5NGe1Xo58aLU1_sYI7GGD4Of-hwK23HS_2joZ4Hs1_fXI1ON4VnlgOc0-qDHYyE3mvjMjEvKfKE-FNrRrbUBp5hMIdYeVt0O44J7fZdBg; SIDCC=AKEyXzVOrZT6whYT1cJSndBSCSh1PoH9KO6-YRZLgPmEfukPtaUdOFvoqi2oqS_AEl7_Tr_UPw; __Secure-1PSIDCC=AKEyXzUfdc0SV26zTYGo1avoYQYa-jRtyEbiCBOaSUG1tUOqypcJAAkamxwunbTa7wPV08dHEQ; __Secure-3PSIDCC=AKEyXzWKOOEupeh_MfBpLaoaOrbqZ86UhmyBGzUllFIXFMzzcJfOa7XsZ_YC7NVD7s_WaBg902o'
+					// opts.cookie_jar?.toString() as string,
 				},
 				body: undefined,
 				proxy: opts.proxy,
@@ -189,13 +193,14 @@ export namespace YouTube {
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, undefined, new_auth ? ytcfg : undefined), body: JSON.stringify(merged_payload) });
+			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		const response = await post_check_response(opts, ytcfg, path, payload, new_auth);
 		if ("error" in response) return false;
+		console.log(response.status, " ", response.statusText);
 		return response.ok;
 	}
 	export async function post_like(opts: Opts, ytcfg: YTCFG, video_id: string, like_path: string) {

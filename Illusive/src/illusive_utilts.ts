@@ -1,11 +1,28 @@
-import { is_empty, remove, remove_special_chars, remove_topic, urlid } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, is_empty, remove, remove_topic, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
-import { ANTI_QUERY_FLAG_PREFIX, QUERY_FLAGS } from "./query_flags";
+import { COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
+import fuzzysort from "fuzzysort";
 import { seeded_rand } from "./seeding";
-import { CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, Track } from "./types";
+import { AlbumSortMode, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
+import { Constants } from "./constants";
 
-export function extract_file_extension(path: string) { return '.' + path.replace(/(.+\/)*.+?\./, ''); }
+export function has_file_extension(path: string){
+    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i);
+    return typeof extracted === "string";
+}
+export function extract_file_extension(path: string, mime?: "photo"|"video"|"none") {
+    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i);
+    if(typeof extracted === "object"){
+        switch(mime){
+            case "none": return "";
+            case "photo": return ".jpg";
+            case "video": return ".mp4";
+            default: return ".txt";
+        }
+    }
+    return extracted;
+}
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
 export function shuffle_array<T>(array: T[]) {
     let m = array.length, t, i;
@@ -64,8 +81,37 @@ export function date_from(date: {year?: number, month?: number, day?: number, ho
     if(date.ms) new_date.setMilliseconds(date.ms);
     return new_date;
 }
-export function track_section_map(tracks: Track[]): { "char_data": string[], "section_map": Track[][] } {
+
+export function get_most_played_artists(global_tracks: Track[]){
+    const seen_artists = new Set<IllusiveURI>();
+    return global_tracks
+    .filter(track => !is_empty(track.artists[0].uri))
+    .sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0))
+    .filter(track => {
+        if(seen_artists.has(track.artists[0].uri!)) return false;
+        seen_artists.add(track.artists[0].uri!)
+        return true;
+    })
+    .map(track => track.artists[0])
+}
+function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[]{
+    const most_played_artists = get_most_played_artists(global_tracks);
+    const most_played_artists_uris = new Map<string, number>(most_played_artists.map((artist, i) => [artist.uri ?? "", most_played_artists.length - (artist.uri ? i : 0)]));
+    return albums.slice().sort((a, b) => (most_played_artists_uris.get(b.artist?.[0]?.uri ?? "") ?? 0) - (most_played_artists_uris.get(a.artist?.[0]?.uri ?? "") ?? 0));
+}
+export function sort_compact_playlists(mode: AlbumSortMode, albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[]{
+    switch(mode){
+        case "NEWEST": return albums;
+        case "OLDEST": return albums.slice().reverse();
+        case "MOST_PLAYED_ARTISTS": return sort_compact_playlist_by_most_played_artists(albums, global_tracks);
+        case "LEAST_PLAYED_ARTISTS": return sort_compact_playlist_by_most_played_artists(albums, global_tracks).reverse();
+        default: return albums;
+    }
+}
+export function track_section_map(tracks: Track[], queried: boolean): { "char_data": string[], "section_map": Track[][] } {
     const sections_map = new Map<string, Track[]>();
+    const best_results: Track[] = queried ? tracks.slice(0, Constants.best_search_result_amount) : [];
+    if(queried) tracks = tracks.slice(Constants.best_search_result_amount);
     for(const track of tracks) {
         let char = track.title[0].toUpperCase();
         if(!(/[A-Z]/).test(char)) char = '#';
@@ -73,13 +119,16 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
             sections_map.set(char, [track])
         } else {
             const new_tracks = sections_map.get(char)!;
-            new_tracks.push(track)
-            sections_map.set(char, new_tracks)
+            new_tracks.push(track);
+            sections_map.set(char, new_tracks);
         }
     }
-    const sections: Track[][] = []
-    const section_chars: string[] = []
-    const sorted_sections_map = [...sections_map].sort()
+    const sections: Track[][] = [];
+    const section_chars: string[] = [];
+    const sorted_sections_map = [...sections_map].sort();
+    if(queried){
+        sorted_sections_map.unshift(['$', best_results])
+    }
     for(const value of sorted_sections_map) { 
         sections.push( value[1] )
         section_chars.push(value[0])
@@ -87,38 +136,88 @@ export function track_section_map(tracks: Track[]): { "char_data": string[], "se
     return {char_data: section_chars, section_map: [...sections]};
 }
 
-export function track_query_filter(tracks: Track[], query?: string) {
-    if(!is_empty(query)) {
-        const matched_anti_query_flags = QUERY_FLAGS.filter(flag => query?.includes(ANTI_QUERY_FLAG_PREFIX + flag.flag));
-        query = remove(query!, ...matched_anti_query_flags.map(flag => RegExp(`${ANTI_QUERY_FLAG_PREFIX}${flag.flag} ?`, 'gi')));
-        const matched_query_flags = QUERY_FLAGS.filter(flag => query?.includes(flag.flag));
-        query = remove(query, ...matched_query_flags.map(flag => RegExp(`${flag.flag} ?`, 'gi')));
-        
-        return tracks.filter(track => {
-            if(is_empty(query) && matched_anti_query_flags.length === 0 && matched_query_flags.length === 0) return false;
-            if(!is_empty(query) && matched_query_flags.length === 0 && matched_anti_query_flags.length === 0){
-                const title = Prefs.get_pref('alt_titles') && !is_empty(track.alt_title) ? track.alt_title! : track.title;
-                const includes_title = remove_special_chars(title.toUpperCase()).includes(remove_special_chars(query!).toUpperCase());
-                if(includes_title) return true;
-                const includes_artist = artist_string(track).toUpperCase().includes(query!.toUpperCase());
-                if(includes_artist) return true;
-                const includes_album = track.album?.name.toUpperCase().includes(query?.toUpperCase() ?? "") ?? false;
-                if(includes_album) return true;
-            }
-            
-            const matches_any_anti_flag = matched_anti_query_flags.some(flag =>  !flag.condition(track, query!));
-            if(matches_any_anti_flag) return true;
-            
-            const matches_any_flag = matched_query_flags.some(flag =>  flag.condition(track, query!));
+function times_played_multiplier(plays: number, max_plays: number): number{
+    return Math.max((plays / max_plays) + 1, 1);
+}
+function time_since_last_played_multiplier(date: Date): number{
+    const time_difference = new Date().getTime() - date.getTime();
+    const days_difference = time_difference / (1000 * 60 * 60 * 24);
+    return Math.pow(Math.max(4 - days_difference, 1), 2);
+}
+
+function filter_with_query_flags<T>(query: string, obj: T[], query_flags: QueryFlag<T>[]){
+    const extracted_query_flags = extract_query_flags<T>(query, query_flags);
+
+    query = extracted_query_flags.new_query;
+
+    return {
+        filtered_data: obj.filter(track => {
+            if(is_empty(query) && extracted_query_flags.extracted_query_flags.length === 0) return false;
+            const matches_any_flag = extracted_query_flags.extracted_query_flags.every(([flag, args, anti]) => anti ? !flag.condition(track, args) : flag.condition(track, args));
             return matches_any_flag;
-        });
-    }
-    return tracks;
+        }),
+        new_query: query
+    };
+}
+
+export function track_query_filter(tracks: Track[], query?: string): Track[] {
+    if(is_empty(query)) return tracks;
+    const max_plays = Math.max(...tracks.map(t => t.meta?.plays ?? 0));
+
+    const queried_result = filter_with_query_flags(query!, tracks, TRACK_QUERY_FLAGS);
+
+    query = queried_result.new_query;
+    tracks = queried_result.filtered_data;
+
+    if(is_empty(query)) return tracks;
+
+    return fuzzysort.go(
+        query, 
+        tracks,
+        {
+            all: false,
+            keys: ['title', (obj) => artist_string(obj), (obj) => obj.album?.name ?? "---------"],
+            scoreFn: r => r.score * times_played_multiplier(r.obj.meta?.plays ?? 0, max_plays) * time_since_last_played_multiplier(r.obj.meta?.last_played_date ? new Date(r.obj.meta.last_played_date) : new Date()),
+        }
+    ).map(r => r.obj);
 }
 export function playlist_query_filter(playlists: Playlist[], query?: string) {
-    if(!is_empty(query))
-        return playlists.filter(playlist => playlist.title.toLowerCase().includes(query!.toLowerCase()));
-    return playlists;
+    if(is_empty(query)) return playlists;
+    
+    const queried_result = filter_with_query_flags(query!, playlists, PLAYLIST_QUERY_FLAGS);
+
+    query = queried_result.new_query;
+    playlists = queried_result.filtered_data;
+
+    if(is_empty(query)) return playlists;
+
+    return fuzzysort.go(
+        query, 
+        playlists,
+        {
+            all: false,
+            keys: [(obj) => obj.title, (obj) => obj.description ?? "---------"]
+        }
+    ).map(r => r.obj);
+}
+export function album_query_filter(compact_playlists: CompactPlaylist[], query?: string){
+    if(is_empty(query)) return compact_playlists;
+    
+    const queried_result = filter_with_query_flags(query!, compact_playlists, COMPACT_PLAYLIST_QUERY_FLAGS);
+
+    query = queried_result.new_query;
+    compact_playlists = queried_result.filtered_data;
+
+    if(is_empty(query)) return compact_playlists;
+
+    return fuzzysort.go(
+        query, 
+        compact_playlists,
+        {
+            all: false,
+            keys: [(obj) => obj.title.name, (obj) => artist_string(obj)]
+        }
+    ).map(r => r.obj);
 }
 export function cycle<T>(value: T, values: T[]): T {
     const value_index = values.findIndex(item => item === value);
@@ -218,6 +317,25 @@ export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
             named_uris.push({name: run.text, uri: run.navigationEndpoint !== undefined ? create_uri("youtubemusic", run.navigationEndpoint.browseEndpoint.browseId) : null });
     }
     return named_uris;
+}
+export function tracks_include(original: Track[], incoming: Track[]): Track[]{
+    const original_seen_uid_set = new Set(original.map(({uid}) => uid));
+    return [...original, ...incoming.filter(({uid}) => !original_seen_uid_set.has(uid))];
+}
+export function tracks_exclude(original: Track[], incoming: Track[]): Track[]{
+    const incoming_seen_uid_set = new Set(incoming.map(({uid}) => uid));
+    return original.filter(({uid}) => !incoming_seen_uid_set.has(uid));
+}
+export function tracks_mask(original: Track[], incoming: Track[]): Track[]{
+    const original_seen_uid_set = new Set(original.map(({uid}) => uid));
+    const incoming_seen_uid_set = new Set(incoming.map(({uid}) => uid));
+    const to_add = incoming.filter(({uid}) => !original_seen_uid_set.has(uid));
+    const to_remove = new Set(original.filter(({uid}) => incoming_seen_uid_set.has(uid)).map(({uid}) => uid));
+    return [...original.filter(({uid}) => !to_remove.has(uid)), ...to_add];
+}
+export function tracks_intersection(original: Track[], incoming: Track[]): Track[]{
+    const incoming_seen_uid_set = new Set(incoming.map(({uid}) => uid));
+    return original.filter(({uid}) => incoming_seen_uid_set.has(uid));
 }
 export function array_include<T>(a: T[], b: T[], compare_same: (a: T, b: T) => boolean) {
     const array: T[] = [...a];
@@ -323,11 +441,12 @@ export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any
 	return Object.keys(groups).map((key: string) => ({title: key, data: groups[key]}));
 }
 
-export function artist_string(track: Track): string{
-    if(is_empty(track)) return "";
-    if(track.artists.length === 0) return "";
-    if(track.artists.length <= 1) return remove_topic(track.artists?.[0].name ?? "").trim();
-    const names = track.artists.map(artist => remove_topic(artist?.name ?? "").trim());
+export function artist_string(track_or_compact_playlist: Track|CompactPlaylist): string{
+    if(is_empty(track_or_compact_playlist)) return "";
+    const artists = "artist" in track_or_compact_playlist ? track_or_compact_playlist.artist : track_or_compact_playlist.artists;
+    if(artists.length === 0) return "";
+    if(artists.length <= 1) return remove_topic(artists?.[0].name ?? "").trim();
+    const names = artists.map(artist => remove_topic(artist?.name ?? "").trim());
     const final_name = names.pop()!;
     return names.length
         ? names.join(', ') + ' & ' + final_name
@@ -336,8 +455,8 @@ export function artist_string(track: Track): string{
 
 export function version_greater_than(version: string, other_version: string): boolean{
     try {
-        const [major, minor, patch] = version.split('.').map(parseInt);
-        const [other_major, other_minor, other_patch] = other_version.split('.').map(parseInt);
+        const [major, minor, patch] = version.split('.').map(item => parseInt(item));
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(item => parseInt(item));
         if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
         if(major > other_major) return true;
         if(major === other_major && minor > other_minor) return true;
@@ -345,11 +464,13 @@ export function version_greater_than(version: string, other_version: string): bo
         return false;
     }
     catch(e) {
+        console.log(e);
         return false;
     }
 }
 
-export function single_case(str: string): string{
+export function single_case(str: string): string {
+    if(str.length <= 2) return str.toUpperCase();
     const split = str.toLowerCase().split('');
     split[0] = split?.[0].toUpperCase();
     return split.join('');
@@ -427,4 +548,8 @@ export function is_topic(str: string){
 export function clean_title(title: string){
     const cleaned = remove(title, /\(.+?\)/gi, /\[.+?\]/gi).trim();
     return cleaned;
+}
+
+export function recreate<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
 }

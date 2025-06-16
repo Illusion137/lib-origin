@@ -9,12 +9,14 @@ export function generate_new_uid(prefix_name: string) {
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
-export function encode_params(data: Record<string, unknown>) {
+export function encode_params(data: Record<string, unknown>, query?: [string, string]) {
 	const encoded_params: string[] = [];
 	for(const key of Object.keys(data)) {
 		const param = data[key];
 		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : param as string|number|boolean )}`);
 	}
+	if(query) 
+		encoded_params.push(`${query[0]}=${query[1]}`);
 	return encoded_params.join('&');
 }
 export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
@@ -41,9 +43,38 @@ export function parse_time(clock_time: string|undefined): number {
 	}
 	return time;
 }
-export function parse_runs(runs: ({text: string}[]) | undefined ): string {
+export function youtube_views_number(views_string?: string): number {
+    if(is_empty(views_string)) return 0;
+    views_string = remove(views_string!, " views",  " view", " plays", " play");
+    const last_char = views_string[views_string.length - 1];
+
+    switch(last_char) {
+        case 'B': return parseFloat(views_string) * 1000000000;
+        case 'M': return parseFloat(views_string) * 1000000;
+        case 'K': return parseFloat(views_string) * 1000;
+        default: return parseFloat(views_string);
+    }
+}
+export function round_decimal_place(num: number, decimal_places: number){
+	if(decimal_places === 0) return Math.round(num); 
+	const multiplier = Math.pow(10, decimal_places);
+	if(decimal_places < 0) return Math.round(num / multiplier) * multiplier;
+	return Math.round(num * multiplier) / multiplier;
+}
+export function parse_runs(runs: ({text: string}[]) | undefined, join_with?: string ): string {
     if(runs === undefined) return "";
-    return runs.map(run => run.text).join(" ");
+    return runs.map(run => run.text).join(join_with ?? " ");
+}
+function wait(milliseconds: number) {
+	return new Promise(function(resolve) { 
+	  	setTimeout(resolve, milliseconds, 'HASH_TIMED_OUT');
+	});
+}
+export async function call_wtimeout(promise: () => Promise<any>, timeout_milliseconds: number){
+	return await Promise.race([
+		promise(),
+		wait(timeout_milliseconds)
+	])
 }
 export function empty_undefined(str: string) { return is_empty(str) ? undefined : str; }
 export function urlid(url: string, ...remove_links: (string|RegExp)[]) { 
@@ -66,6 +97,19 @@ export function eval_json<T>(json: string): T {
     const result = eval("let evaluated = " + json + "; evaluated;");
     return result;
 }
+export function milliseconds_of(time: {days?: number, hours?: number, minutes?: number, seconds?: number}): number {
+	return ((time.days ?? 0) * 1000 * 60 * 60 * 24) 
+		+ ((time.hours ?? 0) * 1000 * 60 * 60)
+		+ ((time.minutes ?? 0) * 1000 * 60)
+		+ ((time.seconds ?? 0) * 1000)
+}
+// export function cached_function(func: )
+// function cached_function<T extends (...args: any[]) => any>(func: T): T {
+// 	const timed_cache: TimedCache<Parameters<T>[0], ReturnType<T>> = new TimedCache(10000);
+// 	return await timed_cache.return_update(func.arguments[0], func);
+// }
+// const bar = cached_function(remove_special_chars);
+// bar("");
 
 export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
 	const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
@@ -137,6 +181,9 @@ export function safe_date_iso(date: Date): string{
 	catch(e) {
 		return new Date(0).toISOString();
 	}
+}
+export function base_response_fail_msg(response: Response){
+	return `response failed to ${response.url} with status code: ${response.status}; msg: ${response.statusText}`;
 }
 
 import { RequestInit } from 'node-fetch';

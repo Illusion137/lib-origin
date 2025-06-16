@@ -1,9 +1,7 @@
-import CookieManager from '@react-native-community/cookies';
 import * as SQLite from 'expo-sqlite';
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Illusive } from '../../../illusive';
 import { extract_file_extension } from '../../../illusive_utilts';
-import { Prefs } from '../../../prefs';
 import { CompactPlaylist, Primitives, SQLTables, Track } from "../../../types";
 import { ExampleObj } from '../example_objs';
 import * as GLOBALS from '../globals';
@@ -66,7 +64,7 @@ export async function create_table<T extends Record<string, any>>(table: SQLTabl
     await db.execAsync(sql_create_table<T>(table, obj));
 }
 
-export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*", limit?: number, order_by?: "ASC"|"DESC") {
+export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*" | "COUNT(1)", limit?: number, order_by?: "ASC"|"DESC") {
     return `SELECT ${String(what)} FROM ${table}` + (order_by ? ` ORDER BY id ${order_by}` : "") + (limit ? ` LIMIT ${limit}` : "");
 }
 export function sql_select_count<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*") {
@@ -152,11 +150,13 @@ export async function sql_all(db: SQLite.SQLiteDatabase, ...args: string[]) {
 export async function download_thumbnail(track: Track) {
     const best_artwork = await Illusive.get_best_track_artwork(document_directory(""), track);
     if(typeof best_artwork === "object" && is_empty(track.thumbnail_uri)) {
-        const ext = extract_file_extension(best_artwork.uri);
+        const ext = extract_file_extension(best_artwork.uri, "photo");
         const thumbnail_download = SQLfs.create_download_resumeable(best_artwork.uri, thumbnail_directory(track.uid + ext));
         await thumbnail_download.downloadAsync();
         await sql_update<Track>("tracks", track, "thumbnail_uri", track.uid + ext);
+        return track.uid + ext;
     }
+    return undefined;
 }
 
 export async function move_unsorted_media_to_folders() {
@@ -191,10 +191,6 @@ export async function delete_all_data() {
     reasign_db(await SQLite.openDatabaseAsync(db_path));
     await create_default_directories();
     await recreate_all_tables();
-    if(!Prefs.get_pref('keep_prefs')) {
-        await CookieManager.clearAll();
-        await Prefs.reset_prefs();
-    }
     GLOBALS.global_var.sql_tracks = [];
 }
 
@@ -218,7 +214,6 @@ export async function recreate_all_tables() {
     await create_table("tracks",                         ExampleObj.track_example0);
     await create_table("tracks_deleted",                 ExampleObj.track_example0);
     await create_table("recently_played_tracks",         ExampleObj.track_example0);
-    await create_table("recently_played_tracks_deleted", ExampleObj.track_example0);
     await create_table("backpack",                       ExampleObj.track_example0);
     await create_table("backpack_deleted",               ExampleObj.track_example0);
     await create_table("playlists",                      ExampleObj.playlist_example0);

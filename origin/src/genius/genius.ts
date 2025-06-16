@@ -1,5 +1,6 @@
 import { ResponseError } from "../utils/types";
-import { json_catch } from "../utils/util";
+import { eval_json, extract_string_from_pattern, json_catch, try_json_parse } from "../utils/util";
+import { Children, LyricsPreloadedState } from "./types/Lyrics";
 import { Result, Search } from "./types/Search";
 
 export namespace Genius {
@@ -26,10 +27,11 @@ export namespace Genius {
         if (!search_response.ok) return { error: new Error(String(search_response.status)) };
         const search_result: Search|ResponseError = await search_response.json().catch(json_catch);
         if("error" in search_result) return search_result;
-        const top_hit = search_result.response.sections.find(item => item.type === "top_hit");
-        if (top_hit === undefined) return { error: new Error("top_hit doesn't exist") };
-        return top_hit.hits[0].result;
+        const song_hits = search_result.response.sections.find(item => item.type === "song");
+        if (song_hits === undefined) return { error: new Error("song_hits doesn't exist") };
+        return song_hits.hits;
     }
+    const lyrics_fail_message = "Failed to fetch lyrics for song";
     export async function get_lyrics(search_result: Result): Promise<string> {
         const lyric_response = await fetch(`https://genius.com${search_result.path}`, {
             headers: {
@@ -51,13 +53,27 @@ export namespace Genius {
             body: null,
             method: "GET"
         });
-        if(!lyric_response.ok) return "";
+        if(!lyric_response.ok) return lyrics_fail_message;
         const html: string = await lyric_response.text();
-        const extract_lyrics_containers_regex = /<div data-lyrics-container="true".+?>(.+?)<\/div>/gs;
-        const lyrics_containers_matches = [...html.matchAll(extract_lyrics_containers_regex)];
-        const lyrics_containers_string = lyrics_containers_matches.map(match => match[1]).join('');
-
-        const extracted_lyrics = lyrics_containers_string.replace(/<br\/>/g, '\n').replace(/<span>/g, '').replace(/<span.+?>/g, '').replace(/<\/span>/g, '').replace(/<a.+?>/g, '').replace(/<\/a>/g, '').replace(/ ?&#x27;/g, "'").replace(/ +/g, ' ').replace(/\(<i>(.+?)<\/i>\n? ?\)/g, '$1').replace(/(\n ?)+/g, '\n').replace(/\n,/g, ',').replace(/&quot;/g,'"');
-        return extracted_lyrics;
+        const extract_preloaded_state = /window\.__PRELOADED_STATE__ ?= ?JSON.parse\(('.+?')\);/gis;
+        const preloaded_state_string = extract_string_from_pattern(html, extract_preloaded_state);
+        if(typeof preloaded_state_string === 'object') return lyrics_fail_message;
+        const preloaded_state = try_json_parse<LyricsPreloadedState>(eval_json<string>(preloaded_state_string));
+        if("error" in preloaded_state) return lyrics_fail_message;
+        const all_strings: string[][] = [];
+        const initial_children: Children[] = preloaded_state.songPage.lyricsData.body.children as unknown as Children[];
+        function recursive_parse(child: Children|string, collected: string[]): string[]{
+            if(typeof child === "string") return collected.concat([child]);
+            if(typeof child === "object" && "children" in child){
+                return collected.concat(child.children.map(c => recursive_parse(c, [])).flat());
+            }
+            if(typeof child === "object" && "tag" in child && !("children" in child)){
+                if((child as {tag: string}).tag === "br") return collected.concat(['\n']);
+                return collected.concat([""]);
+            }
+            return collected.concat([""]);
+        }
+        all_strings.push(...initial_children.map(c => recursive_parse(c, [])));
+        return all_strings.flat().join('');
     }
 }

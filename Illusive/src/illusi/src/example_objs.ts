@@ -37,6 +37,7 @@ export namespace ExampleObj {
         title: "",
         description: "",
         pinned: false,
+        archived: false,
         thumbnail_uri: "",
         sort: "NEWEST",
         public: false,

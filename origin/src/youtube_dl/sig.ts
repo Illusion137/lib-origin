@@ -1,285 +1,401 @@
 import * as querystring from 'querystring';
 import Cache from './cache';
-import { AVFormat, DownloadOptions } from './types';
+// import { AVFormat, DownloadOptions } from './types';
 import * as utils from './utils';
 const vm = require("vm-browserify");
 
-// A shared cache to keep track of html5player js functions.
 export const cache = new Cache(1);
 
-/**
- * Extract signature deciphering and n parameter transform functions from html5player file.
- *
- * @param {string} html5playerfile
- * @param {Object} options
- * @returns {Promise<Array.<string>>}
- */
-export const getFunctions = (html5playerfile: string, options: DownloadOptions): Promise<[vmScript, vmScript]> => {
-	return cache.getOrSet(html5playerfile, async () => {
-		// Rewrite tce player script URLs to non-tce variant
-		if (html5playerfile.includes("/player_ias_tce.vflset/")) {
-			console.debug("jsUrl URL points to tce-variant player script, rewriting to non-tce.");
-			html5playerfile = html5playerfile.replace("/player_ias_tce.vflset/", "/player_ias.vflset/");
-		}
-		const body = await utils.request(html5playerfile, options);
-		const functions = extractFunctions(body as string);
-		cache.set(html5playerfile, functions);
-		return functions;
-	});
-}
+export const getFunctions = (html5playerfile, options) =>
+  cache.getOrSet(html5playerfile, async () => {
+    const body = await utils.request(html5playerfile, options);
+    const functions = extractFunctions(body);
+    cache.set(html5playerfile, functions);
+    return functions;
+  });
 
-// Updated VARIABLE_PART based on the Java code
 const VARIABLE_PART = "[a-zA-Z_\\$][a-zA-Z_0-9\\$]*";
-
-// NewPipeExtractor regexps
-const DECIPHER_NAME_REGEXPS = {
-	"\\b([a-zA-Z0-9_$]+)&&\\(\\1=([a-zA-Z0-9_$]{2,})\\(decodeURIComponent\\(\\1\\)\\)": 2,
-	'([a-zA-Z0-9_$]+)\\s*=\\s*function\\(\\s*([a-zA-Z0-9_$]+)\\s*\\)\\s*{\\s*\\2\\s*=\\s*\\2\\.split\\(\\s*""\\s*\\)\\s*;\\s*[^}]+;\\s*return\\s+\\2\\.join\\(\\s*""\\s*\\)': 1,
-	'/(?:\\b|[^a-zA-Z0-9_$])([a-zA-Z0-9_$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)(?:;[a-zA-Z0-9_$]{2}\\.[a-zA-Z0-9_$]{2}\\(a,\\d+\\))?/': 1,
-	"\\bm=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\)": 1,
-	"\\bc&&\\(c=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(c\\)\\)": 1,
-	'(?:\\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*\\{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)': 1,
-	'([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;': 1,
-};
-
-// LavaPlayer regexps - update to use the new VARIABLE_PART
-const VARIABLE_PART_DEFINE = `\\"?${VARIABLE_PART}\\"?`;
-const BEFORE_ACCESS = '(?:\\[\\"|\\.)';
-const AFTER_ACCESS = '(?:\\"\\]|)';
+const VARIABLE_PART_DEFINE = "\\\"?" + VARIABLE_PART + "\\\"?";
+const BEFORE_ACCESS = "(?:\\[\\\"|\\.)";
+const AFTER_ACCESS = "(?:\\\"\\]|)";
 const VARIABLE_PART_ACCESS = BEFORE_ACCESS + VARIABLE_PART + AFTER_ACCESS;
 const REVERSE_PART = ":function\\(\\w\\)\\{(?:return )?\\w\\.reverse\\(\\)\\}";
 const SLICE_PART = ":function\\(\\w,\\w\\)\\{return \\w\\.slice\\(\\w\\)\\}";
 const SPLICE_PART = ":function\\(\\w,\\w\\)\\{\\w\\.splice\\(0,\\w\\)\\}";
-const SWAP_PART =
-    ":function\\(\\w,\\w\\)\\{var \\w=\\w\\[0\\];\\w\\[0\\]=\\w\\[\\w%\\w\\.length\\];\\w\\[\\w(?:%\\w.length|)\\]=\\w(?:;return \\w)?\\}";
+const SWAP_PART = ":function\\(\\w,\\w\\)\\{" +
+  "var \\w=\\w\\[0\\];\\w\\[0\\]=\\w\\[\\w%\\w\\.length\\];\\w\\[\\w(?:%\\w.length|)\\]=\\w(?:;return \\w)?\\}";
+
 const DECIPHER_REGEXP =
-    `function(?: ${VARIABLE_PART})?\\(([a-zA-Z])\\)\\{` +
-    '\\1=\\1\\.split\\(""\\);\\s*' +
-    `((?:(?:\\1=)?${VARIABLE_PART}${VARIABLE_PART_ACCESS}\\(\\1,\\d+\\);)+)` +
-    'return \\1\\.join\\(""\\)' +
-	`\\}`;
+  "function(?: " + VARIABLE_PART + ")?\\(([a-zA-Z])\\)\\{" +
+  "\\1=\\1\\.split\\(\"\"\\);\\s*" +
+  "((?:(?:\\1=)?" + VARIABLE_PART + VARIABLE_PART_ACCESS + "\\(\\1,\\d+\\);)+)" +
+  "return \\1\\.join\\(\"\"\\)" +
+  "\\}";
 
-const HELPER_REGEXP = `var (${VARIABLE_PART})=\\{((?:(?:${VARIABLE_PART_DEFINE}${REVERSE_PART}|${VARIABLE_PART_DEFINE}${SLICE_PART}|${VARIABLE_PART_DEFINE}${SPLICE_PART}|${VARIABLE_PART_DEFINE}${SWAP_PART}),?\\n?)+)\\};`;
+const HELPER_REGEXP =
+  "var (" + VARIABLE_PART + ")=\\{((?:(?:" +
+  VARIABLE_PART_DEFINE + REVERSE_PART + "|" +
+  VARIABLE_PART_DEFINE + SLICE_PART + "|" +
+  VARIABLE_PART_DEFINE + SPLICE_PART + "|" +
+  VARIABLE_PART_DEFINE + SWAP_PART +
+  "),?\\n?)+)\\};";
 
-const SCVR = "[a-zA-Z0-9$_]";
-const MCR = `${SCVR}+`;
-const AAR = "\\[(\\d+)]";
-const N_TRANSFORM_NAME_REGEXPS = {
-	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\).+\\|\\|(${MCR})\\(""\\)`]: 1,
-	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}\\(${MCR}\\),${MCR}=${MCR}\\.${MCR}\\[${MCR}]\\|\\|null\\)&&\\(${MCR}=(${MCR})${AAR}`]: 1,
-	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\).+\\|\\|(${MCR})\\(""\\)`]: 1,
-	[`${SCVR}="nn"\\[\\+${MCR}\\.${MCR}],${MCR}=${MCR}\\.get\\(${MCR}\\)\\)&&\\(${MCR}=(${MCR})\\[(\\d+)]`]: 1,
-	[`\\(${SCVR}=String\\.fromCharCode\\(110\\),${SCVR}=${SCVR}\\.get\\(${SCVR}\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`]: 1,
-	[`\\.get\\("n"\\)\\)&&\\(${SCVR}=(${MCR})(?:${AAR})?\\(${SCVR}\\)`]: 1,
-};
+const FUNCTION_TCE_REGEXP =
+  "function(?:\\s+[a-zA-Z_\\$][a-zA-Z0-9_\\$]*)?\\(\\w\\)\\{" +
+  "\\w=\\w\\.split\\((?:\"\"|[a-zA-Z0-9_$]*\\[\\d+])\\);" +
+  "\\s*((?:(?:\\w=)?[a-zA-Z_\\$][a-zA-Z0-9_\\$]*(?:\\[\\\"|\\.)[a-zA-Z_\\$][a-zA-Z0-9_\\$]*(?:\\\"\\]|)\\(\\w,\\d+\\);)+)" +
+  "return \\w\\.join\\((?:\"\"|[a-zA-Z0-9_$]*\\[\\d+])\\)}";
 
-// LavaPlayer regexps
 const N_TRANSFORM_REGEXP =
-	"function\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
-	"var\\s*(\\w+)=(?:\\1\\.split\\(.*?\\)|String\\.prototype\\.split\\.call\\(\\1,.*?\\))," +
-	"\\s*(\\w+)=(\\[.*?]);\\s*\\3\\[\\d+]" +
-	"(.*?try)(\\{.*?})catch\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
-    '\\s*return"[\\w-]+([A-z0-9-]+)"\\s*\\+\\s*\\1\\s*}' +
-	'\\s*return\\s*(\\2\\.join\\(""\\)|Array\\.prototype\\.join\\.call\\(\\2,.*?\\))};';
+  "function\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
+  "var\\s*(\\w+)=(?:\\1\\.split\\(.*?\\)|String\\.prototype\\.split\\.call\\(\\1,.*?\\))," +
+  "\\s*(\\w+)=(\\[.*?]);\\s*\\3\\[\\d+]" +
+  "(.*?try)(\\{.*?})catch\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
+  '\\s*return"[\\w-]+([A-z0-9-]+)"\\s*\\+\\s*\\1\\s*}' +
+  '\\s*return\\s*(\\2\\.join\\(""\\)|Array\\.prototype\\.join\\.call\\(\\2,.*?\\))};';
 
-const DECIPHER_ARGUMENT = 'sig';
-const N_ARGUMENT = 'ncode';
+const N_TRANSFORM_TCE_REGEXP =
+  "function\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
+  "\\s*var\\s*(\\w+)=\\1\\.split\\(\\1\\.slice\\(0,0\\)\\),\\s*(\\w+)=\\[.*?];" +
+  ".*?catch\\(\\s*(\\w+)\\s*\\)\\s*\\{" +
+  "\\s*return(?:\"[^\"]+\"|\\s*[a-zA-Z_0-9$]*\\[\\d+])\\s*\\+\\s*\\1\\s*}" +
+  "\\s*return\\s*\\2\\.join\\((?:\"\"|[a-zA-Z_0-9$]*\\[\\d+])\\)};";
 
-const matchRegex = (regex: string, str: string) => {
-	const match = str.match(new RegExp(regex, 's'));
-	if (!match) throw new Error(`Could not match ${regex}`);
-	return match;
+const TCE_GLOBAL_VARS_REGEXP =
+  "(?:^|[;,])\\s*(var\\s+([\\w$]+)\\s*=\\s*" +
+  "(?:" +
+  "([\"'])(?:\\\\.|[^\\\\])*?\\3" +
+  "\\s*\\.\\s*split\\((" +
+  "([\"'])(?:\\\\.|[^\\\\])*?\\5" +
+  "\\))" +
+  "|" +
+  "\\[\\s*(?:([\"'])(?:\\\\.|[^\\\\])*?\\6\\s*,?\\s*)+\\]" +
+  "))(?=\\s*[,;])";
+
+const NEW_TCE_GLOBAL_VARS_REGEXP =
+  "('use\\s*strict';)?" +
+  "(?<code>var\\s*" +
+  "(?<varname>[a-zA-Z0-9_$]+)\\s*=\\s*" +
+  "(?<value>" +
+  "(?:\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\"|'[^'\\\\]*(?:\\\\.[^'\\\\]*)*')" +
+  "\\.split\\(" +
+  "(?:\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\"|'[^'\\\\]*(?:\\\\.[^'\\\\]*)*')" +
+  "\\)" +
+  "|" +
+  "\\[" +
+  "(?:(?:\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\"|'[^'\\\\]*(?:\\\\.[^'\\\\]*)*')" +
+  "\\s*,?\\s*)*" +
+  "\\]" +
+  "|" +
+  "\"[^\"]*\"\\.split\\(\"[^\"]*\"\\)" +
+  ")" +
+  ")";
+
+const TCE_SIGN_FUNCTION_REGEXP = "function\\(\\s*([a-zA-Z0-9$])\\s*\\)\\s*\\{" +
+  "\\s*\\1\\s*=\\s*\\1\\[(\\w+)\\[\\d+\\]\\]\\(\\2\\[\\d+\\]\\);" +
+  "([a-zA-Z0-9$]+)\\[\\2\\[\\d+\\]\\]\\(\\s*\\1\\s*,\\s*\\d+\\s*\\);" +
+  "\\s*\\3\\[\\2\\[\\d+\\]\\]\\(\\s*\\1\\s*,\\s*\\d+\\s*\\);" +
+  ".*?return\\s*\\1\\[\\2\\[\\d+\\]\\]\\(\\2\\[\\d+\\]\\)\\};";
+
+const TCE_SIGN_FUNCTION_ACTION_REGEXP = "var\\s+([A-Za-z0-9_]+)\\s*=\\s*\\{\\s*(?:[A-Za-z0-9_]+)\\s*:\\s*function\\s*\\([^)]*\\)\\s*\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}\\s*,\\s*(?:[A-Za-z0-9_]+)\\s*:\\s*function\\s*\\([^)]*\\)\\s*\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}\\s*,\\s*(?:[A-Za-z0-9_]+)\\s*:\\s*function\\s*\\([^)]*\\)\\s*\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}\\s*\\};";
+
+const TCE_N_FUNCTION_REGEXP = "function\\s*\\((\\w+)\\)\\s*\\{var\\s*\\w+\\s*=\\s*\\1\\[\\w+\\[\\d+\\]\\]\\(\\w+\\[\\d+\\]\\)\\s*,\\s*\\w+\\s*=\\s*\\[.*?\\]\\;.*?catch\\s*\\(\\s*(\\w+)\\s*\\)\\s*\\{return\\s*\\w+\\[\\d+\\]\\s*\\+\\s*\\1\\}\\s*return\\s*\\w+\\[\\w+\\[\\d+\\]\\]\\(\\w+\\[\\d+\\]\\)\\}\\s*\\;";
+
+const PATTERN_PREFIX = "(?:^|,)\\\"?(" + VARIABLE_PART + ")\\\"?";
+const REVERSE_PATTERN = new RegExp(PATTERN_PREFIX + REVERSE_PART, "m");
+const SLICE_PATTERN = new RegExp(PATTERN_PREFIX + SLICE_PART, "m");
+const SPLICE_PATTERN = new RegExp(PATTERN_PREFIX + SPLICE_PART, "m");
+const SWAP_PATTERN = new RegExp(PATTERN_PREFIX + SWAP_PART, "m");
+
+const DECIPHER_ARGUMENT = "sig";
+const N_ARGUMENT = "ncode";
+const DECIPHER_FUNC_NAME = "DisTubeDecipherFunc";
+const N_TRANSFORM_FUNC_NAME = "DisTubeNTransformFunc";
+
+const extractDollarEscapedFirstGroup = (pattern, text) => {
+  const match = text.match(pattern);
+  return match ? match[1].replace(/\$/g, "\\$") : null;
 };
-const matchGroup = (regex: string, str: string, idx = 0) => matchRegex(regex, str)[idx];
 
-const getFuncName = (body: string, regexps: Record<string, number>) => {
-	let fn;
-	for (const [regex, idx] of Object.entries(regexps)) {
-		try {
-			fn = matchGroup(regex, body, idx as unknown as number);
-			try {
-				fn = matchGroup(`${fn.replace(/\$/g, "\\$")}=\\[([a-zA-Z0-9$\\[\\]]{2,})\\]`, body, 1);
-			} catch (err) {
-				// Function name is not inside an array
-			}
-			break;
-		} catch (err) {
-			continue;
-		}
-	}
-	if (!fn || fn.includes("[")) throw Error("Could not match");
-	return fn;
+const extractTceFunc = (body) => {
+  try {
+    const tceVariableMatcher = body.match(new RegExp(NEW_TCE_GLOBAL_VARS_REGEXP, 'm'));
+
+    if (!tceVariableMatcher) return;
+
+    const tceVariableMatcherGroups = tceVariableMatcher.groups;
+    if (!tceVariableMatcher.groups) return;
+
+    const code = tceVariableMatcherGroups.code;
+    const varname = tceVariableMatcherGroups.varname;
+
+    return { name: varname, code: code };
+  } catch (e) {
+    console.error("Error in extractTceFunc:", e);
+    return null;
+  }
+}
+
+const extractDecipherFunc = (body, name, code) => {
+  try {
+	name;
+    const callerFunc = DECIPHER_FUNC_NAME + "(" + DECIPHER_ARGUMENT + ");";
+    let resultFunc;
+
+    const sigFunctionMatcher = body.match(new RegExp(TCE_SIGN_FUNCTION_REGEXP, 's'));
+    const sigFunctionActionsMatcher = body.match(new RegExp(TCE_SIGN_FUNCTION_ACTION_REGEXP, 's'));
+
+    if (sigFunctionMatcher && sigFunctionActionsMatcher && code) {
+      resultFunc = "var " + DECIPHER_FUNC_NAME + "=" + sigFunctionMatcher[0] + sigFunctionActionsMatcher[0] + code + ";\n";
+      return resultFunc + callerFunc;
+    }
+
+    const helperMatch = body.match(new RegExp(HELPER_REGEXP, "s"));
+    if (!helperMatch) return null;
+
+    const helperObject = helperMatch[0];
+    const actionBody = helperMatch[2];
+    const helperName = helperMatch[1]; helperName
+
+    const reverseKey = extractDollarEscapedFirstGroup(REVERSE_PATTERN, actionBody);
+    const sliceKey = extractDollarEscapedFirstGroup(SLICE_PATTERN, actionBody);
+    const spliceKey = extractDollarEscapedFirstGroup(SPLICE_PATTERN, actionBody);
+    const swapKey = extractDollarEscapedFirstGroup(SWAP_PATTERN, actionBody);
+
+    const quotedFunctions = [reverseKey, sliceKey, spliceKey, swapKey]
+      .filter(Boolean)
+      .map(key => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    if (quotedFunctions.length === 0) return null;
+
+    const funcMatch = body.match(new RegExp(DECIPHER_REGEXP, "s"));
+    let isTce = false;
+    let decipherFunc;
+
+    if (funcMatch) {
+      decipherFunc = funcMatch[0];
+    } else {
+
+      const tceFuncMatch = body.match(new RegExp(FUNCTION_TCE_REGEXP, "s"));
+      if (!tceFuncMatch) return null;
+
+      decipherFunc = tceFuncMatch[0];
+      isTce = true;
+    }
+
+    let tceVars = "";
+    if (isTce) {
+      const tceVarsMatch = body.match(new RegExp(TCE_GLOBAL_VARS_REGEXP, "m"));
+      if (tceVarsMatch) {
+        tceVars = tceVarsMatch[1] + ";\n";
+      }
+    }
+
+    resultFunc = tceVars + helperObject + "\nvar " + DECIPHER_FUNC_NAME + "=" + decipherFunc + ";\n";
+    return resultFunc + callerFunc;
+  } catch (e) {
+    console.error("Error in extractDecipherFunc:", e);
+    return null;
+  }
 };
 
-const DECIPHER_FUNC_NAME = 'DisTubeDecipherFunc';
-const extractDecipherFunc = (body: string) => {
-	try {
-		const helperObject = matchGroup(HELPER_REGEXP, body, 0);
-		const decipherFunc = matchGroup(DECIPHER_REGEXP, body, 0);
-		const resultFunc = `var ${DECIPHER_FUNC_NAME}=${decipherFunc};`;
-		const callerFunc = `${DECIPHER_FUNC_NAME}(${DECIPHER_ARGUMENT});`;
-		return helperObject + resultFunc + callerFunc;
-	} catch (e) {
-		return null;
-	}
-};
+const extractNTransformFunc = (body, name, code) => {
+  try {
+    const callerFunc = N_TRANSFORM_FUNC_NAME + "(" + N_ARGUMENT + ");";
+    let resultFunc;
+    let nFunction;
 
-const extractDecipherWithName = (body: string) => {
-	try {
-		const decipherFuncName = getFuncName(body, DECIPHER_NAME_REGEXPS);
-		const funcPattern = `(${decipherFuncName.replace(/\$/g, '\\$')}=function\\([a-zA-Z0-9_]+\\)\\{.+?\\})`;
-		const decipherFunc = `var ${matchGroup(funcPattern, body, 1)};`;
-		const helperObjectName = matchGroup(";([A-Za-z0-9_\\$]{2,})\\.\\w+\\(", decipherFunc, 1);
-		const helperPattern = `(var ${helperObjectName.replace(/\$/g, '\\$')}=\\{[\\s\\S]+?\\}\\};)`;
-		const helperObject = matchGroup(helperPattern, body, 1);
-		const callerFunc = `${decipherFuncName}(${DECIPHER_ARGUMENT});`;
-		return helperObject + decipherFunc + callerFunc;
-	} catch (e) {
-		return null;
-	}
-};
+    const nFunctionMatcher = body.match(new RegExp(TCE_N_FUNCTION_REGEXP, 's'));
 
-const getExtractFunctions = (extractFunctions: ((body: string) => string | null)[], body: string, postProcess: ((str: string)=>void)|null = null): vmScript | null => {
-	for (const extractFunction of extractFunctions) {
-		try {
-			const func = extractFunction(body);
-			if (!func) continue;
-			return new vm.Script(postProcess ? postProcess(func) : func);
-		} catch (err) {
-			continue;
-		}
-	}
-	return null;
+    if (nFunctionMatcher && name && code) {
+      nFunction = nFunctionMatcher[0];
+
+      const tceEscapeName = name.replace("$", "\\$");
+      const shortCircuitPattern = new RegExp(
+        `;\\s*if\\s*\\(\\s*typeof\\s+[a-zA-Z0-9_$]+\\s*===?\\s*(?:\"undefined\"|'undefined'|${tceEscapeName}\\[\\d+\\])\\s*\\)\\s*return\\s+\\w+;`
+      );
+
+      const tceShortCircuitMatcher = nFunction.match(shortCircuitPattern);
+
+      if (tceShortCircuitMatcher) {
+        nFunction = nFunction.replaceAll(tceShortCircuitMatcher[0], ";");
+      }
+
+      resultFunc = "var " + N_TRANSFORM_FUNC_NAME + "=" + nFunction + code + ";\n";
+      return resultFunc + callerFunc;
+    }
+
+    const nMatch = body.match(new RegExp(N_TRANSFORM_REGEXP, "s"));
+    let isTce = false;
+
+    if (nMatch) {
+      nFunction = nMatch[0];
+    } else {
+
+      const nTceMatch = body.match(new RegExp(N_TRANSFORM_TCE_REGEXP, "s"));
+      if (!nTceMatch) return null;
+
+      nFunction = nTceMatch[0];
+      isTce = true;
+    }
+
+    const paramMatch = nFunction.match(/function\s*\(\s*(\w+)\s*\)/);
+    if (!paramMatch) return null;
+
+    const paramName = paramMatch[1];
+
+    const cleanedFunction = nFunction.replace(
+      new RegExp(`if\\s*\\(typeof\\s*[^\\s()]+\\s*===?.*?\\)return ${paramName}\\s*;?`, "g"),
+      ""
+    );
+
+    let tceVars = "";
+    if (isTce) {
+      const tceVarsMatch = body.match(new RegExp(TCE_GLOBAL_VARS_REGEXP, "m"));
+      if (tceVarsMatch) {
+        tceVars = tceVarsMatch[1] + ";\n";
+      }
+    }
+
+    resultFunc = tceVars + "var " + N_TRANSFORM_FUNC_NAME + "=" + cleanedFunction + ";\n";
+    return resultFunc + callerFunc;
+  } catch (e) {
+    console.error("Error in extractNTransformFunc:", e);
+    return null;
+  }
 };
 
 let decipherWarning = false;
-// This is required function to get the stream url, but we can continue if user doesn't need stream url.
-const extractDecipher = (body: string) => {
-	// Faster: extractDecipherWithName
-	const decipherFunc = getExtractFunctions([extractDecipherWithName, extractDecipherFunc], body);
-	if (!decipherFunc && !decipherWarning) {
-		console.warn('\x1b[33mWARNING:\x1B[0m Could not parse decipher function.\n' +
-			`Please report this issue with the "
-        base.js
-      " file on https://github.com/distubejs/ytdl-core/issues.\nStream URL will be missing.`);
-		decipherWarning = true;
-	}
-	return decipherFunc!;
-};
-
-const N_TRANSFORM_FUNC_NAME = 'DisTubeNTransformFunc';
-const extractNTransformFunc = (body: string) => {
-	try {
-		const nFunc = matchGroup(N_TRANSFORM_REGEXP, body, 0);
-		const resultFunc = `var ${N_TRANSFORM_FUNC_NAME}=${nFunc}`;
-		const callerFunc = `${N_TRANSFORM_FUNC_NAME}(${N_ARGUMENT});`;
-		return resultFunc + callerFunc;
-	} catch (e) {
-		return null;
-	}
-};
-
-const extractNTransformWithName = (body: string) => {
-	try {
-		const nFuncName = getFuncName(body, N_TRANSFORM_NAME_REGEXPS);
-        const funcPattern = `(${nFuncName.replace(/\$/g, "\\$")}=function\\([a-zA-Z0-9_]+\\)\\{.+?\\})`;
-		const nTransformFunc = `var ${matchGroup(funcPattern, body, 1)};`;
-		const callerFunc = `${nFuncName}(${N_ARGUMENT});`;
-		return nTransformFunc + callerFunc;
-	} catch (e) {
-		return null;
-	}
-};
-
 let nTransformWarning = false;
-const extractNTransform = (body: string) => {
-	// Faster: extractNTransformFunc
-	const nTransformFunc = getExtractFunctions([extractNTransformFunc, extractNTransformWithName], body, code =>
-        code.replace(/if\s*\(\s*typeof\s*[\w$]+\s*===?.*?\)\s*return\s+[\w$]+\s*;?/, ""),
+
+const getExtractFunction = (extractFunctions, body, name, code, postProcess: any = null) => {
+  for (const extractFunction of extractFunctions) {
+    try {
+      const func = extractFunction(body, name, code);
+      if (!func) continue;
+      return new vm.Script(postProcess ? postProcess(func) : func);
+    } catch (err) {
+      console.error("Failed to extract function:", err);
+      continue;
+    }
+  }
+  return null;
+};
+
+const extractDecipher = (body, name, code) => {
+  const decipherFunc = getExtractFunction([extractDecipherFunc], body, name, code);
+  if (!decipherFunc && !decipherWarning) {
+    console.warn(
+      "\x1b[33mWARNING:\x1B[0m Could not parse decipher function.\n" +
+      "Stream URLs will be missing.\n" +
+      `Please report this issue by uploading the "" file on https://github.com/distubejs/ytdl-core/issues/144.`
     );
-	if (!nTransformFunc && !nTransformWarning) {
-		// This is optional, so we can continue if it's not found, but it will bottleneck the download.
-		console.warn('\x1b[33mWARNING:\x1B[0m Could not parse n transform function.\n' +
-			`Please report this issue with the "
-        base.js
-      " file on https://github.com/distubejs/ytdl-core/issues.`);
-		nTransformWarning = true;
-	}
-	return nTransformFunc!;
+    decipherWarning = true;
+  }
+  return decipherFunc;
 };
 
-/**
- * Extracts the actions that should be taken to decipher a signature
- * and transform the n parameter
- *
- * @param {string} body
- * @returns {Array.<string>}
- */
-export const extractFunctions = (body: string): [ReturnType<typeof extractDecipher>, ReturnType<typeof extractNTransform>] => [
-	extractDecipher(body),
-	extractNTransform(body),
-];
+const extractNTransform = (body, name, code) => {
+  const nTransformFunc = getExtractFunction([extractNTransformFunc], body, name, code);
 
-export function valueToJS(val: any): string {
-	if (typeof val === "string") return `'${val}'`;
-	if (typeof val === "object") return `${JSON.stringify(val)}`;
-	return String(val);
-}
+  if (!nTransformFunc && !nTransformWarning) {
+    console.warn(
+      "\x1b[33mWARNING:\x1B[0m Could not parse n transform function.\n" +
+      `Please report this issue by uploading the "" file on https://github.com/distubejs/ytdl-core/issues/144.`
+    );
+    nTransformWarning = true;
+  }
 
-export function runScript(context: Record<string, any>, vmScript: vmScript) {
-	const script_items: string = Object.entries(context).map(item => `let ${item[0]}=${valueToJS(item[1])}; `).join("");
-	const script = script_items + vmScript.code;
-	return eval(script);
-}
-
-interface vmScript { code: string, runInNewContext: (context: Record<string, any>) => string }
-/**
- * Apply decipher and n-transform to individual format
- *
- * @param {Object} format
- * @param {vm.Script} decipherScript
- * @param {vm.Script} nTransformScript
- */
-export const setDownloadURL = (format: AVFormat, decipherScript: vmScript, nTransformScript: vmScript) => {
-	if (!decipherScript) return;
-	const decipher = (url: string): string => {
-		const args = querystring.parse(url);
-		if (!args.s) return args.url as string;
-		const components = new URL(decodeURIComponent(args.url as string));
-		const context: Record<string, any> = {};
-		context[DECIPHER_ARGUMENT] = decodeURIComponent(args.s as string);
-		components.searchParams.set((args.sp || 'sig') as string, runScript(context, decipherScript));
-		return components.toString();
-	};
-	const nTransform = (url: string) => {
-		const components = new URL(decodeURIComponent(url));
-		const n = components.searchParams.get('n');
-		if (!n || !nTransformScript) return url;
-		const context: Record<string, any> = {};
-		context[N_ARGUMENT] = n;
-		components.searchParams.set('n', runScript(context, nTransformScript));
-		return components.toString();
-	};
-	const cipher = !format.url;
-	const url = format.url || format.signatureCipher || format.cipher;
-	format.url = nTransform(cipher ? decipher(url!) : url!);
-	delete format.signatureCipher;
-	delete format.cipher;
+  return nTransformFunc;
 };
 
-/**
- * Applies decipher and n parameter transforms to all format URL's.
- *
- * @param {Array.<Object>} formats
- * @param {string} html5player
- * @param {Object} options
- */
-export const decipherFormats = async (formats: AVFormat[], html5player: string, options: DownloadOptions) => {
-	const decipheredFormats: Record<string, any> = {};
-	const [decipherScript, nTransformScript] = await getFunctions(html5player, options);
-	formats.forEach(format => {
-		setDownloadURL(format, decipherScript, nTransformScript);
-		decipheredFormats[format.url] = format;
-	});
-	return decipheredFormats;
+export const extractFunctions = body => {
+  const { name, code } = extractTceFunc(body) as any;
+  return [extractDecipher(body, name, code), extractNTransform(body, name, code)];
+}
+
+export const setDownloadURL = (format, decipherScript, nTransformScript) => {
+  if (!format) return;
+
+  const decipher = url => {
+    const args = querystring.parse(url);
+    if (!args.s || !decipherScript) return args.url;
+
+    try {
+      const components = new URL(decodeURIComponent(args.url as any));
+      const context = {};
+      context[DECIPHER_ARGUMENT] = decodeURIComponent(args.s as any);
+      const decipheredSig = decipherScript.runInNewContext(context);
+
+      components.searchParams.set(args.sp || "sig" as any, decipheredSig);
+      return components.toString();
+    } catch (err) {
+      console.error("Error applying decipher:", err);
+      return args.url;
+    }
+  };
+
+  const nTransform = url => {
+    try {
+      const components = new URL(decodeURIComponent(url));
+      const n = components.searchParams.get("n");
+
+      if (!n || !nTransformScript) return url;
+
+      const context = {};
+      context[N_ARGUMENT] = n;
+      const transformedN = nTransformScript.runInNewContext(context);
+
+      if (transformedN) {
+
+        if (n === transformedN) {
+          console.warn("Transformed n parameter is the same as input, n function possibly short-circuited");
+        } else if (transformedN.startsWith("enhanced_except_") || transformedN.endsWith("_w8_" + n)) {
+          console.warn("N function did not complete due to exception");
+        }
+
+        components.searchParams.set("n", transformedN);
+      } else {
+        console.warn("Transformed n parameter is null, n function possibly faulty");
+      }
+
+      return components.toString();
+    } catch (err) {
+      console.error("Error applying n transform:", err);
+      return url;
+    }
+  };
+
+  const cipher = !format.url;
+  const url = format.url || format.signatureCipher || format.cipher;
+
+  if (!url) return;
+
+  try {
+    format.url = nTransform(cipher ? decipher(url) : url);
+
+    delete format.signatureCipher;
+    delete format.cipher;
+  } catch (err) {
+    console.error("Error setting download URL:", err);
+  }
+};
+
+export const decipherFormats = async (formats, html5player, options) => {
+  try {
+    const decipheredFormats = {};
+    const [decipherScript, nTransformScript] = await getFunctions(html5player, options);
+
+    formats.forEach(format => {
+      setDownloadURL(format, decipherScript, nTransformScript);
+      if (format.url) {
+        decipheredFormats[format.url] = format;
+      }
+    });
+
+    return decipheredFormats;
+  } catch (err) {
+    console.error("Error deciphering formats:", err);
+    return {};
+  }
 };

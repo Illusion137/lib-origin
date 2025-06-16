@@ -5,6 +5,8 @@ admin/**
 bin/**
 ignore/**
 node_modules
+sample/illusi/*.sqlite3
+*.epub
 scratch
 scratch*
 scratch.**

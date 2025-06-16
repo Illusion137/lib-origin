@@ -7,7 +7,9 @@ export type MangaReadHozPageSize = number;
 export type MangaListTypes = MangaTypes | MangaGenres;
 export type Language = string;
 
-export interface HrefString {
+export type NammedHref = {name: string; href: string;};
+
+export interface StringHref {
     content: string;
     href: string;
 }
@@ -17,13 +19,12 @@ export interface SearchMangaChapterVolume {
     href: string;
 }
 export interface SearchManga {
-    title: string;
-    genres: HrefString[];
+    title: NammedHref;
+    genres: StringHref[];
     available_languages: Language[];
     artwork_url: string;
-    href: string;
-    chapters: SearchMangaChapterVolume[];
-    volumes: SearchMangaChapterVolume[];
+    latest_chapters: SearchMangaChapterVolume[];
+    latest_volumes: SearchMangaChapterVolume[];
 }
 export interface MangaList {
     title: string;
