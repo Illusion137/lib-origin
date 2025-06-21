@@ -113,7 +113,6 @@ export async function mutilate_playlist(to_service: MusicServiceType, to: Conver
 }
 
 async function divide_and_conquer(to: MusicServiceType, convert_to: ConvertTo, from_tracks: Track[], mode: "ADD"|"REMOVE", depth = 0): Promise<boolean>{
-    console.log(depth, " ", mode, "");
     if(depth >= 16) return false;
     if(from_tracks.length === 0) return true;
     if(from_tracks.length === 1) {

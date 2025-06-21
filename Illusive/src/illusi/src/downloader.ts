@@ -8,7 +8,6 @@ import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
-import { Prefs } from '../../prefs';
 import { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
 import { alert_error } from './alert';
 import * as GLOBALS from './globals';
@@ -27,8 +26,8 @@ function wait_for(condition_function: () => boolean) {
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
 }
-export function sort_filter_tracks(tracks: Track[]) {
-    return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri) || Prefs.get_pref('can_redownload_batch') ));
+export function sort_filter_tracks(tracks: Track[], redownload_batch: boolean = false) {
+    return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri) || redownload_batch ));
 }
 export async function download_track_list(tracks: Track[]) {
     for(const track of sort_filter_tracks(tracks))
@@ -64,7 +63,7 @@ function download_error_callback(title: string, error: Error, track: Track, star
 }
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata']) {
     if(metadata === undefined) return;
-    if(!await SQLTracks.track_exists(track)) return;
+    if(!SQLTracks.track_exists(track)) return;
     if(track.artists[0].uri === null) {
         await SQLTracks.update_track(track.uid, 
             {
@@ -89,7 +88,7 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
 }
 export async function handle_new_track_data(track: Track, dl_uri: Awaited<ReturnType<typeof Illusive.get_download_url>>) {
     if("error" in dl_uri) return dl_uri;
-    if(!await SQLTracks.track_exists(track))
+    if(!SQLTracks.track_exists(track))
         if(dl_uri.new_track_data !== undefined)
             return (await SQLTracks.add_playback_saved_data_to_tracks([
                 SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data)
@@ -104,7 +103,7 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
     }
     return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
 }
-export async function download_track(track: Track, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
+export async function download_track(track: Track, redownload: boolean = false, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     if(GLOBALS.downloading.find(item => item.uid === track.uid)) return "GOOD";
     function in_download_range(uid: string, download_queue_max_length: number) {
         for (let i = 0; i < download_queue_max_length; i++)
@@ -114,16 +113,15 @@ export async function download_track(track: Track, progress_updater?: SetState, 
     }
 
     GLOBALS.downloading.push({ uid: track.uid, progress: 0, progress_updater: progress_updater, execution_id: 0, duration: track.duration });
-    const download_queue_max_length = Prefs.get_pref('download_queue_max_length');
-    wait_for(() => in_download_range(track.uid, download_queue_max_length))
+    wait_for(() => in_download_range(track.uid, Constants.download_queue_max_length))
         .then(async () => {
-            const is_redownloading = (is_empty(track.media_uri) && !Illusive.is_youtube(track)) || (Prefs.get_pref('can_redownload') && !Illusive.is_youtube(track));
+            const is_redownloading = (is_empty(track.media_uri) && !Illusive.is_youtube(track)) || (redownload && !Illusive.is_youtube(track));
             if(is_redownloading) {
                 track = {...track, youtube_id: ""};
                 if(!is_empty(track.media_uri)) await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
             } 
 
-            const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", Prefs.get_pref('can_redownload'));
+            const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", redownload);
             if ("error" in download_uri) {
                 if (download_uri.error.message.toLowerCase().includes("unavailable"))
                     await SQLBackpack.add_to_backpack(track.uid);
@@ -139,9 +137,10 @@ export async function download_track(track: Track, progress_updater?: SetState, 
             }
             try {
                 if (start_download !== undefined) start_download(true);
-                const media_uri = track.uid + '.aac';
+                const media_uri = track.uid + '.mp4';
                 const new_uri = SQLfs.media_directory(media_uri);
-                ffmpeg.FFmpegKit.executeAsync(`-y -i ${download_uri.url} -vn ${new_uri}`, async (execution) => {
+                const ffmpeg_cmd = `-y -i ${download_uri.url} -vn -c:a aac -b:a 128k ${new_uri}`;
+                ffmpeg.FFmpegKit.executeAsync(ffmpeg_cmd, async (execution) => {
                     try {
                         const retcode = (await execution.getReturnCode()).getValue();
                         if(retcode !== Constants.ffmpeg_retcode_success)

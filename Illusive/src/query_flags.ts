@@ -1,5 +1,5 @@
 import { is_empty, remove_topic } from "../../origin/src/utils/util";
-import { CompactPlaylist, Playlist, QueryFlag, Track } from "./types";
+import { CompactArtist, CompactPlaylist, Playlist, QueryFlag, Track } from "./types";
 
 export const ANTI_QUERY_FLAG_PREFIX = '!';
 
@@ -286,5 +286,13 @@ export const COMPACT_PLAYLIST_QUERY_FLAGS: QueryFlag<CompactPlaylist>[] = [
         flag: '@ma',
         condition: (album) => album.artist.length > 1,
         description: "Multiple Artists",
+    },
+];
+
+export const COMPACT_ARTIST_QUERY_FLAGS: QueryFlag<CompactArtist>[] = [
+    {
+        flag: '@official',
+        condition: (artist) => artist.is_official_artist_channel,
+        description: "Is Official",
     },
 ];

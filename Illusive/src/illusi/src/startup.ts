@@ -8,6 +8,7 @@ import { catch_function_async } from './illusi_utils';
 import * as LegacyPrefs from './legacy/1307/legacy_prefs';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLTracks from './sql/sql_tracks';
+import * as SQLPlaylists from './sql/sql_playlists';
 import * as SQLUpdate from './sql/sql_update';
 import * as SQLUtils from './sql/sql_utils';
 
@@ -45,6 +46,7 @@ export async function illusi_startup(version: string, play_tracks: (first_track:
         
         Promise.all([
             SQLRecentlyPlayed.cleanup_recently_played(),
+            SQLPlaylists.all_playlists_data("NO_IGNORE"),
             activateKeepAwakeAsync()
         ]).catch(e => e);
         if(Prefs.get_pref('album_track_tinting')){

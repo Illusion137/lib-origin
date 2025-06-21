@@ -200,7 +200,6 @@ export namespace YouTube {
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		const response = await post_check_response(opts, ytcfg, path, payload, new_auth);
 		if ("error" in response) return false;
-		console.log(response.status, " ", response.statusText);
 		return response.ok;
 	}
 	export async function post_like(opts: Opts, ytcfg: YTCFG, video_id: string, like_path: string) {

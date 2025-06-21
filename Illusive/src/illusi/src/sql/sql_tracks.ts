@@ -7,7 +7,7 @@ import * as GLOBALS from '../globals';
 import * as SQLfs from './sql_fs';
 import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
-import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where } from "./sql_utils";
+import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where, update_global_track_all_property, update_global_track_item, update_global_track_property } from "./sql_utils";
 import { ResponseError } from "../../../../../origin/src/utils/types";
 import { alert_error, alert_info } from "../alert";
 import { clean_album_title } from "../../../gen/apple_music_parser";
@@ -95,9 +95,9 @@ export async function add_playback_saved_data_to_track(track: Track){
         added: false,
         successful: false
     }
-    const saved = await track_exists(track);
+    const saved = track_exists(track);
     track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
-    if(saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri) && Prefs.get_pref('media_files_on_albums')) {
+    if(saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri)) {
         const found_track = find_track_in_globals(track);
         if(found_track) track.uid = found_track.uid;
         track.media_uri = found_track?.media_uri;
@@ -168,11 +168,9 @@ export function sql_tracks_to_tracks(sql_tracks: SQLTrack[]): Track[]{
     mapped.filter(track => "error" in track).forEach(err => alert_error(err));
     return mapped.filter(track => !("error" in track)) as Track[];
 }
-
 export async function mark_track_downloaded(uid: Track['uid'], media_uri: string) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
-    const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
-    if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = media_uri;
+    update_global_track_property(uid, 'media_uri', media_uri);
 }
 export async function mark_all_tracks_undownloaded() {
     await Promise.all(GLOBALS.global_var.sql_tracks.map(async (track) => {
@@ -180,7 +178,9 @@ export async function mark_all_tracks_undownloaded() {
         await SQLfs.delete_item(media_directory(track.media_uri!));
         track.media_uri = "";
     }));
+
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])}`);
+    update_global_track_all_property('media_uri', '');
 }
 export async function mark_track_undownloaded(uid: Track['uid'], media_uri: string) {
     if(is_empty(media_uri)) return;
@@ -188,26 +188,24 @@ export async function mark_track_undownloaded(uid: Track['uid'], media_uri: stri
     if(found && !is_empty(found.imported_id)) return;
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", ""])} ${sql_where<Track>(["uid", uid])}`);
     await SQLfs.delete_item(media_directory(media_uri));
-    const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
-    if(idx !== -1) GLOBALS.global_var.sql_tracks[idx].media_uri = "";
+    update_global_track_property(uid, 'media_uri', '');
 }
 export async function clear_track_youtube(uid: Track['uid']) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["youtube_id", ""])} ${sql_where<Track>(["uid", uid])}`);
+    update_global_track_property(uid, 'youtube_id', '');
+}
+
+function all_track_ids(track: Track){
+    return [track.illusi_id!, track.youtube_id!, track.spotify_id!, track.amazonmusic_id!, track.applemusic_id!, String(track.soundcloud_id!), track.imported_id!].filter(item => !is_empty(item));
 }
 export function track_exist_in_other(tracks: Track[], track: Track){
-    for(const t of tracks) {
-        if(!is_empty(t.illusi_id) && !is_empty(track.illusi_id) && t.illusi_id === track.illusi_id) return true;
-        if(!is_empty(t.youtube_id) && !is_empty(track.youtube_id) && t.youtube_id === track.youtube_id) return true;
-        // if(!is_empty(t.youtubemusic_id) && !is_empty(track.youtubemusic_id) && t.youtubemusic_id === track.youtubemusic_id) return true;
-        if(!is_empty(t.spotify_id) && !is_empty(track.spotify_id) && t.spotify_id === track.spotify_id) return true;
-        if(!is_empty(t.amazonmusic_id) && !is_empty(track.amazonmusic_id) && t.amazonmusic_id === track.amazonmusic_id) return true;
-        if(!is_empty(t.applemusic_id) && !is_empty(track.applemusic_id) && t.applemusic_id === track.applemusic_id) return true;
-        if(!is_empty(t.soundcloud_id) && !is_empty(track.soundcloud_id) && t.soundcloud_id === track.soundcloud_id) return true;
-        if(!is_empty(t.imported_id) && !is_empty(track.imported_id) && t.imported_id === track.imported_id) return true;
+    const evil_set = new Set<string>(tracks.map(all_track_ids).flat());
+    for(const id of all_track_ids(track)){
+        if(evil_set.has(id)) return true;
     }
     return false;
 }
-export async function track_exists(track: Track) {
+export function track_exists(track: Track) {
     return track_exist_in_other(GLOBALS.global_var.sql_tracks, track);
 }
 export async function track_from_service_id(ftrack: Track) {
@@ -250,6 +248,7 @@ export async function get_tracks(){
 }
 export async function clear_tracks() {
     await db_exec_async('DELETE FROM tracks');
+    GLOBALS.global_var.sql_tracks = [];
 }
 export async function fetch_track_data_from_uid(uid: Track['uid']): Promise<Track> {
     const tracks: SQLTrack[] = await db_get_all_async(`${sql_select("tracks", "*")} ${sql_where<Track>(["uid", uid])}`);
@@ -263,17 +262,19 @@ export async function insert_all_tracks(tracks: Track[]) {
     await Promise.all(promise_tracks);
 }
 export async function insert_track(track: Track) {
-    if( await track_exists(track) ) return;
-    if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
+    if( track_exists(track) ) return;
     await db_run_async(sql_insert_values("tracks", ExampleObj.track_example0), track_to_sqllite_insertion(track));
     GLOBALS.global_var.sql_tracks.push(track);
+    if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
     if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
 }
 export async function update_track(track_uid: Track['uid'], new_track: Track) {
     await db_run_async(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, ExampleObj.track_example0)} ${sql_where<Track>(["uid", track_uid])}`);
+    update_global_track_item(track_uid, new_track);
 }
 export async function update_track_meta_data(track_uid: Track['uid'], new_meta: TrackMetaData) {
     await db_run_async(`${sql_update_table("tracks")} ${sql_set<Track>(["meta", JSON.stringify(new_meta)])} ${sql_where<Track>(["uid", track_uid])}`);
+    update_global_track_property(track_uid, 'meta', new_meta);
 }
 
 export async function update_track_with_new_track_data(old_track: Track, new_track: Track) {
@@ -283,6 +284,8 @@ export async function update_track_with_new_track_data(old_track: Track, new_tra
 }
 export async function delete_track(uid: Track['uid']) {
     await db_run_async(`${sql_delete_from("tracks")} ${sql_where<Track>(["uid", uid])}`);
+    const idx = GLOBALS.global_var.sql_tracks.findIndex(track => track.uid === uid);
+    GLOBALS.global_var.sql_tracks.splice(idx, 1);
 }
 
 export async function restore_thumbnail_cache() {
@@ -298,6 +301,7 @@ export async function clean_thumbnail_cache() {
         all_promises.push(SQLfs.delete_item(thumbnail_directory(file)))
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
     await Promise.all(all_promises);
+    update_global_track_all_property('thumbnail_uri', '');
 }
 
 export async function clean_directories_itemized(){

@@ -18,9 +18,10 @@ async function add_playback_data_to_releases(releases: (CompactPlaylist[]|Respon
                     : item))))
 }
 
+// export async function artist_watch(artists: NamedUUID[], on_update: (progress: number) => void): Promise<(CompactPlaylist[]|ResponseError)[]>{
 export async function artist_watch(artists: NamedUUID[]): Promise<(CompactPlaylist[]|ResponseError)[]>{
     const proxies = await get_proxies(artists.length);
-    if(proxies.length < 10) artists = artists.slice(0, Constants.new_releases_artist_watch_small_amount);
+    if(proxies.length < 5) artists = artists.slice(0, Constants.new_releases_artist_watch_small_amount);
     const releases: (CompactPlaylist[]|undefined)[] = [];
     const promises: Promises = [];
     artists = artists.filter(artist => !is_empty(artist.uri));

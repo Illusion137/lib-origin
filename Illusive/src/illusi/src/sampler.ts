@@ -11,6 +11,7 @@ import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import { alert_error } from './alert';
 import { Wifi } from './wifi_utils';
+import { Constants } from '../../constants';
 
 export async function get_proxies(sample_length: number){
     const proxies: Origin.Proxy.Proxy[] = [];
@@ -51,15 +52,15 @@ export async function next_sample_tracks_service(ingore_services: MusicServiceTy
     const service = random_of(possible_services);
     const tracks: Track[] = unsampled_tracks_service(service, GLOBALS.global_var.sql_tracks);
     if(tracks.length === 0) return next_sample_tracks_service(ingore_services.concat([service]));
-    return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
+    return shuffle_array(tracks).slice(0, Constants.tracks_per_sample);
 }
 export async function next_sample_tracks_meta() {
     // if(GLOBALS.global_var.sql_tracks.some(track => !is_empty(track.youtube_id) && track.artists[0].uri === null)){
     //     const unsampled = GLOBALS.global_var.sql_tracks.filter(track => !is_empty(track.youtube_id) && track.artists[0].uri === null);
-    //     return shuffle_array(unsampled).slice(0, Prefs.get_pref('tracks_per_sample'));
+    //     return shuffle_array(unsampled).slice(0, Constants.tracks_per_sample);
     // }
     const tracks: Track[] = unsampled_tracks_meta(GLOBALS.global_var.sql_tracks);
-    return shuffle_array(tracks).slice(0, Prefs.get_pref('tracks_per_sample'));
+    return shuffle_array(tracks).slice(0, Constants.tracks_per_sample);
 }
 export async function sample_tracks_service(sample_tracks: Track[], to: MusicServiceType) {
     const proxies = await get_proxies(sample_tracks.length);
@@ -77,7 +78,7 @@ export async function sample_tracks_service(sample_tracks: Track[], to: MusicSer
 }
 
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata'], unavailable: boolean) {
-    if(!await SQLTracks.track_exists(track)) return;
+    if(!SQLTracks.track_exists(track)) return;
     const new_metadata: TrackMetaData = {
         ...(!is_empty(track.meta) ? track.meta! : ({
             plays: 0,
@@ -96,7 +97,7 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
     await SQLTracks.update_track_meta_data(track.uid, new_metadata);
 }
 export async function handle_incoming_youtube_music_track_data(track: Track, new_track: Track) {
-    if(!await SQLTracks.track_exists(track)) return;
+    if(!SQLTracks.track_exists(track)) return;
     track.alt_title = track.title;
     track.title = new_track.title;
     track.artists = new_track.artists;

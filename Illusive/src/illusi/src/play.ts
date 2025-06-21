@@ -62,13 +62,14 @@ export async function play_track_next(track_data: Track) {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
-export function sprinkle_into_queue(tracks: Track[]){
+export async function sprinkle_into_queue(tracks: Track[]){
     tracks = shuffle_array(tracks);
     let i = 0;
     const min_length = Math.min(GLOBALS.global_var.playing_tracks.length, tracks.length);
     while( (i+=random_of([1,2,2,3,4])) < min_length){
         const insert_track = tracks[i];
         GLOBALS.global_var.playing_tracks.splice(i, 0, insert_track);
+        await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
     }
 }
 export async function play_mix(track_data: Track, from: string) {

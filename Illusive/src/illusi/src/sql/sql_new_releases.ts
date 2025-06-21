@@ -1,6 +1,6 @@
 import { try_json_parse, is_empty, milliseconds_of } from '../../../../../origin/src/utils/util';
 import { Prefs } from "../../../prefs";
-import { CompactPlaylist, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Track } from "../../../types";
+import { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select } from "./sql_utils";
 import * as SQLTracks from './sql_tracks';
@@ -24,8 +24,7 @@ export function compact_playlist_to_sqllite_insertion(compact_playlist: CompactP
 }
 
 export async function new_releases_count(): Promise<number>{
-    type Count = {"COUNT(1)": number};
-    return (await db_get_all_async<Count>(sql_select<Count>("new_releases", "COUNT(1)")))[0]['COUNT(1)']  ?? 0;
+    return (await db_get_all_async<SQLCount>(sql_select<SQLCount>("new_releases", "COUNT(1)")))[0]['COUNT(1)'] ?? 0;
 }
 
 export async function sql_compact_playlist_to_compact_playlist(playlist: SQLCompactPlaylist): Promise<CompactPlaylist>{

@@ -13,6 +13,8 @@ export namespace Constants {
     export const soundcloud_playlist_limit = 20;
     export const spotify_playlist_limit = 100;
     export const new_releases_backdate_days = 4;
-    export const new_releases_artist_watch_small_amount = 30;
+    export const new_releases_artist_watch_small_amount = 50;
+    export const download_queue_max_length = 5;
+    export const tracks_per_sample = 3;
     export const use_illusive_cahce = true;
 }

@@ -1,6 +1,5 @@
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Constants } from "../../../constants";
-import { Prefs } from "../../../prefs";
 import { Track } from "../../../types";
 import { alert_error } from "../alert";
 import * as GLOBALS from "../globals";
@@ -9,11 +8,11 @@ import * as SQLTracks from "../sql/sql_tracks";
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 
-export async function download_track(track_data: Track, is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>, set_downloading_progress: SetState<number>) {
+export async function download_track(track_data: Track, redownload: boolean , is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>, set_downloading_progress: SetState<number>) {
     const track = await SQLTracks.fetch_track_data_from_uid(track_data.uid);
     set_is_downloading(true);
-    if(!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex((item) => item.uid == track_data.uid) === -1) || Prefs.get_pref('can_redownload'))) {
-        const result = await GLOBALS.global_var.download_track(track_data, set_downloading_progress, set_is_downloading, set_is_downloaded);
+    if(!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex((item) => item.uid == track_data.uid) === -1))) {
+        const result = await GLOBALS.global_var.download_track(track_data, redownload, set_downloading_progress, set_is_downloading, set_is_downloaded);
         if(result === "ERROR") set_is_downloaded(false);
     }
 }

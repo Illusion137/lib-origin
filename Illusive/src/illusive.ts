@@ -221,9 +221,7 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio");
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!);
-        const yt_music = Prefs.get_pref('prefer_youtube_music');
-        const to_service: MusicServiceType = yt_music ? "YouTube Music" : Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
-        const new_track_data = await convert_track(track, {to_music_service: to_service, possible_services: yt_music && Prefs.get_pref('force_explicit_conversion') ? ['YouTube Music'] : undefined});
+        const new_track_data = await convert_track(track, {});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
         const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
@@ -238,7 +236,7 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.get_track_mix!(track.youtube_id!);
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.get_track_mix!(track.soundcloud_permalink!);
-        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+        const to_service: MusicServiceType = "YouTube Music";
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
@@ -285,7 +283,6 @@ export namespace Illusive {
         for(const uri of uris_descending) {
             try {
                 const result = await fetch(uri, {});
-                console.log(uri);
                 if(result.status === 200) return uri;
             } catch (error) {}
         }
@@ -400,20 +397,15 @@ export namespace Illusive {
         possible_services: MusicServiceType[];
     }
     
-    export function convert_track_default_opts(opts: ConvertTrackOptsNull): ConvertTrackOpts {
-        const yt_music = Prefs.get_pref('prefer_youtube_music');
-        opts.to_music_service = opts.to_music_service ?? ( 
-            yt_music ? "YouTube Music"
-            : Prefs.get_pref('prefer_soundcloud') ? 
-                "SoundCloud" : "YouTube");
+    export function convert_track_default_opts(track: Track, opts: ConvertTrackOptsNull): ConvertTrackOpts {
+        opts.to_music_service = opts.to_music_service ?? "YouTube Music";
         opts.deep_convert = opts.deep_convert ?? false;
         opts.proxies = opts.proxies ?? [];
         opts.possible_services = opts.possible_services ?? (
-            yt_music ?
-                opts.deep_convert ?
-                    ["YouTube Music", "SoundCloud"] :
+            track.explicit === "EXPLICIT" ? ["YouTube Music"]
+                : opts.deep_convert ?
                     ["YouTube Music", "SoundCloud", "YouTube"] :
-                ["YouTube", "SoundCloud"]);
+                ["YouTube Music", "SoundCloud"]);
         return opts as ConvertTrackOpts;
     }
 
@@ -440,7 +432,7 @@ export namespace Illusive {
         const current_artist = convert_track.artists[0].name.toLowerCase();
         const current_words = all_words(current_title);
     
-        if(to === "YouTube Music" && Prefs.get_pref('force_explicit_conversion') && track.explicit === "EXPLICIT" && convert_track.explicit !== "EXPLICIT")
+        if(to === "YouTube Music" && track.explicit === "EXPLICIT" && convert_track.explicit !== "EXPLICIT")
             score -= 150;
     
         if (one_includes_word_not_other(tracK_words, current_words, "instrumental")) score -= 50;
@@ -467,7 +459,7 @@ export namespace Illusive {
     
     export interface MaxTrack { track?: Track, score: number };
     export async function convert_track(track: Track, _opts_: ConvertTrackOptsNull): PromiseResult<MaxTrack> {
-        const opts = convert_track_default_opts(_opts_);
+        const opts = convert_track_default_opts(track, _opts_);
         const music_service = Illusive.music_service.get(opts.to_music_service);
     
         if (music_service?.search === undefined) return { error: new Error(`Can't convert to this music-service; ${opts.to_music_service} lacks a search property`) };

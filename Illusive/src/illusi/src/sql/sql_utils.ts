@@ -147,13 +147,30 @@ export async function sql_all(db: SQLite.SQLiteDatabase, ...args: string[]) {
     return await db.getAllAsync(args.join(" "));
 }
 
+export function update_global_track_property<T extends keyof Track>(uid: Track['uid'], prop: T, value: Track[T]){
+    const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
+    if(idx !== -1) GLOBALS.global_var.sql_tracks[idx][prop] = value;
+}
+export function update_global_track_all_property<T extends keyof Track>(prop: T, value: Track[T]){
+    for(let i = 0; i < GLOBALS.global_var.sql_tracks.length; i++){
+        GLOBALS.global_var.sql_tracks[i][prop] = value;
+    }
+}
+export function update_global_track_item(uid: Track['uid'], new_track: Track){
+    const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
+    if(idx !== -1) GLOBALS.global_var.sql_tracks[idx] = new_track;
+}
+
 export async function download_thumbnail(track: Track) {
     const best_artwork = await Illusive.get_best_track_artwork(document_directory(""), track);
     if(typeof best_artwork === "object" && is_empty(track.thumbnail_uri)) {
         const ext = extract_file_extension(best_artwork.uri, "photo");
-        const thumbnail_download = SQLfs.create_download_resumeable(best_artwork.uri, thumbnail_directory(track.uid + ext));
+        const thumbnail_uri = track.uid + ext;
+        const thumbnail_download = SQLfs.create_download_resumeable(best_artwork.uri, thumbnail_directory(thumbnail_uri));
         await thumbnail_download.downloadAsync();
-        await sql_update<Track>("tracks", track, "thumbnail_uri", track.uid + ext);
+        await sql_update<Track>("tracks", track, "thumbnail_uri", thumbnail_uri);
+        update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
+        update_global_track_property(track.uid, 'playback', {...track.playback!, artwork: Illusive.get_track_artwork(document_directory(""), track)});
         return track.uid + ext;
     }
     return undefined;

@@ -33,6 +33,7 @@ export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "ERROR";
 export type SetState = any;
+export type SQLCount = {"COUNT(1)": number};
 
 export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE" 
     | "NEWEST" | "OLDEST" 
@@ -63,6 +64,7 @@ export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;
 export type Primitives = string|boolean|number;
 
+export type ArtistSortMode = "NEWEST"|"OLDEST"|"MOST_PLAYED"|"LEAST_PLAYED";
 export type AlbumSortMode = "NEWEST"|"OLDEST"|"MOST_PLAYED_ARTISTS"|"LEAST_PLAYED_ARTISTS";
 
 export interface QueryFlag<T> {
@@ -249,7 +251,8 @@ export interface CompactPlaylistData {
     track_count: number
     type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>
-    thumbnail_uri?: string
+    thumbnail_uri?: string;
+    pinned?: boolean;
 }
 export interface SerializedCompactPlaylistData {
     title: string;

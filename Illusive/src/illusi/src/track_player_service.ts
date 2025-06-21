@@ -65,6 +65,7 @@ export async function setup_track_player(): Promise<boolean> {
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
+    // const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, Prefs.get_pref('force_youtube_18_quality') ? "18" : "140");
     if ("error" in url_data) {
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);

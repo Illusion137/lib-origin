@@ -50,7 +50,6 @@ export async function youtube_add_tracks_to_playlist(tracks: Track[], playlist_u
     tracks = tracks.filter(track => !is_empty(track.youtube_id));
     const uris = tracks.map(track => track.youtube_id) as string[];
     if(home_ === undefined) home_ = await Origin.YouTube.get_home({cookie_jar});
-    console.log("LOGGED_IN: ", home_.icfg.ytcfg.LOGGED_IN);
     if("error" in home_) return false;
     const add_response = await Origin.YouTube.add_tracks_to_playlist({cookie_jar}, home_.icfg.ytcfg, playlist_url, uris);
     return add_response;

@@ -11,11 +11,11 @@ import { Wifi } from './wifi_utils';
 
 export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track[]> {
     if(Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()) {
-        alert_error("Unable to unzip backpack due to lack of wifi connection and Preference['expensive_wifi_only']", true);
+        alert_error("Unable to unzip backpack due to lack of wifi connection and Preference['expensive_wifi_only']");
         return [];
     }
     const fastpack = Prefs.get_pref('fastpack') && unavailable_tracks.length >= Constants.fastpack_track_threshold;
-    const to_service: MusicServiceType = Prefs.get_pref('prefer_youtube_music') ? 'YouTube Music' : Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+    const to_service: MusicServiceType = 'YouTube Music';
     if(fastpack) {
         let proxies: Origin.Proxy.Proxy[] = [];
         const promise_tracks: ReturnType<typeof Illusive.convert_track>[] = [];
@@ -24,7 +24,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
             proxies = fetched_proxies;
         } else await Logger.log_error(fetched_proxies);
         for(const utrack of unavailable_tracks)
-            promise_tracks.push(Illusive.convert_track(utrack, {to_music_service: to_service, proxies}));
+            promise_tracks.push(Illusive.convert_track(utrack, {to_music_service: to_service, proxies, deep_convert: true}));
         const resolved_tracks = await Promise.all(promise_tracks);
         resolved_tracks.forEach(track => { if("error" in track) alert_error(track); })
         
@@ -37,7 +37,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
     }
     const tracks: Track[] = [];
     for(const utrack of unavailable_tracks) {
-        const track = await Illusive.convert_track(utrack, {to_music_service: to_service});
+        const track = await Illusive.convert_track(utrack, {to_music_service: to_service, deep_convert: true});
         if("error" in track) {
             alert_error(track);
             continue;

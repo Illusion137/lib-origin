@@ -1,10 +1,10 @@
 import { extract_string_from_pattern, is_empty, remove, remove_topic, urlid } from "../../origin/src/utils/util";
 import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
-import { COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
+import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
 import fuzzysort from "fuzzysort";
 import { seeded_rand } from "./seeding";
-import { AlbumSortMode, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
+import { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
 import { Constants } from "./constants";
 
 export function has_file_extension(path: string){
@@ -82,22 +82,49 @@ export function date_from(date: {year?: number, month?: number, day?: number, ho
     return new_date;
 }
 
-export function get_most_played_artists(global_tracks: Track[]){
+export function get_unique_artists_tracks(global_tracks: Track[]){
     const seen_artists = new Set<IllusiveURI>();
+    const seen_artists_names = new Set<string>();
     return global_tracks
-    .filter(track => !is_empty(track.artists[0].uri))
-    .sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0))
-    .filter(track => {
-        if(seen_artists.has(track.artists[0].uri!)) return false;
-        seen_artists.add(track.artists[0].uri!)
-        return true;
-    })
-    .map(track => track.artists[0])
+        .filter(track => !is_empty(track.artists[0].uri))
+        .filter(track => {
+            if(seen_artists.has(track.artists[0].uri!)) return false;
+            seen_artists.add(track.artists[0].uri!)
+            return true;
+        })
+        .filter(track => {
+            if(seen_artists_names.has(track.artists[0].name)) return false;
+            seen_artists_names.add(track.artists[0].name)
+            return true;
+        });
 }
-function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[]{
+export function get_unique_artists(global_tracks: Track[]){
+    return get_unique_artists_tracks(global_tracks)
+        .map(track => track.artists[0]);
+}
+export function get_most_played_artists(global_tracks: Track[]){
+    return get_unique_artists_tracks(global_tracks)
+        .sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0))
+        .map(track => track.artists[0]);
+}
+export function sort_compact_artists_by_most_played(artists: NamedUUID[], global_tracks: Track[]): CompactArtist[]{
+    const name_plays: [string, number][] = global_tracks.map(track => [track.artists[0].name, track.meta?.plays ?? 0]);
+    const name_plays_map = new Map<string, number>();
+    for(const name_play of name_plays){
+        name_plays_map.set(name_play[0], (name_plays_map.get(name_play[0]) ?? 0) + name_play[1]);
+    }
+    return artists.slice().sort((a,b) => (name_plays_map.get(b?.name ?? "") ?? 0) - (name_plays_map.get(a?.name ?? "") ?? 0)).map(nammed_uuid_to_compact_artist);
+}
+export function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[]{
     const most_played_artists = get_most_played_artists(global_tracks);
     const most_played_artists_uris = new Map<string, number>(most_played_artists.map((artist, i) => [artist.uri ?? "", most_played_artists.length - (artist.uri ? i : 0)]));
     return albums.slice().sort((a, b) => (most_played_artists_uris.get(b.artist?.[0]?.uri ?? "") ?? 0) - (most_played_artists_uris.get(a.artist?.[0]?.uri ?? "") ?? 0));
+}
+export function nammed_uuid_to_compact_artist(artist: NamedUUID): CompactArtist{
+    return ({name: artist, is_official_artist_channel: true, profile_artwork_url: 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg'});
+}
+export function compact_artist_to_nammed_uuid(artist: CompactArtist): NamedUUID{
+    return ({name: artist.name.name, uri: artist.name.uri ?? null});
 }
 export function sort_compact_playlists(mode: AlbumSortMode, albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[]{
     switch(mode){
@@ -106,6 +133,15 @@ export function sort_compact_playlists(mode: AlbumSortMode, albums: CompactPlayl
         case "MOST_PLAYED_ARTISTS": return sort_compact_playlist_by_most_played_artists(albums, global_tracks);
         case "LEAST_PLAYED_ARTISTS": return sort_compact_playlist_by_most_played_artists(albums, global_tracks).reverse();
         default: return albums;
+    }
+}
+export function sort_compact_artists(mode: ArtistSortMode, artists: NamedUUID[], global_tracks: Track[]): CompactArtist[]{
+    switch(mode){
+        case "NEWEST": return artists.slice().reverse().map(nammed_uuid_to_compact_artist);
+        case "OLDEST": return artists.map(nammed_uuid_to_compact_artist);
+        case "MOST_PLAYED": return sort_compact_artists_by_most_played(artists, global_tracks);
+        case "LEAST_PLAYED": return sort_compact_artists_by_most_played(artists, global_tracks).reverse();
+        default: return artists.map(nammed_uuid_to_compact_artist);
     }
 }
 export function track_section_map(tracks: Track[], queried: boolean): { "char_data": string[], "section_map": Track[][] } {
@@ -216,6 +252,25 @@ export function album_query_filter(compact_playlists: CompactPlaylist[], query?:
         {
             all: false,
             keys: [(obj) => obj.title.name, (obj) => artist_string(obj)]
+        }
+    ).map(r => r.obj);
+}
+export function artist_query_filter(compact_artists: CompactArtist[], query?: string){
+    if(is_empty(query)) return compact_artists;
+    
+    const queried_result = filter_with_query_flags(query!, compact_artists, COMPACT_ARTIST_QUERY_FLAGS);
+
+    query = queried_result.new_query;
+    compact_artists = queried_result.filtered_data;
+
+    if(is_empty(query)) return compact_artists;
+
+    return fuzzysort.go(
+        query, 
+        compact_artists,
+        {
+            all: false,
+            keys: [(obj) => obj.name.name]
         }
     ).map(r => r.obj);
 }
@@ -458,7 +513,6 @@ export function version_greater_than(version: string, other_version: string): bo
         return false;
     }
     catch(e) {
-        console.log(e);
         return false;
     }
 }

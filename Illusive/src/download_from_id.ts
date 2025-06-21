@@ -15,18 +15,22 @@ export async function soundcloud_download_from_id(permalink: string, _: string):
 export async function youtube_download_from_id(video_id: string, quality: string): Promise<DownloadFromIdResult|ResponseError> {
     const ytdl_opts: DownloadOptions = {
         quality: Prefs.get_pref('force_youtube_18_quality') ? "18" : quality as YTDLQuality, 
-        playerClients: ["WEB", "IOS", "ANDROID", "TV"]};
+        playerClients: ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"]};
     try {
         try {            
-            const av_result = await Origin.YouTubeDL.ytdl(video_id, ytdl_opts);
-            if("error" in av_result) throw new Error(av_result.error as string);
-            const status_fetch = await fetch(av_result.av.url);
-            if(!status_fetch.ok) {
-                const av_result_18 = await Origin.YouTubeDL.ytdl(video_id, {...ytdl_opts, quality: "18"});
-                if("error" in av_result_18) throw new Error(`AV-URL Returns ${status_fetch.status} :: ` + (av_result_18.error as string));
-                return {url: av_result_18.av.url, metadata: youtube_info_metadata(av_result_18.info)};
-            }
-            return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
+            const av_info = (await Origin.YouTubeDL.get_info(video_id, ytdl_opts));
+            if("error" in av_info) throw new Error(av_info.error as string);
+            const av_format = Origin.YouTubeDL.choose_format(av_info.info, ytdl_opts);
+            if(Prefs.get_pref('force_youtube_18_quality'))
+                return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
+            // const status_fetch = await fetch(av_format.url);
+            // console.log("fetch");
+            // if(!status_fetch.ok) {
+            //     console.log("18f");
+            //     const av_format_18 = Origin.YouTubeDL.choose_format(av_info.info, {...ytdl_opts, quality: "18"});
+            //     return {url: av_format_18.url, metadata: youtube_info_metadata(av_info.info)};
+            // }
+            return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
         } catch (error) {
             const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
             if(!use_cookies_on_download) throw error;

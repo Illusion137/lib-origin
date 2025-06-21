@@ -297,7 +297,7 @@ export namespace YouTubeMusic {
 					}
 					catch { return undefined; }
 				}
-				else console.log(content)
+				else 
 				return undefined;
 			}).filter(content => content !== undefined);
 		}).flat();
