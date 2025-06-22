@@ -115,6 +115,7 @@ export async function track_player_previous() {
         const track_index = await TrackPlayer.getActiveTrackIndex();
         if(track_index === undefined || track_index === 0) {
             await TrackPlayer.seekTo(0);
+            updated_metadata_mutex = false;
             return;
         }
         const illusi_track = GLOBALS.global_var.playing_tracks?.[track_index];

@@ -178,7 +178,7 @@ function times_played_multiplier(plays: number, max_plays: number): number{
 function time_since_last_played_multiplier(date: Date): number{
     const time_difference = new Date().getTime() - date.getTime();
     const days_difference = time_difference / (1000 * 60 * 60 * 24);
-    return Math.pow(Math.max(4 - days_difference, 1), 2);
+    return Math.max((7 - days_difference) / 2, 1);
 }
 
 function filter_with_query_flags<T>(query: string, obj: T[], query_flags: QueryFlag<T>[]){

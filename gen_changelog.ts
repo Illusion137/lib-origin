@@ -1,4 +1,9 @@
-export const CHANGELOG = `# Illusi 16.0.1
+export const CHANGELOG = `# Illusi 16.0.2
+  - Fixed bug where you couldn't access position-slider in audioplayer
+  - Fixed bug where Archived Playlists got cut off
+  - Fixed bug relating to the imported icon
+  - Fixed bug relating to updating track plays if restart track
+# Illusi 16.0.1
   - Fixed bug relating to holding down on button to recieve context-menu
   - Fixed YouTube Music parsing bugs
   - Fixed YouTube cookie bugs
