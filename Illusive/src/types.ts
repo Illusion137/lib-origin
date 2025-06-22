@@ -430,8 +430,10 @@ export class MusicService {
         this.link_text = s.link_text;
         this.cookie_jar_callback = s.cookie_jar_callback;
         this.search = Constants.use_illusive_cahce ? async(query: string, opts?: SearchOpts) => {
+            const key = query + ":MS:" + String(this.app_icon);
+            if(search_cache.get(key)) return search_cache.get(key)!; 
             const result = await s.search!(query, opts);
-            search_cache.update(query, result);
+            search_cache.add(query, result);
             return result;
         } : s.search;
         this.search_continuation = s.search_continuation;

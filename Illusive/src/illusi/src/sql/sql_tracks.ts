@@ -196,7 +196,7 @@ export async function clear_track_youtube(uid: Track['uid']) {
 }
 
 function all_track_ids(track: Track){
-    return [track.illusi_id!, track.youtube_id!, track.spotify_id!, track.amazonmusic_id!, track.applemusic_id!, String(track.soundcloud_id!), track.imported_id!].filter(item => !is_empty(item));
+    return [track.illusi_id!, track.youtube_id!, track.spotify_id!, track.amazonmusic_id!, track.applemusic_id!, String(track.soundcloud_id! ?? ""), track.imported_id!].filter(item => !is_empty(item));
 }
 export function track_exist_in_other(tracks: Track[], track: Track){
     const evil_set = new Set<string>(tracks.map(all_track_ids).flat());

@@ -26,7 +26,7 @@ export async function backpack_tracks() {
     return tracks;
 }
 export async function add_to_backpack(uid: string) {
-    if(await track_exists({uid, title:"", artists:[], duration:0})) return;
+    if(track_exists({uid, title:"", artists:[], duration:0})) return;
     const track = await track_from_uid(uid);
     if("error" in track) {
         alert_error(track);

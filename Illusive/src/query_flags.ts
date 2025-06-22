@@ -17,10 +17,10 @@ export function parse_words(query: string){
     return query.split(' ');
 }
 export function get_first_word_str(args: string[], i: number): string{
-    return args[i].trim();
+    return (args?.[i] ?? "").trim();
 }
 export function get_word_num(args: string[], i: number): number{
-    return parseInt(args[i].trim());
+    return parseInt((args?.[i] ?? "").trim());
 }
 export function extract_query_flags<T>(query: string, QUERY_FLAGS: QueryFlag<T>[]){
     const words = parse_words(query);

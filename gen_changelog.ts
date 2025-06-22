@@ -1,4 +1,16 @@
-export const CHANGELOG = `# Illusi 16.0.0
+export const CHANGELOG = `# Illusi 16.0.1
+  - Fixed bug relating to holding down on button to recieve context-menu
+  - Fixed YouTube Music parsing bugs
+  - Fixed YouTube cookie bugs
+  - Fixed bug of repeating Haptics
+  - Fixed bug relating to searching
+  - Fixed bug relating to tracks are incorrectly marked as added
+  - Fixed bug relating to not properly updating SQL tables
+  - Fixed bug relating to Trackplayer restart threshold
+  - Fixed bug relating to Trackplayer update metadata threshold
+  - Fixed bug relating to the Explore Page not properly displaying updated YouTube Music items
+  - Fixed crash when Query Flag not recieving arguments properly
+# Illusi 16.0.0
   - No longer unmount Playlist Screen
   - Fixed bug where Albums show topic data
   - Fixed bug where Artist show topic data

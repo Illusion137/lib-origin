@@ -234,12 +234,12 @@ export async function fix_to_new_update(version: string) {
         }
     }
 
-    if (!version_greater_than(version, "15.2.2")) {
+    if (!version_greater_than(version, "16.0.1")) {
         try {
             await alter_sql(db, { table: 'playlists', action: "ADD", column_name: 'archived', type: "BOOLEAN" });
             if((await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"))).some(playlist => playlist.archived === null)){
                 await db_run_async(`${sql_update_table("playlists")} SET archived=false`);
-                Alert.alert("Updated Illusi to 15.2.2 BETA");
+                Alert.alert("Updated Illusi to 16.0.1");
             }
         } catch (error) {
 

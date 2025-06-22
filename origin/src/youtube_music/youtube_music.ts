@@ -61,7 +61,7 @@ export namespace YouTubeMusic {
 		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /\&.+/);
 	}
 	export function get_post_headers(cookie_jar: CookieJar|undefined, epoch: Date, ytcfg: YTCFG, retry: boolean): Record<string, any> {
-		const SAPISID = cookie_jar?.getCookie("SAPISID")?.getData().value;
+		const SAPISID = cookie_jar?.getCookie("SAPISID")?.getData()?.value;
 		return {
 			"User-Agent": user_agent,
 			"accept": "*/*",

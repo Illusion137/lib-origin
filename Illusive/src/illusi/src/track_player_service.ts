@@ -92,6 +92,23 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 
 let updated_metadata_mutex = false;
 
+export function get_restart_threshold(playing_track: Track){
+    const begdur = playing_track.meta?.begdur ?? 0;
+    const enddur = playing_track.meta?.enddur ?? playing_track.duration;
+    return ((begdur + ((enddur - begdur)) * Constants.previous_restart_threshold) / playing_track.duration);
+}
+export function is_in_restart_threshold(playing_track: Track, position: number){
+    return position / playing_track.duration >= get_restart_threshold(playing_track);
+}
+export function get_metadata_update_threshold(playing_track: Track){
+    const begdur = playing_track.meta?.begdur ?? 0;
+    const enddur = playing_track.meta?.enddur ?? playing_track.duration;
+    return ((begdur + ((enddur - begdur)) * Constants.update_track_threshold) / playing_track.duration);
+}
+export function is_in_metadata_update_threshold(playing_track: Track, position: number){
+    return position / playing_track.duration >= get_metadata_update_threshold(playing_track);
+}
+
 export async function track_player_previous() {
     try {
         const progress = await TrackPlayer.getProgress();
@@ -101,7 +118,7 @@ export async function track_player_previous() {
             return;
         }
         const illusi_track = GLOBALS.global_var.playing_tracks?.[track_index];
-        if((progress.position / (progress.duration - (illusi_track.meta?.begdur ?? 0))) >= Constants.previous_restart_threshold) {
+        if(is_in_restart_threshold(illusi_track, progress.position)) {
             await TrackPlayer.seekTo(GLOBALS.global_var.playing_tracks?.[track_index]?.meta?.begdur ?? 0);
             return;
         }
@@ -181,7 +198,7 @@ export async function playback_service() {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
 
-            if (data.position / (illusi_track.meta?.enddur ?? data.duration) >= Constants.update_track_threshold && !updated_metadata_mutex) {
+            if (is_in_metadata_update_threshold(illusi_track, data.position) && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid) as Track;
                 if(is_empty(current_track.meta!.plays)) current_track.meta!.plays = 0;

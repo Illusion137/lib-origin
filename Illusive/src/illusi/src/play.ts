@@ -44,7 +44,6 @@ export async function push_track_to_playing_queue(track_data: Track) {
     GLOBALS.global_var.playing_tracks.splice(track_index + 1 + GLOBALS.global_var.playing_queue.length, 0, track);
     GLOBALS.global_var.playing_queue.push(track.uid);
     await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 export async function play_track_next(track_data: Track) {
@@ -59,7 +58,6 @@ export async function play_track_next(track_data: Track) {
     GLOBALS.global_var.playing_tracks.splice(track_index + 1, 0, track);
     GLOBALS.global_var.playing_queue.push(track.uid);
     await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 export async function sprinkle_into_queue(tracks: Track[]){
@@ -71,6 +69,7 @@ export async function sprinkle_into_queue(tracks: Track[]){
         GLOBALS.global_var.playing_tracks.splice(i, 0, insert_track);
         await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
     }
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 export async function play_mix(track_data: Track, from: string) {
     if(is_empty(from)) {

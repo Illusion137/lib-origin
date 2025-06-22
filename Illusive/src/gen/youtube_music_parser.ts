@@ -57,13 +57,13 @@ export function parse_youtube_music_track(track: YouTubeMusicTrack): Track{
     }
 }
 
-export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack, artists: Runs, album: Runs): Track {
+export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack, artists: Runs, album: Runs, browse_id: string): Track {
     return {
         uid: generate_new_uid(parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs),
         artists: youtube_music_split_artists(artists),
         duration: parse_time(parse_runs(track.fixedColumns[0].musicResponsiveListItemFixedColumnRenderer.text.runs)),
-        album: empty_undefined(parse_runs(album)) !== undefined ? {name: parse_runs(album),  uri: album?.[0]?.navigationEndpoint?.browseEndpoint?.browseId !== undefined ? create_uri('youtubemusic', album?.[0]?.navigationEndpoint?.browseEndpoint?.browseId) : null } : undefined,
+        album: empty_undefined(parse_runs(album)) !== undefined ? {name: parse_runs(album),  uri: (album?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ?? browse_id) ? create_uri('youtubemusic', album?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ?? browse_id) : null } : undefined,
         explicit: track?.badges?.length >= 1 && track?.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
         artwork_url: best_thumbnail(track?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails)?.url,
         youtube_id: track.playlistItemData.videoId,

@@ -84,7 +84,11 @@ export function urlid(url: string, ...remove_links: (string|RegExp)[]) {
 }
 export function make_topic(title: string) { return `${title} - Topic`; }
 export function remove_topic(title: string) { return title.replace(" - Topic", ''); }
-export function is_empty(value: unknown) { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
+declare const opaqueSym: unique symbol;
+type NonEmptyArray<T> = [T, ...T[]];
+type NonEmpty = string & { [opaqueSym]: "NonEmptyString" } | number | NonEmptyArray<any>;
+
+export function is_empty(value: unknown): value is NonEmpty { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 export function remove(str: string, ...rs: (string|RegExp)[]) { for(const r of rs) str = str.replace(r, ''); return str; }
