@@ -23,6 +23,7 @@ import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_musi
 import { Prefs } from './prefs';
 import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './track_parser';
 import { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from './types';
+import { Constants } from './constants';
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist {
     return {...(error !== undefined ? {error: [error]} : {}), title: "", tracks: [], continuation: null}
@@ -58,7 +59,7 @@ export async function youtube_get_playlist_continuation(opts: YouTubePlaylistCon
     return {tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: {ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation} as YouTubePlaylistContinuation}
 }
 
-interface YouTubeMusicPlaylistContinuation {"ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation|YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs}
+interface YouTubeMusicPlaylistContinuation {"url": string, "ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation|YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs}
 
 export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
@@ -70,8 +71,8 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
             creator: youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
             artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
             date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
-            tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs)),
-            continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "ALBUM", artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
+            tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs, Origin.YouTubeMusic.playlist_urlid(url))),
+            continuation: playlist_response.data.continuation === null ? null : {url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "ALBUM", artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
         };
     }
     try {
@@ -81,7 +82,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
             artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
             date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
             tracks: playlist_response.data.tracks.filter(item => item !== undefined).map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
-            continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "PLAYLIST"} as YouTubeMusicPlaylistContinuation
+            continuation: playlist_response.data.continuation === null ? null : {url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "PLAYLIST"} as YouTubeMusicPlaylistContinuation
         };
     }
     catch(e) {
@@ -90,8 +91,8 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
             creator: youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
             artwork_url: playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails[0].url,
             date: date_from({year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text)}).toISOString() as ISOString,
-            tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs)),
-            continuation: playlist_response.data.continuation === null ? null : {ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "ALBUM", artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
+            tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs, Origin.YouTubeMusic.playlist_urlid(url))),
+            continuation: playlist_response.data.continuation === null ? null : {url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "ALBUM", artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs} as YouTubeMusicPlaylistContinuation
         };
     }
 }
@@ -105,7 +106,7 @@ export async function youtube_music_get_playlist_continuation(opts: YouTubeMusic
         return {
             tracks: parsed_playlist.continuationContents.musicPlaylistShelfContinuation.contents.filter(item => item !== undefined).map(track => 
                 opts.type === "PLAYLIST" ? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack) :
-                    parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs)
+                    parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs, Origin.YouTubeMusic.playlist_urlid(opts.url))
             ).filter(item => item !== undefined),
             continuation: {
                 ytcfg: opts.ytcfg, 
@@ -125,7 +126,7 @@ export async function youtube_music_get_playlist_continuation(opts: YouTubeMusic
         return {
             tracks: contents.filter(item => item !== undefined).map(track => 
                 opts.type === "PLAYLIST" ? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack) :
-                    parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs)
+                    parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs, Origin.YouTubeMusic.playlist_urlid(opts.url))
             ).filter(item => item !== undefined),
             continuation: next_continuation === undefined ? null : {
                 ytcfg: opts.ytcfg, 
@@ -144,7 +145,7 @@ interface SpotifyPlaylistContinuation {"client": Origin.Spotify.Client, "id": st
 export async function spotify_get_playlist(url: string): Promise<MusicServicePlaylist> {
     let playlist_response: UserPlaylist|Album|Collection|ResponseError;
     const cookie_jar = Prefs.get_pref("spotify_cookie_jar");
-    const playlist_limit: number = Prefs.get_pref("spotify_playlist_limit");
+    const playlist_limit: number = Constants.spotify_playlist_limit;
     const client = await Origin.Spotify.get_client(url, cookie_jar);
     if("error" in client) return {title: "", tracks: [], continuation: null, error: [client]};
     const playlist_id = urlid(url, "open.spotify.com/", "playlist/", "album/", "collection/");
@@ -237,7 +238,7 @@ export async function amazon_music_get_playlist(url: string): Promise<MusicServi
 interface SoundcloudPlaylistContinuation {"next_href": string|null, "client_id": string, "depth": number}
 export async function soundcloud_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");
-    const playlist_limit: number = Prefs.get_pref("soundcloud_playlist_limit");
+    const playlist_limit: number = Constants.soundcloud_playlist_limit;
 
     const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {cookie_jar});
     if("error" in hydration) return {title: "", tracks: [], continuation: null, error: [hydration]};

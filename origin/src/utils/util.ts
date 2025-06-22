@@ -9,12 +9,14 @@ export function generate_new_uid(prefix_name: string) {
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
-export function encode_params(data: Record<string, unknown>) {
+export function encode_params(data: Record<string, unknown>, query?: [string, string]) {
 	const encoded_params: string[] = [];
 	for(const key of Object.keys(data)) {
 		const param = data[key];
 		encoded_params.push(`${key}=${encodeURIComponent(typeof(param) === "object" ? JSON.stringify(param) : param as string|number|boolean )}`);
 	}
+	if(query) 
+		encoded_params.push(`${query[0]}=${query[1]}`);
 	return encoded_params.join('&');
 }
 export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
@@ -41,9 +43,38 @@ export function parse_time(clock_time: string|undefined): number {
 	}
 	return time;
 }
-export function parse_runs(runs: ({text: string}[]) | undefined ): string {
+export function youtube_views_number(views_string?: string): number {
+    if(is_empty(views_string)) return 0;
+    views_string = remove(views_string!, " views",  " view", " plays", " play");
+    const last_char = views_string[views_string.length - 1];
+
+    switch(last_char) {
+        case 'B': return parseFloat(views_string) * 1000000000;
+        case 'M': return parseFloat(views_string) * 1000000;
+        case 'K': return parseFloat(views_string) * 1000;
+        default: return parseFloat(views_string);
+    }
+}
+export function round_decimal_place(num: number, decimal_places: number){
+	if(decimal_places === 0) return Math.round(num); 
+	const multiplier = Math.pow(10, decimal_places);
+	if(decimal_places < 0) return Math.round(num / multiplier) * multiplier;
+	return Math.round(num * multiplier) / multiplier;
+}
+export function parse_runs(runs: ({text: string}[]) | undefined, join_with?: string ): string {
     if(runs === undefined) return "";
-    return runs.map(run => run.text).join(" ");
+    return runs.map(run => run.text).join(join_with ?? " ");
+}
+function wait(milliseconds: number) {
+	return new Promise(function(resolve) { 
+	  	setTimeout(resolve, milliseconds, 'HASH_TIMED_OUT');
+	});
+}
+export async function call_wtimeout(promise: () => Promise<any>, timeout_milliseconds: number){
+	return await Promise.race([
+		promise(),
+		wait(timeout_milliseconds)
+	])
 }
 export function empty_undefined(str: string) { return is_empty(str) ? undefined : str; }
 export function urlid(url: string, ...remove_links: (string|RegExp)[]) { 
@@ -53,7 +84,11 @@ export function urlid(url: string, ...remove_links: (string|RegExp)[]) {
 }
 export function make_topic(title: string) { return `${title} - Topic`; }
 export function remove_topic(title: string) { return title.replace(" - Topic", ''); }
-export function is_empty(value: unknown) { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
+declare const opaqueSym: unique symbol;
+type NonEmptyArray<T> = [T, ...T[]];
+type NonEmpty = string & { [opaqueSym]: "NonEmptyString" } | number | NonEmptyArray<any>;
+
+export function is_empty(value: unknown): value is NonEmpty { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 export function remove(str: string, ...rs: (string|RegExp)[]) { for(const r of rs) str = str.replace(r, ''); return str; }
@@ -65,6 +100,18 @@ export function remove_special_chars(str: string) {
 export function eval_json<T>(json: string): T {
     const result = eval("let evaluated = " + json + "; evaluated;");
     return result;
+}
+export function milliseconds_of(time: {days?: number, hours?: number, minutes?: number, seconds?: number}): number {
+	return ((time.days ?? 0) * 1000 * 60 * 60 * 24) 
+		+ ((time.hours ?? 0) * 1000 * 60 * 60)
+		+ ((time.minutes ?? 0) * 1000 * 60)
+		+ ((time.seconds ?? 0) * 1000)
+}
+export function empty_join(vals: any[], join_with: string) {
+    return vals.filter(vals => !is_empty(vals)).join(join_with);
+}
+export function empty_join_dot(vals: any[]) {
+    return empty_join(vals, " • ");
 }
 
 export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
@@ -137,6 +184,9 @@ export function safe_date_iso(date: Date): string{
 	catch(e) {
 		return new Date(0).toISOString();
 	}
+}
+export function base_response_fail_msg(response: Response){
+	return `response failed to ${response.url} with status code: ${response.status}; msg: ${response.statusText}`;
 }
 
 import { RequestInit } from 'node-fetch';

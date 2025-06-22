@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "strict": true,
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "noEmitOnError": true,
         "noEmit": true,
         "module": "commonjs",
@@ -19,7 +19,7 @@
         "strictNullChecks": true,
         "noImplicitReturns": true,
         "skipLibCheck": true,
-        "allowJs": true
+        "allowJs": true,
     },
     "exclude": ["node_modules/**"],
     "lib": [

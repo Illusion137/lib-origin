@@ -65,6 +65,7 @@ export async function setup_track_player(): Promise<boolean> {
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
+    // const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, Prefs.get_pref('force_youtube_18_quality') ? "18" : "140");
     if ("error" in url_data) {
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
@@ -91,17 +92,75 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 
 let updated_metadata_mutex = false;
 
+export function get_restart_threshold(playing_track: Track){
+    const begdur = playing_track.meta?.begdur ?? 0;
+    const enddur = playing_track.meta?.enddur ?? playing_track.duration;
+    return ((begdur + ((enddur - begdur)) * Constants.previous_restart_threshold) / playing_track.duration);
+}
+export function is_in_restart_threshold(playing_track: Track, position: number){
+    return position / playing_track.duration >= get_restart_threshold(playing_track);
+}
+export function get_metadata_update_threshold(playing_track: Track){
+    const begdur = playing_track.meta?.begdur ?? 0;
+    const enddur = playing_track.meta?.enddur ?? playing_track.duration;
+    return ((begdur + ((enddur - begdur)) * Constants.update_track_threshold) / playing_track.duration);
+}
+export function is_in_metadata_update_threshold(playing_track: Track, position: number){
+    return position / playing_track.duration >= get_metadata_update_threshold(playing_track);
+}
+
 export async function track_player_previous() {
     try {
         const progress = await TrackPlayer.getProgress();
-        if((progress.position / progress.duration) >= Constants.previous_restart_threshold) {
-            const track_index = await TrackPlayer.getActiveTrackIndex();
-            if(track_index === undefined) await TrackPlayer.seekTo(0);
-            else await TrackPlayer.seekTo(GLOBALS.global_var.playing_tracks?.[track_index]?.meta?.begdur ?? 0);
+        const track_index = await TrackPlayer.getActiveTrackIndex();
+        if(track_index === undefined || track_index === 0) {
+            await TrackPlayer.seekTo(0);
+            updated_metadata_mutex = false;
+            return;
+        }
+        const illusi_track = GLOBALS.global_var.playing_tracks?.[track_index];
+        if(is_in_restart_threshold(illusi_track, progress.position)) {
+            await TrackPlayer.seekTo(GLOBALS.global_var.playing_tracks?.[track_index]?.meta?.begdur ?? 0);
             return;
         }
         await TrackPlayer.skipToPrevious();
     } catch (error) { alert_trackplayer_error({error: error as Error}); }
+}
+
+export async function check_push_next_track(queue_index: number) {
+    // const prev_track_index = queue_index - 1;
+    // const prev_illusi_track = GLOBALS.global_var.playing_tracks[prev_track_index];
+    const next_track_index = queue_index + 1;
+    const next_illusi_track = GLOBALS.global_var.playing_tracks[next_track_index];
+    
+    if (next_illusi_track && next_illusi_track.playback!.added === false && next_illusi_track.playback!.successful === false) {
+        next_illusi_track.playback!.added = true;
+
+        const react_native_track = await illusive_track_to_track_player_track(next_illusi_track);
+        if (react_native_track === null) {
+            await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, next_track_index);
+        } else if (react_native_track === 'skip') {
+            GLOBALS.global_var.playing_tracks.splice(next_track_index, 1);
+        } else {
+            next_illusi_track.playback!.successful = true;
+            await TrackPlayer.add(react_native_track, next_track_index);
+        }
+    }
+    // if (prev_illusi_track && prev_illusi_track.playback!.added === false && prev_illusi_track.playback!.successful === false) {
+    //     prev_illusi_track.playback!.added = true;
+
+    //     const react_native_track = await illusive_track_to_track_player_track(prev_illusi_track);
+    //     if (react_native_track === null) {
+    //         await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, prev_track_index);
+    //     } 
+    //     else if (react_native_track === 'skip') {
+    //         // GLOBALS.global_var.playing_tracks.splice(prev_track_index, 1);
+    //     }
+    //      else {
+    //         prev_illusi_track.playback!.successful = true;
+    //         await TrackPlayer.add(react_native_track, prev_track_index);
+    //     }
+    // }
 }
 
 export async function track_player_next() {
@@ -140,7 +199,7 @@ export async function playback_service() {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
 
-            if (data.position / (illusi_track.meta?.enddur ?? data.duration) >= .75 && !updated_metadata_mutex) {
+            if (is_in_metadata_update_threshold(illusi_track, data.position) && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid) as Track;
                 if(is_empty(current_track.meta!.plays)) current_track.meta!.plays = 0;
@@ -150,23 +209,7 @@ export async function playback_service() {
             }
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) await track_player_next();
 
-            const next_track_index = data.track + 1;
-            const next_illusi_track = GLOBALS.global_var.playing_tracks[next_track_index];
-            if (next_illusi_track === undefined) return;
-            
-            if (next_illusi_track.playback!.added === false && next_illusi_track.playback!.successful === false) {
-                next_illusi_track.playback!.added = true;
-
-                const react_native_track = await illusive_track_to_track_player_track(next_illusi_track);
-                if (react_native_track === null) {
-                    await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, next_track_index);
-                } else if (react_native_track === 'skip') {
-                    GLOBALS.global_var.playing_tracks.splice(next_track_index, 1);
-                } else {
-                    next_illusi_track.playback!.successful = true;
-                    await TrackPlayer.add(react_native_track, next_track_index);
-                }
-            }
+            await check_push_next_track(data.track);
         } catch (error) { }
     });
     TrackPlayer.addEventListener(Event.RemotePrevious, async () => { await track_player_previous(); });

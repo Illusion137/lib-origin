@@ -6,8 +6,6 @@ import { remove_topic } from '../origin/src/utils/util';
 import { Prefs } from '../Illusive/src/prefs';
 import { Illusive } from '../Illusive/src/illusive';
 
-Prefs.prefs.prefer_youtube_music.current_value = true;
-Prefs.prefs.force_explicit_conversion.current_value = true;
 Prefs.prefs.use_cookies_on_search.current_value = false;
 
 function small_track(track: Track){

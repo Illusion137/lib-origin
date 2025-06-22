@@ -1,6 +1,7 @@
+import fuzzysort from 'fuzzysort';
 import * as Origin from '../../origin/src/index'
 import { PromiseResult, ResponseError } from "../../origin/src/utils/types";
-import { is_empty, json_catch, remove_topic } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, is_empty, json_catch, remove_topic } from "../../origin/src/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "./add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
@@ -13,6 +14,8 @@ import { all_words, artist_string, clean_title, is_topic, number_epsilon_distanc
 import { Prefs } from "./prefs";
 import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
 import { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicService, MusicServiceType, Track } from "./types";
+import { youtube_music_get_new_releases } from './new_releases';
+import { parse_youtube_music_track } from './gen/youtube_music_parser';
 
 export namespace Illusive {
     // export const illusi_icon: number = 0;
@@ -103,6 +106,7 @@ export namespace Illusive {
             add_tracks_to_playlist: youtube_music_add_tracks_to_playlist,
             delete_tracks_from_playlist: youtube_music_delete_tracks_from_playlist,
             get_artist: youtube_music_get_artist,
+            get_new_releases: youtube_music_get_new_releases, 
             get_latest_releases: youtube_music_get_latest_releases
         });
     const spotify = new MusicService(
@@ -217,9 +221,7 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio");
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!);
-        const yt_music = Prefs.get_pref('prefer_youtube_music');
-        const to_service: MusicServiceType = yt_music ? "YouTube Music" : Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
-        const new_track_data = await convert_track(track, {to_music_service: to_service, possible_services: yt_music && Prefs.get_pref('force_explicit_conversion') ? ['YouTube Music'] : undefined});
+        const new_track_data = await convert_track(track, {});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
         const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
@@ -234,7 +236,7 @@ export namespace Illusive {
             return await music_service.get("YouTube")!.get_track_mix!(track.youtube_id!);
         else if(!is_empty(track.soundcloud_permalink))
             return await music_service.get("SoundCloud")!.get_track_mix!(track.soundcloud_permalink!);
-        const to_service: MusicServiceType = Prefs.get_pref('prefer_soundcloud') ? "SoundCloud" : "YouTube";
+        const to_service: MusicServiceType = "YouTube Music";
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return {error: new Error("No track data found")};
@@ -265,22 +267,37 @@ export namespace Illusive {
         return `https://img.youtube.com/vi/${video_id}/0.jpg`;
     }
 
+    export async function get_highest_quality_service_thumbnail_uri(uri: string){
+        if(!/w{3,}-h{3,}/.test(uri)) return uri;
+        const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{3,})/g), extract_string_from_pattern(uri, /h(\d{3,})/g)];
+        const [width, height] = [parseInt(width_str as string), parseInt(height_str as string)];
+        const uris_descending = [
+            uri.replace(/w\d{3,}/, 'w2000').replace(/h\d{3,}/, 'h2000'),
+            uri.replace(/w\d{3,}/, 'w1000').replace(/h\d{3,}/, 'h1000'),
+            uri.replace(/w\d{3,}/, 'w500').replace(/h\d{3,}/, 'h500'),
+            uri.replace(/w\d{3,}/, `w${width * 8}`).replace(/h\d{3,}/, `h${height * 8}`),
+            uri.replace(/w\d{3,}/, `w${width * 6}`).replace(/h\d{3,}/, `h${height * 6}`),
+            uri.replace(/w\d{3,}/, `w${width * 4}`).replace(/h\d{3,}/, `h${height * 4}`),
+            uri.replace(/w\d{3,}/, `w${width * 2}`).replace(/h\d{3,}/, `h${height * 2}`),
+        ];
+        for(const uri of uris_descending) {
+            try {
+                const result = await fetch(uri, {});
+                if(result.status === 200) return uri;
+            } catch (error) {}
+        }
+        return uri;
+    }
+
     export async function get_best_track_artwork(document_directory: string, track: Track): Promise<Artwork> {
         if(!is_empty(track.imported_id))
             return imported_thumbnail;
         if(!is_empty(track.thumbnail_uri))
             return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
-        if(Prefs.get_pref('prioritize_youtube_thumbnail')) {
-            if(!is_empty(track.youtube_id))
-                return {uri: await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), cache: 'force-cache'};
-            if(!is_empty(track.artwork_url))
-                return {uri: track.artwork_url!, cache: 'force-cache'};
-        } else {
-            if(!is_empty(track.artwork_url))
-                return {uri: track.artwork_url!, cache: 'force-cache'};
-            if(!is_empty(track.youtube_id))
-                return {uri: await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), cache: 'force-cache'};
-        }
+        if(!is_empty(track.artwork_url))
+            return {uri: await get_highest_quality_service_thumbnail_uri(track.artwork_url!), cache: 'force-cache'};
+        if(!is_empty(track.youtube_id))
+            return {uri: await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), cache: 'force-cache'};
         return illusi_dark_icon;
     }
 
@@ -293,27 +310,55 @@ export namespace Illusive {
         }
         if(!is_empty(track.imported_id))
             return imported_thumbnail;
-        if(Prefs.get_pref('prioritize_youtube_thumbnail')) {
-            if(!is_empty(track.youtube_id))
-                return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};
-            if(!is_empty(track.artwork_url))
-                return {uri: track.artwork_url!, cache: 'force-cache'};
-        } else {
-            if(!is_empty(track.artwork_url))
-                return {uri: track.artwork_url!, cache: 'force-cache'};
-            if(!is_empty(track.youtube_id))
-                return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};
-        }
+        if(!is_empty(track.artwork_url))
+            return {uri: track.artwork_url!, cache: 'force-cache'};
+        if(!is_empty(track.youtube_id))
+            return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};
         return illusi_dark_icon;
     }
 
-    export async function get_suggestions(query: string) { return await Origin.Google.get_suggestions(query); }
+    export async function get_suggestions(query: string){
+        const suggestions = await Origin.YouTubeMusic.search_suggestions({}, query);
+        return suggestions.map(s => typeof s === "string" ? s : parse_youtube_music_track(s));
+    }
 
-    export async function get_track_lryics(track: Track) {
-        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
-        const search_response = await Origin.Genius.search(`${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`);
+    async function lyrics_try_good_result(track: Track, search_query: string){
+        const search_response = await Origin.Genius.search(search_query);
         if("error" in search_response) return search_response;
-        const lyrics_response = await Origin.Genius.get_lyrics(search_response);
+        const best_result = search_response.find(hit => {
+            const title_result = fuzzysort.single(
+                clean_title(hit.result.title).trim(), 
+                clean_title(track.title).trim(),
+            );
+            const artist_result = fuzzysort.single(
+                clean_title(hit.result.artist_names).trim(), 
+                clean_title(artist_string(track)).trim(),
+            );
+            return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5
+        });
+        if(best_result === undefined) return {error: new Error("Unable to find a good lyrics result")};
+        return best_result.result;
+    }
+    async function lyrics_get_first_good_result(track: Track, search_queries: string[]){
+        for(const search_query of search_queries){
+            const result = await lyrics_try_good_result(track, search_query);
+            if("error" in result) continue;
+            return result;
+        }
+        return {error: new Error("Unable to find a good lyrics result")};
+    }
+    export async function get_track_lryics(track: Track): PromiseResult<string> {
+        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
+
+        const track_title_split = track.title.split(' - ');
+        const best_result = await lyrics_get_first_good_result(track, [
+            track_title_split.length === 2 ? `${clean_title(track_title_split[0])} ${clean_title(track_title_split[1])}` : undefined,
+            track_title_split.length === 2 ? `${clean_title(track_title_split[1])} ${remove_topic(artist_name)}` : undefined,
+            `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`
+        ].filter(s => s !== undefined));
+        if("error" in best_result) return best_result;
+
+        const lyrics_response = await Origin.Genius.get_lyrics(best_result);
         return lyrics_response;
     }
 
@@ -352,20 +397,15 @@ export namespace Illusive {
         possible_services: MusicServiceType[];
     }
     
-    export function convert_track_default_opts(opts: ConvertTrackOptsNull): ConvertTrackOpts {
-        const yt_music = Prefs.get_pref('prefer_youtube_music');
-        opts.to_music_service = opts.to_music_service ?? ( 
-            yt_music ? "YouTube Music"
-            : Prefs.get_pref('prefer_soundcloud') ? 
-                "SoundCloud" : "YouTube");
+    export function convert_track_default_opts(track: Track, opts: ConvertTrackOptsNull): ConvertTrackOpts {
+        opts.to_music_service = opts.to_music_service ?? "YouTube Music";
         opts.deep_convert = opts.deep_convert ?? false;
         opts.proxies = opts.proxies ?? [];
         opts.possible_services = opts.possible_services ?? (
-            yt_music ?
-                opts.deep_convert ?
-                    ["YouTube Music", "SoundCloud"] :
+            track.explicit === "EXPLICIT" ? ["YouTube Music"]
+                : opts.deep_convert ?
                     ["YouTube Music", "SoundCloud", "YouTube"] :
-                ["YouTube", "SoundCloud"]);
+                ["YouTube Music", "SoundCloud"]);
         return opts as ConvertTrackOpts;
     }
 
@@ -392,7 +432,7 @@ export namespace Illusive {
         const current_artist = convert_track.artists[0].name.toLowerCase();
         const current_words = all_words(current_title);
     
-        if(to === "YouTube Music" && Prefs.get_pref('force_explicit_conversion') && track.explicit === "EXPLICIT" && convert_track.explicit !== "EXPLICIT")
+        if(to === "YouTube Music" && track.explicit === "EXPLICIT" && convert_track.explicit !== "EXPLICIT")
             score -= 150;
     
         if (one_includes_word_not_other(tracK_words, current_words, "instrumental")) score -= 50;
@@ -419,7 +459,7 @@ export namespace Illusive {
     
     export interface MaxTrack { track?: Track, score: number };
     export async function convert_track(track: Track, _opts_: ConvertTrackOptsNull): PromiseResult<MaxTrack> {
-        const opts = convert_track_default_opts(_opts_);
+        const opts = convert_track_default_opts(track, _opts_);
         const music_service = Illusive.music_service.get(opts.to_music_service);
     
         if (music_service?.search === undefined) return { error: new Error(`Can't convert to this music-service; ${opts.to_music_service} lacks a search property`) };

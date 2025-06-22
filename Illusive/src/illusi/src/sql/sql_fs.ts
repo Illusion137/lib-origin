@@ -21,7 +21,6 @@ async function copy_to(item: string, dir_func: (item: string) => string, new_nam
     return dir_func(base_name);
 }
 
-
 async function move_to(item: string, dir_func: (item: string) => string, new_name?: string) {
     const base_name = path.basename(new_name ?? item);
     await FileSystem.moveAsync({from: item, to: dir_func(base_name)});
@@ -55,3 +54,11 @@ export async function delete_item(path: string) {
 }
 export async function read_directory(path: string) { try { return await FileSystem.readDirectoryAsync(path); } catch(e) { return []; } }
 export function create_download_resumeable(uri: string, file_uri: string) { return FileSystem.createDownloadResumable(uri, file_uri); }
+
+export async function create_file(path: string, data: string){
+    await FileSystem.writeAsStringAsync(path, data, {encoding: 'utf8'});
+    return path;
+}
+export async function read_file(path: string){
+    return await FileSystem.readAsStringAsync(path, {encoding: 'utf8'});
+}

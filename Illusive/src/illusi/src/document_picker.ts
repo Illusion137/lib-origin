@@ -34,7 +34,10 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: (p
         
         if(callback !== undefined) await callback(playlist);
         await ImagePicker.clean();
-    } catch (error) { handle_document_picker_error(error); }
+    } catch (error) {
+        if((error as Error)?.message.includes("cancelled")) return;
+        alert_error({error: error as Error});    
+    }
 }
 
 export async function upload_playlist_thumbnail_document(playlist: Playlist, callback: (playlist: Playlist) => Promise<void>) {
@@ -88,8 +91,8 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 if(typeof(audio_file.fileCopyUri) !== "string") throw new Error("Audio-file copy-uri is undefined");
 
                 all_file_copy_tracks.push(audio_file.fileCopyUri);
-                const file_name = audio_file.name.replace(/\..+/, ''); // FILE NAME WITHOUT EXTENSION
-                const file_extension = extract_file_extension(audio_file.name);
+                const file_extension = extract_file_extension(audio_file.name, "video");
+                const file_name = audio_file.name.replace(file_extension, ''); // FILE NAME WITHOUT EXTENSION
                 const uid = generate_new_uid(file_name);
                 const new_file_uri = encodeURI(uid + file_extension);
                 const new_file_uri_full_path = await SQLfs.move_to_media_directory(audio_file.fileCopyUri, new_file_uri);

@@ -11,8 +11,10 @@ export namespace Proxy {
 
     const ip_regex = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$/;
 
+    let cached_proxies: MoreProxy[] = [];
     export async function get_new_proxy_list(filter?: (proxy: MoreProxy) => boolean): Promise<MoreProxy[] | ResponseError> {
         try {
+            if(cached_proxies.length > 0) return cached_proxies;
             const proxy_regex = /(\s*)?<tr>.{0,50}?<(td ?.+?>(.{0,30}?)<\/td>\s*<){4}\/tr>/gis;
             const body = await (await fetch("https://www.us-proxy.org/", {method: 'GET'})).text();
         
@@ -39,7 +41,8 @@ export namespace Proxy {
                     last_checked: last_checked
                 });
             }
-            return filter ? proxies.filter(filter) : proxies;
+            cached_proxies = filter ? proxies.filter(filter) : proxies;
+            return cached_proxies;
         } catch (error) { return { error: error as Error }; }
     }
     export async function get_proxy_list(filter?: (proxy: Proxy) => boolean): Promise<Proxy[] | ResponseError> {

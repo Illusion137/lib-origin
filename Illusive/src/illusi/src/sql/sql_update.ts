@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { Alert } from 'react-native';
 import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
-import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_exec_async, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_where } from '../sql/sql_utils';
+import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_exec_async, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_update_table, sql_where } from '../sql/sql_utils';
 import { db, db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
@@ -98,7 +98,7 @@ export async function fix_to_new_update(version: string) {
                     const playlist_uuid = await create_playlist(playlist.title);
                     await update_playlist(playlist_uuid, playlist);
                 }
-                Alert.alert("Updated Playlists to 14.1.4 BETA");
+                Alert.alert("Updated Illusi to 14.1.4 BETA");
             }
         } catch (error) { }
 
@@ -117,7 +117,7 @@ export async function fix_to_new_update(version: string) {
                         await sql_update<Track>("tracks", { uid: track.uid }, "illusi_id", uuid.default.v4());
                     }
                 }
-                Alert.alert("Updated Tracks to 14.5.10 BETA");
+                Alert.alert("Updated Illusi to 14.5.10 BETA");
             }
         } catch (error) { }
     }
@@ -135,7 +135,7 @@ export async function fix_to_new_update(version: string) {
                         await sql_update<Track>("tracks", { uid: track.uid }, "prods", track.prods?.trim() ?? "");
                     }
                 }
-                Alert.alert("Updated Tracks to 14.5.12 BETA");
+                Alert.alert("Updated Illusi to 14.5.12 BETA");
             }
         } catch (error) { }
     }
@@ -215,7 +215,7 @@ export async function fix_to_new_update(version: string) {
             await create_timestamp_triggers_if_not_exists("new_releases");
             if ((await get_all_tables(db)).find(item => item.name === "seen_new_releases")) {
                 await db_exec_async(sql_drop_table("seen_new_releases" as any));
-                Alert.alert("Updated Tracks to 15.1.1 BETA");
+                Alert.alert("Updated Illusi to 15.1.1 BETA");
             }
         } catch (error) {
 
@@ -227,7 +227,19 @@ export async function fix_to_new_update(version: string) {
             if ((await get_all_tables(db)).find(item => item.name === "recently_played_tracks_deleted")) {
                 await db_exec_async("DROP TRIGGER recently_played_tracks_deleted_Trigger");
                 await db_exec_async(sql_drop_table("recently_played_tracks_deleted"));
-                Alert.alert("Updated Tracks to 15.1.2 BETA");
+                Alert.alert("Updated Illusi to 15.1.2 BETA");
+            }
+        } catch (error) {
+
+        }
+    }
+
+    if (!version_greater_than(version, "16.0.1")) {
+        try {
+            await alter_sql(db, { table: 'playlists', action: "ADD", column_name: 'archived', type: "BOOLEAN" });
+            if((await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"))).some(playlist => playlist.archived === null)){
+                await db_run_async(`${sql_update_table("playlists")} SET archived=false`);
+                Alert.alert("Updated Illusi to 16.0.1");
             }
         } catch (error) {
 

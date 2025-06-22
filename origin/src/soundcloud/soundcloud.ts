@@ -364,7 +364,7 @@ export namespace SoundCloud {
     }
 
     export function get_self_user_id(cookie_jar: CookieJar) {
-        const ajs_user_id = cookie_jar.getCookie('ajs_user_id')!.getData().value;
+        const ajs_user_id = cookie_jar.getCookie('ajs_user_id')?.getData().value ?? cookie_jar.getCookie('sc_tracking_user_id')?.getData().value ?? "";
         return decodeURIComponent(ajs_user_id).replace(/"/g,'').split(':')[2];
     }
     export async function get_all_user_playlists(opts: Opts) {

@@ -5,7 +5,7 @@ import * as fs from 'fs';
 export default function load_cookies_env(){
     const env = fs.readFileSync(".env").toString();
     const lines = env.split("\n");
-    const pairs = [];
+    const pairs: any[] = [];
     for(const line of lines) {
         const split_index = line.indexOf("=");
         pairs.push([line.slice(0, split_index), line.slice(split_index + 2, line.length - 2).replace(/\\/g, '') ]);

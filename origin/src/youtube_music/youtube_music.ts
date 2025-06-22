@@ -1,22 +1,24 @@
 import * as Parser from "./parser";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, parse_runs, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, is_empty, json_catch, parse_runs, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
 import { CreatePlaylist } from "../youtube/types/CreatePlaylist";
 import { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
 import { ArtistResults_1 } from './types/ArtistResults_1';
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { InitialData } from './types/types';
-import { YTCFG } from "./types/YTCFG";
+import { YTCFG } from './types/YTCFG';
 import { YTError } from "./types/Error";
 import fetch from "../utils/orifetch";
 import { Proxy } from "../proxy/proxy";
 import { ContinuationItemRenderer } from "./types/PlaylistResults_0";
+import { SearchSuggestions } from "./types/SearchSuggestions";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
+	let ytcfg_cache: YTCFG;
 
 	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy }
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
@@ -58,8 +60,8 @@ export namespace YouTubeMusic {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg: YTCFG, retry: boolean): Record<string, any> {
-		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData().value;
+	export function get_post_headers(cookie_jar: CookieJar|undefined, epoch: Date, ytcfg: YTCFG, retry: boolean): Record<string, any> {
+		const SAPISID = cookie_jar?.getCookie("SAPISID")?.getData()?.value;
 		return {
 			"User-Agent": user_agent,
 			"accept": "*/*",
@@ -196,6 +198,14 @@ export namespace YouTubeMusic {
 			data: parser(icfg.initial_data)
 		};
 	}
+	export async function fetch_initial_data(opts: Opts){
+		if(ytcfg_cache !== undefined) return {ok: true, ytcfg: ytcfg_cache};
+		const home = await get_home(opts);
+		if("error" in home) return {ok: false};
+		ytcfg_cache = home.icfg.ytcfg;
+		return {ok: true, ytcfg: home.icfg.ytcfg};
+	} 
+
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://music.youtube.com/", Parser.parse_home_contents); }
 	export async function get_explore(opts: Opts): PromiseICFGData<typeof Parser.parse_explore_contents> { return await parse_initial(opts, "https://music.youtube.com/explore", Parser.parse_explore_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, playlist_url_or_browse_url(playlist_id), Parser.parse_playlist_contents); }
@@ -208,7 +218,8 @@ export namespace YouTubeMusic {
 		return playlist_response;
 	}
 	export async function get_only_artist_tracks(opts: Opts, artist_response: ICFGData<ReturnType<typeof Parser.parse_artist_contents>>) {
-		const music_shelf_renderer_endpoint_id: string = artist_response.data.top_shelf.bottomEndpoint.browseEndpoint.browseId.replace("VL", "");
+		const music_shelf_renderer_endpoint_id: string|undefined = artist_response.data.top_shelf?.bottomEndpoint?.browseEndpoint?.browseId?.replace("VL", "");
+		if(music_shelf_renderer_endpoint_id === undefined) return {error: new Error("Unable to fetch Artist Tracks")}; 
 		const playlist_response = await get_playlist(opts, music_shelf_renderer_endpoint_id);
 		return playlist_response;
 	}
@@ -250,6 +261,7 @@ export namespace YouTubeMusic {
 		return await parse_initial(opts, `https://music.youtube.com/browse/${browse_id}`, () => null);
 	}
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://music.youtube.com/search?q=${google_query(search_query)}`, Parser.parse_search_contents); }
+	export async function new_releases_albums(opts: Opts): PromiseICFGData<typeof Parser.parse_new_releases_albums> { return await parse_initial(opts, `https://music.youtube.com/new_releases/albums`, Parser.parse_new_releases_albums); }
 	export async function search_mode(opts: Opts, endpoint: Endpoint, ytcfg: YTCFG) {
 		if (endpoint === undefined) return { error: new Error("Endpoint Undefined") };
 		const payload = endpoint;
@@ -263,6 +275,32 @@ export namespace YouTubeMusic {
 		if ("error" in all_search) return all_search;
 		if (mode === "All") return all_search;
 		return search_mode(opts, all_search.data.mode_endpoints.find(endpoint => endpoint.id == mode)?.endpoint as Endpoint, all_search.icfg.ytcfg);
+	}
+
+	export async function search_suggestions(opts: Opts, search_query: string, ytcfg?: YTCFG){
+		if(is_empty(search_query)) return [];
+		if(ytcfg === undefined) ytcfg = (await fetch_initial_data(opts)).ytcfg;
+		if(ytcfg === undefined) return [];
+		const search_suggestions_response = await post_check_response(opts, ytcfg, 'music/get_search_suggestions', {input: search_query});
+		if("error" in search_suggestions_response) return [];
+		if(!search_suggestions_response.ok) return [];
+		const search_suggestions: SearchSuggestions = await search_suggestions_response.json().catch(json_catch);
+		if("error" in search_suggestions) return [];
+		return search_suggestions.contents.map(top_content => {
+			return top_content.searchSuggestionsSectionRenderer.contents.filter(content => !("historySuggestionRenderer" in content)).map(content => {
+				if("searchSuggestionRenderer" in content){
+					return parse_runs(content.searchSuggestionRenderer.suggestion.runs, '');
+				}
+				else if("musicResponsiveListItemRenderer" in content){
+					try {
+						return Parser.parse_track_search_suggestion(content.musicResponsiveListItemRenderer);
+					}
+					catch { return undefined; }
+				}
+				else 
+				return undefined;
+			}).filter(content => content !== undefined);
+		}).flat();
 	}
 
 	export async function get_library(opts: Opts): PromiseICFGData<typeof Parser.parse_library_contents> {
@@ -300,8 +338,8 @@ export namespace YouTubeMusic {
 		if ("error" in response) return response;
 		return (await response.json()) as ContinuedResults_0;
 	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false) {
-		if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
+	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false): PromiseResult<Response> {
+		// if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;

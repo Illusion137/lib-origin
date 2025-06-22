@@ -14,6 +14,8 @@ import { UserPlaylist } from "./types/UserPlaylist";
 import fetch from "../utils/orifetch";
 import { Proxy } from "../proxy/proxy";
 import { AppServerConfig, FeatureFlags, RemoteConfig } from "./types/Initial";
+import { Secret, TOTP } from "otpauth";
+const Buffer = require('buffer/').Buffer
 
 export namespace Spotify {
     interface ClientSession {
@@ -86,11 +88,20 @@ export namespace Spotify {
         return JSON.parse(decodeURIComponent(atob(inner_html).split('').map(e => `%${`00${e.charCodeAt(0).toString(16)}`.slice(-2)}`).join('')));
     }
 
+    function calculate_token(hex: Array<number>) {
+        const token = hex.map((v, i) => v ^ ((i % 33) + 9));
+        const buffer_token = Buffer.from(token.join(""), "utf8").toString("hex");
+
+        return Secret.fromHex(buffer_token);
+    }
+
+    //https://github.com/hmes98318/LavaShark/blob/0125cf31ba8f9f9f6ce6dec9e2003519a7a6b55e/src/lib/sources/Spotify.ts#L294
+    //https://github.com/iTsMaaT/discord-player-spotify/blob/master/src/internal/spotify.ts
     export async function get_client(url: string, cookie_jar: (CookieJar | undefined) = undefined): Promise<Client | ResponseError> {
         try {
             if (client_cache_full()) return client_cache.client!;
 
-            const page_html = await (await fetch(url, {
+            const page_response = await fetch(url, {
                 headers: {
                     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                     "accept-language": "en-US,en;q=0.9",
@@ -109,7 +120,9 @@ export namespace Spotify {
                 referrerPolicy: "strict-origin-when-cross-origin",
                 body: null,
                 method: "GET",
-            })).text();
+            });
+
+            const page_html = await page_response.text();
 
             const app_server_config = decode_spotify_bullshit<AppServerConfig>(extract_encoded_bullshit_from_id("appServerConfig", page_html));
             const feature_flags = decode_spotify_bullshit<FeatureFlags>(extract_encoded_bullshit_from_id("featureFlags", page_html));
@@ -118,46 +131,51 @@ export namespace Spotify {
 
             feature_flags;
             seo_experiments;
+
             remote_config;
+
+            const ctime = new Date().getTime();
+
+            const token = calculate_token([12, 56, 76, 33, 88, 44, 88, 33, 78, 78, 11, 66, 22, 22, 55, 69, 54]);
+
+            const totp = new TOTP({
+                secret: token,
+                period: 30,
+                digits: 6,
+                algorithm: "SHA1",
+            });
+    
+            const totp_server = totp.generate({
+                timestamp: app_server_config.serverTime * 1e3,
+            });
+            const totp_client = totp.generate({
+                timestamp: ctime,
+            });
 
             const params = {
                 "reason": "init",
                 "productType": "web-player",
-                "totp": new Date(), // Must get this through some more bullshit >:0
-                "totpServer": "931951", // Must get this through some more bullshit >:0
+                "totp": totp_client, // Must get this through some more bullshit >:0
+                "totpServer": totp_server, // Must get this through some more bullshit >:0
                 "totpVer": "5",
-                "buildVer": "web-player_2025-04-07_1744049799707_46d7bac",
-                "buildDate": "2025-04-07",
-                "sTime": app_server_config.serverTime,
-                "cTime": new Date().getTime(),
+                "buildVer": "unknown",
+                "buildDate": "unknown",
+                "sTime": String(app_server_config.serverTime),
+                "cTime": String(ctime),
             };
 
-            console.log(params);
-
-            const access_token_response = await fetch(`https://open.spotify.com/get_access_token?${encode_params(params)}`, {
+            // if(params) return {error: new Error()};
+            const access_token_response = await fetch(`https://open.spotify.com/api/token?${encode_params(params)}`, {
                 headers: {
-                    "accept": "*/*",
-                    "accept-language": "en-US,en;q=0.9",
-                    "baggage": "sentry-environment=production,sentry-release=web-player_2025-04-07_1743996216152_35a52a3,sentry-public_key=de32132fc06e4b28965ecf25332c3a25,sentry-trace_id=7076667a13a24dcbb37548a8dc07ca6c,sentry-sample_rate=0.008,sentry-sampled=false",
-                    "priority": "u=1, i",
-                    "sec-ch-ua": "\"Google Chrome\";v=\"135\", \"Not-A.Brand\";v=\"8\", \"Chromium\";v=\"135\"",
-                    "sec-ch-ua-mobile": "?0",
-                    "sec-ch-ua-platform": "\"macOS\"",
-                    "sec-fetch-dest": "empty",
-                    "sec-fetch-mode": "cors",
-                    "sec-fetch-site": "same-origin",
-                    "sentry-trace": "7076667a13a24dcbb37548a8dc07ca6c-87e90d5c8bfc26d2-0",
+                    // 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.88 Safari/537.36',
                     "Referer": "https://open.spotify.com/",
-                    "Referrer-Policy": "strict-origin-when-cross-origin",
-                    "cookie": cookie_jar?.toString() as string
+                    "Origin": "https://open.spotify.com",
+                    // "cookie": cookie_jar?.toString() as string
                 },
                 referrerPolicy: "strict-origin-when-cross-origin",
                 body: null,
                 method: "GET",
             });
-
-            console.log(access_token_response);
-            console.log(await access_token_response.json());
 
             if (!access_token_response.ok) throw new Error("Cant get Spotify Access-Token")
 

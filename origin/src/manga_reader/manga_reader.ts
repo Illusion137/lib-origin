@@ -1,6 +1,6 @@
-import { jsdom_document } from "../utils/jsdom";
+import { jsdom_document, map_html_collection } from "../utils/jsdom";
 import { PromiseResult } from "../utils/types";
-import { encode_params, google_query } from "../utils/util";
+import { encode_params, google_query, base_response_fail_msg } from "../utils/util";
 import { decode_image_base64 } from "./img_decoder";
 import { MangaGenres } from "./types/MangaGenres";
 import { MangaTypes } from "./types/MangaTypes";
@@ -8,12 +8,11 @@ import { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageS
 
 export namespace MangaReader {
     const base_url = "https://mangareader.to";
-    function map_html_collection<T>(collection: HTMLCollection|NodeListOf<Element>, callback: (el: Element) => T) {
-        const result: T[] = [];
-        for(let i = 0; i < collection.length; i++)
-            result.push(callback(collection[i]));
-        return result;
+
+    function gen_response_error_msg(response: Response): string{
+        return `MangaReader: ${gen_response_error_msg.caller} ${base_response_fail_msg(response)}`
     }
+
     function parse_chapter_item(el: Element): ChapterItem {
         return {
             no: parseInt(el.getAttribute("data-number")!),
@@ -28,9 +27,20 @@ export namespace MangaReader {
         };
     }
     function parse_search_manga(el: Element): SearchManga {
+        const parse_latest_item = (el: Element) => {
+            const inner_text = el.querySelector('a')!.textContent!;
+            return {
+                no: parseInt(inner_text.replace(/\D/gs, '')),
+                href: el.querySelector('a')!.href,
+                language: inner_text.replace(/.+?\[/gs, '').replace(/\].*/gs, '')
+            }
+        };
         return {
-            title: el.querySelector(".manga-name")!.querySelector("a")!.textContent!,
-            genres: map_html_collection(el.querySelector(".fdi-item.fdi-cate")!.children, (el: Element) => {
+            title: {
+                name: el.querySelector(".manga-name")!.querySelector("a")!.textContent!,
+                href: el.querySelector(".manga-poster")!.getAttribute("href")!
+            },
+            genres: map_html_collection(el.querySelector(".fdi-item.fdi-cate")?.children, (el: Element) => {
                 return {
                     content: el.textContent!,
                     href: el.getAttribute("href")!
@@ -38,9 +48,8 @@ export namespace MangaReader {
             }),
             available_languages: el.querySelector(".tick.tick-item.tick-lang")!.textContent!.split("/"),
             artwork_url: el.querySelector(".manga-poster-img")!.getAttribute("src")!,
-            href: el.querySelector(".manga-poster")!.getAttribute("href")!,
-            chapters: [],
-            volumes: []
+            latest_chapters: map_html_collection(el.querySelectorAll('.fd-list')?.[0]?.children, parse_latest_item),
+            latest_volumes: map_html_collection(el.querySelectorAll('.fd-list')?.[1]?.children, parse_latest_item)
         }
     }
     function href_manga_id(href: string) {
@@ -49,17 +58,16 @@ export namespace MangaReader {
     }
     export async function ajax(path: string) {
         const response = await fetch(`${base_url}/ajax/${path}`);
-        if(!response.ok) return {error: new Error(`Response failed with status code: ${response.status}`)};
+        if(!response.ok) return {error: new Error(gen_response_error_msg(response))};
         const result: AjaxResult = await response.json();
-        if(result.status === false) return {error: new Error(`Ajax Result failed with: ${result.status}`)};
+        if(result.status === false) return {error: new Error(`MangaReader: Ajax status failed with: ${result.html}`)};
         return result;
     }
     export async function manga_list(opts: {page?: number} & ({query: string}|{genre: MangaGenres}|{type: MangaTypes})): PromiseResult<MangaList> {
         const params: Record<string, any> = { page: opts.page ?? 1 };
-        if("query" in opts) params["keyword"] = google_query(opts.query);
         const path = "query" in opts ? "/search" : "genre" in opts ? opts.genre : opts.type;
-        const response = await fetch(`${base_url}${path}?${encode_params(params)}`);
-        if(!response.ok) return {error: new Error(`Response failed with status code: ${response.status}`)};
+        const response = await fetch(`${base_url}${path}?${encode_params(params, "query" in opts ? ["keyword", google_query(opts.query)] : undefined)}`);
+        if(!response.ok) return {error: new Error(gen_response_error_msg(response))};
         const document = jsdom_document(await response.text());
         const manga_elements = document.querySelectorAll(".item.item-spc");
         const mangas = map_html_collection(manga_elements, parse_search_manga);

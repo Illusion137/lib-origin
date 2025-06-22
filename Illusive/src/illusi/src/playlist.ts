@@ -1,4 +1,4 @@
-import { Playlist, SortType, Track } from "../../types";
+import { CompactPlaylistData, Playlist, SortType, Track } from "../../types";
 
 function date_time(date?: string): number{
     if(date) return new Date(date).getTime();
@@ -28,6 +28,17 @@ export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Trac
         case "LAST_SAMPLED_DATE_LOWHI": return tracks.sort((a, b) => date_time(a.meta?.last_sampled_date) - date_time(b.meta?.last_sampled_date));
         default: return tracks;
     }
+}
+
+export function sort_compact_playlists_data(playlists: CompactPlaylistData[]) {
+    const ordered_playlists: CompactPlaylistData[] = [];
+    for(let i = 0; i < playlists.length; i++) {
+        if(playlists[i].pinned)
+            ordered_playlists.unshift(playlists[i]);
+        else
+            ordered_playlists.push(playlists[i]);
+    }
+    return ordered_playlists;
 }
 
 export function sort_playlists(playlists: Playlist[]) {

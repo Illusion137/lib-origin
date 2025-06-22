@@ -5,7 +5,7 @@ import { music_service_uri_to_music_service, split_uri } from "../../illusive_ut
 import { get_proxies } from "./sampler";
 import { Proxy } from "../../../../origin/src";
 import { ResponseError } from "../../../../origin/src/utils/types";
-import { Prefs } from "../../prefs";
+import { Constants } from "../../constants";
 import * as SQLTracks from './sql/sql_tracks';
 
 async function add_playback_data_to_releases(releases: (CompactPlaylist[]|ResponseError)[]){
@@ -18,9 +18,10 @@ async function add_playback_data_to_releases(releases: (CompactPlaylist[]|Respon
                     : item))))
 }
 
+// export async function artist_watch(artists: NamedUUID[], on_update: (progress: number) => void): Promise<(CompactPlaylist[]|ResponseError)[]>{
 export async function artist_watch(artists: NamedUUID[]): Promise<(CompactPlaylist[]|ResponseError)[]>{
     const proxies = await get_proxies(artists.length);
-    if(proxies.length < 10) artists = artists.slice(0, Prefs.prefs.new_releases_amount.default_value);
+    if(proxies.length < 5) artists = artists.slice(0, Constants.new_releases_artist_watch_small_amount);
     const releases: (CompactPlaylist[]|undefined)[] = [];
     const promises: Promises = [];
     artists = artists.filter(artist => !is_empty(artist.uri));

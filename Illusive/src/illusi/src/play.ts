@@ -8,7 +8,8 @@ import { Track } from "../../types";
 import { alert_error } from "./alert";
 import * as GLOBALS from "./globals";
 import * as SQLTracks from "./sql/sql_tracks";
-import { recreate } from '../../illusive_utilts';
+import { random_of, recreate, shuffle_array } from '../../illusive_utilts';
+import { check_push_next_track } from './track_player_service';
 
 export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];
@@ -42,7 +43,32 @@ export async function push_track_to_playing_queue(track_data: Track) {
     }
     GLOBALS.global_var.playing_tracks.splice(track_index + 1 + GLOBALS.global_var.playing_queue.length, 0, track);
     GLOBALS.global_var.playing_queue.push(track.uid);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+}
+export async function play_track_next(track_data: Track) {
+    if(!GLOBALS.global_var.is_playing) return;
+    const track_index = await TrackPlayer.getActiveTrackIndex();
+    if(track_index === null || track_index === undefined) return;
+    const track = recreate(track_data);
+    if(!is_empty(track.playback)){
+        track.playback!.added = false;
+        track.playback!.successful = false;
+    }
+    GLOBALS.global_var.playing_tracks.splice(track_index + 1, 0, track);
+    GLOBALS.global_var.playing_queue.push(track.uid);
+    await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+}
+export async function sprinkle_into_queue(tracks: Track[]){
+    tracks = shuffle_array(tracks);
+    let i = 0;
+    const min_length = Math.min(GLOBALS.global_var.playing_tracks.length, tracks.length);
+    while( (i+=random_of([1,2,2,3,4])) < min_length){
+        const insert_track = tracks[i];
+        GLOBALS.global_var.playing_tracks.splice(i, 0, insert_track);
+        await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
+    }
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 export async function play_mix(track_data: Track, from: string) {

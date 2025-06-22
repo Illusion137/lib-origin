@@ -31,6 +31,7 @@ export namespace Prefs {
         apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
         user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as Pref<string>,
         last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
+        automatic_new_releases_last_refreshed: {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
         new_releases_last_refreshed:           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
         latest_version:                        {default_value: "0.0.0", current_value: "0.0.0", type: "STRING"} as Pref<string>,
         recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as Pref<string[]>,
@@ -39,59 +40,27 @@ export namespace Prefs {
         primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as Pref<HexColor>,
         theme:                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as Pref<PossibleThemes>,
         
-        // Usually one-time settings that you'd forget about
-        recent_search_limit:                   {default_value: 20, current_value: 20, type: "NUMBER", range: {start: 1, end: 30}, show_in_settings: true, show_in_type: "MISC", section: "Search"}  as Pref<number>,
-        soundcloud_playlist_limit:             {default_value: 20, current_value: 20, type: "NUMBER", show_in_settings: true, show_in_type: "MISC", section: "Playlist"}                              as Pref<number>,
-        spotify_playlist_limit:                {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true, show_in_type: "MISC", section: "Playlist"}                            as Pref<number>,
-        tracks_per_sample:                     {default_value: 3, current_value: 3, type: "NUMBER", range: {start: 1, end: 10}, show_in_settings: true, show_in_type: "MISC", section: "Automation", description: "The number of tracks to sample when Illusi automatically checks for unavailable songs, even if downloaded. This check could happen randomly every song; If expensive_wifi_only then this action only occurs when on wifi"}  as Pref<number>,
-        playlist_cache_seconds:                {default_value: Constants.playlist_cache_duration_seconds, current_value: Constants.playlist_cache_duration_seconds, type: "NUMBER", show_in_settings: true, show_in_type: "MISC", section: "Playlist"} as Pref<number>,
-        edit_mode_disables_playing:            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When you are in an edit-mode you can't click on a track", section: "Interactions"} as Pref<boolean>,
-        full_queue_disables_playing:           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; If your pushed-queue isn't empty then you can't click on a track", section: "Interactions"} as Pref<boolean>,
-        show_track_duration:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
-        use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
-        use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
-        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Data"}  as Pref<boolean>,
-        media_files_on_albums:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When you search or open an album, any tracks in your library will show their downloaded version; May negatively affect performance", section: "Visual"} as Pref<boolean>,
-        compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; Your playlists in the 'Playlist' screen will become smaller", section: "Visual"} as Pref<boolean>,
-        share_as_original:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; When sharing a track if downloaded it'll still share the song from the original source", section: "Interactions"} as Pref<boolean>,
-        prioritize_youtube_thumbnail:          {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
-        alt_titles:                            {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}  as Pref<boolean>,
-        simple_tags:                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}  as Pref<boolean>,
-        simple_errors:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}  as Pref<boolean>,
-        hide_batch_undownloader:               {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual", description: "If-Enabled; won't show Batch Un-Downloader in extras page (Modification may require restart)"}  as Pref<boolean>,
-        keep_prefs:                            {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", description: "If-Enabled; If you clear-all-data then you'll keep your preferences", section: "Other"} as Pref<boolean>,
-        hide_errors:                           {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}  as Pref<boolean>,
-        hide_trackplayer_errors:               {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, show_in_type: "MISC", section: "Visual"}    as Pref<boolean>,
-
-        // More frequently changed settings
         default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as Pref<number>,
         recently_played_max_size:              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as Pref<number>,
-        download_queue_max_length:             {default_value: 5, current_value: 5, type: "NUMBER", range: {start: 1, end: 10}, show_in_settings: true, section: "Automation"} as Pref<number>,
-        new_releases_amount:                   {default_value: 30, current_value: 30, type: "NUMBER",  range: {start: 0, end: 800}, show_in_settings: true, section: "Search"}       as Pref<number>,
-        new_releases_days_before_seen:         {default_value: 14, current_value: 14, type: "NUMBER",  range: {start: 1, end: 365}, show_in_settings: true, section: "Search"}       as Pref<number>,
-        auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
-        only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
-        auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
-        always_shuffle:                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}    as Pref<boolean> ,
-        get_account_playlists_in_get_playlist: {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
-        play_no_popup:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, description: "If-Enabled; When clicking on a track if you already are playing music, the player won't popup", section: "Audioplayer"} as Pref<boolean>,
-        expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Data"}    as Pref<boolean>,
-        prefer_youtube_music:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Data"}  as Pref<boolean>,
-        prefer_soundcloud:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Data"}  as Pref<boolean>,
-        force_explicit_conversion:             {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
-        can_redownload:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
-        can_redownload_batch:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions"}  as Pref<boolean>,
-        playlist_inheritance_preview:          {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "If-Enabled; The Playlists tab will show all your inheritance in your playlists; Slightly slower performance when opening Playlists tab"}  as Pref<boolean>,
-        speed_sample_super_speed:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation"}  as Pref<boolean>,
-
+        compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller"} as Pref<boolean>,
+        album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as Pref<boolean>,
+        only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)"}  as Pref<boolean>,
+        always_shuffle:                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Always shuffle user-made playlists and library"}    as Pref<boolean> ,
+        play_without_popup:                    {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Prevents Audioplayer from popping up when playing a new queue"} as Pref<boolean>,
+        auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track media whenever added to library"}  as Pref<boolean>,
+        auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track thumbnail whenever added to library"}  as Pref<boolean>,
+        auto_cache_lyrics:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track lyrics whenever added to library"}  as Pref<boolean>,
+        expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi"}    as Pref<boolean>,
+        
         // Settings that have a chance of breaking things; use with caution; all disabled by default
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
         enable_sampler:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
-        album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as Pref<boolean>,
-        keep_soundcloud_alive:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
         fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
         quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as Pref<boolean>,
         force_youtube_18_quality:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as Pref<boolean>,
+        use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as Pref<boolean>,
+        use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as Pref<boolean>,
+        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as Pref<boolean>,
         dev_mode:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)"}  as Pref<boolean>,
     };
     const user_uuid_key: PrefOptions = "user_uuid";
@@ -159,7 +128,7 @@ export namespace Prefs {
     export async function add_to_recent_searches(query: string) {
         let recent_searches = await try_remove_from_recent_searches(query);
 		      recent_searches.unshift(query);
-        recent_searches = recent_searches.slice(0, get_pref('recent_search_limit'));
+        recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
         await save_pref('recent_searches', recent_searches);
         return recent_searches;
     }
@@ -334,7 +303,7 @@ export namespace Prefs {
     export type PrimaryColorDetails = {color: HexColor, icon: string, name: string};
     export const possible_primary_colors: PrimaryColorDetails[] = [
         {color: '#7400fe', icon: '🔮', name: 'Illusi'},
-        {color: '#FFFAFA', icon: '🌹', name: 'Snow'},
+        {color: '#FFFAFA', icon: '❄️', name: 'Snow'},
         {color: '#FFCCFF', icon: '🌔', name: 'Moon'},
         {color: '#FF007F', icon: '🌹', name: 'Rose'},
         {color: '#14f727', icon: '📗', name: 'Science'},

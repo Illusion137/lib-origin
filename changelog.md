@@ -1,4 +1,111 @@
+# Illusi 16.0.2
+  - Fixed bug where you couldn't access position-slider in audioplayer
+  - Fixed bug where Archived Playlists got cut off
+  - Fixed bug relating to the imported icon
+  - Fixed bug relating to updating track plays if restart track
+  - Fixed bug relating to trimming track flooring result
+  - Adjusted track query filter algorithm
+# Illusi 16.0.1
+  - Fixed bug relating to holding down on button to recieve context-menu
+  - Fixed YouTube Music parsing bugs
+  - Fixed YouTube cookie bugs
+  - Fixed bug of repeating Haptics
+  - Fixed bug relating to searching
+  - Fixed bug relating to tracks are incorrectly marked as added
+  - Fixed bug relating to not properly updating SQL tables
+  - Fixed bug relating to Trackplayer restart threshold
+  - Fixed bug relating to Trackplayer update metadata threshold
+  - Fixed bug relating to the Explore Page not properly displaying updated YouTube Music items
+  - Fixed crash when Query Flag not recieving arguments properly
+# Illusi 16.0.0
+  - No longer unmount Playlist Screen
+  - Fixed bug where Albums show topic data
+  - Fixed bug where Artist show topic data
+  - Fixed Album EP is now capitalized
+  - Fixed loading all albums in list for New Releases
+  - Fixed Genius lyrics parser
+  - Fixed Github link
+  - Fixed album track tinting
+  - Fixed relating to pushing tracks to queue
+  - Fixed YouTube Music thumbnails downloading at lowest quality
+  - Fixed YouTube Music Artist parse errors
+  - Fixed bad track artists names of tracks with multiple artists
+  - Fixed Spotify token related bug; Patches everything Spotify
+  - Fixed importing track name cutoff due to bad parsing of file extension
+  - Added ArchivedPlaylists panel to replace unfinished playlist sort-button
+  - Added ContextMenuView to Track Component
+  - Added ContextMenuView to Playlist Component
+  - Added ContextMenuView to Album Component
+  - Added ContextMenuButton to Audioplayer Share
+  - Added ContextMenuButton to Playlist Options
+  - Added Shimmer loading state to AlbumList
+  - Added pins to Add To Playlist Screen
+  - Added Haptics to BottomAlert
+  - Added ability for FourTrackArtwork to display single cover if all from same album
+  - Added background FourTrackArtwork to Playlists
+  - Added ArtistsList to Explore Screen
+  - Added Top Tracks to Explore Screen
+  - Added FuzzySearch for Tracks
+  - Added FuzzySearch for Playlists
+  - Added FuzzySearch for Albums
+  - Added FuzzySearch for Artists
+  - Added More Queryflags for Tracks
+  - Added Queryflags for Playlists
+  - Added Queryflags for Albums
+  - Added Queryflags for Artists
+  - Added @Autocomplete display for Tracks
+  - Added @Autocomplete display for Playlists
+  - Added @Autocomplete display for Albums
+  - Added @Autocomplete display for Artists
+  - Added clear button on searchbars
+  - Added ability to archive playlists
+  - Added ability to public/private playlists
+  - Added ability to 'sprinkle' playlist into queue
+  - Added ability to choose method of sharing (original_link, file)
+  - Added ability to download lyrics
+  - Added ability to trim tracks with %.2f precision
+  - Added ability to view any artist on a track
+  - Added ability to play track next
+  - Added intersection mode to playlist-inheritance
+  - Added View all New Releases search
+  - Added View all New Releases sort
+  - Added new releases refreah with YouTube Music
+  - Added Play order button in Playlist
+  - Added better search suggestions for YouTube and YouTube Music (debounced)
+  - Added Marker in Audioplayer to represent track begin duration (green)
+  - Added Marker in Audioplayer to represent restart track position (orange-1)
+  - Added Marker in Audioplayer to represent track mark as play position (orange-2)
+  - Added Marker in Audioplayer to represent track end duration (red)
+  - Added ability to inherite default playlists
+  - Removed Simple Tags from track; now more verbose
+  - Removed Beta version tag in ExtraScreen
+  - Improved significantly how new releases work
+  - Improved Commit Statistic
+  - Improved PlaylistScreen performance
+  - Improved Audioplayer Layout
+  - Improved Recently Played speed
+  - Improved Statistics Extra
+  - Improved Extra's with smaller buttons
+  - Improved Searching with a search cache
+  - Improved YouTube Music parsing
+  - Improved settings experience by removing many settings and replacing them with Constants
+  - Shrunk DefaultPlaylistComponent
+# Illusi 15.1.4
+  - Readded broken sliders
+  - Unknown Misc bug fixes
 # Illusi 15.1.2
+  - Big migration to ffmpeg that still exists
+  - Added Image Picker force JPG
+  - Added Trackplayer end durations
+  - Fixed version parsing bug
+  - Fixed YTDL sig and info parsing
+  - Improved get_latest_releases from 4 -> 3 potential items
+  - Improved ffmpeg downloader
+  - Improved playlists loading speed
+  - Improved inherited playlists loading speed
+  - Removed recently_played_tracks logging
+  - Moved from m4a to aac downloading
+  - Patched YTDL (still needs improvement)
   - More Misc bug fixes
 # Illusi 15.1.1
   - Misc bug fixes

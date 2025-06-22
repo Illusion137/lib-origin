@@ -2,7 +2,6 @@ import { is_empty } from '../../../../origin/src/utils/util';
 import { Prefs } from '../../prefs';
 import { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "../../types";
 import * as GLOBALS from './globals';
-import * as SQLPlaylists from './sql/sql_playlists';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 
 // call await SQLTracks.fetch_track_data(); before track_function prolly
@@ -101,21 +100,6 @@ export async function default_compact_playlists() {
         })
     }
     return illusi_playlists;
-}
-
-export async function compact_playlists() {
-    const playlists: CompactPlaylistData[] = [];
-    for (const playlist of await SQLPlaylists.all_playlists_data()) {
-        playlists.push({
-            title: playlist.title,
-            four_track: playlist.visual_data!.four_track!,
-            track_count: playlist.visual_data!.track_count!,
-            track_callback: async () => await SQLPlaylists.playlist_tracks(playlist.uuid),
-            type: "PLAYLIST",
-            thumbnail_uri: playlist.thumbnail_uri
-        })
-    }
-    return playlists;
 }
 
 export function empty_resolved_default_playlists(): ResolvedDefaultPlaylist[] {

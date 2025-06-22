@@ -1,9 +1,11 @@
-import { try_json_parse, is_empty } from '../../../../../origin/src/utils/util';
+import { try_json_parse, is_empty, milliseconds_of } from '../../../../../origin/src/utils/util';
 import { Prefs } from "../../../prefs";
-import { CompactPlaylist, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Track } from "../../../types";
+import { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select } from "./sql_utils";
 import * as SQLTracks from './sql_tracks';
+import { groupby } from '../../../illusive_utilts';
+import { Constants } from '../../../constants';
 
 export function compact_playlist_to_sqllite_insertion(compact_playlist: CompactPlaylist){
     if(compact_playlist.song_track) delete compact_playlist.song_track.playback;
@@ -19,6 +21,10 @@ export function compact_playlist_to_sqllite_insertion(compact_playlist: CompactP
         compact_playlist.date ?? new Date(0).toISOString(),
         compact_playlist.song_track ? JSON.stringify(compact_playlist.song_track) : null
     ];
+}
+
+export async function new_releases_count(): Promise<number>{
+    return (await db_get_all_async<SQLCount>(sql_select<SQLCount>("new_releases", "COUNT(1)")))[0]['COUNT(1)'] ?? 0;
 }
 
 export async function sql_compact_playlist_to_compact_playlist(playlist: SQLCompactPlaylist): Promise<CompactPlaylist>{
@@ -39,14 +45,37 @@ export async function get_all_new_releases(){
     return await Promise.all((await db_get_all_async<SQLTimestampedCompactPlaylist>(sql_select<SQLTimestampedCompactPlaylist>("new_releases", "*"))).map(sql_compact_playlist_to_compact_playlist)) as TimestampedCompactPlaylist[];
 }
 
-export async function get_not_seen_new_releases(expiration_ms: number): Promise<CompactPlaylist[]>{
+export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
     const new_releases = await get_all_new_releases();
-    const seen_map = new Map<string, Date>(new_releases.map(seen => ([seen.title.uri ?? "UNKNOWN", new Date(seen.Timestamp)]) ) );
+    if(new_releases.length === 0) return [];
+    const sameday_refreshed_groups = groupby(new_releases, (t) => new Date(t.Timestamp).toDateString());
+    const artist_uri_exclusion_set = new Set<string>();
+    const sameday_refreshed_days_keys = Object.keys(sameday_refreshed_groups).reverse();
+    if(sameday_refreshed_days_keys.length === 1) return new_releases;
 
-    return new_releases.filter(album => {
-        if(!seen_map.has(album.title.uri ?? "")) return true;
-        return seen_map.get(album.title.uri ?? "")!.getTime() + expiration_ms > new Date().getTime();
-    });
+    const manually_last_refreshed_date = Prefs.get_pref('automatic_new_releases_last_refreshed');
+    const most_recent_day_index_temp = sameday_refreshed_days_keys.findIndex(key => key === manually_last_refreshed_date.toDateString());
+    const most_recent_day_index = most_recent_day_index_temp === -1 ? 0 : most_recent_day_index_temp;
+
+    const not_seen_initial = sameday_refreshed_days_keys.slice(0, most_recent_day_index + 1).map(key => sameday_refreshed_groups[key]).flat();
+    
+    const most_recent_time = Prefs.get_pref('new_releases_last_refreshed');
+    const filtered_recent_keys = sameday_refreshed_days_keys.slice(most_recent_day_index + 1).filter(key => most_recent_time.getTime() - new Date(key).getTime() <= milliseconds_of({days: Constants.new_releases_backdate_days}));
+
+    const not_seen: CompactPlaylist[] = not_seen_initial;
+    not_seen.forEach(release => release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")));
+
+    for(const key of filtered_recent_keys){
+        const release_day_group = sameday_refreshed_groups[key];
+        for(const release of release_day_group){
+            if(release.artist.some(artist => artist_uri_exclusion_set.has(artist.uri ?? ""))) 
+                continue;
+            not_seen.push(release);
+        }
+        release_day_group.forEach(release => release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")));
+    }
+
+    return not_seen;
 }
 
 export async function delete_all_from_new_releases(){

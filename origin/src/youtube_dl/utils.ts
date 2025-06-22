@@ -1,5 +1,6 @@
 // import { sapisid_hash_auth0 } from "../utils/util";
 import { DownloadOptions } from "./types";
+import * as AGENT from "./agent";
 
 /**
  * Extract string inbetween another.
@@ -331,3 +332,53 @@ export const generateClientPlaybackNonce = (length: number) => {
 	const CPN_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 	return Array.from({ length }, () => CPN_CHARS[Math.floor(Math.random() * CPN_CHARS.length)]).join('');
 };
+
+let oldLocalAddressWarning = true;
+export const applyOldLocalAddress = options => {
+  if (!options?.requestOptions?.localAddress || options.requestOptions.localAddress === options.agent.localAddress)
+    return;
+  options.agent = AGENT.createAgent(undefined, { localAddress: options.requestOptions.localAddress });
+  if (oldLocalAddressWarning) {
+    oldLocalAddressWarning = false;
+    console.warn(
+      "\x1b[33mWARNING:\x1B[0m Using old localAddress option, " +
+        "please add it to the agent options instead. (https://github.com/distubejs/ytdl-core#ip-rotation)",
+    );
+  }
+};
+
+export const applyPlayerClients = options => {
+	if (!options.playerClients || options.playerClients.length === 0) {
+	  options.playerClients = ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"];
+	}
+};
+
+let oldCookieWarning = true;
+let oldDispatcherWarning = true;
+export const applyDefaultAgent = options => {
+	if (!options.agent) {
+	  const { jar } = AGENT.defaultAgent;
+	  const c = exports.getPropInsensitive(options.requestOptions.headers, "cookie");
+	  if (c) {
+		jar.removeAllCookiesSync();
+		AGENT.addCookiesFromString(jar, c);
+		if (oldCookieWarning) {
+		  oldCookieWarning = false;
+		  console.warn(
+			"\x1b[33mWARNING:\x1B[0m Using old cookie format, " +
+			  "please use the new one instead. (https://github.com/distubejs/ytdl-core#cookies-support)",
+		  );
+		}
+	  }
+	  if (options.requestOptions.dispatcher && oldDispatcherWarning) {
+		oldDispatcherWarning = false;
+		console.warn(
+		  "\x1b[33mWARNING:\x1B[0m Your dispatcher is overridden by `ytdl.Agent`. " +
+			"To implement your own, check out the documentation. " +
+			"(https://github.com/distubejs/ytdl-core#how-to-implement-ytdlagent-with-your-own-dispatcher)",
+		);
+	  }
+	  options.agent = AGENT.defaultAgent;
+	}
+  };
+  

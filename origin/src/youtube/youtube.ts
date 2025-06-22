@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
 import { CookieJar } from "../utils/cookie_util";
 import { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth1, urlid } from "../utils/util";
 import { Continuation } from "./types/Continuation";
 import { ContinuedResults_0 } from './types/ContinuedResults_0';
 import { CreatePlaylist } from "./types/CreatePlaylist";
@@ -52,11 +52,12 @@ export namespace YouTube {
 	}
 	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
+		tuser_agent;
 		return {
-			"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
+			"User-Agent": user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
-			"authorization": SAPISID === undefined ? undefined : (ytcfg !== undefined ? sapisid_hash_auth1(SAPISID, epoch, ytcfg, 'https://www.youtube.com') : sapisid_hash_auth0(SAPISID, epoch, 'https://www.youtube.com')),
+			"authorization": SAPISID === undefined ? undefined : sapisid_hash_auth1(SAPISID, epoch, ytcfg!, 'https://www.youtube.com'),
 			"content-type": "application/json",
 			"priority": "u=1, i",
 			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
@@ -80,7 +81,7 @@ export namespace YouTube {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"Cookies": cookie_jar?.toString(),
+			"cookie": cookie_jar?.toString(),
 			"Referer": "https://www.youtube.com",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
 		}
@@ -113,10 +114,11 @@ export namespace YouTube {
 	}
 	async function get_initial_data_config(opts: Opts, url: string, tuser_agent?: string): Promise<ICFG | ResponseError> {
 		try {
+			tuser_agent;
 			const page_response = await fetch(url, {
 				headers: {
 					'authority': 'www.youtube.com',
-					"User-Agent": tuser_agent ? tuser_agent : user_agent_mobile,
+					"User-Agent": user_agent_windows,
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
 					"accept-language": "en-US,en;q=0.9",
 					"cache-control": "max-age=0",
@@ -139,7 +141,7 @@ export namespace YouTube {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQjkr84BCOW1zgEIwrbOAQjZt84BCJ66zgEInrvOARi9rs4BGJyxzgE=",
-					"Cookies": opts.cookie_jar?.toString() as string,
+					"cookie": opts.cookie_jar?.toString() as string,
 				},
 				body: undefined,
 				proxy: opts.proxy,
@@ -189,7 +191,7 @@ export namespace YouTube {
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, undefined, new_auth ? ytcfg : undefined), body: JSON.stringify(merged_payload) });
+			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}
