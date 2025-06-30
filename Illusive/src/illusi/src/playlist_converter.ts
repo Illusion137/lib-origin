@@ -6,7 +6,7 @@ import { music_service_track_primary_key, music_service_uri_to_music_service, sp
 import { ConvertTo, MusicServiceType, Track } from "../../types";
 import * as GLOBALS from './globals';
 // import { sample_tracks_meta, sample_tracks_service } from './sampler';
-// import * as SQLPlaylists from './sql/sql_playlists';
+import * as SQLPlaylists from './sql/sql_playlists';
 // import { Wifi } from "./wifi_utils";
 
 interface ConvertPlaylistOpts {
@@ -30,9 +30,9 @@ export async function playlist_tracks(uuid_uri: string) {
     if(uuid_uri === Constants.library_write_playlist) {
         return GLOBALS.global_var.sql_tracks.slice();
     }
-    // const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
-    // const is_uuid = uuidv4_regex.test(uuid_uri);
-    // if(is_uuid) return await SQLPlaylists.playlist_tracks(uuid_uri);
+    const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
+    const is_uuid = uuidv4_regex.test(uuid_uri);
+    if(is_uuid) return await SQLPlaylists.playlist_tracks(uuid_uri);
     const [service, id] = split_uri(uuid_uri);
     const playlist_tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
     if("error" in playlist_tracks) return [];

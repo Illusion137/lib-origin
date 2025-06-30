@@ -90,10 +90,10 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
     if("error" in dl_uri) return dl_uri;
     if(!SQLTracks.track_exists(track))
         if(dl_uri.new_track_data !== undefined)
-            return (await SQLTracks.add_playback_saved_data_to_tracks([
+            return SQLTracks.add_playback_saved_data_to_track(
                 SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data)
-            ]))[0];
-        else return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
+            );
+        else return SQLTracks.add_playback_saved_data_to_track(track);
     if ("new_track_data" in dl_uri && dl_uri.new_track_data !== undefined) {
         await SQLTracks.update_track_with_new_track_data(track, dl_uri.new_track_data);
         track = SQLTracks.merge_track_with_new_track(track, dl_uri.new_track_data);
@@ -101,7 +101,7 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
     if("metadata" in dl_uri) {
         await handle_track_meta_data(track, dl_uri.metadata);
     }
-    return (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
+    return SQLTracks.add_playback_saved_data_to_track(track);
 }
 export async function download_track(track: Track, redownload: boolean = false, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     if(GLOBALS.downloading.find(item => item.uid === track.uid)) return "GOOD";
@@ -120,7 +120,6 @@ export async function download_track(track: Track, redownload: boolean = false, 
                 track = {...track, youtube_id: ""};
                 if(!is_empty(track.media_uri)) await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
             } 
-
             const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), track, "highestaudio", redownload);
             if ("error" in download_uri) {
                 if (download_uri.error.message.toLowerCase().includes("unavailable"))
@@ -154,7 +153,7 @@ export async function download_track(track: Track, redownload: boolean = false, 
                         const downloaded_duration = Math.floor((meta_data.durationMillis ?? 0) / 1000);
                         if (Math.round(downloaded_duration) < 3)
                             throw new Error(`Invalid Duration: ${downloaded_duration}`);
-                        else if(isNaN(track.duration)){
+                        else if(is_empty(track.duration) || is_empty(track.duration)){
                             await SQLTracks.update_track(track.uid, {...track, duration: downloaded_duration})
                         }
                         else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))

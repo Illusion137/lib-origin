@@ -28,9 +28,10 @@ export async function recently_played_tracks(limit?: number): Promise<Track[]> {
 }
 export async function cleanup_recently_played() {
     const recently_played_max_size = Prefs.get_pref('recently_played_max_size');
-    const to_delete_recently_played_data = (await recently_played_tracks()).slice(0, -recently_played_max_size);
+    const to_delete_recently_played_data = (await recently_played_tracks());
+    const sliced_to_delete_recently_played_data = to_delete_recently_played_data.length <= recently_played_max_size ? to_delete_recently_played_data : to_delete_recently_played_data.slice(-recently_played_max_size);
     
     await all_promises(
-        to_delete_recently_played_data.map(track => delete_recently_played_track(track))
+        sliced_to_delete_recently_played_data.map(track => delete_recently_played_track(track))
     );
 }

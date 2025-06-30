@@ -1,4 +1,4 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from '@op-engineering/op-sqlite';
 import * as uuid from "react-native-uuid";
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { parse_youtube_title_artist } from '../../../gen/youtube_parser';
@@ -12,7 +12,7 @@ import { sql_select } from './sql_utils';
 export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1307.Track): Promise<Track> {
     const media_info = is_empty(legacy_1307_track.media_uri) ? null : await SQLfs.info(media_directory(legacy_1307_track.media_uri));
     const zero_iso = new Date(0).toISOString() as ISOString;
-    const download_date: ISOString = media_info !== null && media_info.exists && media_info.isDirectory === false ? new Date(media_info.modificationTime).toISOString() as ISOString : zero_iso;
+    const download_date: ISOString = media_info !== null && media_info.exists && media_info.isDirectory === false ? new Date(media_info.modificationTime * 1000).toISOString() as ISOString : zero_iso;
     const parsed_track = parse_youtube_title_artist({uid: legacy_1307_track.uid, duration: 0, title: String(legacy_1307_track.video_name), artists: [{name: String(legacy_1307_track.video_creator), uri: null }]});
     const topiced = legacy_1307_track.video_creator.includes(" - Topic");
     return {
@@ -44,12 +44,12 @@ export async function legacy_1307_track_to_track(legacy_1307_track: LegacyTypes1
     }
 }
 
-export async function get_legacy_1307_track_data(database: SQLite.SQLiteDatabase) {
-    return await database.getAllAsync<LegacyTypes1307.Track>(sql_select("tracks", "*"));
+export async function get_legacy_1307_track_data(database: SQLite.DB): Promise<LegacyTypes1307.Track[]> {
+    return (await database.execute(sql_select("tracks", "*"))).rows as any;
 }
-export async function get_legacy_1307_playlists(database: SQLite.SQLiteDatabase) {
-    return await database.getAllAsync<LegacyTypes1307.Playlist>(sql_select("playlists", "*"));
+export async function get_legacy_1307_playlists(database: SQLite.DB): Promise<LegacyTypes1307.Playlist[]> {
+    return (await database.execute(sql_select("playlists", "*"))).rows as any;
 }
-export async function get_legacy_1307_playlist_tracks(database: SQLite.SQLiteDatabase, playlist_name: string) {
-    return await database.getAllAsync<LegacyTypes1307.Track>(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`);
+export async function get_legacy_1307_playlist_tracks(database: SQLite.DB, playlist_name: string): Promise<LegacyTypes1307.Track[]> {
+    return (await database.execute(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`)).rows as any;
 }

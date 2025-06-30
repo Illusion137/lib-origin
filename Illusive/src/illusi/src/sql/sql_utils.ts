@@ -1,18 +1,18 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from '@op-engineering/op-sqlite';
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Illusive } from '../../../illusive';
 import { extract_file_extension } from '../../../illusive_utilts';
 import { CompactPlaylist, Primitives, SQLTables, Track } from "../../../types";
 import { ExampleObj } from '../example_objs';
 import * as GLOBALS from '../globals';
-import { db, db_path, reasign_db } from './database';
+import { db, db_path, reasign_db, sqlite_location } from './database';
 import * as SQLfs from './sql_fs';
 import { document_directory, sqlite_directory, thumbnail_directory } from './sql_fs';
 import { alert_error } from '../alert';
 
 export async function db_exec_async(source: string){
     try {
-        await db.execAsync(source);
+        await db.execute(source);
     } catch (error) {
         if(!(error as Error).message.includes("UNIQUE constraint failed")){
             alert_error({error: error as Error});
@@ -20,11 +20,11 @@ export async function db_exec_async(source: string){
         }
     }
 }
-export async function db_run_async(source: string, params?: SQLite.SQLiteBindParams) {
+export async function db_run_async(source: string, params?: SQLite.Scalar[]) {
     try {
         if(params !== undefined)
-            await db.runAsync(source, params);
-        else await db.runAsync(source);
+            await db.execute(source, params);
+        else await db.execute(source);
     } catch (error) {
         if(!(error as Error).message.includes("UNIQUE constraint failed")){
             alert_error({error: error as Error});
@@ -32,9 +32,9 @@ export async function db_run_async(source: string, params?: SQLite.SQLiteBindPar
         }
     }
 }
-export function db_get_all_sync<T>(source: string, ...params: SQLite.SQLiteVariadicBindParams) {
+export function db_get_all_sync<T>(source: string, ...params: SQLite.Scalar[]): T[] {
     try {
-        return db.getAllSync<T>(source, params);
+        return (db.executeSync(source, params)).rows as unknown as T[];
     } catch (error) {
         if(!(error as Error).message.includes("UNIQUE constraint failed")){
             alert_error({error: error as Error});
@@ -43,9 +43,9 @@ export function db_get_all_sync<T>(source: string, ...params: SQLite.SQLiteVaria
         return [];
     }
 }
-export async function db_get_all_async<T>(source: string, ...params: SQLite.SQLiteVariadicBindParams) {
+export async function db_get_all_async<T>(source: string, ...params: SQLite.Scalar[]): Promise<T[]> {
     try {
-        return await db.getAllAsync<T>(source, params);
+        return (await db.executeWithHostObjects(source, params)).rows as unknown as T[];
     } catch (error) {
         if(!(error as Error).message.includes("UNIQUE constraint failed")){
             alert_error({error: error as Error});
@@ -61,7 +61,7 @@ export async function sql_update<T extends Record<string, any>>(table: SQLTables
     return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]));
 }
 export async function create_table<T extends Record<string, any>>(table: SQLTables, obj: T) {
-    await db.execAsync(sql_create_table<T>(table, obj));
+    await db.execute(sql_create_table<T>(table, obj));
 }
 
 export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*" | "COUNT(1)", limit?: number, order_by?: "ASC"|"DESC") {
@@ -143,22 +143,29 @@ export function obj_to_update_sql(obj: Record<string, any>, example_obj?: Record
     return updation;
 }
 
-export async function sql_all(db: SQLite.SQLiteDatabase, ...args: string[]) {
-    return await db.getAllAsync(args.join(" "));
+export async function sql_all(db: SQLite.DB, ...args: string[]) {
+    return await db.execute(args.join(" "));
 }
 
+let global_sql_tracks_update_callback: () => any = () => {};
+export function set_global_sql_tracks_update_callback(callback: () => any){
+    global_sql_tracks_update_callback = callback;
+}
 export function update_global_track_property<T extends keyof Track>(uid: Track['uid'], prop: T, value: Track[T]){
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx][prop] = value;
+    global_sql_tracks_update_callback?.();
 }
 export function update_global_track_all_property<T extends keyof Track>(prop: T, value: Track[T]){
     for(let i = 0; i < GLOBALS.global_var.sql_tracks.length; i++){
         GLOBALS.global_var.sql_tracks[i][prop] = value;
     }
+    global_sql_tracks_update_callback?.();
 }
 export function update_global_track_item(uid: Track['uid'], new_track: Track){
     const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === uid);
     if(idx !== -1) GLOBALS.global_var.sql_tracks[idx] = new_track;
+    global_sql_tracks_update_callback?.();
 }
 
 export async function download_thumbnail(track: Track) {
@@ -193,8 +200,8 @@ export async function move_unsorted_media_to_folders() {
     }
 }
 
-export async function delete_database(database: SQLite.SQLiteDatabase, database_path: string) {
-    await database.closeAsync();
+export async function delete_database(database: SQLite.DB, database_path: string) {
+    database.close();
     await SQLfs.delete_item(sqlite_directory(database_path));
 }
 export async function delete_all_data() {
@@ -205,7 +212,7 @@ export async function delete_all_data() {
                 await SQLfs.delete_item(document_directory(file));
         } catch (error) {}
     }
-    reasign_db(await SQLite.openDatabaseAsync(db_path));
+    reasign_db(SQLite.open({name: db_path, location: sqlite_location}));
     await create_default_directories();
     await recreate_all_tables();
     GLOBALS.global_var.sql_tracks = [];
@@ -218,12 +225,12 @@ export async function create_default_directories() {
 }
 
 export async function destroy_all_tables() {
-    console.log(((await db.runAsync( sql_drop_table("tracks") )).changes));
-    console.log(((await db.runAsync( sql_drop_table("recently_played_tracks") )).changes));
-    console.log(((await db.runAsync( sql_drop_table("backpack") )).changes));
-    console.log(((await db.runAsync( sql_drop_table("playlists") )).changes));
-    console.log(((await db.runAsync( sql_drop_table("playlists_tracks") )).changes));
-    console.log(((await db.runAsync( sql_drop_table("playlists_tracks") )).changes));
+    console.log(await db.execute( sql_drop_table("tracks") ) );
+    console.log(await db.execute( sql_drop_table("recently_played_tracks") ) );
+    console.log(await db.execute( sql_drop_table("backpack") ) );
+    console.log(await db.execute( sql_drop_table("playlists") ) );
+    console.log(await db.execute( sql_drop_table("playlists_tracks") ) );
+    console.log(await db.execute( sql_drop_table("playlists_tracks") ) );
 }
 export async function recreate_all_tables() {
     // await destroy_all_tables();
@@ -237,7 +244,7 @@ export async function recreate_all_tables() {
     await create_table("playlists_deleted",              ExampleObj.playlist_example0);
     await create_table("playlists_tracks",               ExampleObj.playlists_tracks_example0);
     await create_table("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0);
-    await db.execAsync(sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"));
+    await db.execute(sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"));
 
     await create_default_directories();
 }

@@ -8,14 +8,19 @@ import { Track } from "../../types";
 import { alert_error } from "./alert";
 import * as GLOBALS from "./globals";
 import * as SQLTracks from "./sql/sql_tracks";
+import * as SQLPlaylists from "./sql/sql_playlists";
 import { random_of, recreate, shuffle_array } from '../../illusive_utilts';
 import { check_push_next_track } from './track_player_service';
+import { default_playlists } from './default_playlists';
 
 export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];
     if(!GLOBALS.global_var.can_play_again_mutex || !is_empty(start_track.imported_id) || !is_empty(start_track.media_uri)) {
         GLOBALS.global_var.can_play_again_mutex = true;
-        if(Prefs.get_pref('only_play_downloaded') && !playlist_name.includes("Mix")) {
+        const known_playlist_names = Prefs.get_pref('only_play_downloaded') ? SQLPlaylists.all_playlists_names_sync()
+            .map(({title}) => title)
+            .concat(default_playlists.map(({name}) => name), ["My Library"]) : [];
+        if(Prefs.get_pref('only_play_downloaded') && known_playlist_names.includes(playlist_name)) {
             tracks = tracks.filter((item) => !is_empty(item.media_uri));
         }
         if(tracks.length > 0)

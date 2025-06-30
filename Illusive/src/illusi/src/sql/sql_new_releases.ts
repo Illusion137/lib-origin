@@ -1,6 +1,6 @@
 import { try_json_parse, is_empty, milliseconds_of } from '../../../../../origin/src/utils/util';
 import { Prefs } from "../../../prefs";
-import { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Track } from "../../../types";
+import { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select } from "./sql_utils";
 import * as SQLTracks from './sql_tracks';
@@ -28,21 +28,31 @@ export async function new_releases_count(): Promise<number>{
 }
 
 export async function sql_compact_playlist_to_compact_playlist(playlist: SQLCompactPlaylist): Promise<CompactPlaylist>{
-    const title = try_json_parse<NamedUUID>(playlist.title);
+    const title: NamedUUID = JSON.parse(playlist.title);
     const artist = try_json_parse<NamedUUID[]>(playlist.artist);
     const artwork_thumbnails = is_empty(playlist.artwork_thumbnails) ? undefined : try_json_parse<IllusiveThumbnail[]>(playlist.artwork_thumbnails!);
-    const song_track = is_empty(playlist.song_track) ? undefined : try_json_parse<Track>(playlist.song_track!);
+    // const song_track = is_empty(playlist.song_track) ? undefined : try_json_parse<Track>(playlist.song_track!);
     return {
         ...playlist,
         title: "error" in title ? {name: "UNKNOWN", uri: null} : title,
         artist: "error" in artist ? [] : artist,
         artwork_thumbnails: artwork_thumbnails === undefined || "error" in artwork_thumbnails ? undefined : artwork_thumbnails,
-        song_track: song_track === undefined || song_track === null || "error" in song_track ? undefined : (await SQLTracks.add_playback_saved_data_to_tracks([song_track]))[0]
+        song_track: is_empty(playlist.song_track) ? undefined : JSON.parse(playlist.song_track!)
+        // song_track === undefined || song_track === null || "error" in song_track ? undefined : (await SQLTracks.add_playback_saved_data_to_track(song_track))
     }
 }
 
 export async function get_all_new_releases(){
     return await Promise.all((await db_get_all_async<SQLTimestampedCompactPlaylist>(sql_select<SQLTimestampedCompactPlaylist>("new_releases", "*"))).map(sql_compact_playlist_to_compact_playlist)) as TimestampedCompactPlaylist[];
+}
+
+function add_playback_saved_data_to_new_releases(releases: CompactPlaylist[]): CompactPlaylist[]{
+    for(let i = 0; i < releases.length; i++){
+        if(releases[i].song_track !== undefined){
+            releases[i].song_track = SQLTracks.add_playback_saved_data_to_track(releases[i].song_track!);
+        }
+    }
+    return releases;
 }
 
 export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
@@ -51,7 +61,7 @@ export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
     const sameday_refreshed_groups = groupby(new_releases, (t) => new Date(t.Timestamp).toDateString());
     const artist_uri_exclusion_set = new Set<string>();
     const sameday_refreshed_days_keys = Object.keys(sameday_refreshed_groups).reverse();
-    if(sameday_refreshed_days_keys.length === 1) return new_releases;
+    if(sameday_refreshed_days_keys.length === 1) return add_playback_saved_data_to_new_releases(new_releases);
 
     const manually_last_refreshed_date = Prefs.get_pref('automatic_new_releases_last_refreshed');
     const most_recent_day_index_temp = sameday_refreshed_days_keys.findIndex(key => key === manually_last_refreshed_date.toDateString());
@@ -75,7 +85,12 @@ export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
         release_day_group.forEach(release => release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")));
     }
 
-    return not_seen;
+    for(let i = 0; i < not_seen.length; i++){
+        if(not_seen[i].song_track !== undefined){
+            not_seen[i].song_track = SQLTracks.add_playback_saved_data_to_track(not_seen[i].song_track!);
+        }
+    }
+    return add_playback_saved_data_to_new_releases(not_seen);
 }
 
 export async function delete_all_from_new_releases(){

@@ -364,7 +364,6 @@ export namespace Illusive {
 
     export type ShuffleMode = "ORDER" | "SHUFFLE";
     export function shuffle_tracks(mode: ShuffleMode, tracks: Track[], start_track?: Track): Track[] {
-        if(Prefs.get_pref('only_play_downloaded')) tracks = tracks.filter(track => !is_empty(track.media_uri));
         switch(mode) {
             case "ORDER": {
                 if(start_track === undefined) return tracks;
@@ -451,7 +450,7 @@ export namespace Illusive {
         if (current_title.includes("Official Video")) score += 8;
         if (current_title.includes("Official Visualizer")) score += 8;
         if (current_title.includes("Music Video")) score += 5;
-        if (!isNaN(track.duration) && !isNaN(convert_track.duration))
+        if (!is_empty(track.duration) && !is_empty(convert_track.duration))
             score += (6 - Math.abs(convert_track.duration - track.duration)) * 4;
         if (score > 80) score += 5 * i;
         return score;
