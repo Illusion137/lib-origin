@@ -358,7 +358,7 @@ let oldDispatcherWarning = true;
 export const applyDefaultAgent = options => {
 	if (!options.agent) {
 	  const { jar } = AGENT.defaultAgent;
-	  const c = exports.getPropInsensitive(options.requestOptions.headers, "cookie");
+	  const c = getPropInsensitive(options.requestOptions.headers, "cookie");
 	  if (c) {
 		jar.removeAllCookiesSync();
 		AGENT.addCookiesFromString(jar, c);
