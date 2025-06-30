@@ -8,14 +8,19 @@ import { Track } from "../../types";
 import { alert_error } from "./alert";
 import * as GLOBALS from "./globals";
 import * as SQLTracks from "./sql/sql_tracks";
+import * as SQLPlaylists from "./sql/sql_playlists";
 import { random_of, recreate, shuffle_array } from '../../illusive_utilts';
 import { check_push_next_track } from './track_player_service';
+import { default_playlists } from './default_playlists';
 
 export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];
     if(!GLOBALS.global_var.can_play_again_mutex || !is_empty(start_track.imported_id) || !is_empty(start_track.media_uri)) {
         GLOBALS.global_var.can_play_again_mutex = true;
-        if(Prefs.get_pref('only_play_downloaded') && !playlist_name.includes("Mix")) {
+        const known_playlist_names = Prefs.get_pref('only_play_downloaded') ? SQLPlaylists.all_playlists_names_sync()
+            .map(({title}) => title)
+            .concat(default_playlists.map(({name}) => name), ["My Library"]) : [];
+        if(Prefs.get_pref('only_play_downloaded') && known_playlist_names.includes(playlist_name)) {
             tracks = tracks.filter((item) => !is_empty(item.media_uri));
         }
         if(tracks.length > 0)
@@ -62,9 +67,9 @@ export async function play_track_next(track_data: Track) {
 }
 export async function sprinkle_into_queue(tracks: Track[]){
     tracks = shuffle_array(tracks);
-    let i = 0;
+    let i = (await TrackPlayer.getActiveTrackIndex() ?? 0 + 1);
     const min_length = Math.min(GLOBALS.global_var.playing_tracks.length, tracks.length);
-    while( (i+=random_of([1,2,2,3,4])) < min_length){
+    while( (i+=random_of([1,1,2,2,2,3])) < min_length){
         const insert_track = tracks[i];
         GLOBALS.global_var.playing_tracks.splice(i, 0, insert_track);
         await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
@@ -82,7 +87,7 @@ export async function play_mix(track_data: Track, from: string) {
         alert_error(track_mix);
         return;
     }
-    track_mix.tracks = await SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
+    track_mix.tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
     GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[]) {

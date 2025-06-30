@@ -1,8 +1,8 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from '@op-engineering/op-sqlite';
 import { Alert } from 'react-native';
 import { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
 import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_exec_async, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_update_table, sql_where } from '../sql/sql_utils';
-import { db, db_pre_1307 } from './database';
+import { db, db_pre_1307, try_load_db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
 import { insert_track } from './sql_tracks';
@@ -12,9 +12,9 @@ import { Prefs } from '../../../prefs';
 import { version_greater_than } from '../../../illusive_utilts';
 import { ExampleObj } from '../example_objs';
 
-export async function get_all_tables(database: SQLite.SQLiteDatabase) {
-    const tables = await database.getAllAsync(`${sql_select("sqlite_master", "*")} ${sql_where<{ type: string }>(["type", "table"])}`);
-    return tables as SQLTable[];
+export async function get_all_tables(database: SQLite.DB) {
+    const tables = (await database.execute(`${sql_select("sqlite_master", "*")} ${sql_where<{ type: string }>(["type", "table"])}`)).rows;
+    return tables as unknown as SQLTable[];
 }
 
 function get_sql_table_column_properties(table: SQLTable): { 'column_name': string, 'type': SQLType }[] {
@@ -26,7 +26,7 @@ function get_sql_table_column_properties(table: SQLTable): { 'column_name': stri
     }
     return column_props;
 }
-async function alter_sql(database: SQLite.SQLiteDatabase, alter: SQLAlter) {
+async function alter_sql(database: SQLite.DB, alter: SQLAlter) {
     const tables = await get_all_tables(database);
     const selected_table_index = tables.findIndex((table) => table.name == alter.table);
     if (selected_table_index === -1) return;
@@ -36,11 +36,11 @@ async function alter_sql(database: SQLite.SQLiteDatabase, alter: SQLAlter) {
     const column_props = table_column_props[selected_column_index];
 
     if (alter.action === 'ADD' && column_props === undefined) {
-        await database.execAsync(`ALTER TABLE ${alter.table} ${alter.action} ${alter.column_name} ${alter.type}`);
+        await database.execute(`ALTER TABLE ${alter.table} ${alter.action} ${alter.column_name} ${alter.type}`);
     } else if (alter.action === 'DROP' && column_props !== undefined) {
-        await database.execAsync(`ALTER TABLE ${alter.table} ${alter.action} COLUMN ${alter.column_name}`);
+        await database.execute(`ALTER TABLE ${alter.table} ${alter.action} COLUMN ${alter.column_name}`);
     } else if (alter.action === 'RENAME' && column_props !== undefined && column_props.column_name !== alter.new_column_name) {
-        await database.execAsync(`ALTER TABLE ${alter.table} ${alter.action} COLUMN ${alter.column_name} TO ${alter.new_column_name}`);
+        await database.execute(`ALTER TABLE ${alter.table} ${alter.action} COLUMN ${alter.column_name} TO ${alter.new_column_name}`);
     } else return;
     Alert.alert("Altered SQL Table: ", `Changes ${JSON.stringify(alter)}`);
 }
@@ -49,27 +49,30 @@ export async function fix_to_new_update(version: string) {
 
     // UPDATE 13.0.4 BETA
     if (!version_greater_than(version, "13.0.4")) {
-        await alter_sql(db_pre_1307, { table: 'playlists', action: 'RENAME', column_name: 'thumbnail_URI', new_column_name: 'thumbnail_uri' });
-        await alter_sql(db_pre_1307, { table: 'playlists', action: 'ADD', column_name: 'sort', type: 'TEXT' });
-        await alter_sql(db_pre_1307, { table: 'playlists', action: 'ADD', column_name: 'public', type: "BOOLEAN" });
-        await alter_sql(db_pre_1307, { table: 'playlists', action: 'ADD', column_name: 'public_uid', type: "TEXT" });
-        await alter_sql(db_pre_1307, { table: 'playlists', action: 'ADD', column_name: 'inherited_playlists_json', type: "TEXT" });
-        await alter_sql(db_pre_1307, { table: 'playlists', action: 'ADD', column_name: 'linked_playlists_json', type: "TEXT" });
+        if(db_pre_1307 === undefined) try_load_db_pre_1307();
+        await alter_sql(db_pre_1307!, { table: 'playlists', action: 'RENAME', column_name: 'thumbnail_URI', new_column_name: 'thumbnail_uri' });
+        await alter_sql(db_pre_1307!, { table: 'playlists', action: 'ADD', column_name: 'sort', type: 'TEXT' });
+        await alter_sql(db_pre_1307!, { table: 'playlists', action: 'ADD', column_name: 'public', type: "BOOLEAN" });
+        await alter_sql(db_pre_1307!, { table: 'playlists', action: 'ADD', column_name: 'public_uid', type: "TEXT" });
+        await alter_sql(db_pre_1307!, { table: 'playlists', action: 'ADD', column_name: 'inherited_playlists_json', type: "TEXT" });
+        await alter_sql(db_pre_1307!, { table: 'playlists', action: 'ADD', column_name: 'linked_playlists_json', type: "TEXT" });
     }
 
     // UPDATE 13.0.5 BETA
     if (!version_greater_than(version, "13.0.5")) {
-        await alter_sql(db_pre_1307, { table: 'tracks', action: 'ADD', column_name: 'views', type: "INTEGER" });
-        await alter_sql(db_pre_1307, { table: 'recently_played_tracks', action: 'ADD', column_name: 'views', type: "INTEGER" });
+        if(db_pre_1307 === undefined) try_load_db_pre_1307();
+        await alter_sql(db_pre_1307!, { table: 'tracks', action: 'ADD', column_name: 'views', type: "INTEGER" });
+        await alter_sql(db_pre_1307!, { table: 'recently_played_tracks', action: 'ADD', column_name: 'views', type: "INTEGER" });
     }
 
     // UPDATE 14.0.0 BETA
     if (!version_greater_than(version, "14.0.0")) {
         try {
+            if(db_pre_1307 === undefined) try_load_db_pre_1307();
             const current_tracks = (await db_get_all_async<SQLTrack>(sql_select<Track>("tracks", "*")));
-            const legacy_1307_tracks = await get_legacy_1307_track_data(db_pre_1307);
-            const legacy_1307_playlists = await get_legacy_1307_playlists(db_pre_1307);
-            const all_legacy_1307_table_names = (await get_all_tables(db_pre_1307)).map(table => table.name);
+            const legacy_1307_tracks = await get_legacy_1307_track_data(db_pre_1307!);
+            const legacy_1307_playlists = await get_legacy_1307_playlists(db_pre_1307!);
+            const all_legacy_1307_table_names = (await get_all_tables(db_pre_1307!)).map(table => table.name);
             if (all_legacy_1307_table_names.includes("tracks") && current_tracks.length === 0) {
                 Alert.alert("Updating to 14.0.0 BETA");
                 await move_unsorted_media_to_folders();
@@ -77,7 +80,7 @@ export async function fix_to_new_update(version: string) {
                 for (const legacy_1307_track of legacy_1307_tracks)
                     all_promises.push(insert_track(await legacy_1307_track_to_track(legacy_1307_track)));
                 for (const legacy_1307 of legacy_1307_playlists) {
-                    const legacy_1307_tracks = await get_legacy_1307_playlist_tracks(db_pre_1307, legacy_1307.playlist_name);
+                    const legacy_1307_tracks = await get_legacy_1307_playlist_tracks(db_pre_1307!, legacy_1307.playlist_name);
                     const playlist_uuid = await create_playlist(legacy_1307.playlist_name);
                     for (const legacy_1307_track of legacy_1307_tracks)
                         all_promises.push(insert_track_playlist(playlist_uuid, legacy_1307_track.uid));

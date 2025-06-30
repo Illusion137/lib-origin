@@ -1,4 +1,4 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from '@op-engineering/op-sqlite';
 import path from 'path';
 import { Alert } from 'react-native';
 import { SQLTrack, Track } from '../../../types';
@@ -7,9 +7,11 @@ import { create_playlist, insert_all_tracks_playlist } from './sql_playlists';
 import { insert_all_tracks } from './sql_tracks';
 import { get_all_tables } from './sql_update';
 import { db_get_all_async, destroy_all_tables, move_unsorted_media_to_folders, recreate_all_tables, sql_select } from './sql_utils';
+import { sqlite_location } from './database';
 
 export async function test_import_1307_sqldb(__path: string) {
-    const old_db = await SQLite.openDatabaseAsync(path.basename(__path).replace(".sqlite3", "101.sqlite3"));
+    const name = path.basename(__path).replace(".sqlite3", "101.sqlite3");
+    const old_db = SQLite.open({name: name, location: sqlite_location});
     await destroy_all_tables();
     await recreate_all_tables();
 
@@ -31,5 +33,5 @@ export async function test_import_1307_sqldb(__path: string) {
             await insert_all_tracks_playlist(playlist_uuid, legacy_1307_tracks.map(track => track.uid));
         }
     }
-    await old_db.closeAsync();
+    old_db.close();
 }

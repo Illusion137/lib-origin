@@ -484,6 +484,17 @@ export function music_service_track_primary_key(type: MusicServiceType): keyof T
     }
 }
 
+export function track_primary_key(track: Track): keyof Track{
+    if(is_empty(track.youtube_id)) return 'youtube_id';
+    if(is_empty(track.soundcloud_id)) return 'soundcloud_id';
+    if(is_empty(track.spotify_id)) return 'spotify_id';
+    if(is_empty(track.applemusic_id)) return 'applemusic_id';
+    if(is_empty(track.youtubemusic_id)) return 'youtube_id';
+    if(is_empty(track.amazonmusic_id)) return 'amazonmusic_id';
+    if(is_empty(track.imported_id)) return 'imported_id';
+    return 'illusi_id';
+}
+
 export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any>['show_in_type']): GroupSection<PrefEntry>[]{
 	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter(item => (item[1].show_in_settings ?? false) && (item[1].show_in_type === show_in_type_check));
     const groups = groupby(entries, (item) => item[1].section ?? 'Other');

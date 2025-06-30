@@ -1,3 +1,4 @@
+import fuzzysort from "fuzzysort";
 import { is_empty, remove_topic } from "../../origin/src/utils/util";
 import { CompactArtist, CompactPlaylist, Playlist, QueryFlag, Track } from "./types";
 
@@ -22,6 +23,11 @@ export function get_first_word_str(args: string[], i: number): string{
 export function get_word_num(args: string[], i: number): number{
     return parseInt((args?.[i] ?? "").trim());
 }
+
+export function included_in(str1: string, from_str: string): boolean{
+    return from_str.trim().toLowerCase().includes(str1.trim().toLowerCase());
+}
+
 export function extract_query_flags<T>(query: string, QUERY_FLAGS: QueryFlag<T>[]){
     const words = parse_words(query);
     const query_flags_flags = QUERY_FLAGS.map(flag => flag.flag).concat(QUERY_FLAGS.map(flag => ANTI_QUERY_FLAG_PREFIX + flag.flag));
@@ -136,6 +142,48 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         flag: '@trim',
         condition: (track) => !is_empty(track.meta?.begdur) || !is_empty(track.meta?.enddur),
         description: "Trimmed"
+    },
+    {
+        flag: '@eq',
+        args: 8,
+        condition: (track, args) => included_in(args.join(''), track.title) || included_in(args.join(''), artist_string(track)) || (track.album?.name ? included_in(args.join(''), track.album?.name) : false),
+        description: "Strong Equals"
+    },
+    {
+        flag: '@titleeq',
+        args: 8,
+        condition: (track, args) => included_in(args.join(''), track.title),
+        description: "Title Equals"
+    },
+    {
+        flag: '@titlefuzzy',
+        args: 8,
+        condition: (track, args) => (fuzzysort.single(args.join(''), track.title)?.score ?? 0) > 0.6,
+        description: "Title Fuzzy Search"
+    },
+    {
+        flag: '@arteq',
+        args: 8,
+        condition: (track, args) => included_in(args.join(''), artist_string(track)),
+        description: "Artists Equals"
+    },
+    {
+        flag: '@artfuzzy',
+        args: 8,
+        condition: (track, args) => (fuzzysort.single(args.join(''), artist_string(track))?.score ?? 0) > 0.6,
+        description: "Artists Fuzzy Search"
+    },
+    {
+        flag: '@albeq',
+        args: 8,
+        condition: (track, args) => track.album?.name ? included_in(args.join(''), track.album?.name) : false,
+        description: "Album Equals"
+    },
+    {
+        flag: '@albfuzzy',
+        args: 8,
+        condition: (track, args) => track.album?.name ? (fuzzysort.single(args.join(''), track.album?.name)?.score ?? 0) > 0.6  : false,
+        description: "Album Fuzzy Search"
     },
     {
         flag: '@drg',

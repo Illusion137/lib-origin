@@ -62,3 +62,8 @@ export async function create_file(path: string, data: string){
 export async function read_file(path: string){
     return await FileSystem.readAsStringAsync(path, {encoding: 'utf8'});
 }
+export async function file_created_at(path: string){
+    const info = await FileSystem.getInfoAsync(path, {});
+    if(info.exists) return new Date(info.modificationTime * 1000);
+    return new Date(0);
+}

@@ -17,5 +17,6 @@ export namespace Constants {
     export const download_queue_max_length = 5;
     export const tracks_per_sample = 3;
     export const long_press_delay = 250;
+    export const cached_ids_duration_milliseconds = 2000;
     export const use_illusive_cahce = true;
 }

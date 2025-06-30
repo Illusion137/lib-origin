@@ -14,7 +14,7 @@ async function add_playback_data_to_releases(releases: (CompactPlaylist[]|Respon
         .map(async(release) => "error" in release ? release : 
             await Promise.all(release.map(
                 async(item) => item.song_track 
-                    ? {...item, song_track: (await SQLTracks.add_playback_saved_data_to_tracks([item.song_track]))[0] }
+                    ? {...item, song_track: (SQLTracks.add_playback_saved_data_to_track(item.song_track)) }
                     : item))))
 }
 

@@ -1,17 +1,19 @@
-import { is_empty } from "../../../../../origin/src/utils/util";
+import { is_empty, wait } from "../../../../../origin/src/utils/util";
 import { Illusive } from "../../../illusive";
 import { Prefs } from "../../../prefs";
-import { ISOString, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
+import { ISOString, NamedUUID, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from '../globals';
 import * as SQLfs from './sql_fs';
 import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where, update_global_track_all_property, update_global_track_item, update_global_track_property } from "./sql_utils";
-import { ResponseError } from "../../../../../origin/src/utils/types";
+import { ResponseError, TimedCacheValue } from "../../../../../origin/src/utils/types";
 import { alert_error, alert_info } from "../alert";
 import { clean_album_title } from "../../../gen/apple_music_parser";
-import { generate_unique_track_tints } from "../../../illusive_utilts";
+import { generate_unique_track_tints, random_of, track_primary_key } from "../../../illusive_utilts";
+import { Constants } from "../../../constants";
+import { try_download_track_lyrics } from "../lyrics";
 
 const bad_artist_names = [',', '&', 'and'];
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
@@ -78,18 +80,11 @@ export async function check_fixerupper_track(track: Track){
     return await Promise.all(promises);
 }
 
-function find_track_in_globals(track: Track){
-    if(GLOBALS.global_var.sql_tracks.some(t => t.uid === track.uid)) return undefined;
-    if(!is_empty(track.youtube_id)) return GLOBALS.global_var.sql_tracks.find(t => t.youtube_id === track.youtube_id);
-    if(!is_empty(track.soundcloud_id)) return GLOBALS.global_var.sql_tracks.find(t => t.soundcloud_id === track.soundcloud_id);
-    if(!is_empty(track.spotify_id)) return GLOBALS.global_var.sql_tracks.find(t => t.spotify_id === track.spotify_id);
-    if(!is_empty(track.amazonmusic_id)) return GLOBALS.global_var.sql_tracks.find(t => t.amazonmusic_id === track.amazonmusic_id);
-    if(!is_empty(track.applemusic_id)) return GLOBALS.global_var.sql_tracks.find(t => t.applemusic_id === track.applemusic_id);
-    if(!is_empty(track.spotify_id)) return GLOBALS.global_var.sql_tracks.find(t => t.spotify_id === track.spotify_id);
-    return undefined;
+function find_track_in_globals_with_key(track: Track, primary_key: keyof Track){
+    return GLOBALS.global_var.sql_tracks.find(t => !is_empty(t[primary_key]) && t[primary_key] === track[primary_key]);
 }
 
-export async function add_playback_saved_data_to_track(track: Track){
+export function add_playback_saved_data_to_track(track: Track){
     track.playback = {
         artwork: Illusive.get_track_artwork(document_directory(""), track),
         added: false,
@@ -98,20 +93,20 @@ export async function add_playback_saved_data_to_track(track: Track){
     const saved = track_exists(track);
     track.downloading_data = {saved: saved, progress: 0, playlist_saved: false};
     if(saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri)) {
-        const found_track = find_track_in_globals(track);
+        const primary_key = track_primary_key(track);
+        const found_track = find_track_in_globals_with_key(track, primary_key);
         if(found_track) track.uid = found_track.uid;
         track.media_uri = found_track?.media_uri;
         track.thumbnail_uri = found_track?.thumbnail_uri;
         track.lyrics_uri = found_track?.lyrics_uri;
+        track.meta = found_track?.meta;
     }
     check_fixerupper_track(track).catch(e => e);
     return track;
 }
 
-export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
-    return await Promise.all(
-        tracks.map(add_playback_saved_data_to_track)
-    );
+export function add_playback_saved_data_to_tracks(tracks: Track[]) {
+    return tracks.map(add_playback_saved_data_to_track);
 }
 export function merge_track_with_new_track(track: Track, new_track: Track): Track {
     return {
@@ -143,8 +138,10 @@ export function merge_track_with_new_track(track: Track, new_track: Track): Trac
 export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
     try {
         const meta: TrackMetaData = JSON.parse(sql_track.meta!);
-        return Object.assign(sql_track, {
-            artists: JSON.parse(sql_track.artists).filter(artist => !bad_artist_names.includes(artist.name.trim())),
+        return {
+            ...sql_track,
+            uid: sql_track.uid,
+            artists: JSON.parse(sql_track.artists).filter((artist: NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
             album: JSON.parse(sql_track.album!),
             prods: sql_track.prods?.trim(),
             tags: JSON.parse(sql_track.tags!),
@@ -157,8 +154,8 @@ export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
                 last_played_date: meta.last_played_date ?? new Date(0).toISOString()
             },
             playback: {artwork: Illusive.get_track_artwork(document_directory(""), sql_track as unknown as Track), added: false, successful: false},
-            downloading: {}
-        });
+            downloading_data: {} as never
+        };
     } catch (error) {
         return {error: new Error((error as Error).message, {'cause': JSON.stringify(sql_track)})};
     }
@@ -168,9 +165,19 @@ export function sql_tracks_to_tracks(sql_tracks: SQLTrack[]): Track[]{
     mapped.filter(track => "error" in track).forEach(err => alert_error(err));
     return mapped.filter(track => !("error" in track)) as Track[];
 }
+export async function fix_track_added_metadata(){
+    for(const track of GLOBALS.global_var.sql_tracks){
+        if(is_empty(track.media_uri)) continue;
+        const downloaded_date = await SQLfs.file_created_at(SQLfs.media_directory(track.media_uri!));
+        await update_track_meta_data(track.uid, {...track.meta!, added_date: downloaded_date.toISOString() as ISOString, downloaded_date: downloaded_date.toISOString() as ISOString});
+    }
+}
 export async function mark_track_downloaded(uid: Track['uid'], media_uri: string) {
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["media_uri", media_uri])} ${sql_where<Track>(["uid", uid])}`);
     update_global_track_property(uid, 'media_uri', media_uri);
+    const track = GLOBALS.global_var.sql_tracks.find(t => t.uid === uid);
+    if(track === undefined) return;
+    await update_track_meta_data(uid, {...track.meta!, downloaded_date: new Date().toISOString() as ISOString});
 }
 export async function mark_all_tracks_undownloaded() {
     await Promise.all(GLOBALS.global_var.sql_tracks.map(async (track) => {
@@ -205,8 +212,13 @@ export function track_exist_in_other(tracks: Track[], track: Track){
     }
     return false;
 }
+const cached_ids_set = new TimedCacheValue<Set<string>>(Constants.cached_ids_duration_milliseconds);
 export function track_exists(track: Track) {
-    return track_exist_in_other(GLOBALS.global_var.sql_tracks, track);
+    const evil_set = cached_ids_set.update(() => new Set<string>(GLOBALS.global_var.sql_tracks.map(all_track_ids).flat()));
+    for(const id of all_track_ids(track)){
+        if(evil_set.has(id)) return true;
+    }
+    return false;
 }
 export async function track_from_service_id(ftrack: Track) {
     const potential_keys: (keyof Track)[] = ["youtube_id", "youtubemusic_id", "spotify_id", "amazonmusic_id", "applemusic_id", "soundcloud_id"];
@@ -232,9 +244,9 @@ export async function track_uid_exists(track: Track) {
     const count_sql = await db_get_all_async(`${sql_select<Track>("tracks", "uid")} ${sql_where<Track>(["uid", track.uid])}`);
     return count_sql.length !== 0;
 }
-let time_since_last_fetched_track_data = new Date();
+let time_since_last_fetched_track_data = new Date(0);
 export async function fetch_track_data() {
-    if(time_since_last_fetched_track_data.getTime() + 5000 < new Date().getTime()) return;
+    if(new Date().getTime() - time_since_last_fetched_track_data.getTime() < 5000) return;
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
     time_since_last_fetched_track_data = new Date();
@@ -267,6 +279,10 @@ export async function insert_track(track: Track) {
     GLOBALS.global_var.sql_tracks.push(track);
     if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
     if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
+    if(Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) {
+        await wait(random_of([500, 1000, 800, 2000, 2500, 1200]));
+        await try_download_track_lyrics(track);
+    }
 }
 export async function update_track(track_uid: Track['uid'], new_track: Track) {
     await db_run_async(`${sql_update_table("tracks")} SET ${obj_to_update_sql(new_track, ExampleObj.track_example0)} ${sql_where<Track>(["uid", track_uid])}`);
@@ -288,8 +304,9 @@ export async function delete_track(uid: Track['uid']) {
     GLOBALS.global_var.sql_tracks.splice(idx, 1);
 }
 
-export async function restore_thumbnail_cache() {
-    for(const track of GLOBALS.global_var.sql_tracks)
+export async function restore_thumbnail_cache(tracks?: Track[]) {
+    const to_restore = tracks ?? GLOBALS.global_var.sql_tracks;
+    for(const track of to_restore)
         if(is_empty(track.imported_id) && is_empty(track.thumbnail_uri))
             download_thumbnail(track).catch(e => e);
 }

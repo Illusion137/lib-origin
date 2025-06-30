@@ -209,6 +209,15 @@ export type SQLTrackArray = [ string, string, string, string, number, string, st
 export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
+export interface SmallTrack {
+    title: Track['title'],
+    artists: string,
+    duration: Track['duration'];
+    youtube_id: Track['youtube_id'];
+    soundcloud_permalink: Track['soundcloud_permalink'];
+}
+export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['youtube_id'], SmallTrack['soundcloud_permalink']];
+
 export type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK" | "INTERSECTION";
 export interface InheritedPlaylist {
     uuid: string

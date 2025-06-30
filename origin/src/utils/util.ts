@@ -65,7 +65,7 @@ export function parse_runs(runs: ({text: string}[]) | undefined, join_with?: str
     if(runs === undefined) return "";
     return runs.map(run => run.text).join(join_with ?? " ");
 }
-function wait(milliseconds: number) {
+export function wait(milliseconds: number) {
 	return new Promise(function(resolve) { 
 	  	setTimeout(resolve, milliseconds, 'HASH_TIMED_OUT');
 	});
@@ -101,8 +101,11 @@ export function eval_json<T>(json: string): T {
     const result = eval("let evaluated = " + json + "; evaluated;");
     return result;
 }
-export function milliseconds_of(time: {days?: number, hours?: number, minutes?: number, seconds?: number}): number {
-	return ((time.days ?? 0) * 1000 * 60 * 60 * 24) 
+export function milliseconds_of(time: {years?: number, months?: number, weeks?: number, days?: number, hours?: number, minutes?: number, seconds?: number}): number {
+	return ((time.years ?? 0) * 1000 * 60 * 60 * 24 * 365) +
+		((time.months ?? 0) * 1000 * 60 * 60 * 24 * 30) 
+		+ ((time.weeks ?? 0) * 1000 * 60 * 60 * 24 * 7) 
+		+ ((time.days ?? 0) * 1000 * 60 * 60 * 24) 
 		+ ((time.hours ?? 0) * 1000 * 60 * 60)
 		+ ((time.minutes ?? 0) * 1000 * 60)
 		+ ((time.seconds ?? 0) * 1000)

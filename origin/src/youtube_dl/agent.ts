@@ -29,7 +29,7 @@ const convertCookie = cookie =>
         hostOnly: cookie.hostOnly,
       });
 
-const addCookies = (exports.addCookies = (jar, cookies) => {
+const addCookies  = (jar, cookies) => {
   if (!cookies || !Array.isArray(cookies)) {
     throw new Error("cookies must be an array");
   }
@@ -49,7 +49,7 @@ const addCookies = (exports.addCookies = (jar, cookies) => {
   for (const cookie of cookies) {
     jar.setCookieSync(convertCookie(cookie), "https://www.youtube.com");
   }
-});
+};
 
 export const addCookiesFromString = (jar, cookies) => {
   if (!cookies || typeof cookies !== "string") {
@@ -64,7 +64,7 @@ export const addCookiesFromString = (jar, cookies) => {
   );
 };
 
-export const createAgent = (exports.createAgent = (cookies: any[] = [], opts: any = {}) => {
+export const createAgent = (cookies: any[] = [], opts: any = {}) => {
   const options = Object.assign({}, opts);
   if (!options.cookies) {
     const jar = new CookieJar();
@@ -76,6 +76,6 @@ export const createAgent = (exports.createAgent = (cookies: any[] = [], opts: an
     localAddress: options.localAddress,
     jar: options.cookies.jar,
   };
-});
+};
 
 export const defaultAgent = createAgent();
