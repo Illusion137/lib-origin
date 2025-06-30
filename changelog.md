@@ -1,3 +1,5 @@
+# Illusi 16.1.3
+  - Fixed discord integration
 # Illusi 16.1.2
   - Added Discord Integration
   - Added playlist batch downloading

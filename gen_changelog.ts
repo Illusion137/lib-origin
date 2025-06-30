@@ -1,4 +1,6 @@
-export const CHANGELOG = `# Illusi 16.1.2
+export const CHANGELOG = `# Illusi 16.1.3
+  - Fixed discord integration
+# Illusi 16.1.2
   - Added Discord Integration
   - Added playlist batch downloading
   - Added auto lyrics caching
