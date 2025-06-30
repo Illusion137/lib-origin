@@ -1,3 +1,19 @@
+# Illusi 16.1.2
+  - Added Discord Integration
+  - Added playlist batch downloading
+  - Added auto lyrics caching
+  - Added more themes
+  - Added more Query Flags
+  - Added Track Info Viewer
+  - Improved global data fetching
+  - Improved SQLite speed by migrating to op-sqlite
+  - Improved track-exists algorithm speed
+  - Improved light mode
+  - Improved Audioplayer lyrics
+  - Improved Audioplayer add to playlist/library
+  - Fixed bug relating to downloading tracks with null duration
+  - Fixed bug relating to the imported icon (fr)
+  - Fixed misc bug relating to FourTrackArtwork
 # Illusi 16.0.2
   - Fixed bug where you couldn't access position-slider in audioplayer
   - Fixed bug where Archived Playlists got cut off
