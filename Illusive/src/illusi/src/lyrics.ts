@@ -17,6 +17,7 @@ export async function save_track_lyrics(track: Track, lyrics: string){
     update_global_track_item(track.uid, new_track);
 }
 export async function try_download_track_lyrics(track: Track){
+    if(!is_empty(track.lyrics_uri)) return;
     const lyrics_maybe = await Illusive.get_track_lryics(track);
     if(typeof lyrics_maybe === "object") {
         return "bad";

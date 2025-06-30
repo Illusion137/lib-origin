@@ -1,3 +1,9 @@
+# Illusi 16.1.4
+  - Fixed bug relating to refreshing data in playlists
+  - Fixed bug relating to lyrics fetching
+  - Fixed bug relating to sprinkling into queue
+  - Fixed bug relating to recently played tracks
+  - Made Track Context Menu more compact
 # Illusi 16.1.3
   - Fixed discord integration
 # Illusi 16.1.2

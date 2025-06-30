@@ -105,10 +105,8 @@ export function add_playback_saved_data_to_track(track: Track){
     return track;
 }
 
-export async function add_playback_saved_data_to_tracks(tracks: Track[]) {
-    return await Promise.all(
-        tracks.map(add_playback_saved_data_to_track)
-    );
+export function add_playback_saved_data_to_tracks(tracks: Track[]) {
+    return tracks.map(add_playback_saved_data_to_track);
 }
 export function merge_track_with_new_track(track: Track, new_track: Track): Track {
     return {

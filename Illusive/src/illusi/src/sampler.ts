@@ -125,7 +125,7 @@ export async function sample_tracks_meta(sample_tracks: Track[]){
             if("metadata" in download_uri) {
                 await handle_track_meta_data(track, download_uri.metadata, unavailable);
             }
-            (await SQLTracks.add_playback_saved_data_to_tracks([track]))[0];
+            (SQLTracks.add_playback_saved_data_to_track(track));
         } catch (error: any) {
             Logger.log_error(error).catch(e => e);
             continue;
