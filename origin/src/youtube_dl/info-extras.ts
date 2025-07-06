@@ -37,7 +37,7 @@ export const getMedia = (info: any) => {
 				const contents = row.metadataRowRenderer.contents[0];
 				media[title] = getText(contents);
 				const runs = contents.runs;
-				if (runs && runs[0].navigationEndpoint) {
+				if (runs?.[0].navigationEndpoint) {
 					media[`${title}_url`] = new URL(
 						runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url, BASE_URL).toString();
 				}
