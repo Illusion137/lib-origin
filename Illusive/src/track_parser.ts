@@ -1,13 +1,13 @@
-import { AmazonSearchTrack } from '../../origin/src/amazon_music/types/SearchResult';
-import { AmazonTrack } from '../../origin/src/amazon_music/types/ShowHomeCreateAndBindMethod';
+import type { AmazonSearchTrack } from '../../origin/src/amazon_music/types/SearchResult';
+import type { AmazonTrack } from '../../origin/src/amazon_music/types/ShowHomeCreateAndBindMethod';
 import * as Origin from '../../origin/src/index'
-import { Item4 } from '../../origin/src/spotify/types/Album';
-import { CollectionItem } from '../../origin/src/spotify/types/Collection';
-import { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
-import { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
+import type { Item4 } from '../../origin/src/spotify/types/Album';
+import type { CollectionItem } from '../../origin/src/spotify/types/Collection';
+import type { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
+import type { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
 import { extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_time } from '../../origin/src/utils/util'
 import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
-import { Track } from './types';
+import type { Track } from './types';
 
 export function parse_spotify_playlist_track(track: ContentItem): Track {
     return {
@@ -86,7 +86,7 @@ export function parse_amazon_music_search_track(track: AmazonSearchTrack): Track
     return {
         uid: generate_new_uid(title),
         title: title,
-        artists: [{name: is_empty(track.secondaryText) ? "" : make_topic(track.secondaryText!), uri: track.secondaryLink?.deeplink === undefined ? null : create_uri("amazonmusic", extract_string_from_pattern(track.secondaryLink?.deeplink ?? "", /\/.+?\/(.+)\/.+/) as string)}],
+        artists: [{name: is_empty(track.secondaryText) ? "" : make_topic(track.secondaryText!), uri: track.secondaryLink?.deeplink === undefined ? null : create_uri("amazonmusic", extract_string_from_pattern(track.secondaryLink.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
         duration: NaN,
         explicit: track.tags.includes("E") ? "EXPLICIT" : "NONE",
         amazonmusic_id: Origin.AmazonMusic.get_track_id(track)

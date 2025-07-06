@@ -50,7 +50,7 @@ function getSubChapterBreak() { // 48 dashes
 	return '[------------------------]\r\n';
 }
 export class Roze {
-	#roz_content: string
+	readonly #roz_content: string
 	constructor(roz_content: string, _?: RozeOptionalMetadata) {
 		this.#roz_content = roz_content;
 	}
@@ -182,5 +182,5 @@ export class Roze {
 	}
 	runTranslationMap() {
 
-	}
+    }
 };

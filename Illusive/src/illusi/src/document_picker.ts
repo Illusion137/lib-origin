@@ -102,7 +102,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 const meta_data = await sound_temp.getStatusAsync();
                 await sound_temp.unloadAsync();
 
-                if(meta_data.isLoaded === false) throw new Error("Unable to load audio metadata");
+                if(!meta_data.isLoaded) throw new Error("Unable to load audio metadata");
                 if(meta_data.durationMillis === undefined) throw new Error("Unable to access audio metadata duration");
 
                 const track = {

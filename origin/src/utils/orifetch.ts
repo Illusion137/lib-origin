@@ -8,9 +8,9 @@ export function push_abortion(new_timeout_ms: number, new_stack: number){
     stack = new_stack;
 }
 
-export default async function fetch<T = unknown>(input: string, init?: RequestInit & {proxy?: Proxy.Proxy}): Promise<Response> {
+export default async function fetch(input: string, init?: RequestInit & {proxy?: Proxy.Proxy}): Promise<Response> {
     try {
-        const promise_response = axios<T>({
+        const promise_response = axios({
             url: input,
             method: init?.method,
             headers: init?.headers as any,
@@ -28,21 +28,21 @@ export default async function fetch<T = unknown>(input: string, init?: RequestIn
             statusText: response.statusText,
             json: async () => response.data,
             text: async () => response.data as string,
-            body: <any>undefined,
+            body: undefined as any,
             headers: response.headers as any,
-            type: <any>undefined,
+            type: undefined as any,
             url: response.request,
-            redirected: <any>undefined,
-            clone: () => <any>undefined,
-            bodyUsed: <any>undefined,
-            arrayBuffer: <any>undefined,
-            blob: <any>undefined,
-            bytes: <any>undefined,
-            formData: <any>undefined
+            redirected: undefined as any,
+            clone: () => undefined as any,
+            bodyUsed: undefined as any,
+            arrayBuffer: undefined as any,
+            blob: undefined as any,
+            bytes: undefined as any,
+            formData: undefined as any
         }
     }
     catch(e: unknown){
-        const error: AxiosError<T> = e as AxiosError<T>;
+        const error: AxiosError = e as AxiosError;
         if(stack-- <= 0) timeout_ms = 0;
         return {
             ok: false,
@@ -50,17 +50,17 @@ export default async function fetch<T = unknown>(input: string, init?: RequestIn
             statusText: error.response?.statusText ?? error.message,
             json: async () => ({error: new Error(error.message)}),
             text: async () => error.message,
-            body: <any>undefined,
+            body: undefined as any,
             headers: error.response?.headers as any,
-            type: <any>undefined,
+            type: undefined as any,
             url: error.response?.request,
-            redirected: <any>undefined,
-            clone: () => <any>undefined,
-            bodyUsed: <any>undefined,
-            arrayBuffer: <any>undefined,
-            blob: <any>undefined,
-            bytes: <any>undefined,
-            formData: <any>undefined
+            redirected: undefined as any,
+            clone: () => undefined as any,
+            bodyUsed: undefined as any,
+            arrayBuffer: undefined as any,
+            blob: undefined as any,
+            bytes: undefined as any,
+            formData: undefined as any
         }
     }
 }

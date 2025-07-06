@@ -25,4 +25,4 @@ YouTubeDL.ytdl(url, {quality: '18', playerClients: ["WEB", "IOS", "ANDROID", "TV
         console.log('finished');
     });
     
-}).catch(e => console.error(e));
+}).catch((e: unknown) => { console.error(e); });

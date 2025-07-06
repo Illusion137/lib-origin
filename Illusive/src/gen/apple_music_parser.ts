@@ -7,6 +7,17 @@ import { generate_new_uid, is_empty, make_topic, remove, safe_date_iso, urlid } 
 import { create_uri } from '../illusive_utilts';
 import { CompactArtist, CompactPlaylist, ISOString, NamedUUID, Track } from "../types";
 
+export function parse_apple_music_artwork(url: string|undefined, size = 200): string|undefined {
+    return url?.replace("{w}x{h}bb.{f}", `${size}x${size}bb.webp`)
+    .replace("{w}x{h}{c}.{f}", `${size}x${size}.webp`);
+}
+export function clean_album_title(title: string){
+    return remove(title, " - Album", " - Single", " - EP", "Album", "Single", "EP");
+}
+export function clean_album_title_seo(title: string){
+    return title.split(' - ')[0];
+}
+
 export function parse_apple_music_playlist_track(track: AppleTrack): Track {
     return {
         uid: generate_new_uid(track.title),
@@ -22,10 +33,7 @@ export function parse_apple_music_playlist_track(track: AppleTrack): Track {
         applemusic_id: track.id
     }
 }
-export function parse_apple_music_artwork(url: string|undefined, size: number = 200): string|undefined {
-    return url?.replace("{w}x{h}bb.{f}", `${size}x${size}bb.webp`)
-    .replace("{w}x{h}{c}.{f}", `${size}x${size}.webp`);
-}
+
 export function parse_apple_music_user_playlist_track(track: AppleUserPlaylistTrack): Track {
     return {
         uid: generate_new_uid(track.attributes.name),
@@ -104,13 +112,6 @@ export function parse_apple_music_artist_track(track: ArtistSectionItem, artist:
         artwork_url: parse_apple_music_artwork(track.artwork!.dictionary.url),
         applemusic_id: track.id
     }
-}
-
-export function clean_album_title(title: string){
-    return remove(title, " - Album", " - Single", " - EP", "Album", "Single", "EP");
-}
-export function clean_album_title_seo(title: string){
-    return title.split(' - ')[0];
 }
 
 export function parse_apple_music_artist_album(album: ArtistSectionItem, artist: NamedUUID, force_album_type?: CompactPlaylist['album_type']): CompactPlaylist{

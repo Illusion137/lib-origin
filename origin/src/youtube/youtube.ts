@@ -171,6 +171,16 @@ export namespace YouTube {
 			};
 		} catch (error) { return { error: error as Error }; }
 	}
+    async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
+		try {
+			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
+			const epoch = new Date();
+			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
+			const url = `https://www.youtube.com/youtubei/v1/${path}`;
+			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
+			return response;
+		} catch (error) { return { error: error as Error } }
+	}
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
 	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_channel_contents> { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_channel_contents); }
@@ -188,16 +198,6 @@ export namespace YouTube {
 			const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
 			if ("error" in response) throw response.error;
 			return (await response.json()) as ContinuedResults_0;
-		} catch (error) { return { error: error as Error } }
-	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
-		try {
-			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
-			const epoch = new Date();
-			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
-			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
-			return response;
 		} catch (error) { return { error: error as Error } }
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {

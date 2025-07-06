@@ -16,26 +16,26 @@ import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLTracks from './sql/sql_tracks';
 
-function wait_for(condition_function: () => boolean) {
+async function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
         if (condition_function()) resolve();
-        else setTimeout((_: never) => poll(resolve), 400);
+        else setTimeout((_: never) => { poll(resolve) }, 400);
     }
     return new Promise(poll as never);
 }
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
 }
-export function sort_filter_tracks(tracks: Track[], redownload_batch: boolean = false) {
+export function sort_filter_tracks(tracks: Track[], redownload_batch = false) {
     return sort_tracks_for_download(tracks.filter(item => is_empty(item.media_uri) || redownload_batch ));
 }
 export async function download_track_list(tracks: Track[]) {
     for(const track of sort_filter_tracks(tracks))
-        GLOBALS.global_var.download_track(track).catch(e => alert_error(e));
+        GLOBALS.global_var.download_track(track).catch(e => {alert_error(e)});
 }
 
 export async function batch_download(playlist_key: string, slice?: [number, number]) {
-    return await download_track_list((await playlist_tracks(playlist_key)).slice(slice?.[0], slice?.[1]));
+    await download_track_list((await playlist_tracks(playlist_key)).slice(slice?.[0], slice?.[1]));
 }
 export async function batch_undownload(playlist_key: string, slice?: [number, number], callback?: (progress:number) => void){
     const tracks = (await playlist_tracks(playlist_key)).slice(slice?.[0], slice?.[1]);
@@ -103,7 +103,7 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
     }
     return SQLTracks.add_playback_saved_data_to_track(track);
 }
-export async function download_track(track: Track, redownload: boolean = false, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
+export async function download_track(track: Track, redownload = false, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> {
     if(GLOBALS.downloading.find(item => item.uid === track.uid)) return "GOOD";
     function in_download_range(uid: string, download_queue_max_length: number) {
         for (let i = 0; i < download_queue_max_length; i++)
@@ -148,7 +148,7 @@ export async function download_track(track: Track, redownload: boolean = false, 
                         await sound_temp.loadAsync({ uri: new_uri });
                         const meta_data = await sound_temp.getStatusAsync();
                         await sound_temp.unloadAsync();
-                        if (meta_data.isLoaded === false)
+                        if (!meta_data.isLoaded)
                             throw new Error('No load');
                         const downloaded_duration = Math.floor((meta_data.durationMillis ?? 0) / 1000);
                         if (Math.round(downloaded_duration) < 3)
@@ -173,7 +173,7 @@ export async function download_track(track: Track, redownload: boolean = false, 
                     } catch (error) {
                         download_error_callback("Failed To Download:", error as Error, track, start_download);
                     }
-                }, () => {}, () => {}).then(ff_session => {
+                }, () => {return}, () => {return}).then(ff_session => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
                         GLOBALS.downloading[item_index].execution_id = ff_session.getSessionId();
@@ -190,6 +190,6 @@ export async function ffcache_yt(url: string, track: Track) {
     const hls_out_uri = SQLfs.cache_directory(`playlist_${track.youtube_id}.m3u8`);
     const hls_segments = SQLfs.cache_directory(`file_${track.youtube_id}__%d.m4a`);
     const cmd = `-y -i "${url}" -c:a aac -b:a 128k -muxdelay 0 -f segment -sc_threshold 0 -segment_time 7 -segment_list "${hls_out_uri}" -segment_format mpegts "${hls_segments}"`;
-    ffmpeg.FFmpegKit.executeAsync(cmd, () => {}, () => {}, () => {}).catch(e => e);
+    ffmpeg.FFmpegKit.executeAsync(cmd, () => {return}, () => {return}, () => {return}).catch(e => e);
     return hls_out_uri;
 }

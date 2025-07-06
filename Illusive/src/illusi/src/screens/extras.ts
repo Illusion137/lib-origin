@@ -58,11 +58,11 @@ export const extras_sections: ExtrasSection[] = [
     },
     {
         options: [
-            {icon: "logo-github",            title: "Github",              confirm: false, on_press: () => {}},
-            {icon: "file-tray-outline", title: "Zip all Data",        confirm: false, on_press: () => {}},
-            {icon: "sync",     title: "Reset Settings",      confirm: true, on_press: () => {}},
-            {icon: "trash-outline",     title: "Clear Playlist Data", confirm: true, on_press: () => {}},
-            {icon: "trash-outline",     title: "Clear All Data",      confirm: true, on_press: () => {}},
+            {icon: "logo-github",            title: "Github",              confirm: false, on_press: () => {return}},
+            {icon: "file-tray-outline", title: "Zip all Data",        confirm: false, on_press: () => {return}},
+            {icon: "sync",     title: "Reset Settings",      confirm: true, on_press: () => {return}},
+            {icon: "trash-outline",     title: "Clear Playlist Data", confirm: true, on_press: () => {return}},
+            {icon: "trash-outline",     title: "Clear All Data",      confirm: true, on_press: () => {return}},
         ],
         bottom_text: "Manage your data; clear your data or export it back to your files app"
     },

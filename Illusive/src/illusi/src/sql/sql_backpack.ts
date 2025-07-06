@@ -22,7 +22,7 @@ export async function toss_from_backpack(replacement_track: Track) {
 export async function backpack_tracks() {
     const sql_tracks= await db_get_all_async<SQLTrack>(sql_select<Track>("backpack", "*"));
     const tracks: Track[] = sql_tracks_to_tracks(sql_tracks);
-    for(let i = 0; i < tracks.length; i++) tracks[i].playback!.artwork = Illusive.illusi_dark_icon;
+    for(const track of tracks) track.playback!.artwork = Illusive.illusi_dark_icon;
     return tracks;
 }
 export async function add_to_backpack(uid: string) {

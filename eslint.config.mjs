@@ -16,7 +16,7 @@ export default [
     ]},
     pluginJs.configs.recommended,
     // ...tseslint.configs.recommended,
-    ...tseslint.configs.recommendedTypeChecked,
+    ...tseslint.configs.all,
     {
         languageOptions: {
             parserOptions: {
@@ -46,7 +46,48 @@ export default [
             "@typescript-eslint/no-unsafe-assignment": "off",
             "@typescript-eslint/no-unsafe-argument": "off", // TURN THIS ON
             "@typescript-eslint/require-await": "off",
-            "@typescript-eslint/restrict-template-expressions": "off"
+            "@typescript-eslint/restrict-template-expressions": "off",
+            "@typescript-eslint/no-magic-numbers": "off",
+            "@typescript-eslint/explicit-module-boundary-types": "off",
+            "@typescript-eslint/naming-convention": ["off", 
+                {
+                    "selector": "default",
+                    "format": ["snake_case"]
+                },
+                {
+                    "selector": "variable",
+                    "format": ["snake_case", "UPPER_CASE"],
+                    "leadingUnderscore": "allow"
+                },
+
+                {
+                    "selector": "typeLike",
+                    "format": ["PascalCase"],
+                    "leadingUnderscore": "allow"
+                },
+                {
+                    "selector": "enumMember",
+                    "format": ["UPPER_CASE"]
+                }
+            ],
+            "@typescript-eslint/explicit-function-return-type": "off",
+            "@typescript-eslint/prefer-readonly-parameter-types": "off", // I should maybe enable this
+            "@typescript-eslint/no-non-null-assertion": "off",
+            "@typescript-eslint/no-unsafe-type-assertion": "off",
+            "@typescript-eslint/no-unnecessary-condition": "warn",
+            "@typescript-eslint/prefer-destructuring": "off",
+            "@typescript-eslint/consistent-return": "off",
+            "@typescript-eslint/use-unknown-in-catch-callback-variable": "off",
+            "@typescript-eslint/strict-boolean-expressions": "off",
+            "@typescript-eslint/max-params": "off",
+            "@typescript-eslint/init-declarations": "off",
+            "@typescript-eslint/non-nullable-type-assertion-style": "off",
+            "@typescript-eslint/return-await": "off",
+            "@typescript-eslint/consistent-type-imports": "off", // CHECK THIS,
+            "@typescript-eslint/no-unnecessary-condition": "off",
+            "@typescript-eslint/prefer-nullish-coalescing": "off",
+            "@typescript-eslint/explicit-member-accessibility": "off",
+            
         }
     }
 ];

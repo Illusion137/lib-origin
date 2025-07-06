@@ -261,8 +261,7 @@ export const cleanVideoDetails = (videoDetails: any, info: any) => {
 
 	// Use more reliable `lengthSeconds` from `playerMicroformatRenderer`.
 	videoDetails.lengthSeconds =
-		(info.player_response.microformat &&
-			info.player_response.microformat.playerMicroformatRenderer.lengthSeconds) ||
+		(info?.player_response?.microformat?.playerMicroformatRenderer?.lengthSeconds) ||
 		info.player_response.videoDetails.lengthSeconds;
 	return videoDetails;
 };
@@ -274,10 +273,7 @@ export const cleanVideoDetails = (videoDetails: any, info: any) => {
  * @returns {Array.<Object>}
  */
 export const getStoryboards = (info: any) => {
-	const parts = info.player_response.storyboards &&
-		info.player_response.storyboards.playerStoryboardSpecRenderer &&
-		info.player_response.storyboards.playerStoryboardSpecRenderer.spec &&
-		info.player_response.storyboards.playerStoryboardSpecRenderer.spec.split('|');
+	const parts = info?.player_response?.storyboards?.playerStoryboardSpecRenderer?.spec?.split('|');
 
 	if (!parts) return [];
 
@@ -323,16 +319,9 @@ export const getStoryboards = (info: any) => {
  * @returns {Array.<Object>}
  */
 export const getChapters = (info: any) => {
-	const playerOverlayRenderer = info.response &&
-		info.response.playerOverlays &&
-		info.response.playerOverlays.playerOverlayRenderer;
-	const playerBar = playerOverlayRenderer &&
-		playerOverlayRenderer.decoratedPlayerBarRenderer &&
-		playerOverlayRenderer.decoratedPlayerBarRenderer.decoratedPlayerBarRenderer &&
-		playerOverlayRenderer.decoratedPlayerBarRenderer.decoratedPlayerBarRenderer.playerBar;
-	const markersMap = playerBar &&
-		playerBar.multiMarkersPlayerBarRenderer &&
-		playerBar.multiMarkersPlayerBarRenderer.markersMap;
+	const playerOverlayRenderer = info?.response?.playerOverlays?.playerOverlayRenderer;
+	const playerBar = playerOverlayRenderer?.decoratedPlayerBarRenderer?.decoratedPlayerBarRenderer?.playerBar;
+	const markersMap = playerBar?.multiMarkersPlayerBarRenderer?.markersMap;
 	const marker = Array.isArray(markersMap) && markersMap.find(m => m.value && Array.isArray(m.value.chapters));
 	if (!marker) return [];
 	const chapters: any[] = marker.value.chapters;

@@ -1,3 +1,3 @@
-export async function sync_data(){
-    
+export function sync_data(){
+    return;
 }

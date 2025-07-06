@@ -20,6 +20,7 @@ export function parse_youtube_music_album_type(album_type: YouTubeMusicAlbumType
         case "Album": return "ALBUM";
         case "Single": return "SINGLE";
         case "EP": return "EP";
+        case "Song": return "SONG";
         default: return "ALBUM";
     }
 }

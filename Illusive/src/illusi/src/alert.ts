@@ -21,5 +21,5 @@ export function alert_error(error: ResponseError[]|ResponseError|string) {
     }
 }
 export function alert_trackplayer_error(error: ResponseError){
-    Alert.alert("Error", typeof error === "string" ? error : Array.isArray(error) ? error.map(err => `${clean_error_stack(err.error)}`).join(', ') : `${clean_error_stack(error.error)}`);
+    Alert.alert("Error", typeof error === "string" ? error : Array.isArray(error) ? error.map(err => clean_error_stack(err.error)).join(', ') : clean_error_stack(error.error));
 }

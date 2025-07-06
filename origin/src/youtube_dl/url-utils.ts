@@ -22,6 +22,16 @@ const validQueryDomains = new Set([
 	'music.youtube.com',
 	'gaming.youtube.com',
 ]);
+
+/**
+ * Returns true if given id satifies YouTube's id format.
+ *
+ * @param {string} id
+ * @return {boolean}
+ */
+const idRegex = /^[a-zA-Z0-9-_]{11}$/;
+export const validateID = (id: string) => idRegex.test(id.trim());
+
 const validPathDomains = /^https?:\/\/(youtu\.be\/|(www\.)?youtube\.com\/(embed|v|shorts|live)\/)/;
 export function getURLVideoID(link: string) {
 	const parsed = new URL(link.trim());
@@ -42,7 +52,20 @@ export function getURLVideoID(link: string) {
 	}
 	return id;
 };
-
+/**
+ * Checks wether the input string includes a valid id.
+ *
+ * @param {string} string
+ * @returns {boolean}
+ */
+export const validateURL = (str: string) => {
+	try {
+		getURLVideoID(str);
+		return true;
+	} catch (e) {
+		return false;
+	}
+};
 /**
  * Gets video ID either from a url or by checking if the given string
  * matches the video ID format.
@@ -60,29 +83,5 @@ export function getVideoID(str: string) {
 		return getURLVideoID(str);
 	} else {
 		throw Error(`No video id found: ${str}`);
-	}
-};
-
-/**
- * Returns true if given id satifies YouTube's id format.
- *
- * @param {string} id
- * @return {boolean}
- */
-const idRegex = /^[a-zA-Z0-9-_]{11}$/;
-export const validateID = (id: string) => idRegex.test(id.trim());
-
-/**
- * Checks wether the input string includes a valid id.
- *
- * @param {string} string
- * @returns {boolean}
- */
-export const validateURL = (str: string) => {
-	try {
-		getURLVideoID(str);
-		return true;
-	} catch (e) {
-		return false;
 	}
 };

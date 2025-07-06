@@ -36,7 +36,7 @@ export namespace JNovel {
 				"sec-fetch-site": "none",
 				"sec-fetch-user": "?1",
 				"upgrade-insecure-requests": "1",
-				"cookie": opts.cookie_jar?.toString() as string
+				"cookie": opts.cookie_jar?.toString()!
 			},
 			referrerPolicy: "strict-origin-when-cross-origin",
 			body: null,

@@ -21,7 +21,7 @@ export function cyrb128(str: string) {
 
 export function seeded_rand(seed_str: string){
     const seed = cyrb128(seed_str);
-    let a = seed[0], b = seed[1], c = seed[2], d = seed[3];
+    let [a,b,c,d] = seed;
     // sfc32
     return function () {
         a |= 0; b |= 0; c |= 0; d |= 0;

@@ -16,10 +16,10 @@ async function main(){
     const prod = await Traktrain.producer(producer_id, {proxy});
     await Traktrain.online({proxy});
     
-    prod.forEach((beat, i) => console.log(`[${i}]: ${beat[0]}:        ${beat[1]}`));
+    prod.forEach((beat, i) => {console.log(`[${i}]: ${beat[0]}:        ${beat[1]}`)});
 
     const beat = await Traktrain.beat_mp3(producer_id, prod[11][1], {proxy});
     fs.writeFileSync("./ignore/samuel.mp3", beat, 'binary');
 }
 
-main().catch((error: Error) => console.error("ERROR: ", error.message));
+main().catch((error: Error) => {console.error("ERROR: ", error.message)});

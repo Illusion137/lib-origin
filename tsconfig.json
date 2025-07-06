@@ -22,7 +22,5 @@
         "allowJs": true,
     },
     "exclude": ["node_modules/**"],
-    "lib": [
-        "es2015"
-    ]
+    "lib": ["ES2024"]
 }

@@ -316,11 +316,11 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
         if("resources" in playlist_response.data) { // User Playlist
             const playlist_data_main_key = get_main_key(playlist_response.data.resources.playlists);
             const playlist_data = playlist_response.data.resources.playlists[playlist_data_main_key];
-            const playlist_songs = playlist_response.data.resources['library-songs'] ?? playlist_response.data.resources['songs'];
+            const playlist_songs = playlist_response.data.resources['library-songs'] ?? playlist_response.data.resources.songs;
             const playlist_id = Origin.AppleMusic.playlist_urlid(url);
             const song_keys = Object.keys(playlist_songs);
     
-            const __playlists__ = playlist_response.data.resources["library-playlists"] ?? playlist_response.data.resources["playlists"];
+            const __playlists__ = playlist_response.data.resources["library-playlists"] ?? playlist_response.data.resources.playlists;
             const playlist_meta_main_key = get_main_key(__playlists__);
     
             const total_songs = __playlists__[playlist_meta_main_key].relationships?.tracks?.meta?.total ?? song_keys.length;
@@ -351,7 +351,7 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
     if(opts === undefined || opts.offset >= opts.total) return { tracks:[], continuation: null };
     const playlist_response = await Origin.AppleMusic.get_playlist_continuation(opts.playlist_id, opts.offset, opts.authorization, {cookie_jar});
     if("error" in playlist_response) return { tracks:[], continuation: null, error: [playlist_response] };
-    const playlist_songs = playlist_response.resources['library-songs'] ?? playlist_response.resources['songs'];
+    const playlist_songs = playlist_response.resources['library-songs'] ?? playlist_response.resources.songs;
     const song_keys = Object.keys(playlist_songs);
     return {
         tracks: song_keys.map(key => parse_apple_music_user_playlist_track(playlist_songs[key])),

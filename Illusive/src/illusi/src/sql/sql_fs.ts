@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { is_empty } from '../../../../../origin/src/utils/util';
 import { Illusive } from '../../../illusive';
-import path from 'path';
+import path_lib from 'path';
 import { alert_error } from '../alert';
 
 function forward_item(item: string) {
@@ -16,13 +16,13 @@ export function media_directory(item: string) { return document_directory(Illusi
 export function lyrics_directory(item: string) { return document_directory(Illusive.lyrics_archive_path) + forward_item(item); }
 
 async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
-    const base_name = path.basename(new_name ?? item);
+    const base_name = path_lib.basename(new_name ?? item);
     await FileSystem.copyAsync({from: item, to: dir_func(base_name)});
     return dir_func(base_name);
 }
 
 async function move_to(item: string, dir_func: (item: string) => string, new_name?: string) {
-    const base_name = path.basename(new_name ?? item);
+    const base_name = path_lib.basename(new_name ?? item);
     await FileSystem.moveAsync({from: item, to: dir_func(base_name)});
     return dir_func(base_name);
 }
@@ -39,18 +39,18 @@ export async function delete_folder_of_file(file_path: string, safe = true) {
         for(const dir of Illusive.default_directories) 
             if(file_path.includes(dir)) return false;
     }
-    await FileSystem.deleteAsync(path.dirname(file_path), {idempotent: true});
+    await FileSystem.deleteAsync(path_lib.dirname(file_path), {idempotent: true});
     return true;
 }
 
-export async function mkdir(path: string) { return await FileSystem.makeDirectoryAsync(path); }
+export async function mkdir(path: string) { await FileSystem.makeDirectoryAsync(path); }
 export async function info(path: string) { return await FileSystem.getInfoAsync(path); }
 export async function delete_item(path: string) {
     if([media_directory(""), thumbnail_directory(""), lyrics_directory("")].includes(path)){
         alert_error({error: new Error(`Trying to delete important path: ${path}`)});
         return;
     }
-    return await FileSystem.deleteAsync(path, {idempotent: true}); 
+    await FileSystem.deleteAsync(path, {idempotent: true}); 
 }
 export async function read_directory(path: string) { try { return await FileSystem.readDirectoryAsync(path); } catch(e) { return []; } }
 export function create_download_resumeable(uri: string, file_uri: string) { return FileSystem.createDownloadResumable(uri, file_uri); }
@@ -63,7 +63,7 @@ export async function read_file(path: string){
     return await FileSystem.readAsStringAsync(path, {encoding: 'utf8'});
 }
 export async function file_created_at(path: string){
-    const info = await FileSystem.getInfoAsync(path, {});
-    if(info.exists) return new Date(info.modificationTime * 1000);
+    const file_info = await FileSystem.getInfoAsync(path, {});
+    if(file_info.exists) return new Date(file_info.modificationTime * 1000);
     return new Date(0);
 }

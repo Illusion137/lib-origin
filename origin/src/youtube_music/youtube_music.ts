@@ -112,13 +112,13 @@ export namespace YouTubeMusic {
 		const initial_data: InitialData[] = [];
 
 		const matches = [...html.matchAll(initial_data_regex)];
-		for (let i = 0; i < matches.length; i++) {
-			const match = matches[i][1];
+		for (const match of matches) {
+			const imatch = match[1];
 			const route: {
 				path: string,
 				params: object,
 				data: string
-			} = eval_json(match);
+			} = eval_json(imatch);
 			const data: InitialData = JSON.parse(route.data);
 			initial_data.push(data);
 		}
@@ -180,7 +180,7 @@ export namespace YouTubeMusic {
 				ytcfg: extract_ytcfg(page_html)
 			};
 		} catch (error) {
-			if(retry === false){
+			if(!retry){
 				return get_initial_data_config(opts, url, true);
 			}
 			return { error: error as Error }; 
@@ -198,15 +198,25 @@ export namespace YouTubeMusic {
 			data: parser(icfg.initial_data)
 		};
 	}
-	export async function fetch_initial_data(opts: Opts){
-		if(ytcfg_cache !== undefined) return {ok: true, ytcfg: ytcfg_cache};
-		const home = await get_home(opts);
-		if("error" in home) return {ok: false};
-		ytcfg_cache = home.icfg.ytcfg;
-		return {ok: true, ytcfg: home.icfg.ytcfg};
-	} 
-
+    async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false): PromiseResult<Response> {
+        // if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
+		const epoch = new Date();
+		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
+		const url = `https://music.youtube.com/youtubei/v1/${path}`;
+		const headers = get_post_headers(opts.cookie_jar, epoch, ytcfg, retry);
+		const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
+		if(!response.ok && !retry) return post_check_response(opts, ytcfg, path, payload, true);
+		return response;
+	}
+    
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://music.youtube.com/", Parser.parse_home_contents); }
+    export async function fetch_initial_data(opts: Opts){
+        if(ytcfg_cache !== undefined) return {ok: true, ytcfg: ytcfg_cache};
+        const home = await get_home(opts);
+        if("error" in home) return {ok: false};
+        ytcfg_cache = home.icfg.ytcfg;
+        return {ok: true, ytcfg: home.icfg.ytcfg};
+    } 
 	export async function get_explore(opts: Opts): PromiseICFGData<typeof Parser.parse_explore_contents> { return await parse_initial(opts, "https://music.youtube.com/explore", Parser.parse_explore_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, playlist_url_or_browse_url(playlist_id), Parser.parse_playlist_contents); }
 	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_artist_contents> { return await parse_initial(opts, `https://music.youtube.com/channel/${artist_id.replace('/channel/', '')}`, Parser.parse_artist_contents); }
@@ -284,9 +294,9 @@ export namespace YouTubeMusic {
 		const search_suggestions_response = await post_check_response(opts, ytcfg, 'music/get_search_suggestions', {input: search_query});
 		if("error" in search_suggestions_response) return [];
 		if(!search_suggestions_response.ok) return [];
-		const search_suggestions: SearchSuggestions = await search_suggestions_response.json().catch(json_catch);
-		if("error" in search_suggestions) return [];
-		return search_suggestions.contents.map(top_content => {
+		const search_suggestions_data: SearchSuggestions = await search_suggestions_response.json().catch(json_catch);
+		if("error" in search_suggestions_data) return [];
+		return search_suggestions_data.contents.map(top_content => {
 			return top_content.searchSuggestionsSectionRenderer.contents.filter(content => !("historySuggestionRenderer" in content)).map(content => {
 				if("searchSuggestionRenderer" in content){
 					return parse_runs(content.searchSuggestionRenderer.suggestion.runs, '');
@@ -338,16 +348,7 @@ export namespace YouTubeMusic {
 		if ("error" in response) return response;
 		return (await response.json()) as ContinuedResults_0;
 	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false): PromiseResult<Response> {
-		// if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
-		const epoch = new Date();
-		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
-		const url = `https://music.youtube.com/youtubei/v1/${path}`;
-		const headers = get_post_headers(opts.cookie_jar, epoch, ytcfg, retry);
-		const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
-		if(!response.ok && retry === false) return post_check_response(opts, ytcfg, path, payload, true);
-		return response;
-	}
+
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
 		const response = await post_check_response(opts, ytcfg, path, payload);
 		if ("error" in response) return false;

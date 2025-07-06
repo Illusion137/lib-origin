@@ -28,15 +28,22 @@ function playlist_to_sqllite_insertion(playlist: Playlist) {
     ]
     return to_array;
 }
-
+export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string) {
+    const count = await db_get_all_async<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
+    return count.length !== 0;
+}
+export function track_exists_in_playlist_sync(playlist_uuid: string, track_uid: string): boolean {
+    const count = db_get_all_sync<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
+    return count.length !== 0;
+}
 export async function playlists_count(){
     return (await db_get_all_async<SQLCount>(sql_select<SQLCount>("playlists", "COUNT(1)")))[0]['COUNT(1)'] ?? 0;
 }
 export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: string, tracks: Track[]): Promise<void> {
     const promises: Promises = [];
-    for(let i = 0; i < tracks.length; i++) {
+    for(const track of tracks) {
         promises.push(((async() => {
-            tracks[i].downloading_data = {saved: true, progress: 0, playlist_saved: await track_exists_in_playlist(playlist_uuid, tracks[i].uid)};
+            track.downloading_data = {saved: true, progress: 0, playlist_saved: await track_exists_in_playlist(playlist_uuid, tracks[i].uid)};
         })()));
     }
     await Promise.all(promises);
@@ -130,17 +137,6 @@ export async function compact_playlists() {
         })
     }
     return playlists;
-}
-
-
-export async function track_exists_in_playlist(playlist_uuid: string, track_uid: string) {
-    const count = await db_get_all_async<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
-    return count.length !== 0;
-}
-
-export function track_exists_in_playlist_sync(playlist_uuid: string, track_uid: string): boolean {
-    const count = db_get_all_sync<PlaylistsTracks>(`${sql_select<PlaylistsTracks>("playlists_tracks", "*")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid], ["track_uid", track_uid])}`);
-    return count.length !== 0;
 }
 
 export async function deep_track_exists_in_playlist(playlist_uuid: string, track: Track){

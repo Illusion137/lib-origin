@@ -19,7 +19,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
     if(fastpack) {
         let proxies: Origin.Proxy.Proxy[] = [];
         const promise_tracks: ReturnType<typeof Illusive.convert_track>[] = [];
-        const fetched_proxies = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https === true);
+        const fetched_proxies = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https);
         if(!("error" in fetched_proxies)) {
             proxies = fetched_proxies;
         } else await Logger.log_error(fetched_proxies);

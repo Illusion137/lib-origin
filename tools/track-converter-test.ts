@@ -33,8 +33,8 @@ async function test_convert_track(track: Track, callback?: (track: Track, conver
 }
 async function test_convert_tracks(){
     const converted_pairs: [ReturnType<typeof small_track>, ReturnType<typeof small_track>][] = [];
-    for(let i = 0; i < playlist.length; i++){
-        const track = playlist[i] as Track;
+    for(const playlist_track of playlist){
+        const track = playlist_track as Track;
         await test_convert_track(track, (t, ct) => converted_pairs.push([small_track(t), small_track(ct)]))
     }
     fs.writeFileSync(`sample/illusi/converted.json`, JSON.stringify(converted_pairs));
