@@ -5,7 +5,6 @@ import { BottomAlertType, Track } from '../../types';
 import { download_track } from './downloader'
 import * as GLOBALS from './globals';
 import { catch_function_async } from './illusi_utils';
-import * as LegacyPrefs from './legacy/1307/legacy_prefs';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLPlaylists from './sql/sql_playlists';
 import * as SQLTracks from './sql/sql_tracks';
@@ -35,11 +34,7 @@ export async function illusi_startup(version: string, play_tracks: (first_track:
         await Promise.all(
             [
                 SQLUtils.recreate_all_tables(),
-                (async() => {        
-                    const legacy_prefs = LegacyPrefs.get_legacy_prefs();
-                    await Prefs.load_prefs();
-                    if(legacy_prefs === null) await Prefs.load_legacy_prefs(legacy_prefs);
-                })(),
+                Prefs.load_prefs()
             ]
         )
         await SQLUpdate.fix_to_new_update(version);

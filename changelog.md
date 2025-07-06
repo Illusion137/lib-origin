@@ -1,3 +1,7 @@
+# Illusi 16.1.5
+  - Fixed sprinkle in queue related bug
+  - Fixed encoding for discord illusi integration
+  - Improved startup speed
 # Illusi 16.1.4
   - Fixed bug relating to refreshing data in playlists
   - Fixed bug relating to lyrics fetching

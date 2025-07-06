@@ -60,8 +60,11 @@ export async function sql_update<T extends Record<string, any>>(table: SQLTables
         return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{id: string}>(["id", item.id]));
     return sql_all(db, sql_update_table(table), `SET ${String(key)}='${value}'`, sql_where<{uid: string}>(["uid", item.uid]));
 }
+export function create_table_command<T extends Record<string, any>>(table: SQLTables, obj: T) {
+    return sql_create_table<T>(table, obj);
+}
 export async function create_table<T extends Record<string, any>>(table: SQLTables, obj: T) {
-    await db.execute(sql_create_table<T>(table, obj));
+    await db.execute(create_table_command<T>(table, obj));
 }
 
 export function sql_select<T extends Record<string, any>>(table: SQLTables, what: (keyof T) | "*" | "COUNT(1)", limit?: number, order_by?: "ASC"|"DESC") {
@@ -234,19 +237,22 @@ export async function destroy_all_tables() {
 }
 export async function recreate_all_tables() {
     // await destroy_all_tables();
+    await Promise.all([
+        db.executeBatch([
+            create_table_command("tracks",                         ExampleObj.track_example0),
+            create_table_command("tracks_deleted",                 ExampleObj.track_example0),
+            create_table_command("recently_played_tracks",         ExampleObj.track_example0),
+            create_table_command("backpack",                       ExampleObj.track_example0),
+            create_table_command("backpack_deleted",               ExampleObj.track_example0),
+            create_table_command("playlists",                      ExampleObj.playlist_example0),
+            create_table_command("playlists_deleted",              ExampleObj.playlist_example0),
+            create_table_command("playlists_tracks",               ExampleObj.playlists_tracks_example0),
+            create_table_command("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0),
+            sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"),
+        ].map(query => [query])),
+        create_default_directories()
+    ]);
 
-    await create_table("tracks",                         ExampleObj.track_example0);
-    await create_table("tracks_deleted",                 ExampleObj.track_example0);
-    await create_table("recently_played_tracks",         ExampleObj.track_example0);
-    await create_table("backpack",                       ExampleObj.track_example0);
-    await create_table("backpack_deleted",               ExampleObj.track_example0);
-    await create_table("playlists",                      ExampleObj.playlist_example0);
-    await create_table("playlists_deleted",              ExampleObj.playlist_example0);
-    await create_table("playlists_tracks",               ExampleObj.playlists_tracks_example0);
-    await create_table("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0);
-    await db.execute(sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"));
-
-    await create_default_directories();
 }
 
 export async function create_timestamp_triggers_if_not_exists(table: SQLTables){

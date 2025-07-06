@@ -116,6 +116,32 @@ export function empty_join(vals: any[], join_with: string) {
 export function empty_join_dot(vals: any[]) {
     return empty_join(vals, " • ");
 }
+export function chunkify<T>(array: T[], size: number): T[][]{
+	const chunk_map: T[][] = [];
+	for(let i = 0; i < array.length; i += size){
+		chunk_map.push(array.slice(i, i + size));
+	}
+	return chunk_map;
+}
+export function isNumber(numish: unknown): numish is number{
+	return typeof numish === 'number' && !isNaN(numish);
+}
+
+export function args_prettystring(args: object, indent: number = 2){
+	let str = '{\n';
+	const keys = Object.keys(args);
+	for(const key of keys){
+		str +=  `${new Array(indent).fill(' ').join('')}${key}: ${args[key]}\n`;
+	}
+	str += '}'
+	return str;
+}
+export function generror(msg: string, args: object = {}): ResponseError{
+	return {error: new Error(`${msg}\n : args${args_prettystring(args)}`)};
+}
+export function generror_fetch(response: Response, msg: string, maybe_jar?: {cookie_jar?: CookieJar}, args: object = {}): ResponseError{
+	return generror(`${msg};\n Response failed with status code ${response.status} : "${response.statusText}"${maybe_jar?.cookie_jar !== undefined ? " [Using Cookies]" : ""}`, args);
+}
 
 export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
 	const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);
@@ -194,6 +220,7 @@ export function base_response_fail_msg(response: Response){
 
 import { RequestInit } from 'node-fetch';
 import { YTCFG } from '../youtube/types/YTCFG';
+import { CookieJar } from './cookie_util';
 
 export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
     // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);

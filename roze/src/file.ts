@@ -1,9 +1,10 @@
 import EPub from 'epub2';
 import Pdfparser from 'pdf2json';
-import Roz, { RozContent } from './types/roz';
+import Roz, { RozChapterContents, RozChapterContentsPromise } from './types/roz';
 import { request } from 'http';
 import fs from 'fs';
 import uuid from "react-native-uuid";
+import { html_to_roz_content } from './utils';
 
 export namespace FileParser {
     function is_url(test_url: string): boolean {
@@ -27,45 +28,11 @@ export namespace FileParser {
         return to_download_path;
     }
 
-    // function chapter_title_to_roz_content_type(title: string): RozContentType{
-    //     switch(title){
-    //         case "Cover": return "IMAGE";
-    //         default: return "CHAPTER_TITLE";
-    //     }
-    // }
-	function html_inner_text_content(html_line: string) {
-		return html_line.trim().replace(/<.+?>/g, '').trim();
-	}
-	function html_img_src(html_line: string) {
-		return (/<img.+?src="(.+?)"/.exec(html_line) as RegExpExecArray)?.[1]?.trim();
-	}
-    export function parse_html(html_content: string){
-        const content: RozContent[] = [];
-        const xhtml_lines = html_content
-            .replace(/\r\n/g, '\n')
-            .replace(/&#160;/g, ' ')
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line);
-
-		let line = 0;
-        if(xhtml_lines.join('\n').includes("<nav epub:type=\"toc\"")) return [];
-		while (!/<\/div>/.test(xhtml_lines[++line]) && !/<\/section>/.test(xhtml_lines[line]) && line < xhtml_lines.length) {
-			type HTMLClass = 'img' | 'p' | 'h1' | 'h2';
-			const extract_type_regex = /<(.+?)(>|\s)/;
-			const type: HTMLClass = (extract_type_regex.exec(xhtml_lines[line]) as RegExpExecArray)[1] as HTMLClass;
-            switch (type) {
-				case 'img':
-					content.push({ type: "IMAGE", content: html_img_src(xhtml_lines[line]) }); break;
-				case 'p':
-					content.push({ type: "PARAGRAPH", content: html_inner_text_content(xhtml_lines[line]) }); break;
-				case 'h1':
-					content.push({ type: "CHAPTER_TITLE", content: html_inner_text_content(xhtml_lines[line]) }); break;
-				case 'h2':
-					content.push({ type: "CHAPTER_SUBTITLE", content: html_inner_text_content(xhtml_lines[line]) }); break;
-			}
-		}
-        return content.filter(c => c.content);
+    async function epub_get_image_base64(epub: EPub, html_image_path: string) {
+        const paths = html_image_path.split('/');
+        const image_id = paths[paths.length - 1];
+        const image: [Buffer<ArrayBufferLike>, string] = await epub.getImageAsync(image_id);
+        return `data:${image[1]};base64,${image[0].toString('base64')}`;
     }
     export async function parse_epub(file_path_or_url: string): Promise<Roz> {
         file_path_or_url = await transform_url_to_path(file_path_or_url, ".epub");
@@ -75,7 +42,25 @@ export namespace FileParser {
                 {contents: await epub.getChapterAsync(chapter.id), chapter} 
                 : undefined)
         )).filter(section => section !== undefined);
-        const parsed_sections = sections.map(section => parse_html(section.contents)).flat();
+        const promised_roz_sections: RozChapterContentsPromise[] = sections.map(section => ({
+                contents: html_to_roz_content(section.contents)
+                    .map(async(parsed): Promise<ReturnType<typeof html_to_roz_content>[0]> => 
+                        parsed.type === "IMAGE" ? 
+                            {type: parsed.type, content: (await epub_get_image_base64(epub, parsed.content)) } 
+                            : parsed), 
+                chapter: {
+                    id: section.chapter.id,
+                    title: section.chapter.title
+                }
+            })
+        )
+        const roz_sections: RozChapterContents[] = [];
+        for(const promised_roz_section of promised_roz_sections){
+            roz_sections.push({
+                chapter: promised_roz_section.chapter,
+                contents: await Promise.all(promised_roz_section.contents)
+            });
+        }
 
         return {
             source_file: file_path_or_url,
@@ -84,13 +69,12 @@ export namespace FileParser {
             author: epub.metadata.creator,
             publisher: epub.metadata.publisher,
             date: epub.metadata.date,
-            // cover: epub.metadata.cover,
+            cover: roz_sections.map(item => item.contents).flat().find(item => item.type === "IMAGE")?.content,
             series: {
                 name: "",
                 no: 0,
             },
-            pages: 0,
-            content: parsed_sections
+            content: roz_sections
         }
     }
 

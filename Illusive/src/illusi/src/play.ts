@@ -67,12 +67,13 @@ export async function play_track_next(track_data: Track) {
 }
 export async function sprinkle_into_queue(tracks: Track[]){
     tracks = shuffle_array(tracks);
-    let i = (await TrackPlayer.getActiveTrackIndex() ?? 0 + 1);
+    let i = 0;
     const min_length = Math.min(GLOBALS.global_var.playing_tracks.length, tracks.length);
     while( (i+=random_of([1,1,2,2,2,3])) < min_length){
         const insert_track = tracks[i];
-        GLOBALS.global_var.playing_tracks.splice(i, 0, insert_track);
-        await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
+        const playing_track_index = await TrackPlayer.getActiveTrackIndex() ?? 0;
+        GLOBALS.global_var.playing_tracks.splice(i + playing_track_index, 0, insert_track);
+        await check_push_next_track(playing_track_index);
     }
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }

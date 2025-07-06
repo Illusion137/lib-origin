@@ -1,6 +1,7 @@
 import { jsdom_document, map_html_collection } from "../../origin/src/utils/jsdom";
 import { PromiseResult } from "../../origin/src/utils/types";
-import { extract_string_from_pattern, is_empty } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, generror, generror_fetch, is_empty, isNumber } from "../../origin/src/utils/util";
+import { Translate } from "./translate";
 
 export namespace Syosetu {
     export interface WebnovelContents {
@@ -16,40 +17,66 @@ export namespace Syosetu {
         if(isNaN(page_no)) return 1;
         return page_no;
     }
-    function chapter_parse_fail_msg(msg: string, webnovel_id: string, chapter: number){
-        return `Chapter Parse Fail: ${msg} :: Chapter ${chapter} :: Webnovel ID ${webnovel_id}`
+    async function get_response(url: string) {
+        return await fetch(url, {method: "GET"});
     }
-    export async function webnovel_chapter_contents(webnovel_id: string, chapter: number): PromiseResult<WebnovelContents>{
-        const response_html = await (await fetch(`https://ncode.syosetu.com/${webnovel_id}/${chapter}/`)).text();
+    async function get_response_text(url: string) {
+        const response = await get_response(url);
+        if (!response.ok) return generror_fetch(response, "get_response_text failed", {}, {url});
+        return await response.text();
+    }
+    export async function webnovel_chapter_contents(webnovel_id: string, chapter: number, translate_contents: boolean = false): PromiseResult<WebnovelContents>{
+        const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/${chapter}/`);
+        if(typeof response_html === "object") return response_html;
         const dom = jsdom_document(response_html);
+        
         const chapter_title_jp = dom.querySelector(".p-novel__title")?.textContent;
-        if(typeof chapter_title_jp !== "string") return {"error": new Error(chapter_parse_fail_msg("Failed to find chapter_title", webnovel_id, chapter))};
+        if(typeof chapter_title_jp !== "string") return generror("Failed to find chapter_title", {webnovel_id, chapter});
+        
         const sections_of_lines_of_text = dom.querySelectorAll(".js-novel-text");
-        if(sections_of_lines_of_text === undefined) return {"error": new Error(chapter_parse_fail_msg("Failed to find lines_of_text", webnovel_id, chapter))};
+        if(sections_of_lines_of_text === undefined) return generror("Failed to find lines_of_text", {webnovel_id, chapter});
+        
         const lines_of_text = map_html_collection(sections_of_lines_of_text, (el) => el.children)
             .map(node_list => map_html_collection(node_list, (el) => el.textContent ?? ""))
             .flat();
-
+        if(translate_contents){
+            const translated = await Translate.google_translate_html([chapter_title_jp, ...lines_of_text], "ja", "en");
+            if("error" in translated) return translated;
+            const [translated_title, ...translated_contents] = translated;
+            return {
+                chapter_title: translated_title,
+                contents: translated_contents
+            };
+        }
         return {
             chapter_title: chapter_title_jp,
             contents: lines_of_text
         }
     }
-    export async function webnovel_chapter_contents_range(webnovel_id: string, range_start?: number, range_end?: number, on_chapter_parse?: () => void){
+    type WebnovelChapterContentsRangeOpts = {
+        range_start?: number;
+        range_end?: number;
+        translate_contents?: boolean;
+        on_chapter_parse?: (progress: number) => void;
+    }
+    export async function webnovel_chapter_contents_range(webnovel_id: string, opts: WebnovelChapterContentsRangeOpts){
         if (is_empty(webnovel_id)) return [];
-        if (Number.isNaN(range_start)) range_start = 1;
-        if (Number.isNaN(range_end)) range_end = range_start;
+        if (!isNumber(opts.range_start)) opts.range_start = 1;
+        if (!isNumber(opts.range_end)) opts.range_end = opts.range_start;
+        if(!opts.translate_contents) opts.translate_contents = false;
+        if(opts.range_start < 1 || opts.range_end < opts.range_start) return [];
 
         const chapters: Awaited<ReturnType<typeof webnovel_chapter_contents>>[] = [];
-    	for (let i = range_start!; i <= range_end!; i++) {
-	        chapters.push(await webnovel_chapter_contents(webnovel_id, i));
-	        on_chapter_parse?.();
+    	for (let i = opts.range_start; i <= opts.range_end; i++) {
+	        const chapter_contents = await webnovel_chapter_contents(webnovel_id, i, opts.translate_contents);
+            chapters.push(chapter_contents);
+	        opts.on_chapter_parse?.( (opts.range_start-1)/(opts.range_end-1) );
 	    }
         return chapters;
     }
-    export async function webnovel_chapter_list(webnovel_id: string, page?: number){
-        page = page ?? 1;
-        const response_html = await (await fetch(`https://ncode.syosetu.com/${webnovel_id}/?p=${page}`)).text();
+    export async function webnovel_chapter_list(webnovel_id: string, page: number = 1){
+        const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/?p=${page}`);
+        if(typeof response_html === "object") return response_html;
         const dom = jsdom_document(response_html);
         const title = dom.querySelector(".p-novel__title")?.textContent;
         const author_element = dom.querySelector(".p-novel__author")?.querySelector("a");
