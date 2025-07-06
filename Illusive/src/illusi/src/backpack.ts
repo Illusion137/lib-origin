@@ -33,7 +33,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
             (resolved_tracks[i] as Illusive.MaxTrack).track!.uid = unavailable_tracks[i].uid;
         }
         const tracks = resolved_tracks.filter(track => !("error" in track)).filter(track => !is_empty(track)).map(item => (item as Illusive.MaxTrack).track) as Track[];
-        return await SQLTracks.add_playback_saved_data_to_tracks(tracks);
+        return SQLTracks.add_playback_saved_data_to_tracks(tracks);
     }
     const tracks: Track[] = [];
     for(const utrack of unavailable_tracks) {
@@ -47,5 +47,5 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
         track.track!.meta!.unavailable = false;
         tracks.push(track.track!);
     }
-    return await SQLTracks.add_playback_saved_data_to_tracks(tracks);
+    return SQLTracks.add_playback_saved_data_to_tracks(tracks);
 }
