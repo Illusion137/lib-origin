@@ -1,11 +1,11 @@
 import * as Origin from '../../origin/src/index'
-import { ClientSearchOf, Playlist, SearchOf, Track, User } from '../../origin/src/soundcloud/types/Search';
+import type { ClientSearchOf, Playlist, SearchOf, Track, User } from '../../origin/src/soundcloud/types/Search';
 import { CookieJar } from '../../origin/src/utils/cookie_util';
-import { ResponseError } from '../../origin/src/utils/types';
+import type { ResponseError } from '../../origin/src/utils/types';
 import { is_empty, make_topic, parse_runs } from '../../origin/src/utils/util';
 import { parse_search_continuation_contents } from '../../origin/src/youtube/parser';
-import * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
-import * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
+import type * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
+import type * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
 import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_apple_music_search_playlist, parse_apple_music_search_track } from './gen/apple_music_parser';
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from './gen/soundcloud_parser';
 import { parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from './gen/youtube_music_parser';
@@ -14,8 +14,8 @@ import { youtube_music_get_playlist } from './get_playlist';
 import { best_thumbnail, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
 import { parse_amazon_music_search_track, parse_spotify_search_track } from './track_parser';
-import { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from './types';
-import * as IllusiveTypes from './types';
+import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from './types';
+import type * as IllusiveTypes from './types';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
     return {
@@ -164,8 +164,8 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
 interface SoundcloudSearchContinuation {"next_href": string|null, "client_id": string, "depth": number}
 export function soundcloud_parse_search(search_response: ClientSearchOf<Playlist|Track|User>): MusicSearchResponse {
     const playlists_and_albums = search_response.data.collection.filter(item => item.kind === "playlist");
-    const playlists = playlists_and_albums.filter(item => item.is_album === false);
-    const albums = playlists_and_albums.filter(item => item.is_album === true);
+    const playlists = playlists_and_albums.filter(item => !item.is_album);
+    const albums = playlists_and_albums.filter(item => item.is_album);
     const users = search_response.data.collection.filter(item => item.kind === "user");
     const tracks = search_response.data.collection.filter(item => item.kind === "track");
     return {

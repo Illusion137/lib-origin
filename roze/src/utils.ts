@@ -1,5 +1,5 @@
-import { TranslationMap } from "./types";
-import { RozContent, RozTextStructures, RozTextStructureType } from "./types/roz";
+import type { TranslationMap } from "./types";
+import type { RozContent, RozTextStructures, RozTextStructureType } from "./types/roz";
 
 function html_inner_text_content(html_line: string) {
     return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
@@ -17,7 +17,7 @@ export function html_to_roz_content(html_content: string){
 
     let line = 0;
     if(xhtml_lines.join('\n').includes("<nav epub:type=\"toc\"")) return [];
-    while (!/<\/div>/.test(xhtml_lines[++line]) && !/<\/section>/.test(xhtml_lines[line]) && line < xhtml_lines.length) {
+    while (!xhtml_lines[++line].includes('</div>') && !xhtml_lines[line].includes('</section>') && line < xhtml_lines.length) {
         type HTMLClass = 'img' | 'p' | 'h1' | 'h2' | 'div' | 'hr/' | 'br/';
         const extract_type_regex = /<(.+?)(>|\s)/;
         const type: HTMLClass = (extract_type_regex.exec(xhtml_lines[line]) as RegExpExecArray)[1] as HTMLClass;

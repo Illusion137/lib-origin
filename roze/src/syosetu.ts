@@ -1,5 +1,5 @@
 import { jsdom_document, map_html_collection } from "../../origin/src/utils/jsdom";
-import { PromiseResult } from "../../origin/src/utils/types";
+import type { PromiseResult } from "../../origin/src/utils/types";
 import { extract_string_from_pattern, generror, generror_fetch, is_empty, isNumber } from "../../origin/src/utils/util";
 import { Translate } from "./translate";
 
@@ -25,7 +25,7 @@ export namespace Syosetu {
         if (!response.ok) return generror_fetch(response, "get_response_text failed", {}, {url});
         return await response.text();
     }
-    export async function webnovel_chapter_contents(webnovel_id: string, chapter: number, translate_contents: boolean = false): PromiseResult<WebnovelContents>{
+    export async function webnovel_chapter_contents(webnovel_id: string, chapter: number, translate_contents = false): PromiseResult<WebnovelContents>{
         const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/${chapter}/`);
         if(typeof response_html === "object") return response_html;
         const dom = jsdom_document(response_html);
@@ -53,7 +53,7 @@ export namespace Syosetu {
             contents: lines_of_text
         }
     }
-    type WebnovelChapterContentsRangeOpts = {
+    interface WebnovelChapterContentsRangeOpts {
         range_start?: number;
         range_end?: number;
         translate_contents?: boolean;
@@ -74,7 +74,7 @@ export namespace Syosetu {
 	    }
         return chapters;
     }
-    export async function webnovel_chapter_list(webnovel_id: string, page: number = 1){
+    export async function webnovel_chapter_list(webnovel_id: string, page = 1){
         const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/?p=${page}`);
         if(typeof response_html === "object") return response_html;
         const dom = jsdom_document(response_html);

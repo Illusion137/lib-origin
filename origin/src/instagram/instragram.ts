@@ -1,9 +1,9 @@
-import { CookieJar } from "../utils/cookie_util";
+import type { CookieJar } from "../utils/cookie_util";
 import { encode_params } from "../utils/util";
-import { AllCollections } from "./types/AllCollections";
-import { GraphQLQuery } from "./types/GraphQLQuery";
-import { MediaInfo } from "./types/MediaInfo";
-import { MediaList } from "./types/MediaList";
+import type { AllCollections } from "./types/AllCollections";
+import type { GraphQLQuery } from "./types/GraphQLQuery";
+import type { MediaInfo } from "./types/MediaInfo";
+import type { MediaList } from "./types/MediaList";
 
 export namespace Instagram {
     interface Opts { cookie_jar?: CookieJar }

@@ -1,2 +1,2 @@
-import { NavigationProp } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
 export type Navigator = NavigationProp<any, any> & {push: (name: string, params: object) => void}

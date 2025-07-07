@@ -1,13 +1,13 @@
 import { parse_runs, youtube_views_number } from "../utils/util";
-import { ArtistResults_0, ArtistCarouselContent, MusicCarouselShelfRenderer, MusicShelfRenderer, Run } from "./types/ArtistResults_0";
-import { ExploreResults_0 } from "./types/ExploreResults_0";
-import { HomeResults_0 } from "./types/HomeResults_0";
-import { LibraryResults_0 } from "./types/LibraryResults_0";
-import { NewReleasesAlbums, Run2 } from "./types/NewReleasesAlbums";
-import { PlaylistResults_0 } from "./types/PlaylistResults_0";
-import { SearchResults_0 } from "./types/SearchResults_0";
-import { SuggestionMusicResponsiveListItemRenderer } from "./types/SearchSuggestions";
-import { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "./types/types";
+import type { ArtistResults_0, ArtistCarouselContent, MusicCarouselShelfRenderer, MusicShelfRenderer, Run } from "./types/ArtistResults_0";
+import type { ExploreResults_0 } from "./types/ExploreResults_0";
+import type { HomeResults_0 } from "./types/HomeResults_0";
+import type { LibraryResults_0 } from "./types/LibraryResults_0";
+import type { NewReleasesAlbums, Run2 } from "./types/NewReleasesAlbums";
+import type { PlaylistResults_0 } from "./types/PlaylistResults_0";
+import type { SearchResults_0 } from "./types/SearchResults_0";
+import type { SuggestionMusicResponsiveListItemRenderer } from "./types/SearchSuggestions";
+import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "./types/types";
 
 export function parse_home_contents(initial_data: InitialData[]) {
     const contents: HomeResults_0[] = initial_data as unknown as HomeResults_0[];

@@ -1,5 +1,5 @@
 import { FORMATS } from './formats';
-import { AVFormat, DownloadOptions, Filter } from './types';
+import type { AVFormat, DownloadOptions, Filter } from './types';
 import * as utils from './utils';
 
 // Use these to help sort formats, higher index is better.
@@ -170,7 +170,7 @@ export const chooseFormat = (formats: AVFormat[], options: DownloadOptions): AVF
  * @returns {Object}
  */
 const getFormatByQuality = (quality: string|string[], formats: AVFormat[]) => {
-    const getFormat = (itag: string) => formats.find(format => `${format.itag}` === `${itag}`);
+    const getFormat = (itag: string) => formats.find(format => `${format.itag}` === itag);
     if (Array.isArray(quality)) {
         return getFormat(quality.find(q => getFormat(q)) ?? "");
     } else {
@@ -230,6 +230,6 @@ export const addFormatMeta = (format: AVFormat) => {
         format.codecs.split(', ').slice(-1)[0] : undefined;
     format.isLive = /\bsource[/=]yt_live_broadcast\b/.test(format.url);
     format.isHLS = /\/manifest\/hls_(variant|playlist)\//.test(format.url);
-    format.isDashMPD = /\/manifest\/dash\//.test(format.url);
+    format.isDashMPD = format.url.includes('/manifest/dash/');
     return format;
 };

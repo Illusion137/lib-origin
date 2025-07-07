@@ -1,4 +1,4 @@
-import { PageHeaderViewModel } from "./PageHeaderViewModel"
+import type { PageHeaderViewModel } from "./PageHeaderViewModel"
 
 export interface PlaylistResultsW {
     responseContext: ResponseContext

@@ -1,19 +1,19 @@
 import * as Origin from '../../origin/src/index'
-import * as SCSearch from '../../origin/src/soundcloud/types/Search';
-import { Album } from '../../origin/src/spotify/types/Album';
-import { Collection } from '../../origin/src/spotify/types/Collection';
-import { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
-import { ResponseError } from '../../origin/src/utils/types';
+import type * as SCSearch from '../../origin/src/soundcloud/types/Search';
+import type { Album } from '../../origin/src/spotify/types/Album';
+import type { Collection } from '../../origin/src/spotify/types/Collection';
+import type { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
+import type { ResponseError } from '../../origin/src/utils/types';
 import { get_main_key, is_empty, make_topic, parse_runs, urlid } from '../../origin/src/utils/util';
 import { parse_playlist_continuation_contents } from '../../origin/src/youtube/parser';
-import * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
-import * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
-import * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Continuation";
-import { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
-import { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
-import { PlaylistResults_3 } from '../../origin/src/youtube_music/types/PlaylistResults_3';
-import * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
-import * as YTMUSIC_CONTINUATION_RENDERER from "../../origin/src/youtube/types/PlaylistResults_0";
+import type * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
+import type * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
+import type * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Continuation";
+import type { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
+import type { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
+import type { PlaylistResults_3 } from '../../origin/src/youtube_music/types/PlaylistResults_3';
+import type * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
+import type * as YTMUSIC_CONTINUATION_RENDERER from "../../origin/src/youtube/types/PlaylistResults_0";
 import { clean_album_title, parse_apple_music_album_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from './gen/apple_music_parser';
 import { musi_parse_track } from './gen/musi_parser';
 import { soundcloud_parse_track } from './gen/soundcloud_parser';
@@ -22,7 +22,7 @@ import { youtube_parse_playlist_header, youtube_parse_videos } from './gen/youtu
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
 import { Prefs } from './prefs';
 import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './track_parser';
-import { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from './types';
+import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from './types';
 import { Constants } from './constants';
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist {

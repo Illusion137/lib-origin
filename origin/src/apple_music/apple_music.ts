@@ -1,16 +1,16 @@
-import { CookieJar } from "../utils/cookie_util";
-import { ResponseError } from "../utils/types";
+import type { CookieJar } from "../utils/cookie_util";
+import type { ResponseError } from "../utils/types";
 import { encode_params, extract_string_from_pattern, json_catch, try_json_parse, urlid } from "../utils/util";
-import { Album } from "./types/Album";
-import { CreatePlaylist } from "./types/CreatePlaylist";
-import { GetArtistData } from "./types/GetArtist";
-import { MyPlaylists } from "./types/MyPlaylists";
-import { Playlist } from "./types/Playlist";
-import { Search } from "./types/Search";
-import { SerializedServerData } from "./types/type";
-import { UserPlaylist } from "./types/UserPlaylist";
+import type { Album } from "./types/Album";
+import type { CreatePlaylist } from "./types/CreatePlaylist";
+import type { GetArtistData } from "./types/GetArtist";
+import type { MyPlaylists } from "./types/MyPlaylists";
+import type { Playlist } from "./types/Playlist";
+import type { Search } from "./types/Search";
+import type { SerializedServerData } from "./types/type";
+import type { UserPlaylist } from "./types/UserPlaylist";
 import fetch from "../utils/orifetch";
-import { Proxy } from "../proxy/proxy";
+import type { Proxy } from "../proxy/proxy";
 
 // Thanks to Lafou for providing test playlists such as:
 // https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl

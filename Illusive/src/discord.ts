@@ -1,8 +1,8 @@
 import { Discord } from "../../origin/src/discord/discord";
-import { ResponseError } from "../../origin/src/utils/types";
+import type { ResponseError } from "../../origin/src/utils/types";
 import { generate_new_uid } from "../../origin/src/utils/util";
 import { artist_string } from "./illusive_utilts";
-import { SmallTrackRaw, Track } from "./types";
+import type { SmallTrackRaw, Track } from "./types";
 
 export async function play_track_discord_send(webhook_url: string, track: Track, on_error: (e: ResponseError) => void){
     try {

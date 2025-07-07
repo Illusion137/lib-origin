@@ -2,7 +2,7 @@ import { urlid } from '../utils/util';
 import * as formatUtils from './format-utils';
 import * as getInfo from './info';
 import * as urlUtils from './url-utils';
-import { DownloadOptions, VideoInfo } from './types';
+import type { DownloadOptions, VideoInfo } from './types';
 
 export namespace YouTubeDL {
     export async function ytdl(link: string, options: DownloadOptions) {

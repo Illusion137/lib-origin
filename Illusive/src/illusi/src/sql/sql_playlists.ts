@@ -1,6 +1,6 @@
 import * as uuid from "react-native-uuid";
 import { all_promises, track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "../../../illusive_utilts";
-import { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLCount, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
+import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLCount, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from "../globals";
 import { get_tracks, sql_tracks_to_tracks, track_exist_in_other } from "./sql_tracks";
@@ -43,7 +43,7 @@ export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: str
     const promises: Promises = [];
     for(const track of tracks) {
         promises.push(((async() => {
-            track.downloading_data = {saved: true, progress: 0, playlist_saved: await track_exists_in_playlist(playlist_uuid, tracks[i].uid)};
+            track.downloading_data = {saved: true, progress: 0, playlist_saved: await track_exists_in_playlist(playlist_uuid, track.uid)};
         })()));
     }
     await Promise.all(promises);
@@ -63,25 +63,11 @@ export function sql_playlist_to_playlist_no_visual_data(sql_playlist: SQLPlaylis
         date: new Date(sql_playlist.date!).toISOString()
     };
 }
-export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks: IgnoreTracks = "NO_IGNORE", ignore_inheritance = true): Promise<Playlist> {
-    const playlist_no_visual_data = sql_playlist_to_playlist_no_visual_data(sql_playlist);
-    const tracks = ignore_tracks === "IGNORE" ? 
-        [] : 
-            ignore_tracks === "PROMISE" ? 
-                playlist_tracks(sql_playlist.uuid, playlist_no_visual_data, new Set<string>(), ignore_inheritance) 
-                : await playlist_tracks(sql_playlist.uuid, playlist_no_visual_data, new Set<string>(), ignore_inheritance);
-    return {
-        ...playlist_no_visual_data,
-        visual_data: ignore_tracks === "PROMISE" ? 
-            {four_track: tracks as Track[], track_count: 0} :
-            {four_track: tracks as Track[], track_count: (tracks as Track[]).length}
-    }
-}
 export async function raw_playlist_tracks(){
     return await db_get_all_async<PlaylistsTracks>(sql_select<PlaylistsTracks>("playlists_tracks", "*"));
 }
 export async function unique_playlist_uuids_from_playlist_tracks(){
-    const unique_uuids: Set<string> = new Set((await raw_playlist_tracks()).map(p => p.uuid));
+    const unique_uuids = new Set<string>((await raw_playlist_tracks()).map(p => p.uuid));
     return [...unique_uuids.values()];
 }
 const playlist_tracks_cache = new TimedCache<string, Track[]>(5000);
@@ -121,6 +107,34 @@ export async function playlist_tracks(playlist_uuid: string, playlist_no_visual_
     const sorted_playlist_tracks = sort_playlist_tracks(cplaylist_data.sort!, tracks);
     playlist_tracks_cache.add(playlist_uuid, sorted_playlist_tracks);
     return sorted_playlist_tracks;
+}
+export async function sql_playlist_to_playlist(sql_playlist: SQLPlaylist, ignore_tracks: IgnoreTracks = "NO_IGNORE", ignore_inheritance = true): Promise<Playlist> {
+    const playlist_no_visual_data = sql_playlist_to_playlist_no_visual_data(sql_playlist);
+    const tracks = ignore_tracks === "IGNORE" ? 
+        [] : 
+            ignore_tracks === "PROMISE" ? 
+                playlist_tracks(sql_playlist.uuid, playlist_no_visual_data, new Set<string>(), ignore_inheritance) 
+                : await playlist_tracks(sql_playlist.uuid, playlist_no_visual_data, new Set<string>(), ignore_inheritance);
+    return {
+        ...playlist_no_visual_data,
+        visual_data: ignore_tracks === "PROMISE" ? 
+            {four_track: tracks as Track[], track_count: 0} :
+            {four_track: tracks as Track[], track_count: (tracks as Track[]).length}
+    }
+}
+
+let all_playlist_data_memo: Playlist[] = [];
+export function get_all_playlist_data_memo(){
+    return all_playlist_data_memo;
+}
+export async function resolve_all_playlist_data_memo(){
+    all_playlist_data_memo = await Promise.all(all_playlist_data_memo.map(async(playlist) => ({...playlist, visual_data: {...playlist.visual_data ?? {}, four_track: await Promise.resolve(playlist.visual_data!.four_track ?? []) }})))
+}
+export async function all_playlists_data(ignore_tracks?: IgnoreTracks) {
+    const playlists = await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"));
+    all_playlist_data_memo = await Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, ignore_tracks ?? "PROMISE", playlist.archived ?? false)));
+    resolve_all_playlist_data_memo().catch(e => e);
+    return all_playlist_data_memo;
 }
 
 export async function compact_playlists() {
@@ -165,19 +179,6 @@ export async function delete_track_playlist(playlist_uuid: string, track_uid: st
 }
 export async function delete_track_from_all_playlists(track_uid: string) {
     await db_run_async(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["track_uid", track_uid])}`);
-}
-let all_playlist_data_memo: Playlist[] = [];
-export function get_all_playlist_data_memo(){
-    return all_playlist_data_memo;
-}
-export async function resolve_all_playlist_data_memo(){
-    all_playlist_data_memo = await Promise.all(all_playlist_data_memo.map(async(playlist) => ({...playlist, visual_data: {...playlist.visual_data ?? {}, four_track: await Promise.resolve(playlist.visual_data!.four_track ?? []) }})))
-}
-export async function all_playlists_data(ignore_tracks?: IgnoreTracks) {
-    const playlists = await db_get_all_async<SQLPlaylist>(sql_select<Playlist>("playlists", "*"));
-    all_playlist_data_memo = await Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, ignore_tracks ?? "PROMISE", playlist.archived ?? false)));
-    resolve_all_playlist_data_memo().catch(e => e);
-    return all_playlist_data_memo;
 }
 export async function all_playlists_names(): Promise<{"title": string}[]> {
     return await db_get_all_async<{"title": string}>(sql_select<Playlist>("playlists", "title"));

@@ -1,6 +1,6 @@
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Constants } from "../../../constants";
-import { Track } from "../../../types";
+import type { Track } from "../../../types";
 import { alert_error } from "../alert";
 import * as GLOBALS from "../globals";
 import * as SQLPlaylists from "../sql/sql_playlists";

@@ -1,6 +1,6 @@
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Prefs } from '../../prefs';
-import { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "../../types";
+import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "../../types";
 import * as GLOBALS from './globals';
 import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 

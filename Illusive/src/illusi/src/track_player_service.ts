@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
+import type {
+    AddTrack} from 'react-native-track-player';
 import TrackPlayer, {
-    AddTrack,
     AppKilledPlaybackBehavior,
     Capability,
     Event,
@@ -11,7 +12,7 @@ import TrackPlayer, {
 import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
-import { ISOString, Track } from '../../types';
+import type { ISOString, Track } from '../../types';
 import { alert_trackplayer_error } from './alert';
 import { handle_new_track_data } from './downloader';
 import * as GLOBALS from './globals';
@@ -133,7 +134,7 @@ export async function check_push_next_track(queue_index: number) {
     const next_track_index = queue_index + 1;
     const next_illusi_track = GLOBALS.global_var.playing_tracks[next_track_index];
     
-    if (next_illusi_track && next_illusi_track.playback!.added === false && next_illusi_track.playback!.successful === false) {
+    if (next_illusi_track && !next_illusi_track.playback!.added && !next_illusi_track.playback!.successful) {
         next_illusi_track.playback!.added = true;
 
         const react_native_track = await illusive_track_to_track_player_track(next_illusi_track);
@@ -179,7 +180,7 @@ export async function playback_service() {
             if(illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
 
-            if (data.index !== 0 && illusi_track.playback!.added === true && illusi_track.playback!.successful === false) {
+            if (data.index !== 0 && illusi_track.playback!.added && !illusi_track.playback!.successful) {
                 await TrackPlayer.pause();
                 const new_react_native_track = await illusive_track_to_track_player_track(illusi_track);
                 if (new_react_native_track === null || new_react_native_track === 'skip') {

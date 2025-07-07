@@ -1,6 +1,6 @@
-import { PromiseResult, ResponseError } from "../../origin/src/utils/types";
+import type { PromiseResult, ResponseError } from "../../origin/src/utils/types";
 import { RozeHeaders } from "./headers";
-import languages from './data/language.json';
+import type languages from './data/language.json';
 import { extract_string_from_pattern, generror_fetch, is_empty, json_catch } from "../../origin/src/utils/util";
 import { replace_html_codes } from "./utils";
 type LangCode = keyof typeof languages;
@@ -13,7 +13,7 @@ export namespace Translate {
         if(!apikey_response.ok) return generror_fetch(apikey_response, "Failed to get translation apikey", {}, {});
         return extract_string_from_pattern(await apikey_response.text(), /"X-goog-api-key": ?"(.+?)"/i);
     }
-    export async function google_translate_html<LangFrom extends LangCode>(lines: string[], lang_from: LangFrom, lang_to: Omit<LangCode, LangFrom>, clean_html: boolean = true): PromiseResult<string[]> {
+    export async function google_translate_html<LangFrom extends LangCode>(lines: string[], lang_from: LangFrom, lang_to: Omit<LangCode, LangFrom>, clean_html = true): PromiseResult<string[]> {
         const cleaned_lines = lines.filter(line => !is_empty(line)).map(line => line.trim());
         const payload = [[
             cleaned_lines,

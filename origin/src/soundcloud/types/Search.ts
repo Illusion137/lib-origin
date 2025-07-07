@@ -1,4 +1,4 @@
-import { HydratableUser } from "./Hydration"
+import type { HydratableUser } from "./Hydration"
 
 export interface ClientSearchOf<T> {
     data: SearchOf<T>

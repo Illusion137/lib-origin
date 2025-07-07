@@ -4,7 +4,7 @@ import { is_empty } from "../../../../origin/src/utils/util";
 import { Constants } from "../../constants";
 import { Illusive } from "../../illusive";
 import { Prefs } from "../../prefs";
-import { Track } from "../../types";
+import type { Track } from "../../types";
 import { alert_error } from "./alert";
 import * as GLOBALS from "./globals";
 import * as SQLTracks from "./sql/sql_tracks";

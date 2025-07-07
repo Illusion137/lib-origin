@@ -3,7 +3,7 @@ import * as uuid from "react-native-uuid";
 import { CookieJar } from "../../origin/src/utils/cookie_util";
 import { Constants } from './constants';
 import * as LegacyPrefs from './illusi/src/legacy/1307/legacy_prefs';
-import { HexColor, LinkerLink } from './types';
+import type { HexColor, LinkerLink } from './types';
 
 export namespace Prefs {
     export type PossibleThemes = keyof typeof themes;
@@ -118,7 +118,7 @@ export namespace Prefs {
     }
 
     export async function try_remove_from_recent_searches(query: string) {
-        const recent_searches: string[] = Prefs.get_pref('recent_searches');
+        const recent_searches: string[] = get_pref('recent_searches');
         const recent_search_index = recent_searches.findIndex(search => search === query);
         if(recent_search_index !== -1) {
             recent_searches.splice(recent_search_index, 1);
@@ -186,7 +186,7 @@ export namespace Prefs {
     export const light_theme: Theme = {
         dark: false,
         colors: {
-            primary: Prefs.get_pref('primary_color'),
+            primary: get_pref('primary_color'),
             secondary: '#4c4b00',
             background: '#f7f2f7',
             primary_dark: '#1a184f',
@@ -217,7 +217,7 @@ export namespace Prefs {
     export const dark_theme: Theme = {
         dark: true,
         colors: {
-            primary: Prefs.get_pref('primary_color'),
+            primary: get_pref('primary_color'),
             secondary: '#fc00c9',
             background: '#0d1016',
             primary_dark: '#1a184f',
@@ -248,7 +248,7 @@ export namespace Prefs {
     export const oled_theme: Theme = {
         dark: true,
         colors: {
-            primary: Prefs.get_pref('primary_color'),
+            primary: get_pref('primary_color'),
             secondary: '#fc00c9',
             background: '#000000',
             primary_dark: '#1a184f',
@@ -281,14 +281,14 @@ export namespace Prefs {
         dark: dark_theme,
         oled: oled_theme
     }
-    export function pref_set_theme(set_theme: (_: Prefs.Theme) => void){
-        const theme = Prefs.get_theme(Prefs.get_pref('theme'));
+    export function pref_set_theme(set_theme: (_: Theme) => void){
+        const theme = get_theme(get_pref('theme'));
         set_theme(
             {
                 dark: theme.dark,
                 colors: {
                     ...theme.colors,
-                    primary: Prefs.get_pref('primary_color')
+                    primary: get_pref('primary_color')
                 }
             }
         );
@@ -301,7 +301,7 @@ export namespace Prefs {
     export function all_themes() {
         return Object.keys(themes);
     }
-    export type PrimaryColorDetails = {color: HexColor, icon: string, name: string};
+    export interface PrimaryColorDetails {color: HexColor, icon: string, name: string}
     export const possible_primary_colors: PrimaryColorDetails[] = [
         {color: '#7400fe', icon: '🔮', name: 'Illusi'},
         {color: '#FFFAFA', icon: '❄️', name: 'Snow'},

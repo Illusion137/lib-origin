@@ -3,7 +3,7 @@ import { Constants } from '../../constants';
 import { Illusive } from "../../illusive";
 import { music_service_track_primary_key, music_service_uri_to_music_service, split_uri } from "../../illusive_utilts";
 // import { Prefs } from "../../prefs";
-import { ConvertTo, MusicServiceType, Track } from "../../types";
+import type { ConvertTo, MusicServiceType, Track } from "../../types";
 import * as GLOBALS from './globals';
 // import { sample_tracks_meta, sample_tracks_service } from './sampler';
 import * as SQLPlaylists from './sql/sql_playlists';

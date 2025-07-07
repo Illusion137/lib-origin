@@ -1,5 +1,5 @@
-import { AxiosProxyConfig } from "axios";
-import { ResponseError } from "../utils/types";
+import type { AxiosProxyConfig } from "axios";
+import type { ResponseError } from "../utils/types";
 
 export namespace Proxy {
     export interface Proxy { ip: string; port: number };

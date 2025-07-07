@@ -1,4 +1,4 @@
-import { Track } from '../../types';
+import type { Track } from '../../types';
 import * as SQLTracks from './sql/sql_tracks';
 
 export namespace Mutilator {

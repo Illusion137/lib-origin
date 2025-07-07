@@ -1,14 +1,14 @@
 import * as Parser from "./parser";
-import { CookieJar } from "../utils/cookie_util";
-import { PromiseResult, ResponseError } from '../utils/types';
+import type { CookieJar } from "../utils/cookie_util";
+import type { PromiseResult, ResponseError } from '../utils/types';
 import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth1, urlid } from "../utils/util";
-import { Continuation } from "./types/Continuation";
-import { ContinuedResults_0 } from './types/ContinuedResults_0';
-import { CreatePlaylist } from "./types/CreatePlaylist";
-import { InitialData } from './types/types';
-import { YTCFG } from "./types/YTCFG";
+import type { Continuation } from "./types/Continuation";
+import type { ContinuedResults_0 } from './types/ContinuedResults_0';
+import type { CreatePlaylist } from "./types/CreatePlaylist";
+import type { InitialData } from './types/types';
+import type { YTCFG } from "./types/YTCFG";
 import fetch from "../utils/orifetch";
-import { Proxy } from "../proxy/proxy";
+import type { Proxy } from "../proxy/proxy";
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';

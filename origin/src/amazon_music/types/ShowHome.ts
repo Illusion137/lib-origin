@@ -1,5 +1,5 @@
-import { CreateAndBindMethod } from "./ShowHomeCreateAndBindMethod"
-import { TemplateListInterfaceMethod } from "./ShowHomeTemplateList"
+import type { CreateAndBindMethod } from "./ShowHomeCreateAndBindMethod"
+import type { TemplateListInterfaceMethod } from "./ShowHomeTemplateList"
 
 export interface ShowHome {
     methods: (

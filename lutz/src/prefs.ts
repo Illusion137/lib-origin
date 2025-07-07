@@ -23,7 +23,7 @@ export namespace Prefs {
 
     }
 
-    type ThemeFont = {fontFamily: string, fontWeight: any}
+    interface ThemeFont {fontFamily: string, fontWeight: any}
     export interface Theme {
         dark: boolean;
         colors: {

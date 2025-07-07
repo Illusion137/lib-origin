@@ -1,6 +1,7 @@
 import EPub from 'epub2';
 import Pdfparser from 'pdf2json';
-import Roz, { RozChapterContents, RozChapterContentsPromise } from './types/roz';
+import type { RozChapterContents, RozChapterContentsPromise } from './types/roz';
+import type Roz from './types/roz';
 import { request } from 'http';
 import fs from 'fs';
 import uuid from "react-native-uuid";
@@ -31,7 +32,7 @@ export namespace FileParser {
     async function epub_get_image_base64(epub: EPub, html_image_path: string) {
         const paths = html_image_path.split('/');
         const image_id = paths[paths.length - 1];
-        const image: [Buffer<ArrayBufferLike>, string] = await epub.getImageAsync(image_id);
+        const image: [Buffer, string] = await epub.getImageAsync(image_id);
         return `data:${image[1]};base64,${image[0].toString('base64')}`;
     }
     export async function parse_epub(file_path_or_url: string): Promise<Roz> {

@@ -1,11 +1,11 @@
-import { YTDLResponse } from './types/response';
+import type { YTDLResponse } from './types/response';
 export type Filter = 'audioandvideo' | 'videoandaudio' | 'video' | 'videoonly' | 'audio' | 'audioonly' | ((format: AVFormat) => boolean);
 
 interface GetInfoOptions {
 	lang?: string;
 	requestCallback?: (res: Response) => {};
 	requestOptions?: any;
-	playerClients?: Array<"WEB_EMBEDDED" | "TV" | "IOS" | "ANDROID" | "WEB">;
+	playerClients?: ("WEB_EMBEDDED" | "TV" | "IOS" | "ANDROID" | "WEB")[];
 }
 export type YTDLQuality = 'lowest' | 'highest' | 'highestaudio' | 'lowestaudio' | 'highestvideo' | 'lowestvideo' | `${number}` | string[] | number[] | string & {} | number & {}
 interface ChooseFormatOptions {

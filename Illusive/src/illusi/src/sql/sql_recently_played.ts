@@ -1,7 +1,7 @@
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { all_promises } from "../../../illusive_utilts";
 import { Prefs } from "../../../prefs";
-import { SQLTrack, Track } from "../../../types";
+import type { SQLTrack, Track } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { sql_tracks_to_tracks, track_to_sqllite_insertion } from "./sql_tracks";
 import { db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select, sql_where } from "./sql_utils";
@@ -33,6 +33,6 @@ export async function cleanup_recently_played() {
     const sliced_to_delete_recently_played_data = to_delete_recently_played_data.slice(-recently_played_max_size);
     
     await all_promises(
-        sliced_to_delete_recently_played_data.map(track => delete_recently_played_track(track))
+        sliced_to_delete_recently_played_data.map(async track => delete_recently_played_track(track))
     );
 }

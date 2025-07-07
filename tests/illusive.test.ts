@@ -1,6 +1,6 @@
 import { Illusive } from "../Illusive/src/illusive";
 import load_cookies_env from "../Illusive/src/load_cookies_env";
-import { MusicService, MusicServiceType } from "../Illusive/src/types";
+import type { MusicService, MusicServiceType } from "../Illusive/src/types";
 
 load_cookies_env();
 
@@ -20,7 +20,7 @@ function illusive_expect_ok(result: any): void {
 	return ok as unknown as void;
 }
 // function illusive_test_sync(name: string, result_callback: () => any){ test(name, () => illusive_expect_ok(result_callback())); }
-function illusive_test_async(name: string, result_callback: () => Promise<any>) { test.concurrent(name, async () => illusive_expect_ok(await result_callback()), timeout_ms); }
+function illusive_test_async(name: string, result_callback: () => Promise<any>) { test.concurrent(name, async () => { illusive_expect_ok(await result_callback()); }, timeout_ms); }
 
 function test_music_services_list(name: string, service_names: MusicServiceType[], key_value: [keyof MusicService, any[]]) {
 	for (const service_name of service_names) {

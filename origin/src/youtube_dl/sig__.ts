@@ -313,7 +313,7 @@ export const extractFunctions = body => {
 }
 export function valueToJS(val: any): string {
 	if (typeof val === "string") return `'${val}'`;
-	if (typeof val === "object") return `${JSON.stringify(val)}`;
+	if (typeof val === "object") return JSON.stringify(val);
 	return String(val);
 }
 

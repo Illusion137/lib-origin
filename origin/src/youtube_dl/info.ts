@@ -79,11 +79,11 @@ const getWatchHTMLURL = (id, options) =>
   `${BASE_URL + id}&hl=${options.lang || "en"}&bpctr=${Math.ceil(Date.now() / 1000)}&has_verified=1`;
 const getWatchHTMLPageBody = (id, options) => {
   const url = getWatchHTMLURL(id, options);
-  return watchPageCache.getOrSet(url, () => utils.request(url, options));
+  return watchPageCache.getOrSet(url, async () => utils.request(url, options));
 };
 
 const EMBED_URL = "https://www.youtube.com/embed/";
-const getEmbedPageBody = (id, options) => {
+const getEmbedPageBody = async (id, options) => {
   const embedUrl = `${EMBED_URL + id}?hl=${options.lang || "en"}`;
   return utils.request(embedUrl, options);
 };
@@ -293,7 +293,7 @@ export const getInfo = async (id, options) => {
   const results = await Promise.all(formatPromises);
   info.formats = Object.values(Object.assign({}, ...results));
 
-  info.formats = info.formats.filter(format => format && format.url && format.mimeType);
+  info.formats = info.formats.filter(format => format?.url && format.mimeType);
 
   if (info.formats.length === 0) {
     throw new Error("No playable formats found");
@@ -567,7 +567,7 @@ const fetchAndroidJsonPlayer = async (videoId, options) => {
  * @param {Object} options
  * @returns {Promise<Array.<Object>>}
  */
-const getDashManifest = (url, options) =>
+const getDashManifest = async (url, options) =>
   new Promise((resolve, reject) => {
     const formats = {};
     const parser = sax.parser(false);

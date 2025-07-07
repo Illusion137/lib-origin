@@ -1,7 +1,7 @@
 import * as SQLite from '@op-engineering/op-sqlite';
 import path from 'path';
 import { Alert } from 'react-native';
-import { SQLTrack, Track } from '../../../types';
+import type { SQLTrack, Track } from '../../../types';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { create_playlist, insert_all_tracks_playlist } from './sql_playlists';
 import { insert_all_tracks } from './sql_tracks';

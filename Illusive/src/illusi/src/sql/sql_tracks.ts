@@ -1,14 +1,15 @@
 import { is_empty, wait } from "../../../../../origin/src/utils/util";
 import { Illusive } from "../../../illusive";
 import { Prefs } from "../../../prefs";
-import { ISOString, NamedUUID, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
+import type { ISOString, NamedUUID, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import * as GLOBALS from '../globals';
 import * as SQLfs from './sql_fs';
 import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where, update_global_track_all_property, update_global_track_item, update_global_track_property } from "./sql_utils";
-import { ResponseError, TimedCacheValue } from "../../../../../origin/src/utils/types";
+import type { ResponseError} from "../../../../../origin/src/utils/types";
+import { TimedCacheValue } from "../../../../../origin/src/utils/types";
 import { alert_error, alert_info } from "../alert";
 import { clean_album_title } from "../../../gen/apple_music_parser";
 import { generate_unique_track_tints, random_of, track_primary_key } from "../../../illusive_utilts";
@@ -162,7 +163,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
 }
 export function sql_tracks_to_tracks(sql_tracks: SQLTrack[]): Track[]{
     const mapped = sql_tracks.map(sql_track_to_track);
-    mapped.filter(track => "error" in track).forEach(err => alert_error(err));
+    mapped.filter(track => "error" in track).forEach(err => { alert_error(err); });
     return mapped.filter(track => !("error" in track)) as Track[];
 }
 export async function fix_track_added_metadata(){

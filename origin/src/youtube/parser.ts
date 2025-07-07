@@ -1,15 +1,15 @@
-import { ChannelResultsW } from "./types/ChannelResultsW";
-import { ChannelResultsWContinuation } from "./types/ChannelResultsWContinuation";
+import type { ChannelResultsW } from "./types/ChannelResultsW";
+import type { ChannelResultsWContinuation } from "./types/ChannelResultsWContinuation";
 // import { HomeResultsW } from "./types/HomeResultsW";
-import { HomeResultsWContinuation } from "./types/HomeResultsWContinuation";
-import { LibraryResultsW } from "./types/LibraryResultsW";
-import { MixResults_0 } from "./types/MixResults_0";
-import { PlaylistResultsW, PlaylistVideoRenderer } from "./types/PlaylistResultsW";
-import { PlaylistResultsWContinuation } from "./types/PlaylistResultsWContinuation";
-import { SearchResultsM } from "./types/SearchResultsM";
-import { SearchResultsW } from "./types/SearchResultsW";
-import { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
-import { InitialData } from "./types/types";
+import type { HomeResultsWContinuation } from "./types/HomeResultsWContinuation";
+import type { LibraryResultsW } from "./types/LibraryResultsW";
+import type { MixResults_0 } from "./types/MixResults_0";
+import type { PlaylistResultsW, PlaylistVideoRenderer } from "./types/PlaylistResultsW";
+import type { PlaylistResultsWContinuation } from "./types/PlaylistResultsWContinuation";
+import type { SearchResultsM } from "./types/SearchResultsM";
+import type { SearchResultsW } from "./types/SearchResultsW";
+import type { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
+import type { InitialData } from "./types/types";
 
 export function parse_home_contents(initial_data: InitialData) {
     initial_data;

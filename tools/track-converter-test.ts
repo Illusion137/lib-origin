@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { duration_to_string } from "../Illusive/src/illusive_utilts";
-import { Track } from "../Illusive/src/types";
+import type { Track } from "../Illusive/src/types";
 import playlist from '../sample/illusi/zayboy.json';
 import { remove_topic } from '../origin/src/utils/util';
 import { Prefs } from '../Illusive/src/prefs';
@@ -40,4 +40,4 @@ async function test_convert_tracks(){
     fs.writeFileSync(`sample/illusi/converted.json`, JSON.stringify(converted_pairs));
 } test_convert_tracks;
 // test_convert_tracks().catch(e => e); 
-test_convert_track({title: "Swang", artists: [{name: "Rae Sremmurd"}], duration: 208, explicit: "EXPLICIT"} as any).catch(e => console.log(e));
+test_convert_track({title: "Swang", artists: [{name: "Rae Sremmurd"}], duration: 208, explicit: "EXPLICIT"} as any).catch(e => { console.log(e); });

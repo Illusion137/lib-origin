@@ -4,13 +4,13 @@ export interface RozContent {
     type: RozContentType;
     content: string;
 }
-type RozChapterContentsBase<T> = {
+interface RozChapterContentsBase<T> {
     contents: T;
     chapter: {
         id?: string;
         title?: string;
     };
-};
+}
 export type RozChapterContentsPromise = RozChapterContentsBase<Promise<RozContent>[]>;
 export type RozChapterContents = RozChapterContentsBase<RozContent[]>;
 export type RozSourceFileType = 'TXT'|'PDF'|'JNOVEL'|'WITCHCULT'|'SYOSETU'|'EPUB';

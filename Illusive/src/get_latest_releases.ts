@@ -6,8 +6,8 @@ import { parse_youtube_music_artist_album } from "./gen/youtube_music_parser";
 import { apple_music_get_artist } from "./get_artist";
 import { create_uri } from "./illusive_utilts";
 import { Prefs } from "./prefs";
-import { ArtistOpts, CompactPlaylist, NamedUUID, Track } from "./types";
-import * as SoundcloudTypes from '../../origin/src/soundcloud/types/Search';
+import type { ArtistOpts, CompactPlaylist, NamedUUID, Track } from "./types";
+import type * as SoundcloudTypes from '../../origin/src/soundcloud/types/Search';
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);

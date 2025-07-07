@@ -1,10 +1,10 @@
 import { extract_string_from_pattern, is_empty, remove, remove_topic, urlid } from "../../origin/src/utils/util";
-import { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
+import type { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
 import fuzzysort from "fuzzysort";
 import { seeded_rand } from "./seeding";
-import { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
+import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
 import { Constants } from "./constants";
 
 export function has_file_extension(path: string){

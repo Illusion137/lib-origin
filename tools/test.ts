@@ -1,5 +1,5 @@
 import __tracks from '../sample/illusi/lafou.json';
-import { Promises, Track } from '../Illusive/src/types';
+import type { Promises, Track } from '../Illusive/src/types';
 import { convert_playlist } from '../Illusive/src/illusi/src/playlist_converter';
 import { create_uri } from '../Illusive/src/illusive_utilts';
 import load_cookies_env from '../Illusive/src/load_cookies_env';
@@ -44,4 +44,4 @@ async function main___(){
         console.log(base + plus);
     }
 }
-main___().catch(e => console.error(e));
+main___().catch(e => { console.error(e); });

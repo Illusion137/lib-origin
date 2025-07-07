@@ -83,7 +83,7 @@ export default [
             "@typescript-eslint/init-declarations": "off",
             "@typescript-eslint/non-nullable-type-assertion-style": "off",
             "@typescript-eslint/return-await": "off",
-            "@typescript-eslint/consistent-type-imports": "off", // CHECK THIS,
+            "@typescript-eslint/consistent-type-imports": "error", // CHECK THIS,
             "@typescript-eslint/no-unnecessary-condition": "off",
             "@typescript-eslint/prefer-nullish-coalescing": "off",
             "@typescript-eslint/explicit-member-accessibility": "off",

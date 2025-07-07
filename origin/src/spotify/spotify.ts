@@ -1,19 +1,19 @@
-import { Cookie, CookieJar } from "../utils/cookie_util";
-import { ResponseError } from "../utils/types";
+import type { Cookie, CookieJar } from "../utils/cookie_util";
+import type { ResponseError } from "../utils/types";
 import { encode_params, is_empty } from '../utils/util';
-import { Album } from "./types/Album";
-import { Artist } from "./types/Artist";
-import { Collection } from "./types/Collection";
-import { Credits } from "./types/Credits";
-import { Home } from "./types/Home";
-import { InLibrary } from "./types/InLibrary";
-import { Library } from "./types/Library";
-import { ProfileData } from "./types/ProfileData";
-import { SearchResult } from "./types/SearchResult";
-import { UserPlaylist } from "./types/UserPlaylist";
+import type { Album } from "./types/Album";
+import type { Artist } from "./types/Artist";
+import type { Collection } from "./types/Collection";
+import type { Credits } from "./types/Credits";
+import type { Home } from "./types/Home";
+import type { InLibrary } from "./types/InLibrary";
+import type { Library } from "./types/Library";
+import type { ProfileData } from "./types/ProfileData";
+import type { SearchResult } from "./types/SearchResult";
+import type { UserPlaylist } from "./types/UserPlaylist";
 import fetch from "../utils/orifetch";
-import { Proxy } from "../proxy/proxy";
-import { AppServerConfig, FeatureFlags, RemoteConfig } from "./types/Initial";
+import type { Proxy } from "../proxy/proxy";
+import type { AppServerConfig, FeatureFlags, RemoteConfig } from "./types/Initial";
 import { Secret, TOTP } from "otpauth";
 const Buffer = require('buffer/').Buffer
 
@@ -71,9 +71,9 @@ export namespace Spotify {
             'Access-Control-Allow-Origin': '*',
         }
         if (cookie_jar !== undefined)
-            default_headers['Cookies'] = cookie_jar.toString();
+            default_headers.Cookies = cookie_jar.toString();
         if (client !== undefined) {
-            default_headers['authorization'] = `Bearer ${client?.session.accessToken}`;
+            default_headers.authorization = `Bearer ${client?.session.accessToken}`;
             default_headers['client-token'] = client?.client_token.granted_token.token;
         }
         return default_headers;
@@ -88,7 +88,7 @@ export namespace Spotify {
         return JSON.parse(decodeURIComponent(atob(inner_html).split('').map(e => `%${`00${e.charCodeAt(0).toString(16)}`.slice(-2)}`).join('')));
     }
 
-    function calculate_token(hex: Array<number>) {
+    function calculate_token(hex: number[]) {
         const token = hex.map((v, i) => v ^ ((i % 33) + 9));
         const buffer_token = Buffer.from(token.join(""), "utf8").toString("hex");
 
@@ -302,7 +302,7 @@ export namespace Spotify {
 
     export async function get_artist(url: string, opts: { "locale"?: string, "include_pre_releases"?: boolean } & Opts): Promise<Artist | ResponseError> {
         try {
-            if (valid_artist_regex.test(url) === false) throw new Error("Not a known Spotify Artist URL");
+            if (!valid_artist_regex.test(url)) throw new Error("Not a known Spotify Artist URL");
 
             const artist_id = url.replace(/https:\/\/open\.spotify\.com\/artist\//, '');
             const client = opts.client !== undefined ? opts.client : await get_client("https://open.spotify.com/", opts.cookie_jar);

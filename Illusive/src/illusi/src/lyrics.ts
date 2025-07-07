@@ -1,7 +1,7 @@
 import { is_empty, wait } from "../../../../origin/src/utils/util";
 import { Illusive } from "../../illusive";
 import { random_of } from "../../illusive_utilts";
-import { Track } from "../../types";
+import type { Track } from "../../types";
 import { ExampleObj } from "./example_objs";
 import * as SQLfs from './sql/sql_fs';
 import { db_run_async, obj_to_update_sql, sql_update_table, sql_where, update_global_track_item } from "./sql/sql_utils";

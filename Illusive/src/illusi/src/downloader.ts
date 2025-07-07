@@ -8,7 +8,7 @@ import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
-import { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
+import type { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
 import { alert_error } from './alert';
 import * as GLOBALS from './globals';
 import { playlist_tracks } from './playlist_converter';

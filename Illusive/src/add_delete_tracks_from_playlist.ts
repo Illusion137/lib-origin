@@ -2,7 +2,7 @@ import * as Origin from '../../origin/src/index'
 import { is_empty } from '../../origin/src/utils/util';
 import { Constants } from './constants';
 import { Prefs } from './prefs';
-import { Track } from './types';
+import type { Track } from './types';
 
 export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');

@@ -1,7 +1,7 @@
 import { TimedCache } from "../../../../origin/src/utils/types";
 import { Constants } from "../../constants";
-import { Prefs } from "../../prefs";
-import { BottomAlertType, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SetState, Track } from "../../types";
+import type { Prefs } from "../../prefs";
+import type { BottomAlertType, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SetState, Track } from "../../types";
 
 export const downloading: Downloading[] = [];
 

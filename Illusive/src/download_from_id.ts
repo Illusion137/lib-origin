@@ -1,9 +1,9 @@
 import * as Origin from '../../origin/src/index'
-import { ResponseError } from '../../origin/src/utils/types';
-import { DownloadOptions, YTDLQuality } from '../../origin/src/youtube_dl/types';
+import type { ResponseError } from '../../origin/src/utils/types';
+import type { DownloadOptions, YTDLQuality } from '../../origin/src/youtube_dl/types';
 import { youtube_info_metadata } from './gen/youtube_parser';
 import { Prefs } from './prefs';
-import { DownloadFromIdResult } from './types';
+import type { DownloadFromIdResult } from './types';
 
 export async function soundcloud_download_from_id(permalink: string, _: string): Promise<DownloadFromIdResult|ResponseError> {
     const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');

@@ -1,8 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
-import { Alert, GestureResponderEvent } from "react-native";
-import BigList from 'react-native-big-list';
-import { AlphabetScroll } from '../../types';
+import type { GestureResponderEvent } from "react-native";
+import { Alert } from "react-native";
+import type BigList from 'react-native-big-list';
+import type { AlphabetScroll } from '../../types';
 import { alert_error } from './alert';
 
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
@@ -33,7 +34,7 @@ function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: st
     }
 }
 
-export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_data: string[], biglist_ref: React.MutableRefObject<BigList<any>|undefined>, event: GestureResponderEvent, offset?: number) {
+export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_data: string[], biglist_ref: React.MutableRefObject<BigList|undefined>, event: GestureResponderEvent, offset?: number) {
     if(char_data.length === 0) return;
     if(!(char_data.length === alphabet_scroll.all_alphabet_fast_scroll_locations.length))
         populate_alphabet_scroll(alphabet_scroll, char_data);

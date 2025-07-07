@@ -1,10 +1,11 @@
-import { Proxy } from "../../origin/src";
-import { CookieJar } from "../../origin/src/utils/cookie_util"
-import { ResponseError, TimedCache } from "../../origin/src/utils/types"
+import type { Proxy } from "../../origin/src";
+import type { CookieJar } from "../../origin/src/utils/cookie_util"
+import type { ResponseError} from "../../origin/src/utils/types";
+import { TimedCache } from "../../origin/src/utils/types"
 import { remove } from "../../origin/src/utils/util";
-import { Chapter } from "../../origin/src/youtube_dl/types";
+import type { Chapter } from "../../origin/src/youtube_dl/types";
 import { Constants } from "./constants";
-import { Prefs } from "./prefs";
+import type { Prefs } from "./prefs";
 
 type ArtworkCacheType = 'force-cache';
 
@@ -33,7 +34,7 @@ export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "ERROR";
 export type SetState = any;
-export type SQLCount = {"COUNT(1)": number};
+export interface SQLCount {"COUNT(1)": number}
 
 export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE" 
     | "NEWEST" | "OLDEST" 
@@ -57,7 +58,7 @@ export interface SQLTable {
 export type Runs = {text: string, navigationEndpoint: any}[];
 
 export type PrefEntry = [Prefs.PrefOptions, Prefs.Pref<unknown>];
-export type GroupSection<T> = {title: string, data: T[]};
+export interface GroupSection<T> {title: string, data: T[]}
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
@@ -380,8 +381,8 @@ export interface TrackMix { "tracks": Track[], "error"?: Error }
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 
-export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
-export type ArtistOpts = {proxy?: Proxy.Proxy};
+export interface SearchOpts {limit?: number; proxy?: Proxy.Proxy}
+export interface ArtistOpts {proxy?: Proxy.Proxy}
 
 const search_cache: TimedCache<string, MusicSearchResponse> = new TimedCache<string, MusicSearchResponse>(Constants.playlist_cache_duration_seconds * 1000);
 export class MusicService {

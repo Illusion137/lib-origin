@@ -2,7 +2,7 @@ import * as Origin from '../../origin/src/index';
 import { soundcloud_parse_track } from './gen/soundcloud_parser';
 import { youtube_parse_videos } from './gen/youtube_parser';
 import { Prefs } from './prefs';
-import { Track } from './types';
+import type { Track } from './types';
 
 export async function get_soundcloud_track_mix(track_id: string): Promise<{"tracks": Track[], "error"?: Error}> {
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");

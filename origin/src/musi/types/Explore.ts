@@ -1,4 +1,4 @@
-import { ResponseError } from "../../utils/types"
+import type { ResponseError } from "../../utils/types"
 
 export type Explore = ExploreSuccess|ResponseError;
 export interface ExploreSuccess {

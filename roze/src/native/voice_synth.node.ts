@@ -1,5 +1,5 @@
 import { Constants } from "../constants";
-import { VoiceBank, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth_base";
+import type { VoiceBank, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth_base";
 import tts from 'say';
 
 export const VoiceSynthMobile: VoiceSynth = {
@@ -12,9 +12,9 @@ export const VoiceSynthMobile: VoiceSynth = {
         })
     },
     speak: async(text: string, opts: VoiceOptions) => {
-        return tts.speak(text, opts.voice_bank?.id ?? "", opts.rate ?? Constants.default_node_speach_rate);
+        tts.speak(text, opts.voice_bank?.id ?? "", opts.rate ?? Constants.default_node_speach_rate);
     },
     speak_export: async(text: string, opts: VoiceOptionsExport) => {
-        return tts.export(text, opts.voice_bank?.id ?? "", opts.rate ?? Constants.default_node_speach_rate, opts.file_path);
+        tts.export(text, opts.voice_bank?.id ?? "", opts.rate ?? Constants.default_node_speach_rate, opts.file_path);
     }
 }

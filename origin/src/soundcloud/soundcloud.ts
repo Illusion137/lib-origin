@@ -1,9 +1,9 @@
-import { Proxy } from "../proxy/proxy";
+import type { Proxy } from "../proxy/proxy";
 import { CookieJar } from "../utils/cookie_util";
-import { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../utils/types";
+import type { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../utils/types";
 import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../utils/util";
-import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
-import { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
+import type { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
+import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
 
 export namespace SoundCloud {
     interface Opts { cookie_jar?: CookieJar, client_id?: (string|ResponseError), proxy?: Proxy.Proxy }
@@ -105,7 +105,7 @@ export namespace SoundCloud {
         if (!response.ok) return {error: new Error("Response not ok: extractFromPage")};
         const text = await response.text();
         const exec = pattern.exec(text);
-        if (exec === null || exec[1] === undefined) return {error: new Error("Couldn't extract pattern: extractFromPage")};
+        if (exec?.[1] === undefined) return {error: new Error("Couldn't extract pattern: extractFromPage")};
         return {extracted: exec[1], full: text};
     }
     export async function get_hydration(url: string, opts: Opts): PromiseError<{hydration: Hydration, scripts_urls: string[]}> {
@@ -337,7 +337,7 @@ export namespace SoundCloud {
         const has_cookies = requires_cookies(opts);
         if("error" in has_cookies) return has_cookies;
         const redirect_response = await fetch("https://soundcloud.com/you", page_method_options(opts.cookie_jar));
-        if(redirect_response.redirected === false) return {error: new Error("Response not redirected")};
+        if(!redirect_response.redirected) return {error: new Error("Response not redirected")};
         return redirect_response.headers.get("Location")?.replace("//", "");
     }
     function extract_playlist_name(permalink: string) {
@@ -420,7 +420,7 @@ export namespace SoundCloud {
             }
         };
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 5000);
+        const abort = setTimeout(() => { controller.abort(); }, 5000);
         try {
             const response = await fetch(`https://api-auth.soundcloud.com/connect/session?${encode_params(params)}`, { 
                 method: "POST", 

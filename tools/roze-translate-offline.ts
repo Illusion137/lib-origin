@@ -2,7 +2,7 @@ import colors from 'colors';
 import * as fs from 'fs';
 import { Readable } from 'stream';
 import zlib from 'zlib';
-import lang from '../roze/src/data/language.json';
+import type lang from '../roze/src/data/language.json';
 type LangCode = keyof typeof lang;
 
 // Neural machine translation (NMT) : https://en.wikipedia.org/wiki/Neural_machine_translation

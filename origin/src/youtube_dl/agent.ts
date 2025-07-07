@@ -55,7 +55,7 @@ export const addCookiesFromString = (jar, cookies) => {
   if (!cookies || typeof cookies !== "string") {
     throw new Error("cookies must be a string");
   }
-  return addCookies(
+  addCookies(
     jar,
     cookies
       .split(";")

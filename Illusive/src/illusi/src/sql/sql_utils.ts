@@ -2,7 +2,7 @@ import * as SQLite from '@op-engineering/op-sqlite';
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Illusive } from '../../../illusive';
 import { extract_file_extension } from '../../../illusive_utilts';
-import { CompactPlaylist, Primitives, SQLTables, Track } from "../../../types";
+import type { CompactPlaylist, Primitives, SQLTables, Track } from "../../../types";
 import { ExampleObj } from '../example_objs';
 import * as GLOBALS from '../globals';
 import { db, db_path, reasign_db, sqlite_location } from './database';
@@ -102,7 +102,7 @@ export function sql_update_table(table: SQLTables) {
 export function obj_to_sql_table(primary: string|undefined, obj: Record<string, any>, types: boolean) {
     const key_values = is_empty(primary) ? [] : [primary];
     for(const key of Object.keys(obj)) {
-        if(types === true)
+        if(types)
             switch(typeof obj[key]) {
                 case "object": key_values.push(`${key} TEXT`); break;
                 case "string": key_values.push(`${key} TEXT`); break;
@@ -110,7 +110,7 @@ export function obj_to_sql_table(primary: string|undefined, obj: Record<string, 
                 case "boolean": key_values.push(`${key} BOOLEAN`); break;
                 default:
             }
-        else if(typeof obj[key] !== "undefined") key_values.push(`${key}`);
+        else if(typeof obj[key] !== "undefined") key_values.push(key);
     }
     return `(${key_values.join(", ")})`;
 }

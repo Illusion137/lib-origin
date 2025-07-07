@@ -1,19 +1,19 @@
 import * as Parser from "./parser";
-import { CookieJar } from "../utils/cookie_util";
-import { PromiseResult, ResponseError } from '../utils/types';
+import type { CookieJar } from "../utils/cookie_util";
+import type { PromiseResult, ResponseError } from '../utils/types';
 import { encode_params, eval_json, extract_string_from_pattern, google_query, is_empty, json_catch, parse_runs, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
-import { CreatePlaylist } from "../youtube/types/CreatePlaylist";
-import { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
-import { ArtistResults_1 } from './types/ArtistResults_1';
-import { Continuation } from "./types/Continuation";
-import { ContinuedResults_0 } from './types/ContinuedResults_0';
-import { InitialData } from './types/types';
-import { YTCFG } from './types/YTCFG';
-import { YTError } from "./types/Error";
+import type { CreatePlaylist } from "../youtube/types/CreatePlaylist";
+import type { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
+import type { ArtistResults_1 } from './types/ArtistResults_1';
+import type { Continuation } from "./types/Continuation";
+import type { ContinuedResults_0 } from './types/ContinuedResults_0';
+import type { InitialData } from './types/types';
+import type { YTCFG } from './types/YTCFG';
+import type { YTError } from "./types/Error";
 import fetch from "../utils/orifetch";
-import { Proxy } from "../proxy/proxy";
-import { ContinuationItemRenderer } from "./types/PlaylistResults_0";
-import { SearchSuggestions } from "./types/SearchSuggestions";
+import type { Proxy } from "../proxy/proxy";
+import type { ContinuationItemRenderer } from "./types/PlaylistResults_0";
+import type { SearchSuggestions } from "./types/SearchSuggestions";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';

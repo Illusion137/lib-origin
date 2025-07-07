@@ -4,7 +4,7 @@ import { is_empty } from '../../../../origin/src/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { Prefs } from "../../prefs";
-import { MusicServiceType, Track } from "../../types";
+import type { MusicServiceType, Track } from "../../types";
 import { alert_error } from './alert';
 import { Logger } from './logger';
 import { Wifi } from './wifi_utils';

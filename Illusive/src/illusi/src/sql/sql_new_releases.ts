@@ -1,6 +1,6 @@
 import { try_json_parse, is_empty, milliseconds_of } from '../../../../../origin/src/utils/util';
 import { Prefs } from "../../../prefs";
-import { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist } from "../../../types";
+import type { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select } from "./sql_utils";
 import * as SQLTracks from './sql_tracks';
@@ -73,7 +73,7 @@ export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
     const filtered_recent_keys = sameday_refreshed_days_keys.slice(most_recent_day_index + 1).filter(key => most_recent_time.getTime() - new Date(key).getTime() <= milliseconds_of({days: Constants.new_releases_backdate_days}));
 
     const not_seen: CompactPlaylist[] = not_seen_initial;
-    not_seen.forEach(release => release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")));
+    not_seen.forEach(release => { release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")); });
 
     for(const key of filtered_recent_keys){
         const release_day_group = sameday_refreshed_groups[key];
@@ -82,7 +82,7 @@ export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
                 continue;
             not_seen.push(release);
         }
-        release_day_group.forEach(release => release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")));
+        release_day_group.forEach(release => { release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")); });
     }
 
     for(let i = 0; i < not_seen.length; i++){

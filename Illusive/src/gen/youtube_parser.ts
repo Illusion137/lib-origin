@@ -1,12 +1,12 @@
 import { extract_string_from_pattern, generate_new_uid, is_empty, parse_runs, parse_time } from "../../../origin/src/utils/util";
-import { PlaylistPanelVideoRenderer } from "../../../origin/src/youtube/types/MixResults_0";
-import { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
-import { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
-import { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
-import { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "../../../origin/src/youtube/types/SearchResultsW";
-import { VideoInfo } from "../../../origin/src/youtube_dl/types";
+import type { PlaylistPanelVideoRenderer } from "../../../origin/src/youtube/types/MixResults_0";
+import type { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
+import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
+import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
+import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "../../../origin/src/youtube/types/SearchResultsW";
+import type { VideoInfo } from "../../../origin/src/youtube_dl/types";
 import { best_thumbnail, create_uri, youtube_views_number } from "../illusive_utilts";
-import { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "../types";
+import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "../types";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;

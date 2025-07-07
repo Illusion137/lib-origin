@@ -1,6 +1,6 @@
 import { split_uri } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
-import { CompactPlaylist, ConvertTo, LinkerLink, MusicServiceType } from "../../types";
+import type { CompactPlaylist, ConvertTo, LinkerLink, MusicServiceType } from "../../types";
 import { convert_playlist, playlist_tracks } from "./playlist_converter";
 import { Wifi } from "./wifi_utils";
 import * as uuid from "react-native-uuid";

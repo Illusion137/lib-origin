@@ -1,10 +1,10 @@
-import { Proxy } from "../proxy/proxy";
+import type { Proxy } from "../proxy/proxy";
 import { CookieJar } from "../utils/cookie_util";
 import axios from "axios";
 import { encode_params } from "../utils/util";
 
 export namespace Traktrain {
-    type Opts = {proxy?: Proxy.Proxy};
+    interface Opts {proxy?: Proxy.Proxy}
 
     const cookie_jar = new CookieJar([]);
 
@@ -91,7 +91,7 @@ export namespace Traktrain {
 
     export async function beat_mp3(producer_id: string, id: string, opts: Opts){
 
-        play(producer_id, opts).catch(e => console.error(e));
+        play(producer_id, opts).catch(e => { console.error(e); });
 
         const response = await axios.get(`https://d2lvs3zi8kbddv.cloudfront.net/${id}`, {headers: {
             ...base_headers(),

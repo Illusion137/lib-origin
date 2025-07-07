@@ -1,6 +1,6 @@
 import fuzzysort from 'fuzzysort';
 import * as Origin from '../../origin/src/index'
-import { PromiseResult, ResponseError } from "../../origin/src/utils/types";
+import type { PromiseResult, ResponseError } from "../../origin/src/utils/types";
 import { extract_string_from_pattern, is_empty, json_catch, remove_topic } from "../../origin/src/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "./add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
@@ -13,7 +13,8 @@ import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundc
 import { all_words, artist_string, clean_title, is_topic, number_epsilon_distance, one_includes_word_not_other, random_of, shuffle_array, str_or_include } from "./illusive_utilts";
 import { Prefs } from "./prefs";
 import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "./search";
-import { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicService, MusicServiceType, Track } from "./types";
+import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "./types";
+import { MusicService } from "./types";
 import { youtube_music_get_new_releases } from './new_releases';
 import { parse_youtube_music_track } from './gen/youtube_music_parser';
 
@@ -545,7 +546,7 @@ export namespace Illusive {
             if("error" in searched){
                 continue;
             }
-            const found = just_kidding_do_convert === false ? searched.tracks.find(t => t.youtube_id === track.youtube_id) : 
+            const found = !just_kidding_do_convert ? searched.tracks.find(t => t.youtube_id === track.youtube_id) : 
                 searched.tracks.find(t => 
                     number_epsilon_distance(t.duration, track.duration, 3) && 
                     str_or_include(clean_title(track.title).toLowerCase(), clean_title(t.title).toLowerCase()) &&

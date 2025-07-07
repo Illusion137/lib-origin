@@ -1,4 +1,4 @@
-import { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, Track } from "../../types";
+import type { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, Track } from "../../types";
 
 export namespace ExampleObj {
     export const track_example0: Track = {

@@ -1,7 +1,7 @@
-import { CookieJar } from "../utils/cookie_util";
+import type { CookieJar } from "../utils/cookie_util";
 import { encode_params, is_empty } from "../utils/util";
 import { SoundCloud } from "./soundcloud";
-import { HydratableSound } from "./types/Hydration";
+import type { HydratableSound } from "./types/Hydration";
 
 export namespace SoundCloudDL {
     const dl_cache = {dls: [] as {permalink: string, url: string}[], enabled: true};
@@ -12,7 +12,7 @@ export namespace SoundCloudDL {
     export async function get_download_info_from_permalink(permalink: string, cookie_jar?: CookieJar) {
         let fcache;
         if(dl_cache_full() && !is_empty(fcache = dl_cache.dls.find(item => item.permalink === permalink))) return fcache?.url as string;
-        if(!permalink.match(/(https:\/\/)?soundcloud\.com\/.+?\/.+/)) return {error: new Error("Permalink-url doesn't match regex")};
+        if(!(/(https:\/\/)?soundcloud\.com\/.+?\/.+/.exec(permalink))) return {error: new Error("Permalink-url doesn't match regex")};
         const hydration = await SoundCloud.get_hydration(permalink, {cookie_jar: cookie_jar});
         if ("error" in hydration) return hydration;
         const client_id = await SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);

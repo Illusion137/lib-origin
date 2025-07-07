@@ -1,7 +1,7 @@
 import * as Origin from '../../origin/src/index';
 import { parse_youtube_music_albums } from './gen/youtube_music_parser';
 import { Prefs } from "./prefs";
-import { CompactPlaylist } from "./types";
+import type { CompactPlaylist } from "./types";
 
 export async function youtube_music_get_new_releases(): Promise<CompactPlaylist[]> {
     const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');

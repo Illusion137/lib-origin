@@ -1,12 +1,12 @@
 import { empty_undefined, generate_new_uid, is_empty, parse_runs, parse_time } from '../../../origin/src/utils/util'
-import { NavigationEndpoint } from '../../../origin/src/youtube/types/ChannelResultsW';
+import type { NavigationEndpoint } from '../../../origin/src/youtube/types/ChannelResultsW';
 import { find_album_year } from '../../../origin/src/youtube_music/parser';
-import { ArtistCarouselContent, ArtistTopTrack } from '../../../origin/src/youtube_music/types/ArtistResults_0';
-import { YouTubeMusicPlaylistTrack } from '../../../origin/src/youtube_music/types/PlaylistResults_0';
-import { MusicCardShelfRenderer, SearchMusicResponsiveListItemRenderer } from '../../../origin/src/youtube_music/types/SearchResults_0';
-import { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack } from '../../../origin/src/youtube_music/types/types';
+import type { ArtistCarouselContent, ArtistTopTrack } from '../../../origin/src/youtube_music/types/ArtistResults_0';
+import type { YouTubeMusicPlaylistTrack } from '../../../origin/src/youtube_music/types/PlaylistResults_0';
+import type { MusicCardShelfRenderer, SearchMusicResponsiveListItemRenderer } from '../../../origin/src/youtube_music/types/SearchResults_0';
+import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack } from '../../../origin/src/youtube_music/types/types';
 import { best_thumbnail, create_uri, is_duration_string, youtube_music_split_artists, youtube_views_number } from '../illusive_utilts';
-import { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, NamedUUID, Runs, Track } from '../types';
+import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, NamedUUID, Runs, Track } from '../types';
 
 const responsive_item_types = ["Song", "Video", "Single", "Album", "Playlist", "EP", "Profile"];
 

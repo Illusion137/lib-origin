@@ -75,7 +75,7 @@ export const getMedia = (info: any) => {
 	return media;
 };
 
-const isVerified = (badges: any[]) => !!(badges && badges.find(b => b.metadataBadgeRenderer.tooltip === 'Verified'));
+const isVerified = (badges: any[]) => !!(badges?.find(b => b.metadataBadgeRenderer.tooltip === 'Verified'));
 
 /**
  * Get video author.
@@ -88,9 +88,7 @@ export const getAuthor = (info: any) => {
 	try {
 		const results: any[] = info.response.contents.twoColumnWatchNextResults.results.results.contents;
 		const v = results.find(v2 =>
-			v2.videoSecondaryInfoRenderer &&
-			v2.videoSecondaryInfoRenderer.owner &&
-			v2.videoSecondaryInfoRenderer.owner.videoOwnerRenderer);
+			v2.videoSecondaryInfoRenderer?.owner?.videoOwnerRenderer);
 		const videoOwnerRenderer = v.videoSecondaryInfoRenderer.owner.videoOwnerRenderer;
 		channelId = videoOwnerRenderer.navigationEndpoint.browseEndpoint.browseId;
 		thumbnails = (videoOwnerRenderer.thumbnail.thumbnails as any[]).map(thumbnail => {
@@ -103,8 +101,8 @@ export const getAuthor = (info: any) => {
 		// Do nothing.
 	}
 	try {
-		const videoDetails = info.player_response.microformat && info.player_response.microformat.playerMicroformatRenderer;
-		const id = (videoDetails && videoDetails.channelId) || channelId || info.player_response.videoDetails.channelId;
+		const videoDetails = info.player_response.microformat?.playerMicroformatRenderer;
+		const id = (videoDetails?.channelId) || channelId || info.player_response.videoDetails.channelId;
 		const author = {
 			id,
 			name: videoDetails ? videoDetails.ownerChannelName : info.player_response.videoDetails.author,
@@ -132,7 +130,7 @@ const parseRelatedVideo = (details: any, rvsParams: any) => {
 		let shortViewCount = getText(details.shortViewCountText);
 		const rvsDetails = (rvsParams as any[]).find(elem => elem.id === details.videoId);
 		if (!/^\d/.test(shortViewCount)) {
-			shortViewCount = (rvsDetails && rvsDetails.short_view_count_text) || '';
+			shortViewCount = (rvsDetails?.short_view_count_text) || '';
 		}
 		viewCount = (/^\d/.test(viewCount) ? viewCount : shortViewCount).split(' ')[0];
 		const browseEndpoint = details.shortBylineText.runs[0].navigationEndpoint.browseEndpoint;

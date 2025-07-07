@@ -1,10 +1,10 @@
 import { jsdom_document, map_html_collection } from "../utils/jsdom";
-import { PromiseResult } from "../utils/types";
+import type { PromiseResult } from "../utils/types";
 import { encode_params, google_query, base_response_fail_msg } from "../utils/util";
 import { decode_image_base64 } from "./img_decoder";
-import { MangaGenres } from "./types/MangaGenres";
-import { MangaTypes } from "./types/MangaTypes";
-import { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageSize, MangaReadMode, MangaReadQuality, ReadingBy, SearchManga } from "./types/types";
+import type { MangaGenres } from "./types/MangaGenres";
+import type { MangaTypes } from "./types/MangaTypes";
+import type { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageSize, MangaReadMode, MangaReadQuality, ReadingBy, SearchManga } from "./types/types";
 
 export namespace MangaReader {
     const base_url = "https://mangareader.to";
@@ -60,7 +60,7 @@ export namespace MangaReader {
         const response = await fetch(`${base_url}/ajax/${path}`);
         if(!response.ok) return {error: new Error(gen_response_error_msg(response))};
         const result: AjaxResult = await response.json();
-        if(result.status === false) return {error: new Error(`MangaReader: Ajax status failed with: ${result.html}`)};
+        if(!result.status) return {error: new Error(`MangaReader: Ajax status failed with: ${result.html}`)};
         return result;
     }
     export async function manga_list(opts: {page?: number} & ({query: string}|{genre: MangaGenres}|{type: MangaTypes})): PromiseResult<MangaList> {

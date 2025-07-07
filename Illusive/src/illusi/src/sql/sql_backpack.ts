@@ -1,6 +1,6 @@
 import { Illusive } from "../../../illusive";
 import { all_promises } from "../../../illusive_utilts";
-import { SQLTrack, Track } from "../../../types";
+import type { SQLTrack, Track } from "../../../types";
 import { alert_error } from "../alert";
 import { ExampleObj } from "../example_objs";
 import { delete_track, insert_track, sql_tracks_to_tracks, track_exists, track_from_uid, track_to_sqllite_insertion } from "./sql_tracks";

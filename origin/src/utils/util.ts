@@ -1,5 +1,5 @@
 import * as sha1 from 'sha1-uint8array'
-import { ResponseError } from './types';
+import type { ResponseError } from './types';
 
 export function decode_hex(hex: string) {
 	return hex.replace(/\\x22/g, '"').replace(/\\x7b/g, '{').replace(/\\x7d/g, '}').replace(/\\x5b/g, '[').replace(/\\x5d/g, ']').replace(/\\x3b/g, ';').replace(/\\x3d/g, '=').replace(/\\x27/g, '\'').replace(/\\\\/g, 'doubleAntiSlash').replace(/\\/g, '').replace(/doubleAntiSlash/g, '\\')
@@ -65,7 +65,7 @@ export function parse_runs(runs: ({text: string}[]) | undefined, join_with?: str
     if(runs === undefined) return "";
     return runs.map(run => run.text).join(join_with ?? " ");
 }
-export function wait(milliseconds: number) {
+export async function wait(milliseconds: number) {
 	return new Promise(function(resolve) { 
 	  	setTimeout(resolve, milliseconds, 'HASH_TIMED_OUT');
 	});
@@ -127,7 +127,7 @@ export function isNumber(numish: unknown): numish is number{
 	return typeof numish === 'number' && !isNaN(numish);
 }
 
-export function args_prettystring(args: object, indent: number = 2){
+export function args_prettystring(args: object, indent = 2){
 	let str = '{\n';
 	const keys = Object.keys(args);
 	for(const key of keys){
@@ -218,9 +218,9 @@ export function base_response_fail_msg(response: Response){
 	return `response failed to ${response.url} with status code: ${response.status}; msg: ${response.statusText}`;
 }
 
-import { RequestInit } from 'node-fetch';
-import { YTCFG } from '../youtube/types/YTCFG';
-import { CookieJar } from './cookie_util';
+import type { RequestInit } from 'node-fetch';
+import type { YTCFG } from '../youtube/types/YTCFG';
+import type { CookieJar } from './cookie_util';
 
 export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
     // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);

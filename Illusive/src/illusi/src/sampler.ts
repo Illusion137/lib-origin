@@ -3,7 +3,7 @@ import { is_empty } from "../../../../origin/src/utils/util";
 import { Illusive } from "../../illusive";
 import { random_of, shuffle_array } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";
-import { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "../../types";
+import type { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "../../types";
 import * as GLOBALS from './globals';
 import { Logger } from "./logger";
 import * as SQLTracks from './sql/sql_tracks';
@@ -16,7 +16,7 @@ import { Constants } from '../../constants';
 export async function get_proxies(sample_length: number){
     const proxies: Origin.Proxy.Proxy[] = [];
     if(Prefs.get_pref("fastpack") && sample_length > 4) {
-        const proxy_list = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https === true);
+        const proxy_list = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https);
         if(!("error" in proxy_list)) proxies.push(...proxy_list);
     }
     return proxies;
@@ -154,7 +154,7 @@ async function super_speed_sample_unavailable_tracks(tracks: Track[]) {
         }
     }));
 }
-export async function speed_sample_unavailable_tracks(tracks: Track[], super_speed: boolean = false){
+export async function speed_sample_unavailable_tracks(tracks: Track[], super_speed = false){
     if(super_speed) { 
         await super_speed_sample_unavailable_tracks(tracks);
         return;

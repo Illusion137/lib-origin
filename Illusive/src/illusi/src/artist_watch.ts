@@ -1,10 +1,10 @@
 import { Illusive } from "../../illusive";
-import { CompactPlaylist, NamedUUID, Promises } from '../../types';
+import type { CompactPlaylist, NamedUUID, Promises } from '../../types';
 import { is_empty, json_catch } from '../../../../origin/src/utils/util';
 import { music_service_uri_to_music_service, split_uri } from "../../illusive_utilts";
 import { get_proxies } from "./sampler";
 import { Proxy } from "../../../../origin/src";
-import { ResponseError } from "../../../../origin/src/utils/types";
+import type { ResponseError } from "../../../../origin/src/utils/types";
 import { Constants } from "../../constants";
 import * as SQLTracks from './sql/sql_tracks';
 

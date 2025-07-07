@@ -1,7 +1,7 @@
-import { PromiseResult, ResponseError } from "../utils/types";
+import type { PromiseResult, ResponseError } from "../utils/types";
 import { eval_json, extract_string_from_pattern, json_catch, try_json_parse } from "../utils/util";
-import { Children, LyricsPreloadedState } from "./types/Lyrics";
-import { Result, Search } from "./types/Search";
+import type { Children, LyricsPreloadedState } from "./types/Lyrics";
+import type { Result, Search } from "./types/Search";
 
 export namespace Genius {
     export async function search(query: string) {

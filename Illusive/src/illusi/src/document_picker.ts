@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'react-native-document-picker'
 import { generate_new_uid } from '../../../../origin/src/utils/util';
-import { Playlist, Promises, Track } from '../..//types';
+import type { Playlist, Promises, Track } from '../..//types';
 import { extract_file_extension } from '../../illusive_utilts';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLPlaylists from './sql/sql_playlists';

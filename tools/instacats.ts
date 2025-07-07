@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import request from 'request';
 import { gcc } from "../admin/gcc";
 import { Instagram } from "../origin/src/instagram/instragram";
-import { MediaListItem } from "../origin/src/instagram/types/MediaList";
+import type { MediaListItem } from "../origin/src/instagram/types/MediaList";
 import { CookieJar } from "../origin/src/utils/cookie_util";
 
 const threshold = 72;

@@ -1,12 +1,12 @@
-import { CookieJar } from "../utils/cookie_util";
-import { PromiseResult, ResponseError } from "../utils/types";
+import type { CookieJar } from "../utils/cookie_util";
+import type { PromiseResult, ResponseError } from "../utils/types";
 import { json_catch, try_json_parse, urlid } from "../utils/util";
-import { Config } from "./types/Config";
-import { CreatePlaylist } from "./types/CreatePlaylist";
-import { SearchResult } from "./types/SearchResult";
-import { ShowHome } from "./types/ShowHome";
-import { AmazonTrack, CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
-import { ShowLibraryHome } from "./types/ShowLibraryHome";
+import type { Config } from "./types/Config";
+import type { CreatePlaylist } from "./types/CreatePlaylist";
+import type { SearchResult } from "./types/SearchResult";
+import type { ShowHome } from "./types/ShowHome";
+import type { AmazonTrack, CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
+import type { ShowLibraryHome } from "./types/ShowLibraryHome";
 
 export namespace AmazonMusic {
     interface AuthHeader {
@@ -312,7 +312,7 @@ export namespace AmazonMusic {
             return response;
         } catch (error) { return { error: error as Error }; }
     }
-    function pause(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    async function pause(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
     export async function delete_from_playlist(playlist_url: string, track_ids: string[], delay: number, opts: Opts) {
         try {
             const playlist_id = playlist_url.replace(/(https?:\/\/)?(www\.)?music\.amazon\.com\/my\/playlists\//, '');

@@ -1,14 +1,14 @@
-import { CookieJar } from "../../origin/src/utils/cookie_util";
-import { PromiseResult, ResponseError } from "../../origin/src/utils/types";
+import type { CookieJar } from "../../origin/src/utils/cookie_util";
+import type { PromiseResult, ResponseError } from "../../origin/src/utils/types";
 import { extract_string_from_pattern, generror, generror_fetch } from "../../origin/src/utils/util";
 import { RozeHeaders } from "./headers";
-import { JNovel_Calender } from "./types/jnovel-calender";
-import { JNovel_Home } from "./types/jnovel-home";
-import { JNovel_Part, JNovel_Serie, JNovel_Toc } from "./types/jnovel-reader";
-import { JNovel_Series } from "./types/jnovel-series";
-import { JNovel_Series_Page } from "./types/jnovel-series-page";
-import { JNovel_User } from "./types/jnovel-user";
-import { RozContent } from "./types/roz";
+import type { JNovel_Calender } from "./types/jnovel-calender";
+import type { JNovel_Home } from "./types/jnovel-home";
+import type { JNovel_Part, JNovel_Serie, JNovel_Toc } from "./types/jnovel-reader";
+import type { JNovel_Series } from "./types/jnovel-series";
+import type { JNovel_Series_Page } from "./types/jnovel-series-page";
+import type { JNovel_User } from "./types/jnovel-user";
+import type { RozContent } from "./types/roz";
 import { clean_html_text, html_to_roz_content } from "./utils";
 
 export namespace JNovel {

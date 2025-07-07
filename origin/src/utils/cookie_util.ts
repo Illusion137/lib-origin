@@ -1,5 +1,5 @@
-import { Cookies } from "@react-native-community/cookies";
-import { AxiosResponse } from "axios";
+import type { Cookies } from "@react-native-community/cookies";
+import type { AxiosResponse } from "axios";
 
 type SameSite = "None" | "Lax" | "Strict" | undefined;
 
@@ -30,7 +30,7 @@ Set-Cookie: <cookie-name>=<cookie-value>; SameSite=Lax
 Set-Cookie: <cookie-name>=<cookie-value>; SameSite=None; Secure
 */
 export class Cookie {
-    #data: CookieData
+    readonly #data: CookieData
     constructor(c: CookieData) {
         this.#data = c;
     }

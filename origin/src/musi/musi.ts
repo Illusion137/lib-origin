@@ -1,9 +1,9 @@
-import { ResponseError } from "../utils/types";
+import type { ResponseError } from "../utils/types";
 import { json_catch, urlid } from "../utils/util";
-import { Explore, ExploreSuccess } from "./types/Explore";
-import { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "./types/Playlist";
-import { Support } from "./types/Support";
-import { Track } from "./types/types";
+import type { Explore, ExploreSuccess } from "./types/Explore";
+import type { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "./types/Playlist";
+import type { Support } from "./types/Support";
+import type { Track } from "./types/types";
 
 // GET   /api/v4/support%@
 // GET   /api/v4/search/explore/@ld

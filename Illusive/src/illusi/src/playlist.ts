@@ -1,4 +1,4 @@
-import { CompactPlaylistData, Playlist, SortType, Track } from "../../types";
+import type { CompactPlaylistData, Playlist, SortType, Track } from "../../types";
 
 function date_time(date?: string): number{
     if(date) return new Date(date).getTime();

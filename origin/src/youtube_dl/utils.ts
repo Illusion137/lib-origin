@@ -1,5 +1,5 @@
 // import { sapisid_hash_auth0 } from "../utils/util";
-import { DownloadOptions } from "./types";
+import type { DownloadOptions } from "./types";
 import * as AGENT from "./agent";
 
 /**
@@ -45,10 +45,9 @@ export const tryParseBetween = (body: string, left: string, right: string, prepe
  * @returns {number}
  */
 export const parseAbbreviatedNumber = (str: string) => {
-	const match = str
+	const match = /([\d,.]+)([MK]?)/.exec(str
 		.replace(',', '.')
-		.replace(' ', '')
-		.match(/([\d,.]+)([MK]?)/);
+		.replace(' ', ''));
 	if (match) {
 		const [_, num, multi] = match;
 		const parsed_num = parseFloat(num);
@@ -82,10 +81,10 @@ const ESCAPING_SEQUENZES = [
 export const cutAfterJS = (mixedJson: string) => {
 	// Define the general open and closing tag
 	let open, close;
-	if (mixedJson[0] === '[') {
+	if (mixedJson.startsWith('[')) {
 		open = '[';
 		close = ']';
-	} else if (mixedJson[0] === '{') {
+	} else if (mixedJson.startsWith('{')) {
 		open = '{';
 		close = '}';
 	}
@@ -157,10 +156,10 @@ class UnrecoverableError extends Error { }
  * @returns {!Error}
  */
 export const playError = (player_response: any) => {
-	const playability = player_response && player_response.playabilityStatus;
+	const playability = player_response?.playabilityStatus;
 	if (!playability) return null;
 	if (['ERROR', 'LOGIN_REQUIRED'].includes(playability.status)) {
-		return new UnrecoverableError(playability.reason || (playability.messages && playability.messages[0]));
+		return new UnrecoverableError(playability.reason || (playability.messages?.[0]));
 	}
 	if (playability.status === 'LIVE_STREAM_OFFLINE') {
 		return new UnrecoverableError(playability.reason || 'The live stream is offline.');

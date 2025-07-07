@@ -1,4 +1,4 @@
-import { Continuation } from "./Continuation"
+import type { Continuation } from "./Continuation"
 
 export interface PlaylistResults_1 {
     responseContext: ResponseContext

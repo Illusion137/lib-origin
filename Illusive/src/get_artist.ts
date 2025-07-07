@@ -1,13 +1,13 @@
 import { AppleMusic, SoundCloud, YouTubeMusic } from "../../origin/src";
 import { CookieJar } from "../../origin/src/utils/cookie_util";
-import { ResponseError } from "../../origin/src/utils/types";
+import type { ResponseError } from "../../origin/src/utils/types";
 import { make_topic, parse_runs, urlid } from "../../origin/src/utils/util";
 import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from "./gen/apple_music_parser";
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from "./gen/soundcloud_parser";
 import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from "./gen/youtube_music_parser";
 import { best_thumbnail, create_uri } from "./illusive_utilts";
 import { Prefs } from "./prefs";
-import { ArtistOpts, MusicServiceArtist, NamedUUID } from "./types";
+import type { ArtistOpts, MusicServiceArtist, NamedUUID } from "./types";
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);

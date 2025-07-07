@@ -1,8 +1,8 @@
-import { FeaturedArtistSection } from "./FeaturedArtistSection"
-import { PlaylistHeaderSection } from "./PlaylistHeaderSection"
-import { SpacerSection } from "./SpacerSection"
-import { TrackListFooterSection } from "./TrackListFooterSection"
-import { TrackListSection } from "./TrackListSection"
+import type { FeaturedArtistSection } from "./FeaturedArtistSection"
+import type { PlaylistHeaderSection } from "./PlaylistHeaderSection"
+import type { SpacerSection } from "./SpacerSection"
+import type { TrackListFooterSection } from "./TrackListFooterSection"
+import type { TrackListSection } from "./TrackListSection"
 
 export type Playlist = Root2[]
 

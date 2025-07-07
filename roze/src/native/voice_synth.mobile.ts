@@ -1,6 +1,6 @@
-import { ResponseError } from "../../../origin/src/utils/types";
+import type { ResponseError } from "../../../origin/src/utils/types";
 import { Constants } from "../constants";
-import { VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth_base";
+import type { VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth_base";
 import tts from 'react-native-tts-export';
 
 export function voice_synth_mobile_init(){

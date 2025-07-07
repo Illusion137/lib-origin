@@ -1,5 +1,5 @@
-import { MangaGenres } from "./MangaGenres";
-import { MangaTypes } from "./MangaTypes";
+import type { MangaGenres } from "./MangaGenres";
+import type { MangaTypes } from "./MangaTypes";
 
 export type MangaReadMode = "vertical"|"horizontal";
 export type MangaReadQuality = "low"|"medium"|"high";
@@ -7,7 +7,7 @@ export type MangaReadHozPageSize = number;
 export type MangaListTypes = MangaTypes | MangaGenres;
 export type Language = string;
 
-export type NammedHref = {name: string; href: string;};
+export interface NammedHref {name: string; href: string;}
 
 export interface StringHref {
     content: string;

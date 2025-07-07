@@ -1,7 +1,7 @@
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
 import * as ffmpeg from 'ffmpeg-kit-react-native';
 import { Prefs } from '../../prefs';
-import { BottomAlertType, Track } from '../../types';
+import type { BottomAlertType, Track } from '../../types';
 import { download_track } from './downloader'
 import * as GLOBALS from './globals';
 import { catch_function_async } from './illusi_utils';
