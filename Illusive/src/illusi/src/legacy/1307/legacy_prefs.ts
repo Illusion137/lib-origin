@@ -13,8 +13,8 @@ export async function clear_prefs() {
 }
 
 export async function is_prefs_empty() {
-    const prefs = await AsyncStorage.getItem("Prefs");
-    if(prefs == null || prefs == undefined) {
+    const async_prefs = await AsyncStorage.getItem("Prefs");
+    if(async_prefs == null || async_prefs == undefined) {
         return true;
     }
     return false;

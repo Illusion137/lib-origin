@@ -23,10 +23,10 @@ const videoEncodingRanks = [
 
 const getVideoBitrate = (format: AVFormat) => format.bitrate || 0;
 const getVideoEncodingRank = (format: AVFormat) =>
-    videoEncodingRanks.findIndex(enc => format.codecs && format.codecs.includes(enc));
+    videoEncodingRanks.findIndex(enc => format?.codecs?.includes(enc));
 const getAudioBitrate = (format: AVFormat) => format.audioBitrate || 0;
 const getAudioEncodingRank = (format: AVFormat) =>
-    audioEncodingRanks.findIndex(enc => format.codecs && format.codecs.includes(enc));
+    audioEncodingRanks.findIndex(enc => format?.codecs?.includes(enc));
 
 /**
  * Sort formats by a list of functions.

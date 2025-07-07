@@ -47,9 +47,9 @@ export async function get_all_new_releases(){
 }
 
 function add_playback_saved_data_to_new_releases(releases: CompactPlaylist[]): CompactPlaylist[]{
-    for(let i = 0; i < releases.length; i++){
-        if(releases[i].song_track !== undefined){
-            releases[i].song_track = SQLTracks.add_playback_saved_data_to_track(releases[i].song_track!);
+    for(const release of releases){
+        if(release.song_track !== undefined){
+            release.song_track = SQLTracks.add_playback_saved_data_to_track(release.song_track);
         }
     }
     return releases;
@@ -85,9 +85,9 @@ export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
         release_day_group.forEach(release => { release.artist.forEach(artist => artist_uri_exclusion_set.add(artist.uri ?? "")); });
     }
 
-    for(let i = 0; i < not_seen.length; i++){
-        if(not_seen[i].song_track !== undefined){
-            not_seen[i].song_track = SQLTracks.add_playback_saved_data_to_track(not_seen[i].song_track!);
+    for(const not_seen_playlist of not_seen){
+        if(not_seen_playlist.song_track!== undefined){
+            not_seen_playlist.song_track= SQLTracks.add_playback_saved_data_to_track(not_seen_playlist.song_track);
         }
     }
     return add_playback_saved_data_to_new_releases(not_seen);

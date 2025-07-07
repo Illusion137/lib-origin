@@ -122,6 +122,7 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
         case "ARTIST": 
             artists.push(top_result.top_result);
             break;
+        case undefined:
         default: break;
     }
 

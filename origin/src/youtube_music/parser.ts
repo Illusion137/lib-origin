@@ -9,6 +9,22 @@ import type { SearchResults_0 } from "./types/SearchResults_0";
 import type { SuggestionMusicResponsiveListItemRenderer } from "./types/SearchSuggestions";
 import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "./types/types";
 
+const separator = '•';
+export function parse_subtitle_text(runs: Run[]){
+    const separated_runs: Run2[][] = [];
+    let run_section: Run2[] = [];
+    for(const run of runs){
+        if(run.text.trim().includes(separator)){
+            separated_runs.push(run_section);
+            run_section = [];
+            continue;
+        }
+        run_section.push(run);
+    }
+    separated_runs.push(run_section);
+    return separated_runs;
+}
+
 export function parse_home_contents(initial_data: InitialData[]) {
     const contents: HomeResults_0[] = initial_data as unknown as HomeResults_0[];
     return {
@@ -111,22 +127,6 @@ export function parse_track_search_suggestion(suggestion: SuggestionMusicRespons
         } : album,
         plays: youtube_views_number(parse_runs(plays_string)),
     }
-}
-
-const separator = '•';
-export function parse_subtitle_text(runs: Run[]){
-    const separated_runs: Run2[][] = [];
-    let run_section: Run2[] = [];
-    for(const run of runs){
-        if(run.text.trim().includes(separator)){
-            separated_runs.push(run_section);
-            run_section = [];
-            continue;
-        }
-        run_section.push(run);
-    }
-    separated_runs.push(run_section);
-    return separated_runs;
 }
 
 function is_numeric(num: any) { return !isNaN(num) }

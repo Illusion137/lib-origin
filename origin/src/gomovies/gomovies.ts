@@ -32,9 +32,9 @@ export namespace GoMovies {
         "x-requested-with": "XMLHttpRequest",
     };
     
-    export async function register() {}
-    export async function login() {}
-    export async function add_to_favorites() {}
+    export async function register() {return}
+    export async function login() {return}
+    export async function add_to_favorites() {return}
     
     function trim_start_slash(str: string): string {
         if(str.startsWith('/')) return str.slice(1);
@@ -56,8 +56,8 @@ export namespace GoMovies {
     function flw_items_to_display_contents(document: Document): GoMovie_Display_Content[] {
         const flw_items = document.querySelectorAll(".flw-item");
         const display_contents: GoMovie_Display_Content[] = [];
-        for(let i = 0; i < flw_items.length; i++)
-            display_contents.push(flw_item_to_gomovie_display_content(flw_items[i]));
+        for(const flw_item of flw_items)
+            display_contents.push(flw_item_to_gomovie_display_content(flw_item));
         return display_contents;
     }
     function page_html_to_gomovie_tabs(page_html: string): GoMovieTab[] {
@@ -180,29 +180,29 @@ export namespace GoMovies {
     function parse_watch_page_genres(row_line: Element): string[] {
         const genres: string[] = [];
         const row_line_a_tags = row_line.querySelectorAll("a");
-        for(let i = 0; i < row_line_a_tags.length; i++)
-            genres.push(row_line_a_tags[i]?.href.replace("/genre/",""));
+        for(const row_line_a_tag of row_line_a_tags)
+            genres.push(row_line_a_tag?.href.replace("/genre/",""));
         return genres;
     }
     function parse_watch_page_cast(row_line: Element): HrefString[] {
         const cast: HrefString[] = [];
         const row_line_a_tags = row_line.querySelectorAll("a");
-        for(let i = 0; i < row_line_a_tags.length; i++)
-            cast.push({str:row_line_a_tags[i]?.innerHTML,href: row_line_a_tags[i]?.href.replace("/cast/","")});
+        for(const row_line_a_tag of row_line_a_tags)
+            cast.push({str:row_line_a_tag?.innerHTML,href: row_line_a_tag?.href.replace("/cast/","")});
         return cast;
     }
     function parse_watch_page_countries(row_line: Element): string[] { 
         const countries: string[] = [];
         const row_line_a_tags = row_line.querySelectorAll("a");
-        for(let i = 0; i < row_line_a_tags.length; i++)
-            countries.push(row_line_a_tags[i]?.href.replace("/country/",""));
+        for(const row_line_a_tag of row_line_a_tags)
+            countries.push(row_line_a_tag?.href.replace("/country/",""));
         return countries;
     }
     function parse_watch_page_production(row_line: Element): HrefString[] { 
         const productions: HrefString[] = [];
         const row_line_a_tags = row_line.querySelectorAll("a");
-        for(let i = 0; i < row_line_a_tags.length; i++)
-            productions.push({str:row_line_a_tags[i]?.innerHTML,href: row_line_a_tags[i]?.href.replace("/production/","")});
+        for(const row_line_a_tag of row_line_a_tags)
+            productions.push({str:row_line_a_tag?.innerHTML,href: row_line_a_tag?.href.replace("/production/","")});
         return productions;
     }
     export function movie_href_to_movie_id(movie_href: string): string {
@@ -259,5 +259,5 @@ export namespace GoMovies {
         const vidcloud_data_id = vidcloud_data_id_regex.exec(ajax_sources_json.link)![2];
         return vidcloud_data_id;
     }
-    export async function watch_tv_show() {}
+    export async function watch_tv_show() {return}
 }

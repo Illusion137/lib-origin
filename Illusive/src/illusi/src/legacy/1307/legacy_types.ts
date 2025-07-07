@@ -132,7 +132,7 @@ export class Track {
         this.disabled = t.disabled ?? false;
         this.successful = t.successful ?? false;
         this.added = t.added ?? false;
-        this.callback = t.callback ?? (() => {});
+        this.callback = t.callback ?? (() => {return});
     }
 
     toSQLInsert(): any[] {

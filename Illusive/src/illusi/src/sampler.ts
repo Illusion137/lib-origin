@@ -36,6 +36,9 @@ export function unsampled_tracks_service(service: MusicServiceType, tracks: Trac
         case "Apple Music":  return tracks.filter(track => is_empty(track.applemusic_id));
         case "SoundCloud":   return tracks.filter(track => is_empty(track.soundcloud_id));
         case "Spotify":      return tracks.filter(track => is_empty(track.spotify_id));
+        case "Illusi":       return tracks.filter(track => is_empty(track.illusi_id));
+        case "Musi":
+        case "API":
         default: return [];
     }
 }

@@ -7,6 +7,14 @@ function html_inner_text_content(html_line: string) {
 function html_img_src(html_line: string) {
     return (/<img.+?src="(.+?)"/.exec(html_line) as RegExpExecArray)?.[1]?.trim();
 }
+
+export function replace_html_codes(text: string){
+    return text.replace(/&#34;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&#160;/g, ' ');
+}
+
 export function html_to_roz_content(html_content: string){
     const content: RozContent[] = [];
     const xhtml_lines = replace_html_codes(html_content)
@@ -34,17 +42,11 @@ export function html_to_roz_content(html_content: string){
                 content.push({ type: "LINE_BREAK", content: "-"}); break;
             case 'hr/':
                 content.push({ type: "THEME_BREAK", content: "-"}); break;
+            case 'div': break;
             // default: console.error(type, ": ", xhtml_lines[line]);
         }
     }
     return content.filter(c => c.content);
-}
-
-export function replace_html_codes(text: string){
-    return text.replace(/&#34;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&quot;/g, '"')
-        .replace(/&#160;/g, ' ');
 }
 
 export function clean_html_text(text: string) {

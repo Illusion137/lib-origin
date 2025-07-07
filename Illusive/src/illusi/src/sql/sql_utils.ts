@@ -108,6 +108,10 @@ export function obj_to_sql_table(primary: string|undefined, obj: Record<string, 
                 case "string": key_values.push(`${key} TEXT`); break;
                 case "number": key_values.push(`${key} INTEGER`); break;
                 case "boolean": key_values.push(`${key} BOOLEAN`); break;
+                case "bigint":
+                case "function":
+                case "symbol":
+                case "undefined":
                 default:
             }
         else if(typeof obj[key] !== "undefined") key_values.push(key);
@@ -127,8 +131,8 @@ export function obj_to_update_sql(obj: Record<string, any>, example_obj?: Record
     let keys;
     if(example_obj !== undefined) {
         const obj_keys = Object.keys(example_obj);
-        for(let i = 0; i < obj_keys.length; i++)
-            if(example_obj[obj_keys[i]] === undefined) delete example_obj[obj_keys[i]];
+        for(const key of obj_keys)
+            if(example_obj[key] === undefined) delete example_obj[key];
         const new_obj_keys = Object.keys(example_obj);
         keys = Object.keys(obj).filter(key => new_obj_keys.includes(key));
     }
@@ -140,17 +144,22 @@ export function obj_to_update_sql(obj: Record<string, any>, example_obj?: Record
             case "string": updation.push(`${key}='${sql_serialize(value)}'`); break;
             case "object": updation.push(`${key}='${sql_serialize(JSON.stringify(value))}'`); break;
             case "undefined": break;
+            case "bigint":
+            case "boolean":
+            case "function":
+            case "number":
+            case "symbol":
             default: updation.push(`${key}=${value}`);
         }
     }
     return updation;
 }
 
-export async function sql_all(db: SQLite.DB, ...args: string[]) {
-    return await db.execute(args.join(" "));
+export async function sql_all(wdb: SQLite.DB, ...args: string[]) {
+    return await wdb.execute(args.join(" "));
 }
 
-let global_sql_tracks_update_callback: () => any = () => {};
+let global_sql_tracks_update_callback: () => any = () => {return};
 export function set_global_sql_tracks_update_callback(callback: () => any){
     global_sql_tracks_update_callback = callback;
 }
@@ -160,8 +169,8 @@ export function update_global_track_property<T extends keyof Track>(uid: Track['
     global_sql_tracks_update_callback?.();
 }
 export function update_global_track_all_property<T extends keyof Track>(prop: T, value: Track[T]){
-    for(let i = 0; i < GLOBALS.global_var.sql_tracks.length; i++){
-        GLOBALS.global_var.sql_tracks[i][prop] = value;
+    for(const track of GLOBALS.global_var.sql_tracks){
+        track[prop] = value;
     }
     global_sql_tracks_update_callback?.();
 }

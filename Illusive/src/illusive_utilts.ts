@@ -18,6 +18,7 @@ export function extract_file_extension(path: string, mime?: "photo"|"video"|"non
             case "none": return "";
             case "photo": return ".jpg";
             case "video": return ".mp4";
+            case undefined:
             default: return ".txt";
         }
     }
@@ -404,9 +405,9 @@ export function array_include<T>(a: T[], b: T[], compare_same: (a: T, b: T) => b
 }
 export function array_exclude<T>(a: T[], b: T[], compare_same: (a: T, b: T) => boolean) {
     const array: T[] = [...a];
-    return array.filter(a => {
-        for(let b0i = 0; b0i < b.length; b0i++)
-            if(compare_same(a, b[b0i])) return false;
+    return array.filter(arri => {
+        for(const b0i of b)
+            if(compare_same(arri, b0i)) return false;
         return true;
     })
 }
@@ -414,8 +415,8 @@ export function array_mask<T>(a: T[], b: T[], compare_same: (a: T, b: T) => bool
     const array: T[] = [...a];
     for(let b0i = 0; b0i < b.length; b0i++) {
         const included = {included: false, i: 0};
-        for(let a0i = 0; a0i < array.length; a0i++) {
-            if(compare_same(array[a0i], b[b0i])) { included.included = true; included.i = b0i; break; };
+        for(const a0i of array) {
+            if(compare_same(a0i, b[b0i])) { included.included = true; included.i = b0i; break; };
         }
         if(!included.included) array.push(b[b0i]);
         else array.splice(included.i, 1);

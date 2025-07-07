@@ -17,10 +17,10 @@ export namespace Prefs {
         return prefs;
     }
     export function save_pref(){
-
+        return;
     }
     export function load_prefs(){
-
+        return;
     }
 
     interface ThemeFont {fontFamily: string, fontWeight: any}

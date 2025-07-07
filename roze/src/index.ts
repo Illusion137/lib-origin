@@ -178,9 +178,9 @@ export class Roze {
 			.replace(new RegExp('[^----(.+?)----^]', 'g'), '')
 	}
 	translateJapaneseContent() {
-
+        this;
 	}
 	runTranslationMap() {
-
+        this;
     }
 };

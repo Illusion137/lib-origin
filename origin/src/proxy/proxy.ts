@@ -21,8 +21,8 @@ export namespace Proxy {
             const matched_proxies = [...body.matchAll(proxy_regex)];
             // console.log(matched_proxies);
             const proxies: MoreProxy[] = [];
-            for(let i = 0; i < matched_proxies.length; i++) {
-                const [ip, port, code, country, anonymity, google, https, last_checked] = matched_proxies[i][0]
+            for(const matched_proxy of matched_proxies) {
+                const [ip, port, code, country, anonymity, google, https, last_checked] = matched_proxy[0]
                     .replace(/<tr>/g, '')
                     .replace(/<\/tr>/g, '')
                     .replace(/<td.{0,12}?>/g, '')
@@ -52,10 +52,10 @@ export namespace Proxy {
         
             const matched_proxies = [...body.matchAll(proxy_regex)]
             const proxies: Proxy[] = [];
-            for(let i = 0; i < matched_proxies.length; i++) {
+            for(const matched_proxy of matched_proxies) {
                 proxies.push({
-                    ip: matched_proxies[i][1],
-                    port: parseInt(matched_proxies[i][4]),
+                    ip: matched_proxy[1],
+                    port: parseInt(matched_proxy[4]),
                 });
             }
             return filter ? proxies.filter(filter) : proxies;

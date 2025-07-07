@@ -77,8 +77,8 @@ export enum MonoPath {
     TV = "tv-show"
 };
 export enum Path {
-    Genre = "genre/",
-    Country = "country/",
+    Genre_P = "genre/",
+    Country_P = "country/",
     Production = "production/",
     Cast = "cast/",
 };

@@ -32,22 +32,22 @@ export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Trac
 
 export function sort_compact_playlists_data(playlists: CompactPlaylistData[]) {
     const ordered_playlists: CompactPlaylistData[] = [];
-    for(let i = 0; i < playlists.length; i++) {
-        if(playlists[i].pinned)
-            ordered_playlists.unshift(playlists[i]);
+    for(const playlist of playlists) {
+        if(playlist.pinned)
+            ordered_playlists.unshift(playlist);
         else
-            ordered_playlists.push(playlists[i]);
+            ordered_playlists.push(playlist);
     }
     return ordered_playlists;
 }
 
 export function sort_playlists(playlists: Playlist[]) {
     const ordered_playlists: Playlist[] = [];
-    for(let i = 0; i < playlists.length; i++) {
-        if(playlists[i].pinned)
-            ordered_playlists.unshift(playlists[i]);
+    for(const playlist of playlists) {
+        if(playlist.pinned)
+            ordered_playlists.unshift(playlist);
         else
-            ordered_playlists.push(playlists[i]);
+            ordered_playlists.push(playlist);
     }
     return ordered_playlists;
 }

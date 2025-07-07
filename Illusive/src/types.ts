@@ -533,6 +533,8 @@ export class PQueue<T> {
         this.head = 0;
         this.tail = 0;
     }
+    get length() { return this.tail - this.head; }
+    get is_empty() { return this.length === 0; }
     enqueue(element: T): void {
         this.elements[this.tail] = element;
         this.tail++;
@@ -544,6 +546,4 @@ export class PQueue<T> {
         return item;
     }
     peek() { return this.elements[this.head]; }
-    get length() { return this.tail - this.head; }
-    get is_empty() { return this.length === 0; }
 }

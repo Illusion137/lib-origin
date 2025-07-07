@@ -111,7 +111,7 @@ export function milliseconds_of(time: {years?: number, months?: number, weeks?: 
 		+ ((time.seconds ?? 0) * 1000)
 }
 export function empty_join(vals: any[], join_with: string) {
-    return vals.filter(vals => !is_empty(vals)).join(join_with);
+    return vals.filter(val => !is_empty(val)).join(join_with);
 }
 export function empty_join_dot(vals: any[]) {
     return empty_join(vals, " • ");

@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import request from 'request';
-import { gcc } from "../admin/gcc";
+import { GCC } from "../admin/gcc";
 import { Instagram } from "../origin/src/instagram/instragram";
 import type { MediaListItem } from "../origin/src/instagram/types/MediaList";
 import { CookieJar } from "../origin/src/utils/cookie_util";
 
 const threshold = 72;
-const cookie_jar = CookieJar.fromString(gcc.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
+const cookie_jar = CookieJar.fromString(GCC.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
 const cat_posters_usernames: string[] = ["maoxiaosi_219", "brownsugar_ddang", "sasuke.0116"];
 const cat_regex = /(cat)|(kitty)/ig;
 
@@ -30,9 +30,9 @@ async function main() {
 
 	let i = 0;
 	let length = only_cat_posters.length;
-	async function add_only_cat_posters(only_cat_posters: { username: string; name: string }[]) {
+	async function add_only_cat_posters(only_cat_posters_data: { username: string; name: string }[]) {
 		const cat_posts_to_add: string[] = [];
-		for (const cat_poster of only_cat_posters) {
+		for (const cat_poster of only_cat_posters_data) {
 			if (seen_cat_posters_usernames.has(cat_poster.username)) {
 				console.log("Seen: ", cat_poster.username);
 				continue;

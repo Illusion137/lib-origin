@@ -26,7 +26,7 @@ export namespace MangaReader {
             artwork_url: el.getAttribute("data-url")!
         };
     }
-    function parse_search_manga(el: Element): SearchManga {
+    function parse_search_manga(manga_el: Element): SearchManga {
         const parse_latest_item = (el: Element) => {
             const inner_text = el.querySelector('a')!.textContent!;
             return {
@@ -37,19 +37,19 @@ export namespace MangaReader {
         };
         return {
             title: {
-                name: el.querySelector(".manga-name")!.querySelector("a")!.textContent!,
-                href: el.querySelector(".manga-poster")!.getAttribute("href")!
+                name: manga_el.querySelector(".manga-name")!.querySelector("a")!.textContent!,
+                href: manga_el.querySelector(".manga-poster")!.getAttribute("href")!
             },
-            genres: map_html_collection(el.querySelector(".fdi-item.fdi-cate")?.children, (el: Element) => {
+            genres: map_html_collection(manga_el.querySelector(".fdi-item.fdi-cate")?.children, (_: Element) => {
                 return {
-                    content: el.textContent!,
-                    href: el.getAttribute("href")!
+                    content: manga_el.textContent!,
+                    href: manga_el.getAttribute("href")!
                 }
             }),
-            available_languages: el.querySelector(".tick.tick-item.tick-lang")!.textContent!.split("/"),
-            artwork_url: el.querySelector(".manga-poster-img")!.getAttribute("src")!,
-            latest_chapters: map_html_collection(el.querySelectorAll('.fd-list')?.[0]?.children, parse_latest_item),
-            latest_volumes: map_html_collection(el.querySelectorAll('.fd-list')?.[1]?.children, parse_latest_item)
+            available_languages: manga_el.querySelector(".tick.tick-item.tick-lang")!.textContent!.split("/"),
+            artwork_url: manga_el.querySelector(".manga-poster-img")!.getAttribute("src")!,
+            latest_chapters: map_html_collection(manga_el.querySelectorAll('.fd-list')?.[0]?.children, parse_latest_item),
+            latest_volumes: map_html_collection(manga_el.querySelectorAll('.fd-list')?.[1]?.children, parse_latest_item)
         }
     }
     function href_manga_id(href: string) {

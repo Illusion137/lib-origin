@@ -13,11 +13,10 @@ function is_okay(result: any) {
 	const ok = ok_boolean || ok_object;
 	return ok;
 }
-function illusive_expect_ok(result: any): void {
+function illusive_expect_ok(result: any) {
 	const ok = is_okay(result);
 	if (!ok) console.log(typeof result === "object" ? result?.error : result);
 	expect(ok).toBe(true);
-	return ok as unknown as void;
 }
 // function illusive_test_sync(name: string, result_callback: () => any){ test(name, () => illusive_expect_ok(result_callback())); }
 function illusive_test_async(name: string, result_callback: () => Promise<any>) { test.concurrent(name, async () => { illusive_expect_ok(await result_callback()); }, timeout_ms); }
@@ -38,7 +37,7 @@ function test_fetch_playlists(service_name: MusicServiceType, playlist_ids: stri
 		for (let i = 0; i < playlist_ids.length; i++) {
 			test.concurrent(`${playlist_ids[i]}-${i}`, async () => {
 				const result: any = await music_service.get_full_playlist(playlist_ids[i]);
-				illusive_expect_ok(result) as unknown as boolean;
+				illusive_expect_ok(result);
 			}, timeout_ms);
 		}
 	});

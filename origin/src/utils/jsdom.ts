@@ -8,7 +8,7 @@ export function jsdom_document(html: string): Document {
 export function map_html_collection<T>(collection: HTMLCollection|NodeListOf<Element>|undefined, callback: (el: Element) => T) {
     const result: T[] = [];
     if(collection === undefined) return result;
-    for(let i = 0; i < collection.length; i++)
-        result.push(callback(collection[i]));
+    for(const item of collection)
+        result.push(callback(item));
     return result;
 }

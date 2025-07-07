@@ -220,8 +220,7 @@ export namespace SoundCloud {
     }
     export async function search(search_type: "TRACKS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Track>>
     export async function search(search_type: "PEOPLE", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<User>>
-    export async function search(search_type: "ALBUMS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
-    export async function search(search_type: "PLAYLISTS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
+    export async function search(search_type: "ALBUMS"|"PLAYLISTS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
     export async function search(search_type: "EVERYTHING", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist|Track|User>>
     export async function search(search_type: SearchType, opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist|Track|User>> {
         const hydration = await try_user_id(`https://soundcloud.com/search?${encode_params({q: opts.query})}`, opts);
@@ -265,12 +264,9 @@ export namespace SoundCloud {
         return {id: String(user_hyrdration.data.id), hydration: user_hyrdration, client_id: opts.client_id};
     }
 
-    export async function get_artist(mode: "POPULAR_TRACKS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "TRACKS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "REPOSTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "ALBUMS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: "PLAYLISTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: ArtistMode = "ALL", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist|User|Track>> {
+    export async function get_artist(mode: "POPULAR_TRACKS"|"TRACKS"|"REPOSTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
+    export async function get_artist(mode: "ALBUMS"|"PLAYLISTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
+    export async function get_artist(mode: ArtistMode, opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist|User|Track>> {
         let artist_id = clean_permalink(opts.artist_id);
         let user_hyrdration: HydratableUser = {} as never;
         if(!is_empty(opts.artist_permalink)) {

@@ -15,6 +15,9 @@ export function isdefault_playlist(compact_playlist: CompactPlaylist) {
         case "spotify": return compact_playlist.type !== "PLAYLIST";
         case "youtube": return ["LL", "WL"].includes(id);
         case "youtubemusic": return ["LM", "WL"].includes(id);
+        case "illusi": return false;
+        case "musi": return false;
+        case "api": return false;
         default: return false;
     }
 }

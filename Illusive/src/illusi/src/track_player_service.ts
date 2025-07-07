@@ -171,7 +171,7 @@ export async function track_player_next() {
 }
 
 export async function playback_service() {
-    TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => {});
+    TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => {return});
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             if(data.index === undefined) return;

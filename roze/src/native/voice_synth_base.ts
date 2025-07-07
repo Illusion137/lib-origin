@@ -12,6 +12,6 @@ export interface VoiceOptions {
 export type VoiceOptionsExport = VoiceOptions & {file_path: string};
 export interface VoiceSynth {
     get_voices: () => Promise<VoiceBank[]>;
-    speak: (text: string, opts: VoiceOptions) => Promise<string|void>;
-    speak_export: (text: string, opts: VoiceOptionsExport) => Promise<string|void>;
+    speak: (text: string, opts: VoiceOptions) => Promise<any>;
+    speak_export: (text: string, opts: VoiceOptionsExport) => Promise<any>;
 }

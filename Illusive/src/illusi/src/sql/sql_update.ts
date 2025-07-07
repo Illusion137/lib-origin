@@ -20,7 +20,7 @@ export async function get_all_tables(database: SQLite.DB) {
 function get_sql_table_column_properties(table: SQLTable): { 'column_name': string, 'type': SQLType }[] {
     const column_props: { 'column_name': string, 'type': SQLType }[] = [];
     const inner_sql = table.sql.slice(table.sql.indexOf('(') + 1, table.sql.indexOf(')'));
-    for (const prop of inner_sql.split(', ').map((prop => prop.trim()))) {
+    for (const prop of inner_sql.split(', ').map((p => p.trim()))) {
         const [column_name, type] = prop.split(' ');
         column_props.push({ column_name: column_name, type: type as SQLType });
     }
@@ -80,9 +80,9 @@ export async function fix_to_new_update(version: string) {
                 for (const legacy_1307_track of legacy_1307_tracks)
                     all_promises.push(insert_track(await legacy_1307_track_to_track(legacy_1307_track)));
                 for (const legacy_1307 of legacy_1307_playlists) {
-                    const legacy_1307_tracks = await get_legacy_1307_playlist_tracks(db_pre_1307!, legacy_1307.playlist_name);
+                    const playlist_legacy_1307_tracks = await get_legacy_1307_playlist_tracks(db_pre_1307!, legacy_1307.playlist_name);
                     const playlist_uuid = await create_playlist(legacy_1307.playlist_name);
-                    for (const legacy_1307_track of legacy_1307_tracks)
+                    for (const legacy_1307_track of playlist_legacy_1307_tracks)
                         all_promises.push(insert_track_playlist(playlist_uuid, legacy_1307_track.uid));
                 }
                 await Promise.all(all_promises);
@@ -190,23 +190,23 @@ export async function fix_to_new_update(version: string) {
 
         const current_tracks = (await db_get_all_async<Timestamped<SQLTrack>>(sql_select<Track>("tracks", "*")));
         if (current_tracks.some(track => track.Timestamp === null)) {
-            for (const track of current_tracks.filter(track => track.Timestamp === null)) {
+            for (const track of current_tracks.filter(ctrack => ctrack.Timestamp === null)) {
                 await sql_update<Timestamped<Track>>("tracks", track, "illusi_id", track.illusi_id);
             }
             const current_backpack_tracks = (await db_get_all_async<Timestamped<SQLTrack>>(sql_select<Track>("backpack", "*")));
-            for (const track of current_backpack_tracks.filter(track => track.Timestamp === null)) {
+            for (const track of current_backpack_tracks.filter(ctrack => ctrack.Timestamp === null)) {
                 await sql_update<Timestamped<Track>>("backpack", track, "illusi_id", track.illusi_id);
             }
             const current_recently_played_tracks = (await db_get_all_async<Timestamped<SQLTrack>>(sql_select<Track>("recently_played_tracks", "*")));
-            for (const track of current_recently_played_tracks.filter(track => track.Timestamp === null)) {
+            for (const track of current_recently_played_tracks.filter(ctrack => ctrack.Timestamp === null)) {
                 await sql_update<Timestamped<Track>>("recently_played_tracks", track, "illusi_id", track.illusi_id);
             }
             const current_playlists = (await db_get_all_async<Timestamped<SQLPlaylist>>(sql_select<SQLPlaylist>("playlists", "*")));
-            for (const playlist of current_playlists.filter(playlist => playlist.Timestamp === null)) {
+            for (const playlist of current_playlists.filter(cplaylist => cplaylist.Timestamp === null)) {
                 await sql_update<Timestamped<Playlist>>("playlists", playlist, "public_uuid", playlist.public_uuid);
             }
             const current_playlists_tracks = (await db_get_all_async<Timestamped<PlaylistsTracks>>(sql_select<PlaylistsTracks>("playlists_tracks", "*")));
-            for (const playlist_tracks of current_playlists_tracks.filter(playlist_tracks => playlist_tracks.Timestamp === null)) {
+            for (const playlist_tracks of current_playlists_tracks.filter(cplaylist_tracks => cplaylist_tracks.Timestamp === null)) {
                 await sql_update<Timestamped<PlaylistsTracks>>("playlists_tracks", playlist_tracks, "Timestamp", "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')");
             }
         }

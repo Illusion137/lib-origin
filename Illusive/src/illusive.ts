@@ -281,10 +281,10 @@ export namespace Illusive {
             uri.replace(/w\d{3,}/, `w${width * 4}`).replace(/h\d{3,}/, `h${height * 4}`),
             uri.replace(/w\d{3,}/, `w${width * 2}`).replace(/h\d{3,}/, `h${height * 2}`),
         ];
-        for(const uri of uris_descending) {
+        for(const duri of uris_descending) {
             try {
-                const result = await fetch(uri, {});
-                if(result.status === 200) return uri;
+                const result = await fetch(duri, {});
+                if(result.status === 200) return duri;
             } catch (error) {}
         }
         return uri;
@@ -419,20 +419,20 @@ export namespace Illusive {
         return `${remove_topic(track.artists[0].name)} ${track.title}` + (track.artists.length > 1 ? `ft ${track.artists.slice(1).map(item => remove_topic(item.name)).join(', ')}` : "");
     }
     
-    function conversion_score(i: number, track: Track, convert_track: Track, to: MusicServiceType) {
+    function conversion_score(i: number, track: Track, convert_from_track: Track, to: MusicServiceType) {
         let score = 0;
     
-        if(track.artists.length === 0 || convert_track.artists.length === 0) return -1;
+        if(track.artists.length === 0 || convert_from_track.artists.length === 0) return -1;
     
         const track_title = track.title.toLowerCase();
         const track_artist = remove_topic(track.artists[0].name.toLowerCase());
         const tracK_words = all_words(track_title);
     
-        const current_title = convert_track.title.toLowerCase();
-        const current_artist = convert_track.artists[0].name.toLowerCase();
+        const current_title = convert_from_track.title.toLowerCase();
+        const current_artist = convert_from_track.artists[0].name.toLowerCase();
         const current_words = all_words(current_title);
     
-        if(to === "YouTube Music" && track.explicit === "EXPLICIT" && convert_track.explicit !== "EXPLICIT")
+        if(to === "YouTube Music" && track.explicit === "EXPLICIT" && convert_from_track.explicit !== "EXPLICIT")
             score -= 150;
     
         if (one_includes_word_not_other(tracK_words, current_words, "instrumental")) score -= 50;
@@ -451,8 +451,8 @@ export namespace Illusive {
         if (current_title.includes("Official Video")) score += 8;
         if (current_title.includes("Official Visualizer")) score += 8;
         if (current_title.includes("Music Video")) score += 5;
-        if (!is_empty(track.duration) && !is_empty(convert_track.duration))
-            score += (6 - Math.abs(convert_track.duration - track.duration)) * 4;
+        if (!is_empty(track.duration) && !is_empty(convert_from_track.duration))
+            score += (6 - Math.abs(convert_from_track.duration - track.duration)) * 4;
         if (score > 80) score += 5 * i;
         return score;
     }
@@ -460,9 +460,9 @@ export namespace Illusive {
     export interface MaxTrack { track?: Track, score: number };
     export async function convert_track(track: Track, _opts_: ConvertTrackOptsNull): PromiseResult<MaxTrack> {
         const opts = convert_track_default_opts(track, _opts_);
-        const music_service = Illusive.music_service.get(opts.to_music_service);
+        const convert_to_music_service = music_service.get(opts.to_music_service);
     
-        if (music_service?.search === undefined) return { error: new Error(`Can't convert to this music-service; ${opts.to_music_service} lacks a search property`) };
+        if (convert_to_music_service?.search === undefined) return { error: new Error(`Can't convert to this music-service; ${opts.to_music_service} lacks a search property`) };
     
         opts.possible_services = opts.possible_services.filter(service => service !== opts.to_music_service);
     
@@ -470,7 +470,7 @@ export namespace Illusive {
         let best: MaxTrack = { score: 30 };
         let all_negative_values = true;
     
-        const search_tracks = await music_service.search(query, { proxy: random_of(opts.proxies) });
+        const search_tracks = await convert_to_music_service.search(query, { proxy: random_of(opts.proxies) });
         if (search_tracks.tracks.length === 0) {
             return opts.possible_services.length === 0 ?
                 { error: new Error("Unable to convert track; No tracks found") } :

@@ -12,7 +12,7 @@ export const getFunctions = (html5playerfile, options) =>
     const functions = extractFunctions(body);
     cache.set(html5playerfile, functions);
     return functions;
-  });
+});
 
 const VARIABLE_PART = "[a-zA-Z_\\$][a-zA-Z_0-9\\$]*";
 const VARIABLE_PART_DEFINE = "\\\"?" + VARIABLE_PART + "\\\"?";

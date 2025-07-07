@@ -28,9 +28,9 @@ export async function test_import_1307_sqldb(__path: string) {
             )
         );
         for(const legacy_1307 of legacy_1307_playlists) {
-            const legacy_1307_tracks = await get_legacy_1307_playlist_tracks(old_db, legacy_1307.playlist_name);
+            const playlist_legacy_1307_tracks = await get_legacy_1307_playlist_tracks(old_db, legacy_1307.playlist_name);
             const playlist_uuid = await create_playlist(legacy_1307.playlist_name);
-            await insert_all_tracks_playlist(playlist_uuid, legacy_1307_tracks.map(track => track.uid));
+            await insert_all_tracks_playlist(playlist_uuid, playlist_legacy_1307_tracks.map(track => track.uid));
         }
     }
     old_db.close();

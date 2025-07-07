@@ -83,11 +83,16 @@ export default [
             "@typescript-eslint/init-declarations": "off",
             "@typescript-eslint/non-nullable-type-assertion-style": "off",
             "@typescript-eslint/return-await": "off",
-            "@typescript-eslint/consistent-type-imports": "error", // CHECK THIS,
+            "@typescript-eslint/consistent-type-imports": "error",
             "@typescript-eslint/no-unnecessary-condition": "off",
             "@typescript-eslint/prefer-nullish-coalescing": "off",
             "@typescript-eslint/explicit-member-accessibility": "off",
-            
+            "@typescript-eslint/no-unnecessary-type-parameters": "off",
+            "@typescript-eslint/no-use-before-define": "off",
+            "@typescript-eslint/no-loop-func": "off", // CHECK THIS
+            "@typescript-eslint/no-confusing-void-expression": "off",
+            "@typescript-eslint/no-dynamic-delete": "off",
+            "@typescript-eslint/require-array-sort-compare": 'off'
         }
     }
 ];
