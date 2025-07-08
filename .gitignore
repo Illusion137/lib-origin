@@ -12,3 +12,6 @@ scratch*
 scratch.**
 translate
 catids.txt
+*.m4a
+*.wav
+*.mp3

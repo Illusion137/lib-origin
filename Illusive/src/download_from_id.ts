@@ -21,15 +21,15 @@ export async function youtube_download_from_id(video_id: string, quality: string
             const av_info = (await Origin.YouTubeDL.get_info(video_id, ytdl_opts));
             if("error" in av_info) throw new Error(av_info.error as string);
             const av_format = Origin.YouTubeDL.choose_format(av_info.info, ytdl_opts);
+            console.log(av_info.info.formats);
+            console.log(av_format);
             if(Prefs.get_pref('force_youtube_18_quality'))
                 return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
-            // const status_fetch = await fetch(av_format.url);
-            // console.log("fetch");
-            // if(!status_fetch.ok) {
-            //     console.log("18f");
-            //     const av_format_18 = Origin.YouTubeDL.choose_format(av_info.info, {...ytdl_opts, quality: "18"});
-            //     return {url: av_format_18.url, metadata: youtube_info_metadata(av_info.info)};
-            // }
+            const status_fetch = await fetch(av_format.url);
+            if(!status_fetch.ok) {
+                const av_format_18 = Origin.YouTubeDL.choose_format(av_info.info, {...ytdl_opts, quality: "18"});
+                return {url: av_format_18.url, metadata: youtube_info_metadata(av_info.info)};
+            }
             return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
         } catch (error) {
             const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');

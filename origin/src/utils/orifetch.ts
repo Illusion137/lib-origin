@@ -1,6 +1,7 @@
 import type { AxiosError } from "axios";
 import axios from "axios";
 import { Proxy } from "../proxy/proxy";
+import { generror } from "./util";
 
 let timeout_ms = 0;
 let stack = 0;
@@ -49,7 +50,7 @@ export default async function fetch(input: string, init?: RequestInit & {proxy?:
             ok: false,
             status: error.response?.status ?? 500,
             statusText: error.response?.statusText ?? error.message,
-            json: async () => ({error: new Error(error.message)}),
+            json: async () => (generror(error.message)),
             text: async () => error.message,
             body: undefined as any,
             headers: error.response?.headers as any,

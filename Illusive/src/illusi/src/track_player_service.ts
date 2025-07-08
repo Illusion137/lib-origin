@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
+ 
 import type {
     AddTrack} from 'react-native-track-player';
 import TrackPlayer, {
@@ -22,6 +22,7 @@ import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLTracks from './sql/sql_tracks';
 import { artist_string } from '../../illusive_utilts';
 import { sample } from './sampler';
+import { IllusiIcons } from './illusi_icons';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -82,7 +83,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         artist: artist_string(track),
         album: track.album?.name,
         duration: track.duration,
-        artwork: typeof (track.playback!.artwork) === "number" ? track.playback!.artwork as unknown as string : track.playback!.artwork.uri,
+        artwork: typeof (track.playback!.artwork) === "number" ? track.playback!.artwork as unknown as string : typeof (track.playback!.artwork) === "string" ? IllusiIcons.icon_map[track.playback!.artwork] : track.playback!.artwork.uri,
         pitchAlgorithm: PitchAlgorithm.Linear,
         type: is_empty(track.soundcloud_id) ? TrackType.Default : TrackType.HLS,
         headers: {},

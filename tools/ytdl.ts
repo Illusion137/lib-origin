@@ -1,10 +1,10 @@
-import { YouTubeDL } from "../origin/src";
+import * as Origin from "../origin/src";
 import { spawn } from 'child_process';
 
 const output_folder = "/Users/illusion/ytdl_out/";
 const url = process.argv[2];
 
-YouTubeDL.ytdl(url, {quality: '18', playerClients: ["WEB", "IOS", "ANDROID", "TV"]}).then(av_result => {
+Origin.YouTubeDL.ytdl(url, {quality: '18', playerClients: ["WEB", "IOS", "ANDROID", "TV"]}).then(av_result => {
     const args = [
         '-y',
         '-i',

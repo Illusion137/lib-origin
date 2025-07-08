@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
 import type { CookieJar } from "../utils/cookie_util";
 import type { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, is_empty, json_catch, parse_runs, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import { encode_params, eval_json, extract_string_from_pattern, generror, generror_fetch, google_query, is_empty, json_catch, parse_runs, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
 import type { CreatePlaylist } from "../youtube/types/CreatePlaylist";
 import type { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
 import type { ArtistResults_1 } from './types/ArtistResults_1';
@@ -199,7 +199,7 @@ export namespace YouTubeMusic {
 		};
 	}
     async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false): PromiseResult<Response> {
-        // if (opts.cookie_jar === undefined) return { error: new Error("CookieJar is empty") };
+        // if (opts.cookie_jar === undefined) return generror("YouTube Music post_check_response CookieJar is empty");
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
@@ -229,7 +229,7 @@ export namespace YouTubeMusic {
 	}
 	export async function get_only_artist_tracks(opts: Opts, artist_response: ICFGData<ReturnType<typeof Parser.parse_artist_contents>>) {
 		const music_shelf_renderer_endpoint_id: string|undefined = artist_response.data.top_shelf?.bottomEndpoint?.browseEndpoint?.browseId?.replace("VL", "");
-		if(music_shelf_renderer_endpoint_id === undefined) return {error: new Error("Unable to fetch Artist Tracks")}; 
+		if(music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", {opts}); 
 		const playlist_response = await get_playlist(opts, music_shelf_renderer_endpoint_id);
 		return playlist_response;
 	}
@@ -260,7 +260,7 @@ export namespace YouTubeMusic {
 		if ("error" in browse_response) return browse_response;
 		const browse_data: ArtistResults_1 = await browse_response.json();
 		if(browse_data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items === undefined) {
-			return {error: new Error("YouTube Music Only Artist Albums: couldn't find albums")}
+			return generror("YouTube Music Only Artist Albums: couldn't find albums", {opts, artist_id});
 		}
 		return {
 			title: parse_runs(browse_data.header.musicHeaderRenderer.title.runs),
@@ -273,7 +273,7 @@ export namespace YouTubeMusic {
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://music.youtube.com/search?q=${google_query(search_query)}`, Parser.parse_search_contents); }
 	export async function new_releases_albums(opts: Opts): PromiseICFGData<typeof Parser.parse_new_releases_albums> { return await parse_initial(opts, `https://music.youtube.com/new_releases/albums`, Parser.parse_new_releases_albums); }
 	export async function search_mode(opts: Opts, endpoint: Endpoint, ytcfg: YTCFG) {
-		if (endpoint === undefined) return { error: new Error("Endpoint Undefined") };
+		if (endpoint === undefined) return generror("YouTube Music Search Mode Endpoint undefined", {opts});
 		const payload = endpoint;
 		const search_response = await post_check_response(opts, ytcfg, "search?prettyPrint=false", payload);
 		if ("error" in search_response) return search_response;
@@ -320,7 +320,7 @@ export namespace YouTubeMusic {
 		const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
 		const browse_data = await browse_response.json() as InitialData|YTError;
-        if("error" in browse_data) return {error: new Error(browse_data.error.message)};
+        if("error" in browse_data) return generror(browse_data.error.message);
 		return {
 			icfg,
 			data: Parser.parse_library_contents(browse_data)
@@ -377,7 +377,7 @@ export namespace YouTubeMusic {
 		}
 		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
 		if ("error" in response) return response;
-		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
+		if (!response.ok) return generror_fetch(response, 'Failed to create YouTube Music playlist', opts, {title, privacy});
 		return await response.json() as CreatePlaylist;
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {

@@ -1,4 +1,4 @@
-import type { Proxy } from "../../origin/src";
+import type * as Origin from "../../origin/src";
 import type { CookieJar } from "../../origin/src/utils/cookie_util"
 import type { ResponseError} from "../../origin/src/utils/types";
 import { TimedCache } from "../../origin/src/utils/types"
@@ -20,7 +20,7 @@ export interface ImageArtwork {
     uri: string
     cache: ArtworkCacheType
 }
-export type Artwork = ImageArtwork | number
+export type Artwork = ImageArtwork | string | number
 export type Promises = Promise<unknown>[]
 
 export interface Route<T> {"key": string, "name": string, "params": T, path: string}
@@ -380,13 +380,12 @@ export interface CompactPlaylistsResult {"playlists": CompactPlaylist[], "error"
 export interface TrackMix { "tracks": Track[], "error"?: Error }
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
-
-export interface SearchOpts {limit?: number; proxy?: Proxy.Proxy}
-export interface ArtistOpts {proxy?: Proxy.Proxy}
+export interface SearchOpts {limit?: number; proxy?: Origin.Proxy.Proxy}
+export interface ArtistOpts {proxy?: Origin.Proxy.Proxy}
 
 const search_cache: TimedCache<string, MusicSearchResponse> = new TimedCache<string, MusicSearchResponse>(Constants.playlist_cache_duration_seconds * 1000);
 export class MusicService {
-    app_icon: string | number
+    app_icon: string
     web_view_url?: string
     pref_cookie_jar?: Prefs.PrefOptions
     link_text: string
@@ -409,7 +408,7 @@ export class MusicService {
     get_new_releases?: () => Promise<CompactPlaylist[]>
     get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>
     constructor(s: {
-        app_icon: string | number,
+        app_icon: string,
         web_view_url?: string,
         pref_cookie_jar?: Prefs.PrefOptions
         link_text: string,

@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 export namespace Config {
     export const dotenv: typeof process.env & {
         APPLICATION_ID: string,

@@ -22,8 +22,8 @@ export function encode_params(data: Record<string, unknown>, query?: [string, st
 export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
 export function extract_string_from_pattern(str: string, pattern: RegExp) {
 	const body_groups = pattern.exec(str);
-	if(body_groups === null) return {error: new Error(`Unable to extract pattern NULL found`)} ;
-	if(body_groups.length < 2) return {error: new Error(`Unable to extract pattern Not sufficient groups`)};
+	if(body_groups === null) return generror('Unable to extract pattern NULL found');
+	if(body_groups.length < 2) return generror('Unable to extract pattern Not sufficient groups');
 	const extracted = body_groups[1];
 	return extracted;
 }
@@ -131,7 +131,7 @@ export function args_prettystring(args: object, indent = 2){
 	let str = '{\n';
 	const keys = Object.keys(args);
 	for(const key of keys){
-		str +=  `${new Array(indent).fill(' ').join('')}${key}: ${args[key]}\n`;
+		str +=  `${new Array(indent).fill(' ').join('')}${key}: ${JSON.stringify(args[key])}\n`;
 	}
 	str += '}'
 	return str;
@@ -140,7 +140,7 @@ export function generror(msg: string, args: object = {}): ResponseError{
 	return {error: new Error(`${msg}\n : args${args_prettystring(args)}`)};
 }
 export function generror_fetch(response: Response, msg: string, maybe_jar?: {cookie_jar?: CookieJar}, args: object = {}): ResponseError{
-	return generror(`${msg};\n Response failed with status code ${response.status} : "${response.statusText}"${maybe_jar?.cookie_jar !== undefined ? " [Using Cookies]" : ""}`, args);
+	return generror(`${msg};\n Response failed with status code ${response.status}(${status_codes_descriptions[response.status]}) : "${response.statusText}"${maybe_jar?.cookie_jar !== undefined ? " [Using Cookies]" : ""}`, args);
 }
 
 export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
@@ -221,6 +221,7 @@ export function base_response_fail_msg(response: Response){
 import type { RequestInit } from 'node-fetch';
 import type { YTCFG } from '../youtube/types/YTCFG';
 import type { CookieJar } from './cookie_util';
+import { status_codes_descriptions } from './status_codes';
 
 export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
     // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);

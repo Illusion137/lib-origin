@@ -9,7 +9,7 @@ import { alert_error } from './alert';
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [
         {text: "Cancel", onPress: () => {return}},
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+         
         {text: "OK", onPress: on_press, style: "destructive" }
     ])
 }

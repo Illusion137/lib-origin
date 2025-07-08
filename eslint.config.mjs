@@ -55,11 +55,15 @@ export default [
                     "format": ["snake_case"]
                 },
                 {
-                    "selector": "variable",
+                    "selector": ["variable", "classProperty"],
                     "format": ["snake_case", "UPPER_CASE"],
                     "leadingUnderscore": "allow"
                 },
-
+                {
+                    "selector": "function",
+                    "format": ["snake_case"],
+                    "leadingUnderscore": "allow"
+                },
                 {
                     "selector": "typeLike",
                     "format": ["PascalCase"],
@@ -92,7 +96,9 @@ export default [
             "@typescript-eslint/no-loop-func": "off", // CHECK THIS
             "@typescript-eslint/no-confusing-void-expression": "off",
             "@typescript-eslint/no-dynamic-delete": "off",
-            "@typescript-eslint/require-array-sort-compare": 'off'
+            "@typescript-eslint/require-array-sort-compare": "off",
+            "@typescript-eslint/class-methods-use-this": "off",
+            "@typescript-eslint/no-misused-promises": "off"
         }
     }
 ];

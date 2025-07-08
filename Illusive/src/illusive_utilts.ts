@@ -45,7 +45,7 @@ export function duration_to_string(track_duration: number): {left: number, durat
         const minutes = Math.floor(track_duration / 60);
         const seconds = Math.floor(track_duration % 60);
         return {left: 50, duration: `${String(minutes)}:${String(seconds).padStart(2,'0')}`};
-    } else return {left: 58, duration: String(track_duration).padStart(2,'0')};
+    } else return {left: 50, duration: `0:${String(track_duration).padStart(2,'0')}`};
 }
 export function playlist_duration_to_string(playlist_duration: number): string {
     if(playlist_duration/3600 >= 1)

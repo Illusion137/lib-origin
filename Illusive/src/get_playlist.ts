@@ -4,7 +4,7 @@ import type { Album } from '../../origin/src/spotify/types/Album';
 import type { Collection } from '../../origin/src/spotify/types/Collection';
 import type { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
 import type { ResponseError } from '../../origin/src/utils/types';
-import { get_main_key, is_empty, make_topic, parse_runs, urlid } from '../../origin/src/utils/util';
+import { generror, get_main_key, is_empty, make_topic, parse_runs, urlid } from '../../origin/src/utils/util';
 import { parse_playlist_continuation_contents } from '../../origin/src/youtube/parser';
 import type * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
 import type * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
@@ -44,7 +44,7 @@ export async function youtube_get_playlist(url: string): Promise<MusicServicePla
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_playlist({cookie_jar}, url);
     if("error" in playlist_response) return default_playlist(playlist_response);
-    if(playlist_response.data.playlist_data === undefined) return default_playlist({error: new Error("playlist_data is undefined")});
+    if(playlist_response.data.playlist_data === undefined) return default_playlist(generror("YouTube playlist_data is undefined", {url}));
     return {
         ...youtube_parse_playlist_header(playlist_response.data.playlist_data),
         tracks: youtube_parse_videos(playlist_response.data.tracks),
@@ -157,7 +157,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
         case "collection": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client, limit: playlist_limit}); break;
         default: return {title: "", tracks: [], continuation: null};
     }
-    if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: [{error: new Error("playlist_response is undefined")}]};
+    if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: [generror("Spotify playlist_response is undefined", {url, playlist_limit, playlist_type})]};
     if((typeof playlist_response === "object" && "error" in playlist_response)) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
     if("playlistV2" in playlist_response.data) {
         return {

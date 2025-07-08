@@ -1,5 +1,5 @@
 import type { PromiseResult, ResponseError } from "../utils/types";
-import { eval_json, extract_string_from_pattern, json_catch, try_json_parse } from "../utils/util";
+import { eval_json, extract_string_from_pattern, generror, generror_fetch, json_catch, try_json_parse } from "../utils/util";
 import type { Children, LyricsPreloadedState } from "./types/Lyrics";
 import type { Result, Search } from "./types/Search";
 
@@ -24,11 +24,11 @@ export namespace Genius {
             body: null,
             method: "GET"
         });
-        if (!search_response.ok) return { error: new Error(String(search_response.status)) };
+        if (!search_response.ok) return generror_fetch(search_response, "Failed to search Genius", {}, {query});
         const search_result: Search|ResponseError = await search_response.json().catch(json_catch);
         if("error" in search_result) return search_result;
         const song_hits = search_result.response.sections.find(item => item.type === "song");
-        if (song_hits === undefined) return { error: new Error("song_hits doesn't exist") };
+        if (song_hits === undefined) return generror("Genius search song_hits doesn't exist");
         return song_hits.hits;
     }
     const lyrics_fail_message = "Failed to fetch lyrics for song";
@@ -55,13 +55,13 @@ export namespace Genius {
                 body: null,
                 method: "GET"
             });
-            if(!lyric_response.ok) return {error: new Error(lyrics_fail_message)};
+            if(!lyric_response.ok) return generror_fetch(lyric_response, lyrics_fail_message, {}, {path: search_result.path});
             const html: string = await lyric_response.text();
             const extract_preloaded_state = /window\.__PRELOADED_STATE__ ?= ?JSON.parse\(('.+?')\);/gis;
             const preloaded_state_string = extract_string_from_pattern(html, extract_preloaded_state);
-            if(typeof preloaded_state_string === 'object') return {error: new Error(lyrics_fail_message)};
+            if(typeof preloaded_state_string === 'object') return generror(lyrics_fail_message, {path: search_result.path});
             const preloaded_state = try_json_parse<LyricsPreloadedState>(eval_json<string>(preloaded_state_string));
-            if("error" in preloaded_state) return {error: new Error(lyrics_fail_message)};
+            if("error" in preloaded_state) return generror(lyrics_fail_message, {path: search_result.path});
             const all_strings: string[][] = [];
             const initial_children: Children[] = preloaded_state.songPage.lyricsData.body.children as unknown as Children[];
             function recursive_parse(child: Children|string, collected: string[]): string[]{
@@ -79,7 +79,7 @@ export namespace Genius {
             return all_strings.flat().join('');
         }
         catch(e){
-            return {error: new Error(lyrics_no_continue_fail_message)};
+            return generror(lyrics_no_continue_fail_message);
         }
     }
 }

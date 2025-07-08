@@ -1,6 +1,10 @@
 {
   "scripts": {
     "test": "jest",
+    "build:osx": "sh ./scripts/build.sh",
+    "build:win": "powershell ./scripts/build.ps1",
+    "discord_dev:win": "@powershell ./Illusive/src/illusicord/build/discord_dev.ps1",
+    "discord:win": "@powershell ./Illusive/src/illusicord/build/discord_start.ps1",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
@@ -22,6 +26,8 @@
     "typescript-eslint": "^8.15.0"
   },
   "dependencies": {
+    "@discordjs/opus": "^0.10.0",
+    "@discordjs/voice": "^0.18.0",
     "@distube/ytdl-core": "^4.16.12",
     "@echogarden/macos-native-tts": "^0.1.0",
     "@expo/vector-icons": "^14.0.4",
@@ -73,6 +79,7 @@
     "fast-xml-parser": "^4.5.0",
     "ffmpeg-kit-react-native": "^6.0.2",
     "fuzzysort": "^3.1.0",
+    "get-audio-duration": "^4.0.1",
     "http-cookie-agent": "^7.0.1",
     "https-browserify": "^0.0.1",
     "https-proxy-agent": "^7.0.5",

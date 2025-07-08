@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
-/* eslint-disable @typescript-eslint/no-misused-promises */
+ 
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';

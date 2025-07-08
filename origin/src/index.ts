@@ -4,7 +4,7 @@ import { Genius } from "./genius/genius"
 import { Google } from "./google/google"
 import { ProIP } from "./musi/ip"
 import { Musi } from "./musi/musi"
-import type { Musixmatch } from "./musixmatch/musixmatch"
+// import { Musixmatch } from "./musixmatch/musixmatch"
 import { Proxy } from "./proxy/proxy"
 import { SoundCloudDL } from "./soundcloud/scdl"
 import { SoundCloud } from "./soundcloud/soundcloud"
@@ -12,7 +12,6 @@ import { Spotify } from "./spotify/spotify"
 import { YouTube } from "./youtube/youtube"
 import { YouTubeDL } from './youtube_dl/index'
 import { YouTubeMusic } from "./youtube_music/youtube_music"
-import type { Illusi } from "./illusi/illusi"
+// import { Illusi } from "./illusi/illusi"
 
-export type { Illusi, Musixmatch };
-export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, Google }
+export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, Google };
