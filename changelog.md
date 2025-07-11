@@ -1,3 +1,10 @@
+# Illusi 16.2.5
+  - Fixed misc track related bugs
+  - Fixed search related bugs
+  - Allows for query flags when in strict mode
+  - Allows for anti-query flags in autocomplete
+  - Playlist actions use filtered_tracks for context
+  - Added Search input clear button
 # Illusi 16.2.4
   - Fixed sprinkle in queue related bug
   - Fixed encoding for discord illusi integration

@@ -3,6 +3,7 @@ import { is_empty, remove_topic } from "../../origin/src/utils/util";
 import type { CompactArtist, CompactPlaylist, Playlist, QueryFlag, Track } from "./types";
 
 export const ANTI_QUERY_FLAG_PREFIX = '!';
+const UNTIL_FLAG_ARG_AMOUNT = 8;
 
 function artist_string(track_or_compact_playlist: Track|CompactPlaylist): string{
     if(is_empty(track_or_compact_playlist)) return "";
@@ -40,7 +41,10 @@ export function extract_query_flags<T>(query: string, QUERY_FLAGS: QueryFlag<T>[
             const is_antiflag: boolean = found_flag.includes(ANTI_QUERY_FLAG_PREFIX);
             const full_query_flag = QUERY_FLAGS.find(flag => flag.flag === found_flag.replace(ANTI_QUERY_FLAG_PREFIX, ''))!;
             const found_args: string[] = [];
-            for(let j = 0; j < (full_query_flag?.args ?? 0); j++){
+            const end_on_flag = full_query_flag?.args === -1;
+            const args_length = end_on_flag ? UNTIL_FLAG_ARG_AMOUNT : full_query_flag?.args ?? 0;
+            for(let j = 0; j < args_length; j++){
+                if(query_flags_flags.includes(words[i + 1])) break;
                 i++;
                 found_args.push(...words.splice(i--, 1));
             }
@@ -147,43 +151,43 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
     },
     {
         flag: '@eq',
-        args: 8,
+        args: -1,
         condition: (track, args) => included_in(args.join(' '), track.title) || included_in(args.join(' '), artist_string(track)) || (track.album?.name ? included_in(args.join(' '), track.album?.name) : false),
         description: "Strong Equals"
     },
     {
-        flag: '@titleeq',
-        args: 8,
+        flag: '@tteq',
+        args: -1,
         condition: (track, args) => included_in(args.join(' '), track.title),
         description: "Title Equals"
     },
     {
-        flag: '@titlefuzzy',
-        args: 8,
+        flag: '@ttfzy',
+        args: -1,
         condition: (track, args) => (fuzzysort.single(args.join(' '), track.title)?.score ?? 0) > 0.6,
         description: "Title Fuzzy Search"
     },
     {
         flag: '@arteq',
-        args: 8,
+        args: -1,
         condition: (track, args) => included_in(args.join(' '), artist_string(track)),
         description: "Artists Equals"
     },
     {
-        flag: '@artfuzzy',
-        args: 8,
+        flag: '@artfzy',
+        args: -1,
         condition: (track, args) => (fuzzysort.single(args.join(' '), artist_string(track))?.score ?? 0) > 0.6,
         description: "Artists Fuzzy Search"
     },
     {
         flag: '@albeq',
-        args: 8,
+        args: -1,
         condition: (track, args) => track.album?.name ? included_in(args.join(' '), track.album?.name) : false,
         description: "Album Equals"
     },
     {
-        flag: '@albfuzzy',
-        args: 8,
+        flag: '@albfzy',
+        args: -1,
         condition: (track, args) => track.album?.name ? (fuzzysort.single(args.join(' '), track.album?.name)?.score ?? 0) > 0.6  : false,
         description: "Album Fuzzy Search"
     },
@@ -281,7 +285,7 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
 export const PLAYLIST_QUERY_FLAGS: QueryFlag<Playlist>[] = [
     {
         flag: '@eq',
-        args: 8,
+        args: -1,
         condition: (playlist, args) => included_in(args.join(' '), playlist.title),
         description: "Strong Equals"
     },
@@ -315,7 +319,7 @@ export const PLAYLIST_QUERY_FLAGS: QueryFlag<Playlist>[] = [
 export const COMPACT_PLAYLIST_QUERY_FLAGS: QueryFlag<CompactPlaylist>[] = [
     {
         flag: '@eq',
-        args: 8,
+        args: -1,
         condition: (album, args) => included_in(args.join(' '), album.title.name) || included_in(args.join(' '), artist_string(album)),
         description: "Strong Equals"
     },
@@ -354,7 +358,7 @@ export const COMPACT_PLAYLIST_QUERY_FLAGS: QueryFlag<CompactPlaylist>[] = [
 export const COMPACT_ARTIST_QUERY_FLAGS: QueryFlag<CompactArtist>[] = [
     {
         flag: '@eq',
-        args: 8,
+        args: -1,
         condition: (artist, args) => included_in(args.join(' '), artist.name.name),
         description: "Strong Equals"
     },

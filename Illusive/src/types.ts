@@ -10,7 +10,7 @@ import type { Prefs } from "./prefs";
 type ArtworkCacheType = 'force-cache';
 
 export type SQLTables = "sqlite_master"
-    | "new_releases"
+    | "new_releases" | "artists"
     | "tracks" | "tracks_deleted" 
     | "recently_played_tracks" | "recently_played_tracks_deleted" 
     | "backpack" | "backpack_deleted" 
@@ -127,15 +127,11 @@ export interface Downloading {
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = {name: string, uuid: string, uri?: never} | {name: string, uuid?: never, uri: IllusiveURI|null};
 
-interface Basic_Artist<T, U> {
-    uuid: string
-    avatar_thumbnails: T
-    name: string
-    uris: U
-    verified?: boolean
+export interface SQLArtist {
+    uri: string;
+    name: string;
+    artwork_url: string;
 }
-export type SQLArtist = Basic_Artist<string, string>;
-export type Artist = Basic_Artist<IllusiveThumbnail[], IllusiveURI[]>;
 
 export type ExplicitMode = "NONE" | "EXPLICIT" | "CLEAN";
 interface Basic_Album<T, U, V> {
