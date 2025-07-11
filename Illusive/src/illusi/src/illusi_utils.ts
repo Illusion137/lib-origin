@@ -3,8 +3,9 @@ import * as Sharing from 'expo-sharing';
 import type { GestureResponderEvent } from "react-native";
 import { Alert } from "react-native";
 import type BigList from 'react-native-big-list';
-import type { AlphabetScroll } from '../../types';
+import type { AlphabetScroll, Artwork, ImageArtwork } from '../../types';
 import { alert_error } from './alert';
+import { IllusiIcons } from '../../illusi_icons';
 
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [
@@ -51,4 +52,10 @@ export async function share_item(item: {link: string}|{uri: string}) {
     if("link" in item)
         await Sharing.shareAsync(item.link);
     else await Sharing.shareAsync(item.uri, { UTI });
+}
+
+export function resolved_artwork(artwork: Artwork): ImageArtwork{
+    if(typeof artwork === "number") return IllusiIcons.icon_map[artwork] as any as ImageArtwork;
+    else if(typeof artwork === "string") return {uri: artwork, cache: 'force-cache'};
+    else return artwork;
 }

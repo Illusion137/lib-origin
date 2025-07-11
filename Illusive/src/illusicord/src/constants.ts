@@ -8,7 +8,7 @@ export namespace Constants {
         leaveOnEnd: true,
         leaveOnStop: true,
         timeout: 1,
-        yt_quality: "140",
+        yt_quality: "18",
         localAddress: ''
     }
     export const SETTINGS_PREFIX = '!';

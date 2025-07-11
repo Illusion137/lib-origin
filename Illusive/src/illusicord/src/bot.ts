@@ -5,7 +5,7 @@ import { Player } from "./player/player";
 
 const client: DiscordClient = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.MessageContent]
-}) as DiscordClient;
+}) as any;
 
 const player = new Player(client, {
     leaveOnEnd: false,

@@ -39,6 +39,7 @@ export namespace Spotify {
 
     interface Opts { cookie_jar?: CookieJar, client?: Client, proxy?: Proxy.Proxy }
     const client_cache = { client: null as Client | null, enabled: true };
+    const TOTP_VERSION = "10";
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
     export function client_cache_full() { return client_cache.enabled && client_cache.client !== null }
@@ -95,8 +96,15 @@ export namespace Spotify {
         return Secret.fromHex(buffer_token);
     }
 
+    // async function generate_secure_hex_token(num_bytes: number) {
+    //     const random_bytes = new Uint8Array(num_bytes);
+    //     window.crypto.getRandomValues(random_bytes);
+    //     return Array.from(random_bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    // }
+
     //https://github.com/hmes98318/LavaShark/blob/0125cf31ba8f9f9f6ce6dec9e2003519a7a6b55e/src/lib/sources/Spotify.ts#L294
     //https://github.com/iTsMaaT/discord-player-spotify/blob/master/src/internal/spotify.ts
+    //https://github.com/misiektoja/spotify_monitor/blob/15273d2c75486798ad092e6c8bab29324ef61922/spotify_monitor.py#L1250
     export async function get_client(url: string, cookie_jar: (CookieJar | undefined) = undefined): Promise<Client | ResponseError> {
         try {
             if (client_cache_full()) return client_cache.client!;
@@ -134,9 +142,17 @@ export namespace Spotify {
 
             remote_config;
 
-            const ctime = new Date().getTime();
+            // const ctime = new Date().getTime();
 
-            const token = calculate_token([12, 56, 76, 33, 88, 44, 88, 33, 78, 78, 11, 66, 22, 22, 55, 69, 54]);
+            const secret_cipher_dict = {
+                "10": [61, 110, 58, 98, 35, 79, 117, 69, 102, 72, 92, 102, 69, 93, 41, 101, 42, 75],
+                "9": [109, 101, 90, 99, 66, 92, 116, 108, 85, 70, 86, 49, 68, 54, 87, 50, 72, 121, 52, 64, 57, 43, 36, 81, 97, 72, 53, 41, 78, 56],
+                "8": [37, 84, 32, 76, 87, 90, 87, 47, 13, 75, 48, 54, 44, 28, 19, 21, 22],
+                "7": [59, 91, 66, 74, 30, 66, 74, 38, 46, 50, 72, 61, 44, 71, 86, 39, 89],
+                "6": [21, 24, 85, 46, 48, 35, 33, 8, 11, 63, 76, 12, 55, 77, 14, 7, 54],
+                "5": [12, 56, 76, 33, 88, 44, 88, 33, 78, 78, 11, 66, 22, 22, 55, 69, 54],
+            };
+            const token = calculate_token(secret_cipher_dict[TOTP_VERSION]);
 
             const totp = new TOTP({
                 secret: token,
@@ -145,23 +161,30 @@ export namespace Spotify {
                 algorithm: "SHA1",
             });
     
+            const server_time = app_server_config.serverTime * 1e3;
+
             const totp_server = totp.generate({
-                timestamp: app_server_config.serverTime * 1e3,
+                timestamp: server_time,
             });
-            const totp_client = totp.generate({
-                timestamp: ctime,
-            });
+            // const totp_client = totp.generate({
+            //     timestamp: ctime,
+            // });
+
+            // function time_strftime(time: number){
+            //     const date = new Date(time);
+            //     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+            // }
 
             const params = {
-                "reason": "init",
+                "reason": "transport",
                 "productType": "web-player",
-                "totp": totp_client, // Must get this through some more bullshit >:0
+                "totp": totp_server, // Must get this through some more bullshit >:0
                 "totpServer": totp_server, // Must get this through some more bullshit >:0
-                "totpVer": "5",
-                "buildVer": "unknown",
-                "buildDate": "unknown",
-                "sTime": String(app_server_config.serverTime),
-                "cTime": String(ctime),
+                "totpVer": TOTP_VERSION,
+                // "buildDate": time_strftime(app_server_config.serverTime),
+                // "buildVer": `web-player_${time_strftime(app_server_config.serverTime)}_${server_time * 1000}_${await generate_secure_hex_token(4)}`,
+                // "sTime": String(server_time),
+                // "cTime": String(ctime),
             };
 
             // if(params) return {error: new Error()};
