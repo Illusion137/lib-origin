@@ -1,8 +1,9 @@
-import type { TranslationMap } from "./types";
+import type { TranslationMap } from "./types/types";
 import type { RozContent, RozTextStructures, RozTextStructureType } from "./types/roz";
+import { gen_uuid } from "../../origin/src/utils/util";
 
 function html_inner_text_content(html_line: string) {
-    return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
+    return fix_punctuation(html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim());
 }
 function html_img_src(html_line: string) {
     return (/<img.+?src="(.+?)"/.exec(html_line) as RegExpExecArray)?.[1]?.trim();
@@ -31,17 +32,17 @@ export function html_to_roz_content(html_content: string){
         const type: HTMLClass = (extract_type_regex.exec(xhtml_lines[line]) as RegExpExecArray)[1] as HTMLClass;
         switch (type) {
             case 'img':
-                content.push({ type: "IMAGE", content: html_img_src(xhtml_lines[line]) }); break;
+                content.push({ type: "IMAGE", content: html_img_src(xhtml_lines[line]), uuid: gen_uuid()}); break;
             case 'p':
-                content.push({ type: "PARAGRAPH", content: html_inner_text_content(xhtml_lines[line]) }); break;
+                content.push({ type: "PARAGRAPH", content: html_inner_text_content(xhtml_lines[line]), uuid: gen_uuid()}); break;
             case 'h1':
-                content.push({ type: "CHAPTER_TITLE", content: html_inner_text_content(xhtml_lines[line]) }); break;
+                content.push({ type: "CHAPTER_TITLE", content: html_inner_text_content(xhtml_lines[line]), uuid: gen_uuid()}); break;
             case 'h2':
-                content.push({ type: "CHAPTER_SUBTITLE", content: html_inner_text_content(xhtml_lines[line]) }); break;
+                content.push({ type: "CHAPTER_SUBTITLE", content: html_inner_text_content(xhtml_lines[line]), uuid: gen_uuid()}); break;
             case 'br/':
-                content.push({ type: "LINE_BREAK", content: "-"}); break;
+                content.push({ type: "LINE_BREAK", content: "-", uuid: gen_uuid()}); break;
             case 'hr/':
-                content.push({ type: "THEME_BREAK", content: "-"}); break;
+                content.push({ type: "THEME_BREAK", content: "-", uuid: gen_uuid()}); break;
             case 'div': break;
             // default: console.error(type, ": ", xhtml_lines[line]);
         }
@@ -55,6 +56,15 @@ export function clean_html_text(text: string) {
 
 export function remove_tags(text: string){
     return text.replace(/<.+?>/g, '').trim();
+}
+
+export function fix_punctuation(text: string){
+    return text.replace(/(”|“)/g, "\"")
+                .replace(/’/g, '\'')
+                .replace(/``/g, '"')
+                .replace(/ ?… ?/g, '...')
+                .replace(/ ?\.\.\. ?/g, '...')
+                .replace(/''/g, '"');
 }
 
 export function generate_text_structure(text: string): RozTextStructures{
@@ -96,6 +106,19 @@ export function run_translation_map(text: string, translation_map: TranslationMa
         text = text.replace(translation_line.from, `$1${translation_line.to}$4`);
     }
     return text;
+}
+
+export function timestamp_to_string(t_seconds: number) {
+    const hours = Math.floor(t_seconds / 3600);
+    const minutes = Math.floor((t_seconds - hours * 3600) / 60);
+    const seconds = t_seconds - hours * 3600 - minutes * 60;
+    return (
+        String(Math.floor(hours)).padStart(2, "0") +
+        ":" +
+        String(Math.floor(minutes)).padStart(2, "0") +
+        ":" +
+        String(Math.floor(seconds)).padStart(2, "0")
+    );
 }
 
 // export function generate_table_of_contents(roz: Roz): RozTableOfContents{

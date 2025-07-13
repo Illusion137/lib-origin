@@ -6,6 +6,7 @@ import { request } from 'http';
 import fs from 'fs';
 import uuid from "react-native-uuid";
 import { html_to_roz_content } from './utils';
+import { gen_uuid } from '../../origin/src/utils/util';
 
 export namespace FileParser {
     function is_url(test_url: string): boolean {
@@ -47,7 +48,7 @@ export namespace FileParser {
                 contents: html_to_roz_content(section.contents)
                     .map(async(parsed): Promise<ReturnType<typeof html_to_roz_content>[0]> => 
                         parsed.type === "IMAGE" ? 
-                            {type: parsed.type, content: (await epub_get_image_base64(epub, parsed.content)) } 
+                            {type: parsed.type, content: (await epub_get_image_base64(epub, parsed.content)), uuid: parsed.uuid} 
                             : parsed), 
                 chapter: {
                     id: section.chapter.id,
@@ -64,51 +65,50 @@ export namespace FileParser {
         }
 
         return {
+            uuid: gen_uuid(),
             source_file: file_path_or_url,
             source_file_type: "EPUB",
             title: epub.metadata.title ?? "Unknown EPub",
-            author: epub.metadata.creator,
-            publisher: epub.metadata.publisher,
-            date: epub.metadata.date,
-            cover: roz_sections.map(item => item.contents).flat().find(item => item.type === "IMAGE")?.content,
-            series: {
-                name: "",
-                no: 0,
-            },
+            author: epub.metadata.creator ?? null,
+            publisher: epub.metadata.publisher ?? null,
+            date: epub.metadata.date ?? null,
+            cover: roz_sections.map(item => item.contents).flat().find(item => item.type === "IMAGE")?.content ?? null,
+            series_name: null,
+            series_no: null,
             content: roz_sections
         }
     }
 
     export async function parse_pdf(file_path_or_url: string, opts: {
         pdf_start_page: number;
-        pdf_margin: [number, number];
-    }): Promise<Roz> {
+        pdf_end_page?: number;
+        pdf_margin_inches: [number, number];
+    }): Promise<string> {
         file_path_or_url = await transform_url_to_path(file_path_or_url, ".pdf");
         let rtxt_content = "";
         const parser = new Pdfparser();
         const promise = new Promise((resolve) => {parser.on("pdfParser_dataReady", (data) => {
-            for(const page of data.Pages.slice(opts.pdf_start_page)){
+            for(const page of data.Pages.slice(opts.pdf_start_page, opts.pdf_end_page)){
+                console.log(JSON.stringify(page));
                 for (const t of page.Texts) {
                     for (const r of t.R) {
-                        if (t.y > opts.pdf_margin[0] && t.y < opts.pdf_margin[1]) {
+                        if (t.y > opts.pdf_margin_inches[0] && t.y < opts.pdf_margin_inches[1]) {
                             const txt = decodeURIComponent(r.T)
                             // rtxt
                             if(txt === null){
-                                // rtxt_content += chapter_break();
+                                rtxt_content += '\n';
                             }
                             rtxt_content += txt + '\r\n';
                         }
                     }
                 }
             }
-            fs.writeFileSync("temp/docs/pdf.json", JSON.stringify(data));
             resolve(0);
             });
         });
         await parser.loadPDF(file_path_or_url);
         await promise;
-        return undefined as any;
-        // return rtxt_content;
+        return rtxt_content;
     }
 
     export async function parse_txt(file_path_or_url: string){

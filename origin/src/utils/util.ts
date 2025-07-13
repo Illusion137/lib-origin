@@ -1,6 +1,13 @@
 import * as sha1 from 'sha1-uint8array'
 import type { ResponseError } from './types';
+import type { YTCFG } from '../youtube/types/YTCFG';
+import type { CookieJar } from './cookie_util';
+import { status_codes_descriptions } from './status_codes';
+import uuid from 'react-native-uuid';
 
+export function gen_uuid(): string{
+    return uuid.v4();
+}
 export function decode_hex(hex: string) {
 	return hex.replace(/\\x22/g, '"').replace(/\\x7b/g, '{').replace(/\\x7d/g, '}').replace(/\\x5b/g, '[').replace(/\\x5d/g, ']').replace(/\\x3b/g, ';').replace(/\\x3d/g, '=').replace(/\\x27/g, '\'').replace(/\\\\/g, 'doubleAntiSlash').replace(/\\/g, '').replace(/doubleAntiSlash/g, '\\')
 }
@@ -216,14 +223,4 @@ export function safe_date_iso(date: Date): string{
 }
 export function base_response_fail_msg(response: Response){
 	return `response failed to ${response.url} with status code: ${response.status}; msg: ${response.statusText}`;
-}
-
-import type { RequestInit } from 'node-fetch';
-import type { YTCFG } from '../youtube/types/YTCFG';
-import type { CookieJar } from './cookie_util';
-import { status_codes_descriptions } from './status_codes';
-
-export function proxy_agent(_: { ip: string; port: number }): RequestInit['agent'] {
-    // return new HttpsProxyAgent(`https://${proxy.ip}:${proxy.port}`);
-    return undefined;
 }
