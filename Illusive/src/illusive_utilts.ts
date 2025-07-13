@@ -1,4 +1,4 @@
-import { extract_string_from_pattern, is_empty, remove, remove_topic, urlid } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, is_empty, milliseconds_of, remove, remove_topic, urlid } from "../../origin/src/utils/util";
 import type { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
@@ -109,17 +109,20 @@ export function get_most_played_artists(global_tracks: Track[]){
         .map(track => track.artists[0]);
 }
 export function sort_compact_artists_by_most_played(artists: NamedUUID[], global_tracks: Track[]): CompactArtist[]{
-    const name_plays: [string, number][] = global_tracks.map(track => [track.artists[0].name, track.meta?.plays ?? 0]);
+    const name_plays: [string, number][] = global_tracks.map(track => [remove_topic(track.artists[0].name), track.meta?.plays ?? 0]);
     const name_plays_map = new Map<string, number>();
     for(const name_play of name_plays){
         name_plays_map.set(name_play[0], (name_plays_map.get(name_play[0]) ?? 0) + name_play[1]);
     }
-    return artists.slice().sort((a,b) => (name_plays_map.get(b?.name ?? "") ?? 0) - (name_plays_map.get(a?.name ?? "") ?? 0)).map(nammed_uuid_to_compact_artist);
+    return artists.slice().sort((a,b) => (name_plays_map.get(remove_topic(b?.name ?? "")) ?? 0) - (name_plays_map.get(remove_topic(a?.name ?? "")) ?? 0)).map(nammed_uuid_to_compact_artist);
 }
 export function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[]{
-    const most_played_artists = get_most_played_artists(global_tracks);
-    const most_played_artists_uris = new Map<string, number>(most_played_artists.map((artist, i) => [artist.uri ?? "", most_played_artists.length - (artist.uri ? i : 0)]));
-    return albums.slice().sort((a, b) => (most_played_artists_uris.get(b.artist?.[0]?.uri ?? "") ?? 0) - (most_played_artists_uris.get(a.artist?.[0]?.uri ?? "") ?? 0));
+    const name_plays: [string, number][] = global_tracks.map(track => [remove_topic(track.artists[0].name), track.meta?.plays ?? 0]);
+    const name_plays_map = new Map<string, number>();
+    for(const name_play of name_plays){
+        name_plays_map.set(name_play[0], (name_plays_map.get(name_play[0]) ?? 0) + name_play[1]);
+    }
+    return albums.slice().sort((a, b) => (name_plays_map.get(remove_topic(b.artist?.[0]?.name ?? "")) ?? 0) - (name_plays_map.get(remove_topic( a.artist?.[0]?.name ?? "")) ?? 0));
 }
 export function nammed_uuid_to_compact_artist(artist: NamedUUID): CompactArtist{
     return ({name: artist, is_official_artist_channel: true, profile_artwork_url: 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg'});
@@ -214,6 +217,7 @@ export function track_query_filter(tracks: Track[], query?: string): Track[] {
         {
             all: false,
             keys: ['title', (obj) => artist_string(obj), (obj) => obj.album?.name ?? "---------"],
+            threshold: Prefs.get_pref('fuzzy_search_threshold') / 100,
             scoreFn: r => r.score * times_played_multiplier(r.obj.meta?.plays ?? 0, max_plays) * time_since_last_played_multiplier(r.obj.meta?.last_played_date ? new Date(r.obj.meta.last_played_date) : new Date()),
         }
     ).map(r => r.obj);
@@ -233,6 +237,7 @@ export function playlist_query_filter(playlists: Playlist[], query?: string) {
         playlists,
         {
             all: false,
+            threshold: Prefs.get_pref('fuzzy_search_threshold') / 100,
             keys: [(obj) => obj.title, (obj) => obj.description ?? "---------"]
         }
     ).map(r => r.obj);
@@ -252,6 +257,7 @@ export function album_query_filter(compact_playlists: CompactPlaylist[], query?:
         compact_playlists,
         {
             all: false,
+            threshold: Prefs.get_pref('fuzzy_search_threshold') / 100,
             keys: [(obj) => obj.title.name, (obj) => artist_string(obj)]
         }
     ).map(r => r.obj);
@@ -271,6 +277,7 @@ export function artist_query_filter(compact_artists: CompactArtist[], query?: st
         compact_artists,
         {
             all: false,
+            threshold: Prefs.get_pref('fuzzy_search_threshold') / 100,
             keys: [(obj) => obj.name.name]
         }
     ).map(r => r.obj);
@@ -486,13 +493,13 @@ export function music_service_track_primary_key(type: MusicServiceType): keyof T
 }
 
 export function track_primary_key(track: Track): keyof Track{
-    if(is_empty(track.youtube_id)) return 'youtube_id';
-    if(is_empty(track.soundcloud_id)) return 'soundcloud_id';
-    if(is_empty(track.spotify_id)) return 'spotify_id';
-    if(is_empty(track.applemusic_id)) return 'applemusic_id';
-    if(is_empty(track.youtubemusic_id)) return 'youtube_id';
-    if(is_empty(track.amazonmusic_id)) return 'amazonmusic_id';
-    if(is_empty(track.imported_id)) return 'imported_id';
+    if(!is_empty(track.youtube_id)) return 'youtube_id';
+    if(!is_empty(track.soundcloud_id)) return 'soundcloud_id';
+    if(!is_empty(track.spotify_id)) return 'spotify_id';
+    if(!is_empty(track.applemusic_id)) return 'applemusic_id';
+    if(!is_empty(track.youtubemusic_id)) return 'youtube_id';
+    if(!is_empty(track.amazonmusic_id)) return 'amazonmusic_id';
+    if(!is_empty(track.imported_id)) return 'imported_id';
     return 'illusi_id';
 }
 
@@ -612,4 +619,10 @@ export function clean_title(title: string){
 
 export function recreate<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));
+}
+
+export function should_automatic_refresh(last_refreshed: Date): boolean{
+    const cdate = new Date();
+    return (cdate.getTime() - last_refreshed.getTime() >= milliseconds_of({days: 1})) ||
+        (cdate.getFullYear() >= last_refreshed.getFullYear() && cdate.getMonth() >= last_refreshed.getMonth() && cdate.getDay() >= last_refreshed.getDay() && cdate.getHours() - last_refreshed.getHours() >= 1 )
 }

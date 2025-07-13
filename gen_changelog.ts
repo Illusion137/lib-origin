@@ -1,4 +1,26 @@
-export const CHANGELOG = `# Illusi 16.1.4
+export const CHANGELOG = `# Illusi 16.2.5
+  - Fixed misc track related bugs
+  - Fixed search related bugs
+  - Allows for query flags when in strict mode
+  - Allows for anti-query flags in autocomplete
+  - Playlist actions use filtered_tracks for context
+  - Added Search input clear button
+# Illusi 16.2.4
+  - Fixed sprinkle in queue related bug
+  - Fixed encoding for discord illusi integration
+  - Fixed bug related to recently_played_tracks
+  - Fixed bug relating to adding playback data to tracks
+  - Fixed bug relating to getting highest_quality_service_thumbnail_uri
+  - Fixed bug relating to most played albums (as of artist)
+  - Fixed bug relating to albums not having the high quality thumbnail
+  - Improved startup speed
+  - Improved should_automatic_refresh YouTube Music new_releases
+  - Added Query Flag related Prefs
+  - Added more query flags
+  - Added strict search mode toggle
+  - Refactored Search Screen to improve perf, loading animation, UI and UX design
+  - Refactored Illusi Icons to use Illusive without syntax errors
+# Illusi 16.1.4
   - Fixed bug relating to refreshing data in playlists
   - Fixed bug relating to lyrics fetching
   - Fixed bug relating to sprinkling into queue

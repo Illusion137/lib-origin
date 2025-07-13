@@ -2,7 +2,7 @@ import * as SQLite from '@op-engineering/op-sqlite';
 import { is_empty } from "../../../../../origin/src/utils/util";
 import { Illusive } from '../../../illusive';
 import { extract_file_extension } from '../../../illusive_utilts';
-import type { CompactPlaylist, Primitives, SQLTables, Track } from "../../../types";
+import type { CompactPlaylist, Primitives, SQLArtist, SQLTables, Track } from "../../../types";
 import { ExampleObj } from '../example_objs';
 import * as GLOBALS from '../globals';
 import { db, db_path, reasign_db, sqlite_location } from './database';
@@ -258,6 +258,7 @@ export async function recreate_all_tables() {
             create_table_command("playlists_tracks",               ExampleObj.playlists_tracks_example0),
             create_table_command("playlists_tracks_deleted",       ExampleObj.playlists_tracks_example0),
             sql_create_table<CompactPlaylist>("new_releases", ExampleObj.new_releases_example0).replace("title TEXT","title TEXT UNIQUE"),
+            sql_create_table<SQLArtist>("artists", ExampleObj.artist_example0).replace("uri TEXT","uri TEXT UNIQUE"),
         ].map(query => [query])),
         create_default_directories()
     ]);

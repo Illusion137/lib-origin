@@ -155,7 +155,7 @@ export function sql_track_to_track(sql_track: SQLTrack): Track|ResponseError {
                 last_played_date: meta.last_played_date ?? new Date(0).toISOString()
             },
             playback: {artwork: Illusive.get_track_artwork(document_directory(""), sql_track as unknown as Track), added: false, successful: false},
-            downloading_data: {} as never
+            downloading_data: {playlist_saved: true, progress: 0, saved: true}
         };
     } catch (error) {
         return {error: new Error((error as Error).message, {'cause': JSON.stringify(sql_track)})};

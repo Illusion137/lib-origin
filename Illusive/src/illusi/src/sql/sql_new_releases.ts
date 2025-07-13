@@ -1,6 +1,6 @@
 import { try_json_parse, is_empty, milliseconds_of } from '../../../../../origin/src/utils/util';
 import { Prefs } from "../../../prefs";
-import type { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist } from "../../../types";
+import type { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Promises } from "../../../types";
 import { ExampleObj } from "../example_objs";
 import { db_exec_async, db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select } from "./sql_utils";
 import * as SQLTracks from './sql_tracks';
@@ -97,10 +97,11 @@ export async function delete_all_from_new_releases(){
     await db_exec_async(sql_delete_from("new_releases"));
 }
 export async function insert_all_into_new_releases(new_releases: CompactPlaylist[]){
-    // await delete_all_from_new_releases();
+    const promises: Promises = [];
     for(const new_release of new_releases){
-        await db_run_async(sql_insert_values("new_releases", ExampleObj.new_releases_example0), compact_playlist_to_sqllite_insertion(new_release));
+        promises.push(db_run_async(sql_insert_values("new_releases", ExampleObj.new_releases_example0), compact_playlist_to_sqllite_insertion(new_release)));
     }
+    await Promise.all(promises);
 }
 
 export async function refresh_new_releases(new_releases: CompactPlaylist[]){

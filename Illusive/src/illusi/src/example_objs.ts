@@ -1,4 +1,4 @@
-import type { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, Track } from "../../types";
+import type { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, SQLArtist, Track } from "../../types";
 
 export namespace ExampleObj {
     export const track_example0: Track = {
@@ -74,4 +74,9 @@ export namespace ExampleObj {
         date: "" as ISOString,
         Timestamp: ""
     }
+    export const artist_example0: SQLArtist = {
+        name: "",
+        uri: "",
+        artwork_url: ""
+    };
 }

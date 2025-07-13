@@ -3,11 +3,14 @@ import { is_empty, remove_topic } from "../../origin/src/utils/util";
 import type { CompactArtist, CompactPlaylist, Playlist, QueryFlag, Track } from "./types";
 
 export const ANTI_QUERY_FLAG_PREFIX = '!';
+const UNTIL_FLAG_ARG_AMOUNT = 8;
 
-function artist_string(track: Track): string{
-    if(is_empty(track)) return "";
-    if(track.artists.length <= 1) return remove_topic(track.artists[0].name).trim();
-    const names = track.artists.map(artist => remove_topic(artist.name).trim());
+function artist_string(track_or_compact_playlist: Track|CompactPlaylist): string{
+    if(is_empty(track_or_compact_playlist)) return "";
+    const artists = "artist" in track_or_compact_playlist ? track_or_compact_playlist.artist : track_or_compact_playlist.artists;
+    if(artists.length === 0) return "";
+    if(artists.length <= 1) return remove_topic(artists?.[0].name ?? "").trim();
+    const names = artists.map(artist => remove_topic(artist?.name ?? "").trim());
     const final_name = names.pop()!;
     return names.length
         ? names.join(', ') + ' & ' + final_name
@@ -38,7 +41,10 @@ export function extract_query_flags<T>(query: string, QUERY_FLAGS: QueryFlag<T>[
             const is_antiflag: boolean = found_flag.includes(ANTI_QUERY_FLAG_PREFIX);
             const full_query_flag = QUERY_FLAGS.find(flag => flag.flag === found_flag.replace(ANTI_QUERY_FLAG_PREFIX, ''))!;
             const found_args: string[] = [];
-            for(let j = 0; j < (full_query_flag?.args ?? 0); j++){
+            const end_on_flag = full_query_flag?.args === -1;
+            const args_length = end_on_flag ? UNTIL_FLAG_ARG_AMOUNT : full_query_flag?.args ?? 0;
+            for(let j = 0; j < args_length; j++){
+                if(query_flags_flags.includes(words[i + 1])) break;
                 i++;
                 found_args.push(...words.splice(i--, 1));
             }
@@ -145,44 +151,44 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
     },
     {
         flag: '@eq',
-        args: 8,
-        condition: (track, args) => included_in(args.join(''), track.title) || included_in(args.join(''), artist_string(track)) || (track.album?.name ? included_in(args.join(''), track.album?.name) : false),
+        args: -1,
+        condition: (track, args) => included_in(args.join(' '), track.title) || included_in(args.join(' '), artist_string(track)) || (track.album?.name ? included_in(args.join(' '), track.album?.name) : false),
         description: "Strong Equals"
     },
     {
-        flag: '@titleeq',
-        args: 8,
-        condition: (track, args) => included_in(args.join(''), track.title),
+        flag: '@tteq',
+        args: -1,
+        condition: (track, args) => included_in(args.join(' '), track.title),
         description: "Title Equals"
     },
     {
-        flag: '@titlefuzzy',
-        args: 8,
-        condition: (track, args) => (fuzzysort.single(args.join(''), track.title)?.score ?? 0) > 0.6,
+        flag: '@ttfzy',
+        args: -1,
+        condition: (track, args) => (fuzzysort.single(args.join(' '), track.title)?.score ?? 0) > 0.6,
         description: "Title Fuzzy Search"
     },
     {
         flag: '@arteq',
-        args: 8,
-        condition: (track, args) => included_in(args.join(''), artist_string(track)),
+        args: -1,
+        condition: (track, args) => included_in(args.join(' '), artist_string(track)),
         description: "Artists Equals"
     },
     {
-        flag: '@artfuzzy',
-        args: 8,
-        condition: (track, args) => (fuzzysort.single(args.join(''), artist_string(track))?.score ?? 0) > 0.6,
+        flag: '@artfzy',
+        args: -1,
+        condition: (track, args) => (fuzzysort.single(args.join(' '), artist_string(track))?.score ?? 0) > 0.6,
         description: "Artists Fuzzy Search"
     },
     {
         flag: '@albeq',
-        args: 8,
-        condition: (track, args) => track.album?.name ? included_in(args.join(''), track.album?.name) : false,
+        args: -1,
+        condition: (track, args) => track.album?.name ? included_in(args.join(' '), track.album?.name) : false,
         description: "Album Equals"
     },
     {
-        flag: '@albfuzzy',
-        args: 8,
-        condition: (track, args) => track.album?.name ? (fuzzysort.single(args.join(''), track.album?.name)?.score ?? 0) > 0.6  : false,
+        flag: '@albfzy',
+        args: -1,
+        condition: (track, args) => track.album?.name ? (fuzzysort.single(args.join(' '), track.album?.name)?.score ?? 0) > 0.6  : false,
         description: "Album Fuzzy Search"
     },
     {
@@ -278,6 +284,12 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
 
 export const PLAYLIST_QUERY_FLAGS: QueryFlag<Playlist>[] = [
     {
+        flag: '@eq',
+        args: -1,
+        condition: (playlist, args) => included_in(args.join(' '), playlist.title),
+        description: "Strong Equals"
+    },
+    {
         flag: '@pin',
         condition: (playlist) => playlist.pinned ?? false,
         description: "Pinned",
@@ -305,6 +317,12 @@ export const PLAYLIST_QUERY_FLAGS: QueryFlag<Playlist>[] = [
 ];
 
 export const COMPACT_PLAYLIST_QUERY_FLAGS: QueryFlag<CompactPlaylist>[] = [
+    {
+        flag: '@eq',
+        args: -1,
+        condition: (album, args) => included_in(args.join(' '), album.title.name) || included_in(args.join(' '), artist_string(album)),
+        description: "Strong Equals"
+    },
     {
         flag: '@ex',
         condition: (album) => album.explicit === "EXPLICIT",
@@ -338,6 +356,12 @@ export const COMPACT_PLAYLIST_QUERY_FLAGS: QueryFlag<CompactPlaylist>[] = [
 ];
 
 export const COMPACT_ARTIST_QUERY_FLAGS: QueryFlag<CompactArtist>[] = [
+    {
+        flag: '@eq',
+        args: -1,
+        condition: (artist, args) => included_in(args.join(' '), artist.name.name),
+        description: "Strong Equals"
+    },
     {
         flag: '@official',
         condition: (artist) => artist.is_official_artist_channel,

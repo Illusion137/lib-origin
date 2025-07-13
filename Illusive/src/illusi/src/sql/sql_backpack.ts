@@ -1,3 +1,4 @@
+import { IllusiIcons } from "../../../illusi_icons";
 import { Illusive } from "../../../illusive";
 import { all_promises } from "../../../illusive_utilts";
 import type { SQLTrack, Track } from "../../../types";
@@ -22,7 +23,7 @@ export async function toss_from_backpack(replacement_track: Track) {
 export async function backpack_tracks() {
     const sql_tracks= await db_get_all_async<SQLTrack>(sql_select<Track>("backpack", "*"));
     const tracks: Track[] = sql_tracks_to_tracks(sql_tracks);
-    for(const track of tracks) track.playback!.artwork = Illusive.illusi_dark_icon;
+    for(const track of tracks) track.playback!.artwork = IllusiIcons.icon_map[Illusive.illusi_dark_icon_index];
     return tracks;
 }
 export async function add_to_backpack(uid: string) {

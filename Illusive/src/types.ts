@@ -10,7 +10,7 @@ import type { Prefs } from "./prefs";
 type ArtworkCacheType = 'force-cache';
 
 export type SQLTables = "sqlite_master"
-    | "new_releases"
+    | "new_releases" | "artists"
     | "tracks" | "tracks_deleted" 
     | "recently_played_tracks" | "recently_played_tracks_deleted" 
     | "backpack" | "backpack_deleted" 
@@ -127,15 +127,11 @@ export interface Downloading {
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = {name: string, uuid: string, uri?: never} | {name: string, uuid?: never, uri: IllusiveURI|null};
 
-interface Basic_Artist<T, U> {
-    uuid: string
-    avatar_thumbnails: T
-    name: string
-    uris: U
-    verified?: boolean
+export interface SQLArtist {
+    uri: string;
+    name: string;
+    artwork_url: string;
 }
-export type SQLArtist = Basic_Artist<string, string>;
-export type Artist = Basic_Artist<IllusiveThumbnail[], IllusiveURI[]>;
 
 export type ExplicitMode = "NONE" | "EXPLICIT" | "CLEAN";
 interface Basic_Album<T, U, V> {
@@ -334,6 +330,11 @@ export interface MusicSearchResponse {
     continuation: Record<string, any> | null
 }
 
+export interface StatefullMusicSearchResponse {
+    state: "NONE"|"LOADING"|"FUFILLED";
+    search_data: MusicSearchResponse;
+}
+
 export interface MusicServiceArtist {
     name: string
     latest_release?: CompactPlaylist
@@ -385,7 +386,7 @@ export interface ArtistOpts {proxy?: Origin.Proxy.Proxy}
 
 const search_cache: TimedCache<string, MusicSearchResponse> = new TimedCache<string, MusicSearchResponse>(Constants.playlist_cache_duration_seconds * 1000);
 export class MusicService {
-    app_icon: string
+    app_icon: string|number
     web_view_url?: string
     pref_cookie_jar?: Prefs.PrefOptions
     link_text: string
@@ -408,7 +409,7 @@ export class MusicService {
     get_new_releases?: () => Promise<CompactPlaylist[]>
     get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>
     constructor(s: {
-        app_icon: string,
+        app_icon: string|number,
         web_view_url?: string,
         pref_cookie_jar?: Prefs.PrefOptions
         link_text: string,
@@ -440,10 +441,8 @@ export class MusicService {
         this.cookie_jar_callback = s.cookie_jar_callback;
         this.search = Constants.use_illusive_cahce ? async(query: string, opts?: SearchOpts) => {
             const key = query + ":MS:" + String(this.app_icon);
-            if(search_cache.get(key)) return search_cache.get(key)!; 
-            const result = await s.search!(query, opts);
-            search_cache.add(query, result);
-            return result;
+            if(search_cache.get(key)) return search_cache.get(key)!;
+            return search_cache.update(key, await s.search!(query, opts));
         } : s.search;
         this.search_continuation = s.search_continuation;
         this.explore = s.explore;

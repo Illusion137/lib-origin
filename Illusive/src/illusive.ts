@@ -20,9 +20,9 @@ import { parse_youtube_music_track } from './gen/youtube_music_parser';
 import { Constants } from './constants';
 
 export namespace Illusive {
-    export const illusi_icon = './assets/illusi_icon.png';
-    export const illusi_dark_icon = './assets/illusi_dark_icon.png';
-    export const imported_thumbnail = './assets/imported_thumbnail.png';
+    export const illusi_icon_index = 0;
+    export const illusi_dark_icon_index = 1;
+    export const imported_thumbnail_index = 2;
 
     export const sqlite_directory       = "SQLite/";
     export const custom_thumbnail_archive_path = "custom_thumbnail_archive/";
@@ -35,7 +35,7 @@ export namespace Illusive {
     
     const illusi = new MusicService(
         {
-            app_icon: illusi_icon,
+            app_icon: illusi_icon_index,
             valid_playlist_url_regex: /(https?:\/\/)illusi\.dev\/playlist\/.+/i,
             link_text: 'https://illusi.dev/playlist/...',
             required_cookie_credentials: [],
@@ -192,7 +192,7 @@ export namespace Illusive {
         });
     const api = new MusicService(
         {
-            app_icon: illusi_dark_icon,
+            app_icon: illusi_dark_icon_index,
             valid_playlist_url_regex: /.+/,
             link_text: "...any link that returns an Illusive-Playlist",
             required_cookie_credentials: [],
@@ -217,7 +217,7 @@ export namespace Illusive {
     export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError> {
         if(!is_empty(track.media_uri) && !(redownload_mode ?? false))
             return { url: document_directory + media_archive_path + track.media_uri! };
-        const key = JSON.stringify(track) + quality;
+        const key = track.uid + (track.illusi_id ?? "") + ";:;" + quality;
         if(download_url_timed_cache.get(key)) return download_url_timed_cache.get(key)!;
         if(!is_empty(track.youtube_id))
             return download_url_timed_cache.update(key, await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio")) ;
@@ -270,7 +270,7 @@ export namespace Illusive {
     }
 
     export async function get_highest_quality_service_thumbnail_uri(uri: string){
-        if(!/w{3,}-h{3,}/.test(uri)) return uri;
+        if(!/w\d{3,}-h\d{3,}/.test(uri)) return uri;
         const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{3,})/g), extract_string_from_pattern(uri, /h(\d{3,})/g)];
         const [width, height] = [parseInt(width_str as string), parseInt(height_str as string)];
         const uris_descending = [
@@ -293,14 +293,14 @@ export namespace Illusive {
 
     export async function get_best_track_artwork(document_directory: string, track: Track): Promise<Artwork> {
         if(!is_empty(track.imported_id))
-            return imported_thumbnail;
+            return imported_thumbnail_index;
         if(!is_empty(track.thumbnail_uri))
             return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
         if(!is_empty(track.artwork_url))
             return {uri: await get_highest_quality_service_thumbnail_uri(track.artwork_url!), cache: 'force-cache'};
         if(!is_empty(track.youtube_id))
             return {uri: await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), cache: 'force-cache'};
-        return illusi_dark_icon;
+        return illusi_dark_icon_index;
     }
 
     export function get_track_artwork(document_directory: string, track: Track): Artwork {
@@ -311,12 +311,12 @@ export namespace Illusive {
                 return {uri: document_directory + custom_thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
         }
         if(!is_empty(track.imported_id))
-            return imported_thumbnail;
+            return imported_thumbnail_index;
         if(!is_empty(track.artwork_url))
             return {uri: track.artwork_url!, cache: 'force-cache'};
         if(!is_empty(track.youtube_id))
             return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};
-        return illusi_dark_icon;
+        return illusi_dark_icon_index;
     }
 
     export async function get_suggestions(query: string){

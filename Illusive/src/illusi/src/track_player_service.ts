@@ -22,7 +22,7 @@ import * as SQLRecentlyPlayed from './sql/sql_recently_played';
 import * as SQLTracks from './sql/sql_tracks';
 import { artist_string } from '../../illusive_utilts';
 import { sample } from './sampler';
-import { IllusiIcons } from './illusi_icons';
+import { resolved_artwork } from './illusi_utils';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');
@@ -77,13 +77,14 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     if(!("error" in nt_response)) track = nt_response;
     // if(url_data.url.includes("googlevideo.com")){}
         // url_data.url = await ffcache_yt(url_data.url, track);
+    const artwork = resolved_artwork(track.playback!.artwork);
     return {
         url: url_data.url,
         title: track.title,
         artist: artist_string(track),
         album: track.album?.name,
         duration: track.duration,
-        artwork: typeof (track.playback!.artwork) === "number" ? track.playback!.artwork as unknown as string : typeof (track.playback!.artwork) === "string" ? IllusiIcons.icon_map[track.playback!.artwork] : track.playback!.artwork.uri,
+        artwork: typeof artwork === "number" ? artwork : artwork.uri,
         pitchAlgorithm: PitchAlgorithm.Linear,
         type: is_empty(track.soundcloud_id) ? TrackType.Default : TrackType.HLS,
         headers: {},
