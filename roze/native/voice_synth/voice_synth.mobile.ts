@@ -1,16 +1,17 @@
 import type { ResponseError } from "../../../origin/src/utils/types";
-import { Constants } from "../constants";
-import type { VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth_base";
+import { VoiceSynthConstants } from "./voice_synth_constants";
+import type { VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth.base";
 import tts from 'react-native-tts-export';
 
-export function voice_synth_mobile_init(){
+function voice_synth_mobile_init(){
     const errors: ResponseError[] = [];
-    tts.setDefaultRate(Constants.default_mobile_speach_rate).catch(e => errors.push({error: e}));
+    tts.setDefaultRate(VoiceSynthConstants.default_mobile_speach_rate).catch(e => errors.push({error: e}));
     tts.setIgnoreSilentSwitch('ignore').catch(e => errors.push({error: e}));
     // tts.setDefaultEngine("").catch(e => errors.push({error: e}));
 }
+voice_synth_mobile_init();
 
-export const VoiceSynthMobile: VoiceSynth = {
+export const mobile_voice_synth: VoiceSynth = {
     get_voices: async() => {
         return (await tts.voices()).map(voice => (
             {
@@ -24,7 +25,7 @@ export const VoiceSynthMobile: VoiceSynth = {
     },
     speak: async(text: string, opts: VoiceOptions) => {
         return tts.speak(text, {
-            rate: opts.rate ?? Constants.default_mobile_speach_rate, 
+            rate: opts.rate ?? VoiceSynthConstants.default_mobile_speach_rate, 
             iosVoiceId: opts.voice_bank?.id ?? "", 
             androidParams: {} as never
         }) as string;
@@ -33,7 +34,7 @@ export const VoiceSynthMobile: VoiceSynth = {
         return await tts.export(text, {
             overwrite: true, 
             filename: opts.file_path, 
-            rate: opts.rate ?? Constants.default_mobile_speach_rate, 
+            rate: opts.rate ?? VoiceSynthConstants.default_mobile_speach_rate, 
             iosVoiceId: opts.voice_bank?.id ?? "", 
             androidParams: {} as never
         });

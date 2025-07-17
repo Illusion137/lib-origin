@@ -1,8 +1,13 @@
 import fs from 'fs';
-import { generror } from "../../../origin/src/utils/util";
+import os from 'os';
+import path_lib from 'path';
+import { request } from 'http';
+import { gen_uuid, generror } from "../../../origin/src/utils/util";
 import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "./fs.base";
 
 export const node_fs: FileSystem = {
+    temp_directory: (...paths: string[]) => path_lib.join(os.tmpdir(), ...paths),
+    document_directory: (...paths: string[]) => path_lib.join(os.homedir(), ...paths),
     read_as_string: async(path: string, opts: EncodingOpts) => {
         try {
             return fs.readFileSync(path, opts).toString();
@@ -60,4 +65,15 @@ export const node_fs: FileSystem = {
             return generror("Failed to remove file/directory", {path});
         }
     },
+    download_to_file: async(uri: string, to_path?: string) => {
+        to_path = path_lib.join(os.tmpdir(), gen_uuid() + '.tmp');
+        const file = fs.createWriteStream(to_path);
+        const request_promise = new Promise((resolve) => {
+            request(uri).pipe(file).on('close', () => {
+                resolve(0);
+            });
+        });
+        await request_promise;
+        return to_path;
+    }
 };

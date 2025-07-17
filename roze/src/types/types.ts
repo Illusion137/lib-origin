@@ -26,4 +26,6 @@ export type TranslationMap = {
     to: string;
     match_case: boolean;
 }[];
-export interface TimestampedChapter { title: string; timestamp: string }
+export interface DurationImage { image_path: string; duration: number; }
+export interface TimestampedContent { uuid: string; timestamp: string };
+export interface TimestampedChapter { title: string; timestamp: string };

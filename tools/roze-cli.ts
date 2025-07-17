@@ -1,7 +1,4 @@
 import * as fs from "fs";
-import puppeteer, { HTTPResponse, Page } from "puppeteer-core";
-import axios from "axios";
-import { JSDOM } from "jsdom";
 import { spawn } from "child_process";
 import {
     green,
@@ -15,22 +12,29 @@ import {
     magenta,
 } from "colors";
 import say from "say";
-import getAudioDurationInSeconds from "get-audio-duration";
 import * as fsExtra from "fs-extra";
+import type Roz from "../roze/src/types/roz";
+import type { RozSourceFileType } from "../roze/src/types/roz";
+import { generror, is_empty } from "../origin/src/utils/util";
+import type { VoiceBank } from "../roze/native/voice_synth/voice_synth.base";
+import { FileParser } from "../roze/src/file";
+import type { PromiseResult } from "../origin/src/utils/types";
 
-const help_contents: string = 
-green(`${gray(`--Roz powered by ${italic("The Origin Project")}--`)}
+const help_contents: string =
+green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}
 
 ${magenta("roz")} ${cyan("<input>")} ${cyan("<options>")}                                                            Produces raw text file and audiobook from the given input 
 ${magenta("roz")} ${cyan("-lv")}                                                                          Lists the available downloaded voices 
 Usage:
 
-${magenta("roz")} ${blue("-i")} ${yellow("[webnovel|jnovel|pdf|text]")}                                                Sets input type
-  ${magenta("roz")} ${blue("-i")} ${yellow("webnovel")} ${cyan("<web-novel-id>")} ${cyan("<range-start>")}${red("(1)")} ${cyan("<range-end>")}${red("(<range-start>)")}     Webnovel from https://ncode.syosetu.com/{web-novel-id}
+${magenta("roz")} ${blue("-i")} ${yellow("[syosetu|jnovel|pdf|text|roz|witchcult_translations]")}                                                Sets input type
+  ${magenta("roz")} ${blue("-i")} ${yellow("syosetu")} ${cyan("<web-novel-id>")} ${cyan("<range-start>")}${red("(1)")} ${cyan("<range-end>")}${red("(<range-start>)")}     Webnovel from https://ncode.syosetu.com/{web-novel-id}
   ${magenta("roz")} ${blue("-i")} ${yellow("jnovel")} ${cyan("<jnovel-embeded-link-start>")} ${cyan("<uuid-offset>")}${red("(0)")}                     JNovel from https://labs.j-novel.club/embed/... (must be logged into JNovel on Chrome)
   ${magenta("roz")} ${blue("-i")} ${yellow("pdf")} ${cyan("<pdf-file-path/url>")}                                                 PDF at {pdf-file-path}    
-  ${magenta("roz")} ${blue("-i")} ${yellow("text")} ${cyan("<text-file-path/url>")}                                               Text file at {text-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("txt")} ${cyan("<text-file-path/url>")}                                               Text file at {text-file-path}
   ${magenta("roz")} ${blue("-i")} ${yellow("docx")} ${cyan("<docx-file-path/url>")}                                               Text file at {text-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("roz")} ${cyan("<roz-file-path/url>")}                                               Roz file at {text-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("witchcult_translations")}                                                            NO_DETAIL
 
 ${magenta("roz")} ${cyan("<input>")} ${blue("-v")} ${cyan("<voice>")}                                                           Sets the voice for the audiobook
 ${magenta("roz")} ${cyan("<input>")} ${blue("-c")} ${cyan("<cover>")}                                                           Sets the cover image for the audiobook if not using JNovel Club
@@ -41,7 +45,28 @@ ${magenta("roz")} ${cyan("<input>")} ${blue("-p")} ${cyan("<proxy?>")}          
 ${magenta("roz")} ${cyan("<input>")} ${blue("-t")} ${cyan("<translate?>")}                                                      Translate the Input?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-e")} ${cyan("<chrome_executable_path>")}                                          Sets the chrome executable path`)
 
+const HELP_TABLE = {
+    "__START__": 6,
+    "SYOSETU": 7,
+    "JNOVEL": 8,
+    "PDF": 9,
+    "TEXT": 10,
+    "DOCX": 11,
+    "ROZ": 12,
+    "WITCHCULT": 13,
+    "__END__": 14,
+} as const;
 
+const MIN_ARGS_TABLE: Record<RozSourceFileType, number> = {
+    TXT: 1,
+    PDF: 1,
+    JNOVEL: 1,
+    WITCHCULT: 1,
+    SYOSETU: 3,
+    EPUB: 1,
+    DOCX: 1,
+    FILEBASE: 1
+};
 
 const options = {
     chrome_executable_path: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
@@ -51,114 +76,17 @@ const options = {
     hide_chapter_names: false,
     cover: "temp/img/cover.jpg",
     translation_map_path: null,
-    voice: null,
+    voice: null as VoiceBank,
     speed: 1,
     pdf_margin: [0, 48],
     pdf_start: 0
 };
 
-
-
-const delay = async millis => new Promise((resolve, reject) => {
-    setTimeout(_ => resolve(0), millis)
-});
-
-
-
 //Part 5 Volume 10
 //https://ncode.syosetu.com/n4830bu/637/
 // parse_webnovel("n4830bu", 636, 649); // Volume 10 LN
 
-async function get_voices(): Promise<string[]> {
-    let vlist: string[] = [];
-    const promise = new Promise((resolve, reject) => {
-        say.getInstalledVoices((err, voices) => {
-        vlist = voices;
-        resolve(0);
-        });
-    });
-    await promise;
-    return vlist;
-}
-
-async function build_audio(){
-    const arg_list = [
-        "-f", "concat",
-        "-safe", "0",
-        "-i", "temp/audio_list.txt", 
-        "-c", "copy", 
-        "out/merged.wav"
-    ]
-    const promise = new Promise((resolve, reject) => {
-        const merge_audio = spawn("ffmpeg", arg_list, {'stdio': ['inherit', 'inherit', 'inherit']});
-        merge_audio.on('close', (code) => {
-            if(code == 0)
-                log_info(`Merge-Audio closed with code ${code}`);
-            else
-                log_error(`Merge-Audio closed with code ${code}`);
-            resolve(0);
-        });
-        merge_audio.on('exit', (code) => {
-            if(code == 0)
-                log_info(`Merge-Audio exited with code ${code}`);
-            else
-                log_error(`Merge-Audio exited with code ${code}`);
-        }); 
-        merge_audio.on('disconnect', () => {
-            log_warn('Merge-Audio disconnected');
-        }); 
-        merge_audio.on('spawn', () => {
-            log_info('Merging Audio')
-        });
-        merge_audio.on('message', (msg) => {
-            log_info(msg.toString())
-        });
-    });
-    await promise;
-}
-async function build_video(){
-    const arg_list = [
-        "-r", "1", 
-        "-loop", "1", 
-        "-i", options.cover,
-        "-i", "out/merged.wav", 
-        "-acodec", "copy", 
-        "-r", "1", 
-        "-shortest",
-        "-vf", "scale=860:1223",
-        "out/processed.flv"
-    ]
-    const promise = new Promise((resolve, reject) => {
-        const merge_video = spawn("ffmpeg", arg_list, {'stdio': ['inherit', 'inherit', 'inherit']});
-        merge_video.on('close', (code) => {
-            if(code == 0)
-                log_info(`Merge-Video closed with code ${code}`);
-            else
-                log_error(`Merge-Video closed with code ${code}`);
-            resolve(0);
-        });
-        merge_video.on('exit', (code) => {
-            if(code == 0)
-                log_info(`Merge-Video exited with code ${code}`);
-            else
-                log_error(`Merge-Video exited with code ${code}`);
-        }); 
-        merge_video.on('disconnect', () => {
-            log_warn('Merge-Video disconnected');
-        }); 
-        merge_video.on('spawn', () => {
-            log_info('Merging Video')
-        });
-        merge_video.on('message', (msg) => {
-            log_info(msg.toString())
-        });
-    });
-    await promise;
-}
 async function rtxt_to_audiobook(content: string) {
-    // fsExtra.emptyDirSync("temp/audio/");
-    // fsExtra.emptyDirSync("temp/img/");
-    // fsExtra.emptyDirSync("temp/docs/");
     const timestamps: TimestampedChapter[] = [];
     const ff_file_list: string[] = [];
     let current_durration = 0;
@@ -222,11 +150,60 @@ function log_warn(str: any) {
 function log_error(str: any) {
     console.log(red(`${bold("[ERROR]:")} ${str}`));
 }
-function log_input_error(error: string, slice_start = 6, slice_end = 11) {
-    log_error(error);
-    console.log(
-        help_contents.split("\n").slice(slice_start, slice_end).join("\n"),
-    );
+function log_input_error(error: string, help_key: keyof typeof HELP_TABLE) {
+    log_error('<---- ' + error + ' ---->');
+    if(help_key === "__START__"){
+        console.log(help_contents.split("\n").slice(HELP_TABLE.__START__, HELP_TABLE.__END__).join("\n"));
+    }
+    else console.log(help_contents.split("\n").slice(HELP_TABLE[help_key], HELP_TABLE[help_key] + 1).join("\n"));
+}
+
+async function get_roz(source_file_type: RozSourceFileType, input_options: string[]): PromiseResult<Roz>{
+    const no_roz: Roz = {} as never;
+    if(input_options.length < MIN_ARGS_TABLE[source_file_type]){
+        log_input_error(`Not enough arguments provided for ${source_file_type}`, "__START__"); return no_roz;
+    }
+    switch (source_file_type) {
+        case "TXT": {
+            return await FileParser.parse_txt(input_options[0]);
+        }
+        case "DOCX": {
+            return generror("Docx is currently not supported");
+            // return await doc_path_to_rtxt(input_options[0]);
+        }
+        case "PDF": {
+            return await FileParser.parse_pdf(input_options[0]);
+        }
+        case "SYOSETU": {
+            if (input_options.length < 2) { log_input_error("Not enough arguments provided", 7, 8); return no_roz; }
+
+            const web_novel_id = input_options[0];
+            const range_start = parseInt(input_options[1]);
+            const range_end = parseInt(input_options[2]);
+
+            if (!/(\w|\d){5,}/.test(web_novel_id)) { log_input_error("Invalid Web-Novel ID", "SYOSETU"); return no_roz; }
+            if (range_start < -1) { log_input_error("Range-Start must be >= 1", "SYOSETU"); return no_roz; }
+            if (range_end < -1) { log_input_error("Range-End must be >= 1", "SYOSETU"); return no_roz; }
+            if (range_end < range_start) { log_input_error("Range-End must be >= Range-Start", "SYOSETU"); return no_roz; }
+            return await parse_webnovel(web_novel_id, range_start, range_end);
+        }
+        case "JNOVEL": {
+            return await parse_jnovel(input_options[0]); 
+        }
+        case "EPUB": {
+            return await FileParser.parse_epub(input_options[0]);
+        }
+        case "WITCHCULT": {
+            return;
+        }
+        case "FILEBASE": {
+            return await FileParser.parse_epub(input_options[0]);
+            return;
+        }
+        default:
+            log_error(`Unknown input-type: "${italic(source_file_type)}"`);
+            process.exit(1);
+    }
 }
 
 async function __roze_cli_main__() { // TODDO: Add Epub Support
@@ -237,10 +214,10 @@ async function __roze_cli_main__() { // TODDO: Add Epub Support
     if (opts.findIndex((opt) => opt[0] == "-p") != -1) options.proxy = true;
     if (opts.findIndex((opt) => opt[0] == "-a") != -1) options.audiobook = true;
     if (opts.findIndex((opt) => opt[0] == "-h") != -1) options.hide_chapter_names = true;
-    let hold = -1;
-    if ((hold = opts.findIndex((opt) => opt[0] == "-v")) != -1) options.voice = opts[hold][1];
-    if ((hold = opts.findIndex((opt) => opt[0] == "-c")) != -1) options.cover = opts[hold][1];
-    if ((hold = opts.findIndex((opt) => opt[0] == "-m")) != -1) options.translation_map_path = opts[hold][1];
+    let hold_index = -1;
+    if ((hold_index = opts.findIndex((opt) => opt[0] == "-v")) !== -1) options.voice = opts[hold_index][1];
+    if ((hold_index = opts.findIndex((opt) => opt[0] == "-c")) !== -1) options.cover = opts[hold_index][1];
+    if ((hold_index = opts.findIndex((opt) => opt[0] == "-m")) !== -1) options.translation_map_path = opts[hold_index][1];
     
     if (opts.length == 0) {
         console.log(help_contents);
@@ -256,49 +233,10 @@ async function __roze_cli_main__() { // TODDO: Add Epub Support
         if (opts[0].slice(1).length < 1) { log_input_error("<---- No Input Type provided ---->"); return; }
 
         const input_type = opts[0][1];
-        const opt_in = opts[0].slice(1);
+        const opt_in = opts[0].slice(2);
 
-        let rtext_content: string;
-        switch (input_type) {
-            case "text": {
-                if (opt_in.length < 2) { log_input_error("<---- Not enough arguments provided ---->", 10, 11); return; }
-                rtext_content = await read_text(opt_in[1]);
-                break;
-            }
-            case "docx": {
-                if (opt_in.length < 2) { log_input_error("<---- Not enough arguments provided ---->", 11, 12); return; }
-                rtext_content = await doc_path_to_rtxt(opt_in[1]);
-                break;
-            }
-            case "pdf": {
-                if (opt_in.length < 2) { log_input_error("<---- Not enough arguments provided ---->", 9, 10); return; }
-                rtext_content = await parse_pdf(opt_in[1]);
-                break;
-            }
-            case "webnovel": {
-                if (opt_in.length < 2) { log_input_error("<---- Not enough arguments provided ---->", 7, 8); return; }
-
-                const web_novel_id = opt_in[1];
-                const range_start = parseInt(opt_in[2]);
-                const range_end = parseInt(opt_in[3]);
-
-                if (!/(\w|\d){5,}/.test(web_novel_id)) { log_input_error("<---- Invalid Web-Novel ID ---->", 7, 8); return; }
-                if (range_start < -1) { log_input_error("<---- Range-Start must be >= 1 ---->", 7, 8); return; }
-                if (range_end < -1) { log_input_error("<---- Range-End must be >= 1 ---->", 7, 8); return; }
-                if (range_end < range_start) { log_input_error("<---- Range-End must be >= Range-Start ---->", 7, 8); return; }
-                rtext_content = await parse_webnovel(web_novel_id, range_start, range_end);
-                break;
-            }
-            case "jnovel": {
-                if (opt_in.length < 2) { log_input_error("<---- Not enough arguments provided ---->", 8, 9); return; }
-                rtext_content = await parse_jnovel(opt_in[1]); 
-                break;
-            }
-            default:
-                log_error(`Unknown input-type: "${italic(input_type)}"`);
-                process.exit(1);
-        }
-        if (rtext_content != undefined) {
+        let roz: Roz = get_roz();
+        if (!is_empty(roz)) {
             log_info("Read Data");
             // fsExtra.emptyDirSync("out/");
             // log_info("Cleared Out Directory");

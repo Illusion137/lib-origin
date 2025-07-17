@@ -1,8 +1,11 @@
-import { generror } from "../../../origin/src/utils/util";
+import { gen_uuid, generror } from "../../../origin/src/utils/util";
 import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "./fs.base";
 import expo_fs from 'expo-file-system';
+import path_lib from 'path';
 
 export const mobile_fs: FileSystem = {
+    temp_directory: (...paths: string[]) => path_lib.join(expo_fs.cacheDirectory!, ...paths),
+    document_directory: (...paths: string[]) => path_lib.join(expo_fs.documentDirectory!, ...paths),
     read_as_string: async(path: string, opts: EncodingOpts) => {
         try {
             return await expo_fs.readAsStringAsync(path, opts);
@@ -59,4 +62,9 @@ export const mobile_fs: FileSystem = {
             return generror("Failed to remove file/directory", {path});
         }
     },
+    download_to_file: async(uri: string, to_path?: string) => {
+        to_path = path_lib.join(expo_fs.cacheDirectory!, gen_uuid() + '.tmp');
+        await expo_fs.downloadAsync(uri, to_path, {});
+        return to_path;
+    }
 };

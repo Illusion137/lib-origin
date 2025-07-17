@@ -4,18 +4,19 @@ export interface RozContent {
     uuid: string;
     type: RozContentType;
     content: string;
+    duration: number;
 }
-interface RozChapterContentsBase<T> {
-    contents: T;
+export interface RozChapterContents {
+    contents: RozContent[];
     chapter: {
         id?: string;
         title?: string;
+        audio_path?: string;
     };
 }
-export type RozChapterContentsPromise = RozChapterContentsBase<Promise<RozContent>[]>;
-export type RozChapterContents = RozChapterContentsBase<RozContent[]>;
-export type RozSourceFileType = 'TXT'|'PDF'|'JNOVEL'|'WITCHCULT'|'SYOSETU'|'EPUB'|'FILEBASE';
-export const RozSourceFileTypeArray = ['TXT','PDF','JNOVEL','WITCHCULT','SYOSETU','EPUB','FILEBASE'] as const;
+
+export type RozSourceFileType = 'TXT'|'PDF'|'JNOVEL'|'WITCHCULT'|'SYOSETU'|'EPUB'|'DOCX'|'FILEBASE';
+export const RozSourceFileTypeArray = ['TXT','PDF','JNOVEL','WITCHCULT','SYOSETU','EPUB','DOCX','FILEBASE'] as const;
 export default interface Roz {
     uuid: string;
     source_file: string;

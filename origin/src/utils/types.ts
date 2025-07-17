@@ -3,6 +3,8 @@ export interface ResponseSuccess { "success": true }
 export type PromiseResult<T> = Promise<ResponseError|T>;
 export type FetchMethod = "GET"|"POST"|"DELETE"|"PUT"|"OPTIONS";
 
+export type FileExtension = ".txt"|".mp3"|".mp4"|".aac"|".mkv"|".ogg"|".m4a"|".wav"|".flv"|".epub"|".pdf"|".roz";
+
 export class TimedCacheValue<V> {
     lifespan_milliseconds: number
     store?: { created_at: Date, value: V }
