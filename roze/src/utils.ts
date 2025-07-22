@@ -1,6 +1,6 @@
 import type { TranslationMap } from "./types/types";
 import type { RozContent, RozTextStructures, RozTextStructureType } from "./types/roz";
-import { gen_uuid } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, gen_uuid, isNumber } from "../../origin/src/utils/util";
 
 function html_inner_text_content(html_line: string) {
     return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
@@ -44,28 +44,35 @@ export function html_to_roz_content(html_content: string){
         .split('\n')
         .map(line => line.trim())
         .filter(line => line);
-
-    let line = 0;
+    //TODO add multiline support ?>> JSDOM
     if(xhtml_lines.join('\n').includes("<nav epub:type=\"toc\"")) return [];
-    while (line + 1 < xhtml_lines.length && !xhtml_lines[++line].includes('</div>') && !xhtml_lines[line].includes('</section>')) {
-        type HTMLClass = 'img' | 'p' | 'h1' | 'h2' | 'div' | 'hr/' | 'br/';
+    for(const line of xhtml_lines){
+        type HTMLClass = 'img' | 'p' | 'h1' | 'h2' | 'div' | '/div' | 'hr/' | 'br/' | 'section' | '/section';
         const extract_type_regex = /<(.+?)(>|\s)/;
-        const type: HTMLClass = (extract_type_regex.exec(xhtml_lines[line]) as RegExpExecArray)[1] as HTMLClass;
+        const type_err = extract_string_from_pattern(line, extract_type_regex);
+        if(typeof type_err === "object") {
+            console.error(type_err);
+            continue;
+        }
+        const type = type_err as HTMLClass;
         switch (type) {
             case 'img':
-                content.push({ type: "IMAGE", content: html_img_src(xhtml_lines[line]), uuid: gen_uuid(), duration: 0}); break;
+                content.push({ type: "IMAGE", content: html_img_src(line), uuid: gen_uuid(), duration: 0}); break;
             case 'p':
-                content.push({ type: "PARAGRAPH", content: html_inner_text_content(xhtml_lines[line]), uuid: gen_uuid(), duration: 0}); break;
+                content.push({ type: "PARAGRAPH", content: html_inner_text_content(line), uuid: gen_uuid(), duration: 0}); break;
             case 'h1':
-                content.push({ type: "CHAPTER_TITLE", content: html_inner_text_content(xhtml_lines[line]), uuid: gen_uuid(), duration: 0}); break;
+                content.push({ type: "CHAPTER_TITLE", content: html_inner_text_content(line), uuid: gen_uuid(), duration: 0}); break;
             case 'h2':
-                content.push({ type: "CHAPTER_SUBTITLE", content: html_inner_text_content(xhtml_lines[line]), uuid: gen_uuid(), duration: 0}); break;
+                content.push({ type: "CHAPTER_SUBTITLE", content: html_inner_text_content(line), uuid: gen_uuid(), duration: 0}); break;
             case 'br/':
                 content.push({ type: "LINE_BREAK", content: "-", uuid: gen_uuid(), duration: 0}); break;
             case 'hr/':
                 content.push({ type: "THEME_BREAK", content: "-", uuid: gen_uuid(), duration: 0}); break;
             case 'div': break;
-            // default: console.error(type, ": ", xhtml_lines[line]);
+            case '/div': break;
+            case 'section': break;
+            case '/section': break;
+            default: console.error(type, ": ", line); break;
         }
     }
     return content.filter(c => c.content);
@@ -113,6 +120,8 @@ export function run_translation_map(text: string, translation_map: TranslationMa
 }
 
 export function timestamp_to_string(t_seconds: number) {
+    if(!isNumber(t_seconds)) return '00:00:00';
+    if(t_seconds < 0) return '00:00:00';
     const hours = Math.floor(t_seconds / 3600);
     const minutes = Math.floor((t_seconds - hours * 3600) / 60);
     const seconds = t_seconds - hours * 3600 - minutes * 60;

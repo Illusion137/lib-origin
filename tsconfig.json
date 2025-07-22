@@ -6,7 +6,7 @@
         "noEmit": true,
         "module": "commonjs",
         "esModuleInterop": true,
-        "target": "ES2024",
+        "target": "esnext",
         "moduleResolution": "node",
         "resolveJsonModule": true,
         "sourceMap": true,
@@ -22,5 +22,5 @@
         "allowJs": true,
     },
     "exclude": ["node_modules/**"],
-    "lib": ["ES2024"],
+    "lib": ["ESNext"],
 }

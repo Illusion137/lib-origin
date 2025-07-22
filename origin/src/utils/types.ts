@@ -54,16 +54,39 @@ export class TimedCache<K, V> {
         this.store[this.store.length - 1].value = value;
         return value;
     }
-    async return_update(key: K, else_value: () => Promise<V>): Promise<V> {
-        let value;
-        if((value = this.get(key))){
-            return value;
-        }
-        const new_value = await else_value();
-        this.update(key, new_value);
-        return new_value;
-    }
     clear_expired() {
         this.store = this.store.filter(item => item.created_at.getTime() + (this.lifespan_milliseconds) > new Date().getTime())
+    }
+}
+
+export class ItemTimedCache<K, V> {
+    store: { created_at: Date, key: K, value: V, lifespan_milliseconds: number }[]
+    constructor() {
+        this.store = [];
+    }
+    add(key: K, value: V, lifespan_milliseconds: number) {
+        this.clear_expired();
+        this.store.push({created_at: new Date(), key, value, lifespan_milliseconds});
+    }
+    get(key: K) {
+        this.clear_expired();
+        return this.store.find(item => item.key === key)?.value;
+    }
+    get_raw(key: K){
+        this.clear_expired();
+        return this.store.find(item => item.key === key);
+    }
+    update(key: K, value: V, lifespan_milliseconds: number) {
+        this.clear_expired();
+        const i = this.store.findIndex(item => item.key === key);
+        if(i === -1) this.add(key, value, lifespan_milliseconds);
+        this.store[this.store.length - 1].value = value;
+        return value;
+    }
+    clear_expired() {
+        this.store = this.store.filter(item => item.created_at.getTime() + (item.lifespan_milliseconds) > new Date().getTime())
+    }
+    remove(key: string) {
+        this.store = this.store.filter((_, index) => index !== this.store.findIndex(item => item.key === key));
     }
 }

@@ -1,6 +1,6 @@
 import type { CookieJar } from "../../origin/src/utils/cookie_util";
 import type { PromiseResult, ResponseError } from "../../origin/src/utils/types";
-import { extract_string_from_pattern, generror, generror_fetch } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, generror, generror_catch, milliseconds_of, try_json_parse } from "../../origin/src/utils/util";
 import { RozeHeaders } from "./headers";
 import type { JNovel_Calender } from "./types/jnovel-calender";
 import type { JNovel_Home } from "./types/jnovel-home";
@@ -10,9 +10,10 @@ import type { JNovel_Series_Page } from "./types/jnovel-series-page";
 import type { JNovel_User } from "./types/jnovel-user";
 import type { RozContent } from "./types/roz";
 import { clean_html_text, html_to_roz_content } from "./utils";
+import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "./rozfetch";
 
 export namespace JNovel {
-	export interface Opts { cookie_jar?: CookieJar }
+	export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }
 
 	interface JNovel_Reader {
 		title: string,
@@ -24,24 +25,23 @@ export namespace JNovel {
 	};
 
 	async function get_response(url: string, opts: Opts) {
-		return await fetch(url, {
-			headers: RozeHeaders.get_document_headers(opts.cookie_jar),
-			referrerPolicy: "strict-origin-when-cross-origin",
-			body: null,
-			method: "GET"
-		});
+		return await rozfetch(url, merge_rozfetch_defaults(opts, {
+            headers: RozeHeaders.get_document_headers(opts.cookie_jar),
+            referrerPolicy: "strict-origin-when-cross-origin",
+            cache_opts: {
+                cache_ms: milliseconds_of({years: 1}),
+                cache_ms_fail: milliseconds_of({}),
+                cache_mode: "all"
+        }}).fetch_opts);
 	}
 	async function get_response_text(url: string, opts: Opts) {
 		const response = await get_response(url, opts);
-		if (!response.ok) return generror_fetch(response, "get_response_text failed", opts, {url});
+        if("error" in response) return generror_catch(response, "get_response_text failed", {url, opts});
 		return await response.text();
-	}
-	function try_json_parse<T>(json_string: string): T | ResponseError {
-		try { return JSON.parse(json_string) as T; } catch (error) { return { error: error as Error }; }
 	}
 	export function __next_data__<T>(html: string | ResponseError): T|ResponseError {
 		if (typeof html === "object") return html;
-		const next_data_string = extract_string_from_pattern(html, /<script id=".+?" type="application\/json">.+?({.+?})<\/script>/igs);
+		const next_data_string = extract_string_from_pattern(html, /<script id="__NEXT_DATA__" type="application\/json">.*?({.+?})<\/script>/igs);
 		if (typeof next_data_string === "object") return next_data_string;
 		return try_json_parse<T>(next_data_string);
 	}

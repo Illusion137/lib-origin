@@ -23,7 +23,7 @@ export interface BasePref<TValue, TType extends string = "">
     readonly range?: {"start": number, "end": number};
     readonly options?: TValue[];
 };
-export type BasePrefs<TKeys extends string, TValue, TType extends string> = Record<TKeys, BasePref<TValue, TType>>;
+export type BasePrefsRecord<TKeys extends string, TValue, TType extends string> = Record<TKeys, BasePref<TValue, TType>>;
 export type BasePrefLoadMap<TType extends string, TValue> = Record<BasePrefTypes|TType, (mmkv_module: MMKVModule, pref_key: string) => TValue>;
 export type BasePrefSaveMap<TType extends string, TValue> = Record<BasePrefTypes|TType, (mmkv_module: MMKVModule, pref_key: string, value: TValue) => void>;
 
@@ -41,7 +41,7 @@ export const base_load_map: BasePrefLoadMap<BasePrefTypes, unknown> = {
     COOKIE_JAR: (mmkv_module: MMKVModule, pref_key: string) => CookieJar.fromString(mmkv_module.get_string(pref_key) ?? ""),
     DATE: (mmkv_module: MMKVModule, pref_key: string) => new Date(mmkv_module.get_string(pref_key) ?? 0)
 };
-export function generic_load_prefs<TType extends string, TKeys extends string>(mmkv_module: MMKVModule, prefs: BasePrefs<TKeys, unknown, TType>, load_map: BasePrefLoadMap<BasePrefTypes|TType, unknown>) {
+export function generic_load_prefs<TType extends string, TKeys extends string>(mmkv_module: MMKVModule, prefs: BasePrefsRecord<TKeys, unknown, TType>, load_map: BasePrefLoadMap<BasePrefTypes|TType, unknown>) {
     const keys = Object.keys(prefs) as (keyof typeof prefs)[];
     const all_keys = mmkv_module.get_keys();
     for(const key of keys) {
@@ -63,13 +63,13 @@ export const base_save_map: BasePrefSaveMap<BasePrefTypes, unknown> = {
     COOKIE_JAR:(mmkv_module: MMKVModule, pref_key: string, value: unknown) => mmkv_module.set_string(pref_key, (value as CookieJar).toString()),
     DATE:(mmkv_module: MMKVModule, pref_key: string, value: unknown) => mmkv_module.set_string(pref_key, (value as Date).toISOString())
 };
-export function generic_save_pref<T extends string>(mmkv_module: MMKVModule, prefs: Record<T, BasePref<unknown, BasePrefTypes|TType>>, pref_key: T, value: (typeof prefs)[T]['default_value'], save_map: BasePrefSaveMap<TType, unknown>) {
-    const save_function = save_map[prefs[key].type];
+export function generic_save_pref<TType extends string, TKeys extends string>(mmkv_module: MMKVModule, prefs: BasePrefsRecord<TKeys, unknown, TType>, pref_key: TKeys, value: (typeof prefs)[TKeys]['default_value'], save_map: BasePrefSaveMap<TType, unknown>) {
+    const save_function = save_map[prefs[pref_key].type];
     if(save_function) prefs[pref_key].current_value = save_function(mmkv_module, pref_key, value);
-    else console.error(`UNKNOWN SAVE PREF[KEY] TYPE "${prefs[key].type}"`);
+    else console.error(`UNKNOWN SAVE PREF[KEY] TYPE "${prefs[pref_key].type}"`);
 }
 
-export function generic_reset_prefs(mmkv_module: MMKVModule, keep_prefs: string[]) {
+export function generic_reset_prefs(mmkv_module: MMKVModule, keep_prefs: string[], load_prefs: () => void) {
     mmkv_module.get_keys().filter(key => !keep_prefs.includes(key)).forEach(key => mmkv_module.remove_key(key));
     load_prefs();
 }
