@@ -1,4 +1,4 @@
-import type { ResponseError } from "../../utils/types";
+import type { ResponseError } from "../../../../common/types";
 import type { Track } from "./types";
 
 export type PlaylistResponse = PlaylistResponseSuccess | ResponseError;

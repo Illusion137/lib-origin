@@ -1,6 +1,6 @@
 import { ChannelType, type GuildChannel } from "discord.js";
 import type { DiscordTrack } from "../types";
-import type { Track } from "../../../types";
+import type { Track } from "@illusive/types";
 
 export namespace Utils { 
     export function is_voice_channel(Channel: GuildChannel) {

@@ -1,4 +1,4 @@
-import type { ResponseError } from "../../../origin/src/utils/types";
+import type { ResponseError } from "../../../common/types";
 import { VoiceSynthConstants } from "./voice_synth_constants";
 import type { VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth.base";
 import tts from 'react-native-tts-export';

@@ -5,9 +5,9 @@ import EPub from 'epub2';
 import Pdfparser from 'pdf2json';
 import pathlib from 'path';
 import { html_to_roz_content as html_to_roz_contents } from './utils';
-import { gen_uuid, generror_catch, try_json_parse } from '../../origin/src/utils/util';
-import { fs, gen_temp_file_name, get_temp_file_path } from '../native/fs/fs';
-import type { FileExtension, PromiseResult } from '../../origin/src/utils/types';
+import { gen_uuid, generror_catch, try_json_parse } from '@common/utils/util';
+import { fs, gen_temp_file_name, get_temp_file_path } from '@native/fs/fs';
+import type { FileExtension, PromiseResult } from '@common/types';
 // import * as docx from "docx";
 // import mammoth from "mammoth";
 

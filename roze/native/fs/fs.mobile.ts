@@ -1,4 +1,4 @@
-import { gen_uuid, generror_catch } from "../../../origin/src/utils/util";
+import { gen_uuid, generror_catch } from "../../../common/utils/util";
 import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "./fs.base";
 import expo_fs from 'expo-file-system';
 import path_lib from 'path';
@@ -74,7 +74,7 @@ export const mobile_fs: FileSystem = {
     },
     remove: async(path: string) => {
         try {
-            return await expo_fs.deleteAsync(path);
+            return await expo_fs.deleteAsync(path, {idempotent: true});
         } catch (error) {
             return generror_catch(error, "Failed to remove file/directory", {path});
         }

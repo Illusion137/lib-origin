@@ -1,4 +1,4 @@
-import { try_json_parse, is_empty, milliseconds_of } from '../../../../../origin/src/utils/util';
+import { try_json_parse, is_empty, milliseconds_of } from '../../../../../common/utils/util';
 import { Prefs } from "../../../prefs";
 import type { CompactPlaylist, SQLCount, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, SQLTimestampedCompactPlaylist, TimestampedCompactPlaylist, Promises } from "../../../types";
 import { ExampleObj } from "../example_objs";

@@ -1,7 +1,7 @@
 import type * as SQLite from '@op-engineering/op-sqlite';
 import * as uuid from "react-native-uuid";
-import { is_empty } from "../../../../../origin/src/utils/util";
-import { parse_youtube_title_artist } from '../../../gen/youtube_parser';
+import { is_empty } from "../../../../../common/utils/util";
+import { parse_youtube_title_artist } from '../../../parsers/youtube_parser';
 import { playlist_name_sql_friendly } from '../../../illusive_utilts';
 import type { ISOString, Track } from "../../../types";
 import type * as LegacyTypes1307 from '../legacy/1307/legacy_types';

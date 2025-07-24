@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
- 
-import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import * as ffmpeg from 'ffmpeg-kit-react-native';
-import { is_empty } from '../../../../origin/src/utils/util';
+import { is_empty } from '../../../../common/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
@@ -15,6 +13,7 @@ import { playlist_tracks } from './playlist_converter';
 import * as SQLBackpack from './sql/sql_backpack';
 import * as SQLfs from './sql/sql_fs';
 import * as SQLTracks from './sql/sql_tracks';
+import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 
 async function wait_for(condition_function: () => boolean) {
     const poll = (resolve: ()=>void) => {
@@ -144,20 +143,17 @@ export async function download_track(track: Track, redownload = false, progress_
                         const retcode = (await execution.getReturnCode()).getValue();
                         if(retcode !== Constants.ffmpeg_retcode_success)
                             throw new Error(`FFMPEG return status code: ${retcode};\n Execution ID: ${execution.getSessionId()}`)
-                        const sound_temp = new Audio.Sound();
-                        await sound_temp.loadAsync({ uri: new_uri });
-                        const meta_data = await sound_temp.getStatusAsync();
-                        await sound_temp.unloadAsync();
-                        if (!meta_data.isLoaded)
-                            throw new Error('No load');
-                        const downloaded_duration = Math.floor((meta_data.durationMillis ?? 0) / 1000);
-                        if (Math.round(downloaded_duration) < 3)
-                            throw new Error(`Invalid Duration: ${downloaded_duration}`);
+                        
+                        const audio_duration_seconds = await get_audio_duration.get_audio_duration(new_uri);
+                        if(audio_duration_seconds === -1) throw new Error("Unable to access audio metadata duration");
+                        
+                        if (Math.round(audio_duration_seconds) < 3)
+                            throw new Error(`Invalid Duration: ${audio_duration_seconds}`);
                         else if(is_empty(track.duration) || is_empty(track.duration)){
-                            await SQLTracks.update_track(track.uid, {...track, duration: downloaded_duration})
+                            await SQLTracks.update_track(track.uid, {...track, duration: audio_duration_seconds})
                         }
-                        else if (!number_epsilon_distance(downloaded_duration, track.duration, Constants.download_duration_epsilon))
-                            throw new Error(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(downloaded_duration - track.duration)}`);
+                        else if (!number_epsilon_distance(audio_duration_seconds, track.duration, Constants.download_duration_epsilon))
+                            throw new Error(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(audio_duration_seconds - track.duration)}`);
 
                         await SQLTracks.mark_track_downloaded(track.uid, media_uri);
 

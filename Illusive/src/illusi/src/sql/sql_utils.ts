@@ -1,7 +1,6 @@
 import * as SQLite from '@op-engineering/op-sqlite';
-import { is_empty } from "../../../../../origin/src/utils/util";
+import { error_undefined, extract_file_extension, is_empty } from "../../../../../common/utils/util";
 import { Illusive } from '../../../illusive';
-import { extract_file_extension } from '../../../illusive_utilts';
 import type { CompactPlaylist, Primitives, SQLArtist, SQLTables, Track } from "../../../types";
 import { ExampleObj } from '../example_objs';
 import * as GLOBALS from '../globals';
@@ -182,17 +181,15 @@ export function update_global_track_item(uid: Track['uid'], new_track: Track){
 
 export async function download_thumbnail(track: Track) {
     const best_artwork = await Illusive.get_best_track_artwork(document_directory(""), track);
-    if(typeof best_artwork === "object" && is_empty(track.thumbnail_uri)) {
-        const ext = extract_file_extension(best_artwork.uri, "photo");
-        const thumbnail_uri = track.uid + ext;
-        const thumbnail_download = SQLfs.create_download_resumeable(best_artwork.uri, thumbnail_directory(thumbnail_uri));
-        await thumbnail_download.downloadAsync();
-        await sql_update<Track>("tracks", track, "thumbnail_uri", thumbnail_uri);
-        update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
-        update_global_track_property(track.uid, 'playback', {...track.playback!, artwork: Illusive.get_track_artwork(document_directory(""), track)});
-        return track.uid + ext;
-    }
-    return undefined;
+    if(!(typeof best_artwork === "object" && is_empty(track.thumbnail_uri))) return;
+    const ext = extract_file_extension(best_artwork.uri, "photo");
+    const thumbnail_uri = track.uid + ext;
+    const thumbnail_download = await SQLfs.download_to_file(best_artwork.uri, thumbnail_directory(thumbnail_uri));
+    if(error_undefined(thumbnail_download) === undefined) return;
+    await sql_update<Track>("tracks", track, "thumbnail_uri", thumbnail_uri);
+    update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
+    update_global_track_property(track.uid, 'playback', {...track.playback!, artwork: Illusive.get_track_artwork(document_directory(""), track)});
+    return track.uid + ext;
 }
 
 export async function move_unsorted_media_to_folders() {

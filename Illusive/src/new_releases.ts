@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index';
-import { parse_youtube_music_albums } from './gen/youtube_music_parser';
+import { parse_youtube_music_albums } from './parsers/youtube_music_parser';
 import { Prefs } from "./prefs";
 import type { CompactPlaylist } from "./types";
 

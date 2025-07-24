@@ -1,6 +1,6 @@
 import * as SQLTracks from '../../../../Illusive/src/illusi/src/sql/sql_tracks';
 import * as Origin from '../../../../origin/src/index';
-import { is_empty } from '../../../../origin/src/utils/util';
+import { is_empty } from '../../../../common/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import { Prefs } from "../../prefs";

@@ -10,7 +10,6 @@ import { IllusiIcons } from '../../illusi_icons';
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [
         {text: "Cancel", onPress: () => {return}},
-         
         {text: "OK", onPress: on_press, style: "destructive" }
     ])
 }

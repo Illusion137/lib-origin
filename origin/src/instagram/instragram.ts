@@ -1,5 +1,5 @@
-import type { CookieJar } from "../utils/cookie_util";
-import { encode_params } from "../utils/util";
+import type { CookieJar } from "../../../common/utils/cookie_util";
+import { encode_params } from "../../../common/utils/util";
 import type { AllCollections } from "./types/AllCollections";
 import type { GraphQLQuery } from "./types/GraphQLQuery";
 import type { MediaInfo } from "./types/MediaInfo";

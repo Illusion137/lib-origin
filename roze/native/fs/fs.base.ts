@@ -1,4 +1,4 @@
-import type { PromiseResult, ResponseError } from '../../../origin/src/utils/types';
+import type { PromiseResult, ResponseError } from '../../../common/types';
 
 export interface NoOverwriteOpts {
     no_overwrite?: boolean;

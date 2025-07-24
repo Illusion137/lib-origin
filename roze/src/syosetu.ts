@@ -1,10 +1,11 @@
 import type { CookieJar } from "tough-cookie";
-import { jsdom_document, map_html_collection } from "../../origin/src/utils/jsdom";
-import type { PromiseResult } from "../../origin/src/utils/types";
-import { extract_string_from_pattern, gen_uuid, generror, generror_catch, is_empty, isNumber, milliseconds_of } from "../../origin/src/utils/util";
+import { jsdom_document, map_html_collection } from "@common/jsdom";
+import type { PromiseResult } from "@common/types";
+import { extract_string_from_pattern, gen_uuid, is_empty, is_number, milliseconds_of } from "@common/utils/util";
 import { Translate } from "./translate";
 import type { RozChapterContents } from "./types/roz";
-import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "./rozfetch";
+import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "../../common/rozfetch";
+import { generror, generror_catch } from "@common/utils/error_util";
 
 export namespace Syosetu {
     export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }
@@ -71,8 +72,8 @@ export namespace Syosetu {
     }
     export async function webnovel_chapter_contents_range(webnovel_id: string, opts: Opts & WebnovelChapterContentsRangeOpts){
         if (is_empty(webnovel_id)) return [];
-        if (!isNumber(opts.range_start)) opts.range_start = 1;
-        if (!isNumber(opts.range_end)) opts.range_end = opts.range_start;
+        if (!is_number(opts.range_start)) opts.range_start = 1;
+        if (!is_number(opts.range_end)) opts.range_end = opts.range_start;
         if(opts.range_start < 1 || opts.range_end < opts.range_start) return [];
         opts.translate_contents ??= false;
 

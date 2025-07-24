@@ -1,4 +1,4 @@
-import { TimedCache } from "../../../../origin/src/utils/types";
+import { TimedCache } from "../../../../common/types";
 import { Constants } from "../../constants";
 import type { Prefs } from "../../prefs";
 import type { BottomAlertType, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SetState, Track } from "../../types";

@@ -1,4 +1,4 @@
-import { CookieJar } from "../../origin/src/utils/cookie_util";
+import { CookieJar } from "../../common/utils/cookie_util";
 import { Prefs } from "./prefs";
 import * as fs from 'fs';
 

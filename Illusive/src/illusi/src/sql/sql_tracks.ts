@@ -1,4 +1,4 @@
-import { is_empty, wait } from "../../../../../origin/src/utils/util";
+import { is_empty, wait } from "../../../../../common/utils/util";
 import { Illusive } from "../../../illusive";
 import { Prefs } from "../../../prefs";
 import type { ISOString, NamedUUID, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "../../../types";
@@ -8,10 +8,10 @@ import * as SQLfs from './sql_fs';
 import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from './sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where, update_global_track_all_property, update_global_track_item, update_global_track_property } from "./sql_utils";
-import type { ResponseError} from "../../../../../origin/src/utils/types";
-import { TimedCacheValue } from "../../../../../origin/src/utils/types";
+import type { ResponseError} from "../../../../../common/types";
+import { TimedCacheValue } from "../../../../../common/types";
 import { alert_error, alert_info } from "../alert";
-import { clean_album_title } from "../../../gen/apple_music_parser";
+import { clean_album_title } from "../../../parsers/apple_music_parser";
 import { generate_unique_track_tints, random_of, track_primary_key } from "../../../illusive_utilts";
 import { Constants } from "../../../constants";
 import { try_download_track_lyrics } from "../lyrics";
@@ -314,6 +314,7 @@ export async function restore_thumbnail_cache(tracks?: Track[]) {
 
 export async function clean_thumbnail_cache() {
     const files = await SQLfs.read_directory(thumbnail_directory(""));
+    if("error" in files) return;
     const all_promises: Promises = [];
     for(const file of files)
         all_promises.push(SQLfs.delete_item(thumbnail_directory(file)))

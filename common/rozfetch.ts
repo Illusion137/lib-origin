@@ -1,7 +1,9 @@
-import { generror_catch, generror_fetch, is_timeout_error, json_catch, try_json_parse } from "../../origin/src/utils/util";
-import { ItemTimedCache, type PromiseResult, type ResponseError } from "../../origin/src/utils/types";
+import { json_catch } from "@common/utils/util";
+import { ItemTimedCache, type PromiseResult, type ResponseError } from "@common/types";
 import { md5 } from 'js-md5';
-import { fs } from "../native/fs/fs";
+import { fs } from "@native/fs/fs";
+import { try_json_parse } from "./utils/parse_util";
+import { generror_catch, generror_fetch, is_timeout_error } from "./utils/error_util";
 import pathlib from 'path';
 
 interface RozFetchCacheOptsBase {
@@ -16,9 +18,15 @@ interface RozFetchCacheOptsFile {
     cache_directory?: string;
 }
 type RozFetchCacheOpts = RozFetchCacheOptsBase & (RozFetchCacheOptsMemory|RozFetchCacheOptsFile);
+
+export interface RozProxy {
+    ip: string;
+    port: number;
+}
 export interface RoZFetchRequestInit extends RequestInit {
     cache_opts?: RozFetchCacheOpts
     abort_ms?: number;
+    proxy?: RozProxy;
 }
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
 export interface RoZFetchResponse<T> extends Response {
@@ -27,19 +35,8 @@ export interface RoZFetchResponse<T> extends Response {
     cache_timestamp: number;
 }
 
-interface WithRozFetchOpts {
-    fetch_opts?: RoZFetchRequestInit
-}
-
 const cache_file_extension = '.che';
 const rozfetch_cache = new ItemTimedCache<string, ResponseError|RoZFetchResponse<unknown>>();
-
-export function merge_rozfetch_defaults(opts: WithRozFetchOpts, defaults: RoZFetchRequestInit){
-    return {
-        ...opts,
-        fetch_opts: Object.assign(defaults, opts.fetch_opts)
-    }
-}
 
 export function rozfetch_cache_key(input: string, init?: RoZFetchRequestInit): string {
     return md5.hex(input + JSON.stringify(init));

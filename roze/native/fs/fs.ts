@@ -1,7 +1,7 @@
 import type { EncodingOpts, FileSystem } from "./fs.base";
 import { get_native_platform } from "../native_mode";
-import { gen_uuid } from "../../../origin/src/utils/util";
-import type { FileExtension } from "../../../origin/src/utils/types";
+import { gen_uuid } from "../../../common/utils/util";
+import type { FileExtension } from "../../../common/types";
 
 export let fs: FileSystem;
 switch(get_native_platform()){

@@ -1,4 +1,4 @@
-import { concact_audio_files, generate_dynamic_video_with_audio, generate_static_video_with_audio } from "../native/ffmpeg/ffmpeg";
+import { concact_audio_files, generate_static_video_with_audio } from "@native/ffmpeg/ffmpeg";
 import { get_temp_file_path } from "../native/fs/fs";
 import { get_audio_duration } from "../native/get_audio_duration/get_audio_duration";
 import { voice_synth } from "../native/voice_synth/voice_synth";
@@ -69,7 +69,8 @@ export namespace AudiobookGen {
     }
     export async function roz_audio_data_to_dynamic_flv(roz: Roz){
         const audio_path = await roz_full_audio(roz);
-        const audiobook_video_path = await generate_dynamic_video_with_audio(roz.cover ?? "", audio_path, ".flv");
+        // const audiobook_video_path = await generate_dynamic_video_with_audio(roz.cover ?? "", audio_path, ".flv");
+        const audiobook_video_path = audio_path; // TODO IMPLEMENT THIS
         return audiobook_video_path;
     }
 };

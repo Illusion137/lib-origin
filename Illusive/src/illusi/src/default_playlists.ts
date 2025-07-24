@@ -1,4 +1,4 @@
-import { is_empty } from '../../../../origin/src/utils/util';
+import { is_empty } from '../../../../common/utils/util';
 import { Prefs } from '../../prefs';
 import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "../../types";
 import * as GLOBALS from './globals';

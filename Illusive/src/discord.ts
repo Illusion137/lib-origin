@@ -1,6 +1,6 @@
 import { Discord } from "../../origin/src/discord/discord";
-import type { ResponseError } from "../../origin/src/utils/types";
-import { generate_new_uid } from "../../origin/src/utils/util";
+import type { ResponseError } from "../../common/types";
+import { generate_new_uid } from "../../common/utils/util";
 import { artist_string } from "./illusive_utilts";
 import type { SmallTrackRaw, Track } from "./types";
 

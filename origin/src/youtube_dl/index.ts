@@ -1,4 +1,4 @@
-import { urlid } from '../utils/util';
+import { urlid } from '../../../common/utils/util';
 import * as formatUtils from './format-utils';
 import * as getInfo from './info';
 import * as urlUtils from './url-utils';

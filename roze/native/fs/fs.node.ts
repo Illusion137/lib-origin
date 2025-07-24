@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path_lib from 'path';
-import { gen_uuid, generror_catch } from "../../../origin/src/utils/util";
+import { gen_uuid, generror_catch } from "../../../common/utils/util";
 import { Readable } from 'stream';
 import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "./fs.base";
 import type { ReadableStream } from 'stream/web';

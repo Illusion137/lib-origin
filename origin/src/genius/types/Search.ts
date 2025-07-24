@@ -12,14 +12,14 @@ export interface Response {
 }
 
 export interface Section {
-    type: string
+    type: "top_hit"|"song"|"lyric"|"artist"|"album"|"video"|"article"|"user"
     hits: Hit[]
 }
 
 export interface Hit {
     highlights: Highlight[]
-    index: string
-    type: string
+    index: "song"|"artist"|"album"|"lyric"|"video"|"article"|"user"
+    type: "song"|"artist"|"album"|"video"|"article"|"user"
     result: Result
 }
 

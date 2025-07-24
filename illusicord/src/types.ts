@@ -1,5 +1,5 @@
-import type { YTDLQuality } from "../../../../origin/src/youtube_dl/types";
-import type { Track } from "../../types";
+import type { YTDLQuality } from "@origin/youtube_dl/types";
+import type { Track } from "@illusive/types";
 
 export interface PlayerOptions {
     leaveOnEnd?: boolean;

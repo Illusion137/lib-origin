@@ -1,12 +1,17 @@
-import type { CookieJar } from "../utils/cookie_util";
-import type { PromiseResult, ResponseError } from "../utils/types";
-import { json_catch, try_json_parse, urlid } from "../utils/util";
+import type { CookieJar } from "@common/utils/cookie_util";
+import type { PromiseResult } from "@common/types";
+import { urlid } from "@common/utils/util";
 import type { Config } from "./types/Config";
 import type { CreatePlaylist } from "./types/CreatePlaylist";
-import type { SearchResult } from "./types/SearchResult";
+import type { AmazonSearchTrack, SearchResult } from "./types/SearchResult";
 import type { ShowHome } from "./types/ShowHome";
 import type { AmazonTrack, CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
-import type { ShowLibraryHome } from "./types/ShowLibraryHome";
+import type { AmazonMusicLibraryPlaylist, ShowLibraryHome } from "./types/ShowLibraryHome";
+import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
+import { try_json_parse } from "@common/utils/parse_util";
+import { generror } from "@common/utils/error_util";
+import { wait } from "@common/utils/timed_utilt";
+import { base_get_headers, base_post_headers } from "@common/headers_base";
 
 export namespace AmazonMusic {
     interface AuthHeader {
@@ -14,116 +19,39 @@ export namespace AmazonMusic {
         token: string,
         expirationMS: number
     }
-    interface Opts { cookie_jar?: CookieJar, client?: Config }
+    interface Opts { cookie_jar?: CookieJar, client?: Config, fetch_opts?: RoZFetchRequestInit }
     const client_cache = {client: null as Config|null, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
     export function client_cache_full() { return client_cache.enabled && client_cache.client !== null}
 
-    export async function get_amzn_music_data(opts: Opts): PromiseResult<Config> {
-        try {
-            if(client_cache_full()) return client_cache.client!;
-
-            const response = await fetch("https://music.amazon.com/config.json", {
-                headers: {
-                    "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-                    "accept": "*/*",
-                    "accept-language": "en-US,en;q=0.9",
-                    "if-none-match": "W/\"7d0-ftBuOfVR2/DK+r1ZmQnASQUtmQw\"",
-                    "priority": "u=1, i",
-                    "sec-ch-ua": "\"Chromium\";v=\"130\", \"Google Chrome\";v=\"130\", \"Not?A_Brand\";v=\"99\"",
-                    "sec-ch-ua-mobile": "?0",
-                    "sec-ch-ua-platform": "\"Windows\"",
-                    "sec-fetch-dest": "empty",
-                    "sec-fetch-mode": "cors",
-                    "sec-fetch-site": "same-origin",
-                    "cookie": opts.cookie_jar?.toString() as string,
-                    "Referer": "https://music.amazon.com/my/library",
-                    "Referrer-Policy": "strict-origin-when-cross-origin",
-                }
-            });
-
-            const config: Config|ResponseError = await response.json().catch(json_catch);
-            if("error" in config) throw config.error;
-            if(client_cache.enabled) client_cache.client = config;
-            return config;
-        } catch (error) { return { error: error as Error }; }
+    function get_headers(opts: Opts){
+        return {
+            ...base_get_headers(opts),
+            "if-none-match": "W/\"7d0-ftBuOfVR2/DK+r1ZmQnASQUtmQw\"",
+            "Referer": "https://music.amazon.com/my/library",
+        };
     }
-
-    export async function get_show_home_data(amzn_music: Config, url: string): PromiseResult<ShowHome> {
-        try {
-            const trimmed_url = urlid(url, "music.amazon.com");
-            const deeplink = {
-                interface: "DeeplinkInterface.v1_0.DeeplinkClientInformation",
-                deeplink: trimmed_url
-            };
-            const x_amzn_authentication = {
-                interface: "ClientAuthenticationInterface.v1_0.ClientTokenElement",
-                accessToken: amzn_music.accessToken
-            };
-            const x_amzn_csrf = {
-                interface: "CSRFInterface.v1_0.CSRFHeaderElement",
-                token: amzn_music.csrf.token,
-                timestamp: amzn_music.csrf.ts,
-                rndNonce: amzn_music.csrf.rnd
-            };
-            const headers = {
-                "x-amzn-authentication": JSON.stringify(x_amzn_authentication),
-                "x-amzn-device-model": "WEBPLAYER",
-                "x-amzn-device-width": "1920",
-                "x-amzn-device-family": "WebPlayer",
-                "x-amzn-device-id": amzn_music.deviceId,
-                "x-amzn-user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "x-amzn-session-id": amzn_music.sessionId,
-                "x-amzn-device-height": "1080",
-                "x-amzn-request-id": "dfefb1b8-4ae6-4d38-973b-a4964eefbd76",
-                "x-amzn-device-language": amzn_music.displayLanguage,
-                "x-amzn-currency-of-preference": "USD",
-                "x-amzn-os-version": "1.0",
-                "x-amzn-application-version": amzn_music.version,
-                "x-amzn-device-time-zone": "America/Phoenix",
-                "x-amzn-timestamp": amzn_music.csrf.ts,
-                "x-amzn-csrf": JSON.stringify(x_amzn_csrf),
-                "x-amzn-music-domain": "music.amazon.com",
-                "x-amzn-referer": "",
-                "x-amzn-affiliate-tags": "",
-                "x-amzn-ref-marker": "",
-                "x-amzn-page-url": url,
-                "x-amzn-weblab-id-overrides": "",
-                "x-amzn-video-player-token": "",
-                "x-amzn-feature-flags": "hd-supported,uhd-supported"
-            };
-
-            const body = JSON.stringify({ deeplink: JSON.stringify(deeplink), headers: JSON.stringify(headers) });
-
-            const show_home_body = await fetch("https://na.mesk.skill.music.a2z.com/api/showHome", {
-                method: 'POST', headers: {
-                    "accept": "*/*",
-                    "accept-language": "en-US,en;q=0.9",
-                    "content-type": "text/plain;charset=UTF-8",
-                    "priority": "u=1, i",
-                    "sec-ch-ua": "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
-                    "sec-ch-ua-mobile": "?0",
-                    "sec-ch-ua-platform": "\"Windows\"",
-                    "sec-fetch-dest": "empty",
-                    "sec-fetch-mode": "cors",
-                    "sec-fetch-site": "cross-site",
-                    "Referer": "https://music.amazon.com/",
-                    "Referrer-Policy": "strict-origin-when-cross-origin"
-                },
-                body: body
-            });
-            const show_home: ShowHome = await show_home_body.json().catch(json_catch);
-            return show_home;
-        } catch (error) { return { error: error as Error }; }
+    async function get_response<T>(url: string, opts: Opts){
+        return await rozfetch<T>(url, {headers: get_headers(opts), ...opts.fetch_opts});
     }
-    export function get_x_amzn_auth(amzn_music: Config) {
+    
+    function post_headers(opts: Opts){
+        return {
+            ...base_post_headers(opts),
+            "Referer": "https://music.amazon.com/",
+        };
+    }
+    async function post_response<T>(url: string, opts: Opts, body: RequestInit['body']){
+        return await rozfetch<T>(url, {headers: post_headers(opts), method: "POST", body: body, ...opts.fetch_opts});
+    }
+    function get_x_amzn_auth(amzn_music: Config) {
         return {
             interface: "ClientAuthenticationInterface.v1_0.ClientTokenElement",
             accessToken: amzn_music.accessToken
         }
     }
-    export function get_amzn_csrf(amzn_music: Config) {
+    function get_amzn_csrf(amzn_music: Config) {
         return {
             interface: "CSRFInterface.v1_0.CSRFHeaderElement",
             token: amzn_music.csrf.token,
@@ -131,49 +59,17 @@ export namespace AmazonMusic {
             rndNonce: amzn_music.csrf.rnd
         }
     }
-    export function get_amzn_video_player_token(auth_header: AuthHeader) {
+    function get_amzn_video_player_token(auth_header: AuthHeader) {
         return {
             interface: auth_header?.interface ?? {},
             token: auth_header?.token ?? "",
             expirationMS: auth_header?.expirationMS ?? 0
         }
     }
-    export function get_amzn_music_headers(cookie_jar: CookieJar | undefined = undefined) {
-        return {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "content-type": "text/plain;charset=UTF-8",
-            "sec-ch-ua": "\"Chromium\";v=\"116\", \"Not)A;Brand\";v=\"24\", \"Google Chrome\";v=\"116\"",
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": "\"Windows\"",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "cross-site",
-            "Referer": "https://music.amazon.com/",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-            "cache-control": "max-age=0",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "cookie": cookie_jar?.toString() as string,
-        }
-    }
-    export async function get_amzn_music_request_headers_default(amzn_music: Config, playlist_url: string) {
-        try {
-            const show_home = await get_show_home_data(amzn_music, playlist_url);
-            if ("error" in show_home) throw show_home.error;
-            // if(show_home.methods[0].interface !== "VideoPlayerAuthenticationInterface.v1_0.SetVideoPlayerTokenMethod")
-            // throw "SetVideoPlayerTokenMethod not found in Show Home method interface";
-            const auth_header = "header" in show_home.methods[0] ? try_json_parse<AuthHeader>(show_home.methods[0].header) : undefined;
-            if(auth_header === undefined) throw new Error("Auth Header is undefined");
-            if("error" in auth_header) throw auth_header.error;
-            const x_amzn_auth = get_x_amzn_auth(amzn_music);
-            const amzn_csrf = get_amzn_csrf(amzn_music);
-            const x_amzn_video_player_token = get_amzn_video_player_token(auth_header);
-            const request_headers = get_amzn_music_request_headers(x_amzn_auth, amzn_music, amzn_csrf, x_amzn_video_player_token, playlist_url);
-            return request_headers;
-        } catch (error) { return {error: error as Error}; }
-    }
-    export function get_amzn_music_request_headers(x_amzn_auth: ReturnType<typeof get_x_amzn_auth>, amzn_music: Config, x_amzn_csrf: ReturnType<typeof get_amzn_csrf>, x_amzn_video_player_token: ReturnType<typeof get_amzn_video_player_token>, playlist_url = "https://music.amazon.com/my/library") {
+    function get_x_amzn_body_headers(amzn_music: Config, auth_header?: AuthHeader, playlist_url = "https://music.amazon.com/my/library") {
+        const x_amzn_auth = get_x_amzn_auth(amzn_music);
+        const x_amzn_csrf = get_amzn_csrf(amzn_music);
+        const x_amzn_video_player_token = auth_header ? JSON.stringify(get_amzn_video_player_token(auth_header)) : "";
         return {
             "x-amzn-authentication": JSON.stringify(x_amzn_auth),
             "x-amzn-device-model": "WEBPLAYER",
@@ -197,31 +93,71 @@ export namespace AmazonMusic {
             "x-amzn-ref-marker": "",
             "x-amzn-page-url": playlist_url,
             "x-amzn-weblab-id-overrides": "",
-            "x-amzn-video-player-token": JSON.stringify(x_amzn_video_player_token),
+            "x-amzn-video-player-token": x_amzn_video_player_token,
             "x-amzn-feature-flags": "hd-supported,uhd-supported"
-        }
+        };
     }
-    export function get_user_hash() {
-        return { level: 'SONIC_RUSH_MEMBER' }
+    function get_user_hash() {
+        return { level: 'SONIC_RUSH_MEMBER' };
     }
-    export async function account_playlists(opts: Opts) {
-        try {
-            const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-            if ("error" in amzn_music) throw amzn_music.error;
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, "https://music.amazon.com/my/library");
-            if ("error" in request_headers) throw request_headers.error;
-            const user_hash = get_user_hash();
-            const request_payload = { headers: JSON.stringify(request_headers), userHash: JSON.stringify(user_hash) };
-            const show_library: ShowLibraryHome|ResponseError = await (await fetch("https://na.mesk.skill.music.a2z.com/api/showLibraryHome", {
-                method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar),
-                body: JSON.stringify(request_payload)
-            })).json().catch(json_catch);
-            if("error" in show_library) return show_library;
-            if (show_library.methods[0].interface !== "TemplateListInterface.v1_0.BindTemplateMethod")
-                throw new Error("TemplateListInterface not found in Show Library Home method interface");
-            const playlists = show_library.methods[0].template.widgets[1].items;
-            return playlists;
-        } catch (error) { return { error: error as Error }; }
+    function get_deeplink(url: string){
+        const trimmed_url = urlid(url, "music.amazon.com");
+        return {
+            interface: "DeeplinkInterface.v1_0.DeeplinkClientInformation",
+            deeplink: trimmed_url
+        };
+    }
+
+    export function playlist_urlid(playlist_url: string){
+        return urlid(playlist_url, "music.amazon.com/", "my/playlists/", /.+?\//);
+    }
+
+    export async function get_amzn_music_data(opts: Opts): PromiseResult<Config> {
+        if(client_cache_full()) return client_cache.client!;
+        const response = await get_response<Config>("https://music.amazon.com/config.json", opts);
+        if("error" in response) return response;
+        const config = await response.json();
+        if("error" in config) return config;
+        if(client_cache.enabled) client_cache.client = config;
+        return config;
+    }
+
+    async function get_show_home_data(url: string, amzn_music: Config, opts: Opts): PromiseResult<ShowHome> {
+        const deeplink = get_deeplink(url);
+        
+        const body = JSON.stringify({ deeplink: JSON.stringify(deeplink), headers: JSON.stringify(get_x_amzn_body_headers(amzn_music, undefined, url)) });
+
+        const show_home_response = await post_response<ShowHome>("https://na.mesk.skill.music.a2z.com/api/showHome", opts, body);
+        if("error" in show_home_response) return show_home_response;
+        const show_home = await show_home_response.json();
+        return show_home;
+    }
+
+    async function get_amzn_music_body_headers_default(playlist_url: string, amzn_music: Config, opts: Opts) {
+        const show_home = await get_show_home_data(playlist_url, amzn_music, opts);
+        if ("error" in show_home) return show_home;
+        const auth_header = "header" in show_home.methods[0] ? try_json_parse<AuthHeader>(show_home.methods[0].header) : undefined;
+        if(auth_header === undefined) return generror("Auth Header is undefined", {playlist_url, amzn_music, opts});
+        if("error" in auth_header) return auth_header;
+        const body_headers = get_x_amzn_body_headers(amzn_music, auth_header, playlist_url);
+        return body_headers;
+    }
+
+    export async function account_playlists(opts: Opts): PromiseResult<AmazonMusicLibraryPlaylist[]> {
+        const amzn_music = opts.client ?? await get_amzn_music_data(opts);
+        if ("error" in amzn_music) return amzn_music;
+        const request_headers = await get_amzn_music_body_headers_default("https://music.amazon.com/my/library", amzn_music, opts);
+        if ("error" in request_headers) return request_headers;
+        const user_hash = get_user_hash();
+        const request_payload = { headers: JSON.stringify(request_headers), userHash: JSON.stringify(user_hash) };
+        const show_library_response = await post_response<ShowLibraryHome>("https://na.mesk.skill.music.a2z.com/api/showLibraryHome", opts, JSON.stringify(request_payload));
+        if("error" in show_library_response) return show_library_response;
+        const show_library = await show_library_response.json();
+        if("error" in show_library) return show_library;
+        if (show_library.methods[0].interface !== "TemplateListInterface.v1_0.BindTemplateMethod")
+            return generror("TemplateListInterface not found in Show Library Home method interface", {opts});
+        const playlists = show_library.methods[0].template?.widgets?.[1]?.items ?? [];
+        return playlists;
     }
 
     export function get_track_id(track: { "primaryLink": { "deeplink": string } }) {
@@ -229,133 +165,118 @@ export namespace AmazonMusic {
     }
 
     export async function get_playlist(playlist_url: string, opts: Opts): PromiseResult<{title: string, tracks: AmazonTrack[]}> {
-        try {
-            const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-            if ("error" in amzn_music) throw amzn_music.error;
-            const show_home = await get_show_home_data(amzn_music, playlist_url);
-            if ("error" in show_home) throw show_home.error;
+        const amzn_music = opts.client ?? await get_amzn_music_data(opts);
+        if ("error" in amzn_music) return amzn_music;
+        const show_home = await get_show_home_data(playlist_url, amzn_music, opts);
+        if ("error" in show_home) return show_home;
 
-            const template_list_index = show_home.methods.findIndex(method => method.interface === "TemplateListInterface.v1_0.CreateAndBindTemplateMethod");
-            if (template_list_index === -1) throw new Error("Unable to find TemplateListInterface.v1_0.CreateAndBindTemplateMethod");
-            const amzn_track_data = (show_home.methods[template_list_index] as CreateAndBindMethod).template.widgets[0].items;
+        const template_list_index = show_home.methods.findIndex(method => method.interface === "TemplateListInterface.v1_0.CreateAndBindTemplateMethod");
+        if (template_list_index === -1) return generror("Unable to find TemplateListInterface.v1_0.CreateAndBindTemplateMethod", {playlist_url, opts});
+        const create_and_bind_method = show_home.methods[template_list_index] as CreateAndBindMethod;
+        const amzn_track_data = create_and_bind_method.template.widgets[0].items;
 
-            return { title: (show_home.methods[template_list_index] as CreateAndBindMethod).template.headerImageAltText, tracks: amzn_track_data };
-        } catch (error) { return { error: error as Error }; }
+        return { title: create_and_bind_method.template.headerImageAltText, tracks: amzn_track_data };
     }
 
-    export async function search(query: string, opts: Opts) {
-        try {
-            const url = `https://music.amazon.com/search/${query.replace(/\s+/g, '+').replace(/[^A-Za-z0-9+]+/g, '')}`
-            const filter = { IsLibrary: ["false"] };
-            const keyword = {
-                interface: "Web.TemplatesInterface.v1_0.Touch.SearchTemplateInterface.SearchKeywordClientInformation",
-                keyword: ""
-            }
+    export async function search_tracks(query: string, opts: Opts): PromiseResult<AmazonSearchTrack[]> {
+        const url = `https://music.amazon.com/search/${query.replace(/\s+/g, '+').replace(/[^A-Za-z0-9+]+/g, '')}`
+        const filter = { IsLibrary: ["false"] };
+        const keyword = {
+            interface: "Web.TemplatesInterface.v1_0.Touch.SearchTemplateInterface.SearchKeywordClientInformation",
+            keyword: ""
+        }
 
-            const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-            if ("error" in amzn_music) throw amzn_music.error;
+        const amzn_music = opts.client ?? await get_amzn_music_data(opts);
+        if ("error" in amzn_music) return amzn_music;
 
-            const user_hash = get_user_hash();
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, url);
-            if ("error" in request_headers) throw request_headers.error;
+        const user_hash = get_user_hash();
+        const body_headers = await get_amzn_music_body_headers_default(url, amzn_music, opts);
+        if ("error" in body_headers) return body_headers;
 
-            const request_payload = {
-                filter: JSON.stringify(filter),
-                keyword: JSON.stringify(keyword),
-                suggestedKeyword: query,
-                userHash: JSON.stringify(user_hash),
-                headers: JSON.stringify(request_headers)
-            }
-            const response: SearchResult|ResponseError = await (await fetch("https://na.mesk.skill.music.a2z.com/api/showSearch", { method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar), body: JSON.stringify(request_payload) })).json().catch(json_catch);
-            if("error" in response) return response;
+        const request_payload = {
+            filter: JSON.stringify(filter),
+            keyword: JSON.stringify(keyword),
+            suggestedKeyword: query,
+            userHash: JSON.stringify(user_hash),
+            headers: JSON.stringify(body_headers)
+        }
+        const response = await post_response<SearchResult>("https://na.mesk.skill.music.a2z.com/api/showSearch", opts, JSON.stringify(request_payload));
+        if("error" in response) return response;
+        const search_result = await response.json();
+        if("error" in search_result) return search_result;
 
-            let song_widgets_index = 2;
-            const widgets = response.methods[0].template.widgets
-            for (let i = 0; i < widgets.length; i++) {
-                if (widgets[i].header == "Songs") {
-                    song_widgets_index = i;
-                }
-            }
-            const tracks = response.methods[0].template.widgets[song_widgets_index].items;
-            return tracks;
-        } catch (error) { return { error: error as Error }; }
+        let song_widgets_index = 2;
+        const widgets = search_result.methods[0].template.widgets
+        for (let i = 0; i < widgets.length; i++) {
+            if (widgets[i].header !== "Songs") continue;
+            song_widgets_index = i;
+        }
+        const tracks = search_result.methods[0].template.widgets[song_widgets_index].items;
+        return tracks;
     }
     export async function add_to_playlist(playlist_url: string, playlist_name: string, uids: string[], opts: Opts) {
-        try {
-            const playlist_id = playlist_url.replace(/(https?:\/\/)?(www\.)?music\.amazon\.com\/my\/playlists\//, '');
+        const playlist_id = playlist_urlid(playlist_url);
 
-            const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-            if ("error" in amzn_music) throw amzn_music.error;
+        const amzn_music = opts.client ?? await get_amzn_music_data(opts);
+        if ("error" in amzn_music) return amzn_music;
 
-            const user_hash = get_user_hash();
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url);
-            if ("error" in request_headers) throw request_headers.error;
+        const user_hash = get_user_hash();
+        const request_headers = await get_amzn_music_body_headers_default(playlist_url, amzn_music, opts);
+        if ("error" in request_headers) return request_headers;
 
-            const selected_ids = {
-                interface: "Web.PageInterface.v1_0.SelectedItemsClientInformation",
-                ids: uids
-            };
+        const selected_ids = {
+            interface: "Web.PageInterface.v1_0.SelectedItemsClientInformation",
+            ids: uids
+        };
 
+        const request_payload = {
+            headers: JSON.stringify(request_headers),
+            playlistId: playlist_id,
+            playlistTitle: playlist_name,
+            rejectDuplicate: "true",
+            selectedIds: JSON.stringify(selected_ids),
+            userHash: JSON.stringify(user_hash),
+            version: "14",
+        };
+        const response = post_response("https://na.mesk.skill.music.a2z.com/api/add_tracks_to_playlist", opts, JSON.stringify(request_payload));
+        return response;
+    }
+    export async function delete_from_playlist(playlist_url: string, track_ids: string[], delay: number, opts: Opts) {
+        const playlist_id = playlist_urlid(playlist_url);
+
+        const amzn_music = opts.client ?? await get_amzn_music_data(opts);
+        if ("error" in amzn_music) return amzn_music;
+
+        const playlist = await get_playlist(playlist_url, { client: amzn_music });
+        if ("error" in playlist) return playlist;
+
+        const user_hash = get_user_hash();
+        const request_headers = await get_amzn_music_body_headers_default(playlist_url, amzn_music, opts);
+        if ("error" in request_headers) return request_headers;
+
+        const result = { ok: true };
+        for (const track_id of track_ids) {
+            const playlist_item = playlist.tracks.find((item) => get_track_id(item) === track_id);
             const request_payload = {
                 headers: JSON.stringify(request_headers),
                 playlistId: playlist_id,
-                playlistTitle: playlist_name,
-                rejectDuplicate: "true",
-                selectedIds: JSON.stringify(selected_ids),
+                trackEntryId: playlist_item?.id,
+                trackId: track_id,
                 userHash: JSON.stringify(user_hash),
-                version: "14",
             };
-            const response = await fetch("https://na.mesk.skill.music.a2z.com/api/add_tracks_to_playlist", {
-                method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar),
-                body: JSON.stringify(request_payload)
-            });
-            return response;
-        } catch (error) { return { error: error as Error }; }
-    }
-    async function pause(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
-    export async function delete_from_playlist(playlist_url: string, track_ids: string[], delay: number, opts: Opts) {
-        try {
-            const playlist_id = playlist_url.replace(/(https?:\/\/)?(www\.)?music\.amazon\.com\/my\/playlists\//, '');
-
-            const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-            if ("error" in amzn_music) throw amzn_music.error;
-
-            const playlist = await get_playlist(playlist_url, { client: amzn_music });
-            if ("error" in playlist) throw playlist.error;
-
-            const user_hash = get_user_hash();
-            const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url);
-            if ("error" in request_headers) throw request_headers.error;
-
-            const result = { ok: true };
-            for (const track_id of track_ids) {
-                try {
-                    const playlist_item = playlist.tracks.find((item) => get_track_id(item) === track_id);
-                    const request_payload = {
-                        headers: JSON.stringify(request_headers),
-                        playlistId: playlist_id,
-                        trackEntryId: playlist_item?.id,
-                        trackId: track_id,
-                        userHash: JSON.stringify(user_hash),
-                    };
-                    const response = await fetch("https://na.mesk.skill.music.a2z.com/api/removeTrackFromPlaylist", {
-                        method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar),
-                        body: JSON.stringify(request_payload)
-                    });
-                    if (!response.ok) result.ok = false;
-                } catch (error) { result.ok = false; } finally { if (delay > 0) await pause(delay); }
-            }
-            return result;
-        } catch (error) { return { error: error }; }
+            await post_response("https://na.mesk.skill.music.a2z.com/api/removeTrackFromPlaylist", opts, JSON.stringify(request_payload));
+            if (delay > 0) await wait(delay);
+        }
+        return result;
     }
     export async function create_playlist(playlist_name: string, opts: Opts) {
         const url = "https://music.amazon.com/my/library";
         const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-        if ("error" in amzn_music) throw amzn_music.error;
+        if ("error" in amzn_music) return amzn_music;
 
         const user_hash = get_user_hash();
-        const request_headers = await get_amzn_music_request_headers_default(amzn_music, url);
-        if ("error" in request_headers) throw request_headers.error;
+        const request_headers = await get_amzn_music_body_headers_default(url, amzn_music, opts);
+        if ("error" in request_headers) return request_headers;
 
         const playlist_info = { interface: "Web.TemplatesInterface.v1_0.Touch.PlaylistTemplateInterface.PlaylistClientInformation", name: playlist_name, path: "/my/library" };
 
@@ -364,33 +285,27 @@ export namespace AmazonMusic {
             playlistInfo: JSON.stringify(playlist_info),
             userHash: JSON.stringify(user_hash)
         };
-        const response = await fetch("https://na.mesk.skill.music.a2z.com/api/create_playlist", {
-            method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar),
-            body: JSON.stringify(request_payload)
-        });
+        const response = await post_response<CreatePlaylist>("https://na.mesk.skill.music.a2z.com/api/create_playlist", opts, JSON.stringify(request_payload));
         // https://na.mesk.skill.music.a2z.com/api/addTracksToPlaylist?playlistId=df292c92-5c59-4a76-aa65-e893f7fbdf48&playlistTitle=Lafou&version=1&rejectDuplicate=false&userHash=%7B%22level%22%3A%22SONIC_RUSH_MEMBER%22%7D
-        if(!response.ok) return {error: `Failed to create playlist with status code: ${response.status}`};
-        return await response.json().catch(json_catch) as CreatePlaylist|ResponseError;
+        if("error" in response) return response;
+        return await response.json();
     }
     export async function delete_playlist(playlist_url: string, opts: Opts) {
         const amzn_music = opts.client ?? await get_amzn_music_data(opts);
-        if ("error" in amzn_music) throw amzn_music.error;
+        if ("error" in amzn_music) return amzn_music;
 
         const user_hash = get_user_hash();
-        const request_headers = await get_amzn_music_request_headers_default(amzn_music, playlist_url);
-        if ("error" in request_headers) throw request_headers.error;
+        const request_headers = await get_amzn_music_body_headers_default(playlist_url, amzn_music, opts);
+        if ("error" in request_headers) return request_headers;
 
-        const playlist_id = playlist_url.replace("https://", "").replace("www.", "music.amazon.com/").replace("my/playlists/", "");
+        const playlist_id = playlist_urlid(playlist_url);
 
         const request_payload = {
             headers: JSON.stringify(request_headers),
             id: playlist_id,
             userHash: JSON.stringify(user_hash)
         };
-        const response = await fetch("https://na.mesk.skill.music.a2z.com/api/removePlaylist", {
-            method: 'POST', headers: get_amzn_music_headers(opts.cookie_jar),
-            body: JSON.stringify(request_payload)
-        });
+        const response = await post_response("https://na.mesk.skill.music.a2z.com/api/removePlaylist", opts, JSON.stringify(request_payload));
         return response;
     }
 }

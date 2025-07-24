@@ -1,7 +1,7 @@
 import type { Proxy } from "../proxy/proxy";
-import { CookieJar } from "../utils/cookie_util";
+import { CookieJar } from "../../../common/utils/cookie_util";
 import axios from "axios";
-import { encode_params } from "../utils/util";
+import { encode_params } from "../../../common/utils/util";
 
 export namespace Traktrain {
     interface Opts {proxy?: Proxy.Proxy}

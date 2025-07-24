@@ -3,7 +3,7 @@ import request from 'request';
 import { GCC } from "../admin/gcc";
 import { Instagram } from "../origin/src/instagram/instragram";
 import type { MediaListItem } from "../origin/src/instagram/types/MediaList";
-import { CookieJar } from "../origin/src/utils/cookie_util";
+import { CookieJar } from "../common/utils/cookie_util";
 
 const threshold = 72;
 const cookie_jar = CookieJar.fromString(GCC.dotenv_of('INSTRAGRAM_COOKIE_JAR'));

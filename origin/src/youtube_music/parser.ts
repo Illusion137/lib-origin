@@ -1,4 +1,4 @@
-import { parse_runs, youtube_views_number } from "../utils/util";
+import { parse_runs } from "@common/utils/parse_util";
 import type { ArtistResults_0, ArtistCarouselContent, MusicCarouselShelfRenderer, MusicShelfRenderer, Run } from "./types/ArtistResults_0";
 import type { ExploreResults_0 } from "./types/ExploreResults_0";
 import type { HomeResults_0 } from "./types/HomeResults_0";
@@ -8,6 +8,7 @@ import type { PlaylistResults_0 } from "./types/PlaylistResults_0";
 import type { SearchResults_0 } from "./types/SearchResults_0";
 import type { SuggestionMusicResponsiveListItemRenderer } from "./types/SearchSuggestions";
 import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "./types/types";
+import { youtube_views_number } from "@illusive/illusive_utilts";
 
 const separator = '•';
 export function parse_subtitle_text(runs: Run[]){

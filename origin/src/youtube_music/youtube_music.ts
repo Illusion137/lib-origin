@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
-import type { CookieJar } from "../utils/cookie_util";
-import type { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, generror, generror_fetch, google_query, is_empty, json_catch, parse_runs, sapisid_hash_auth0, sapisid_hash_auth1, urlid } from "../utils/util";
+import type { CookieJar } from "../../../common/utils/cookie_util";
+import type { PromiseResult, ResponseError } from '../../../common/types';
+import { extract_string_from_pattern, is_empty, json_catch, urlid } from "../../../common/utils/util";
 import type { CreatePlaylist } from "../youtube/types/CreatePlaylist";
 import type { MusicCarouselShelfRenderer } from './types/ArtistResults_0';
 import type { ArtistResults_1 } from './types/ArtistResults_1';
@@ -14,6 +14,10 @@ import fetch from "../utils/orifetch";
 import type { Proxy } from "../proxy/proxy";
 import type { ContinuationItemRenderer } from "./types/PlaylistResults_0";
 import type { SearchSuggestions } from "./types/SearchSuggestions";
+import { sapisid_hash_auth0, sapisid_hash_auth1 } from "@common/utils/auth_utilt";
+import { generror, generror_fetch } from "@common/utils/error_util";
+import { parse_runs, try_json_eval } from "@common/utils/parse_util";
+import { encode_params, google_query } from "@common/utils/fetch_util";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -114,20 +118,21 @@ export namespace YouTubeMusic {
 		const matches = [...html.matchAll(initial_data_regex)];
 		for (const match of matches) {
 			const imatch = match[1];
-			const route: {
+			const try_route = try_json_eval<{
 				path: string,
 				params: object,
 				data: string
-			} = eval_json(imatch);
-			const data: InitialData = JSON.parse(route.data);
+			}>(imatch);
+            if("error" in try_route) return [];
+			const data: InitialData = JSON.parse(try_route.data);
 			initial_data.push(data);
 		}
 		return initial_data;
 	}
-	function extract_ytcfg(html: string): YTCFG {
+	function extract_ytcfg(html: string): YTCFG|ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
 		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
-		const ytcfg: YTCFG = eval_json(extracted as string);
+		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}
 
@@ -175,9 +180,11 @@ export namespace YouTubeMusic {
 				proxy: opts.proxy
 			});
 			const page_html = await page_response.text();
+            const ytcfg = extract_ytcfg(page_html);
+            if("error" in ytcfg) return ytcfg;
 			return {
 				initial_data: extract_initial_data(page_html),
-				ytcfg: extract_ytcfg(page_html)
+				ytcfg
 			};
 		} catch (error) {
 			if(!retry){

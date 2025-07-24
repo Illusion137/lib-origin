@@ -1,4 +1,6 @@
 {
+    "exclude": ["node_modules/**"],
+    "lib": ["ESNext"],
     "compilerOptions": {
         "strict": true,
         "noImplicitAny": false,
@@ -20,7 +22,20 @@
         "noImplicitReturns": true,
         "skipLibCheck": true,
         "allowJs": true,
+        "baseUrl": "./",
+        "paths": {
+            "@native/*": ["roze/native/*"],
+            "@roze/*": ["roze/src/*", "roze/*"],
+            "@origin/*": ["origin/src/*"],
+            "@lutz/*": ["lutz/src/*"],
+            "@sosu/*": ["sosu/src/*"],
+            "@illusive/*": ["Illusive/src/*"],
+            "@illusicord/*": ["illusicord/src/*"],
+            "@common/*": ["common/*"],
+            "@admin/*": ["admin/*"]
+        }
     },
-    "exclude": ["node_modules/**"],
-    "lib": ["ESNext"],
+    "ts-node": {
+        "require": ["tsconfig-paths/register"]
+    }
 }

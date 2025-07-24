@@ -2,7 +2,7 @@ import { green } from 'colors';
 import fs from 'fs';
 import path from 'path';
 import getAudioDurationInSeconds from "get-audio-duration";
-import { extract_file_extension } from '../../illusive_utilts';
+import { extract_file_extension } from '@common/utils/util';
 
 async function __illusicord_build__(){
     const build_ts_path = process.argv[1];

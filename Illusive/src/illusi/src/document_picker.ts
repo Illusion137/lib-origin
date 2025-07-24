@@ -1,6 +1,5 @@
-import { Audio } from 'expo-av';
 import * as DocumentPicker from 'react-native-document-picker'
-import { generate_new_uid } from '../../../../origin/src/utils/util';
+import { generate_new_uid } from '../../../../common/utils/util';
 import type { Playlist, Promises, Track } from '../..//types';
 import { extract_file_extension } from '../../illusive_utilts';
 import * as SQLfs from './sql/sql_fs';
@@ -9,6 +8,7 @@ import * as SQLTracks from './sql/sql_tracks';
 import * as GLOBALS from './globals';
 import { alert_error } from './alert';
 import ImagePicker from 'react-native-image-crop-picker';
+import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else alert_error({error: error as Error});
@@ -97,19 +97,15 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 const new_file_uri = encodeURI(uid + file_extension);
                 const new_file_uri_full_path = await SQLfs.move_to_media_directory(audio_file.fileCopyUri, new_file_uri);
 
-                const sound_temp = new Audio.Sound();
-                await sound_temp.loadAsync({uri: new_file_uri_full_path});
-                const meta_data = await sound_temp.getStatusAsync();
-                await sound_temp.unloadAsync();
+                const audio_duration_seconds = await get_audio_duration.get_audio_duration(new_file_uri_full_path);
 
-                if(!meta_data.isLoaded) throw new Error("Unable to load audio metadata");
-                if(meta_data.durationMillis === undefined) throw new Error("Unable to access audio metadata duration");
+                if(audio_duration_seconds === -1) throw new Error("Unable to access audio metadata duration");
 
                 const track = {
                     uid: uid,
                     title: file_name,
                     artists: [{name: "Sudo", uri: null}],
-                    duration: Math.round(meta_data.durationMillis/1000) ?? 0,
+                    duration: audio_duration_seconds,
                     media_uri: new_file_uri,
                     imported_id: uid,
                 };

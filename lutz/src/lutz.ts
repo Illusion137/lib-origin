@@ -1,7 +1,7 @@
 import { MangaReader } from "../../origin/src/manga_reader/manga_reader";
 import type { SetState } from "./types";
 import type { MangaList } from '../../origin/src/manga_reader/types/types';
-import { TimedCache } from "../../origin/src/utils/types";
+import { TimedCache } from "../../common/types";
 
 export namespace Lutz {
     const search_cache = new TimedCache<string, MangaList>(1000 * 360);

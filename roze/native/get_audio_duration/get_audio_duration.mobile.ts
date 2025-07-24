@@ -8,6 +8,7 @@ export const mobile_get_audio_duration: GetAudioDuration = {
         const meta_data = await sound_temp.getStatusAsync();
         await sound_temp.unloadAsync();
         if (!meta_data.isLoaded) return -1;
-        return (meta_data.durationMillis ?? 0) / 1000;
+        if(meta_data.durationMillis === undefined) return -1;
+        return Math.round(meta_data.durationMillis / 1000);
     }
 };

@@ -1,7 +1,7 @@
 import type { AxiosError } from "axios";
 import axios from "axios";
-import { Proxy } from "../proxy/proxy";
-import { generror } from "./util";
+import { Proxy } from "@origin/proxy/proxy";
+import { generror } from "@common/utils/error_util";
 
 let timeout_ms = 0;
 let stack = 0;

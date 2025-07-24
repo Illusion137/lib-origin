@@ -1,6 +1,6 @@
 import type { MMKVModule, MMKVModuleOpts } from "./mmkv.base";
 import { get_native_platform } from "../native_mode";
-import { CookieJar } from "../../../origin/src/utils/cookie_util";
+import { CookieJar } from "../../../common/utils/cookie_util";
 
 let mmkv: any;
 switch(get_native_platform()){

@@ -2,7 +2,7 @@ import type { Guild, GuildChannel, GuildChannelResolvable, VoiceChannel } from "
 import { DMPErrors, DMPError } from "./dmp_error";
 import { StreamConnection } from "./stream_connection";
 import { entersState, joinVoiceChannel, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
-import { Illusive } from "../../../illusive";
+import { Illusive } from "@illusive/illusive";
 import { RepeatMode, type DiscordTrack, type PlayerOptions } from "../types";
 import { Constants } from "../constants";
 import { Utils } from "./utils";

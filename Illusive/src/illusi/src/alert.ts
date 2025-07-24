@@ -1,6 +1,6 @@
 import { Alert } from "react-native";
-import type { ResponseError } from "../../../../origin/src/utils/types";
-import { clean_error_stack } from "../../../../origin/src/utils/util";
+import type { ResponseError } from "../../../../common/types";
+import { clean_error_stack } from "../../../../common/utils/util";
 
 export function alert_info(info: string) {
     Alert.alert("INFO", info);

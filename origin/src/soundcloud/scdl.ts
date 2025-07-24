@@ -1,5 +1,6 @@
-import type { CookieJar } from "../utils/cookie_util";
-import { encode_params, is_empty } from "../utils/util";
+import { encode_params } from "@common/utils/fetch_util";
+import type { CookieJar } from "../../../common/utils/cookie_util";
+import { is_empty } from "../../../common/utils/util";
 import { SoundCloud } from "./soundcloud";
 import type { HydratableSound } from "./types/Hydration";
 

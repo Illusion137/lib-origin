@@ -1,5 +1,5 @@
-import type { PromiseResult } from "../utils/types";
-import { try_json_parse } from "../utils/util";
+import type { PromiseResult } from "../../../common/types";
+import { try_json_parse } from "../../../common/utils/util";
 
 // const rabbitstream_embed = (await axios.get(ajax_sources_json.link, {"headers": RABBITSTREAM_DEFAULT_HEADERS})).data;
 export namespace RabbitStream {

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { duration_to_string } from "../Illusive/src/illusive_utilts";
 import type { Track } from "../Illusive/src/types";
 import playlist from '../sample/illusi/zayboy.json';
-import { remove_topic } from '../origin/src/utils/util';
+import { remove_topic } from '../common/utils/util';
 import { Prefs } from '../Illusive/src/prefs';
 import { Illusive } from '../Illusive/src/illusive';
 

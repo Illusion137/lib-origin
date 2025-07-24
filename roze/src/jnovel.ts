@@ -1,6 +1,6 @@
-import type { CookieJar } from "../../origin/src/utils/cookie_util";
-import type { PromiseResult, ResponseError } from "../../origin/src/utils/types";
-import { extract_string_from_pattern, generror, generror_catch, milliseconds_of, try_json_parse } from "../../origin/src/utils/util";
+import type { CookieJar } from "@common/utils/cookie_util";
+import type { PromiseResult, ResponseError } from "@common/types";
+import { extract_string_from_pattern, milliseconds_of } from "@common/utils/util";
 import { RozeHeaders } from "./headers";
 import type { JNovel_Calender } from "./types/jnovel-calender";
 import type { JNovel_Home } from "./types/jnovel-home";
@@ -10,7 +10,9 @@ import type { JNovel_Series_Page } from "./types/jnovel-series-page";
 import type { JNovel_User } from "./types/jnovel-user";
 import type { RozContent } from "./types/roz";
 import { clean_html_text, html_to_roz_content } from "./utils";
-import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "./rozfetch";
+import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "../../common/rozfetch";
+import { generror, generror_catch } from "@common/utils/error_util";
+import { try_json_parse } from "@common/utils/parse_util";
 
 export namespace JNovel {
 	export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }

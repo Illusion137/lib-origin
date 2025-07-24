@@ -1,5 +1,5 @@
 import * as Origin from '../../origin/src/index'
-import { urlid } from '../../origin/src/utils/util';
+import { urlid } from '../../common/utils/util';
 import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from './illusive_utilts';
 import { Prefs } from './prefs';
 import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from './types';

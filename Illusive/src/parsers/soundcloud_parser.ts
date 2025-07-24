@@ -1,8 +1,9 @@
 import type { Playlist, Track, User } from "../../../origin/src/soundcloud/types/Search";
-import { generate_new_uid, make_topic, remove_prod } from "../../../origin/src/utils/util";
+import { generate_new_uid } from "../../../common/utils/util";
 import { create_uri } from "../illusive_utilts";
 import type { ISOString } from "../types";
 import type * as IllusiveTypes from "../types";
+import { remove_prod } from "@common/utils/clean_util";
 
 function highest_artwork(artwork_url: string) {
     return artwork_url?.replace("t200x200", "t500x500")?.replace("large", "t500x500");
@@ -12,7 +13,7 @@ export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
     return {
         uid: generate_new_uid(track.title),
         title: remove_prod(track.title),
-        artists: [{name: make_topic(track.user.username), uri: create_uri("soundcloud", track.user.permalink)}],
+        artists: [{name: track.user.username, uri: create_uri("soundcloud", track.user.permalink)}],
         plays: track.playback_count,
         duration: Math.floor(track.duration / 1000),
         soundcloud_id: track.id,
@@ -22,7 +23,7 @@ export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
 }
 export function soundcloud_parse_user(user: User) {
     return {
-        name: {name: make_topic(user.username), uri: create_uri("soundcloud", user.permalink_url)},
+        name: {name: user.username, uri: create_uri("soundcloud", user.permalink_url)},
         profile_artwork_url: user.avatar_url,
         is_official_artist_channel: true
     }
@@ -32,10 +33,10 @@ export function soundcloud_parse_playlist(playlist: Playlist) {
         title: {name: playlist.title, uri: create_uri("soundcloud", playlist.permalink_url)},
         artist: Array.isArray(playlist.user) ? playlist.user.map(user => { 
             return {
-                name: make_topic(user.username),
+                name: user.username,
                 uri: create_uri("soundcloud", user.permalink_url)
             } 
-        }) : [{name: make_topic(playlist.user.username), uri: create_uri("soundcloud", playlist.user.permalink)}],
+        }) : [{name: playlist.user.username, uri: create_uri("soundcloud", playlist.user.permalink)}],
         date: playlist.created_at as ISOString,
         artwork_url: highest_artwork(playlist.artwork_url)
     }

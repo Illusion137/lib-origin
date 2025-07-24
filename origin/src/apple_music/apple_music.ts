@@ -1,6 +1,6 @@
-import type { CookieJar } from "../utils/cookie_util";
-import type { ResponseError } from "../utils/types";
-import { encode_params, extract_string_from_pattern, json_catch, try_json_parse, urlid } from "../utils/util";
+import type { CookieJar } from "@common/utils/cookie_util";
+import type { FetchMethod } from "@common/types";
+import { extract_string_from_pattern, urlid } from "@common/utils/util";
 import type { Album } from "./types/Album";
 import type { CreatePlaylist } from "./types/CreatePlaylist";
 import type { GetArtistData } from "./types/GetArtist";
@@ -9,14 +9,18 @@ import type { Playlist } from "./types/Playlist";
 import type { Search } from "./types/Search";
 import type { SerializedServerData } from "./types/type";
 import type { UserPlaylist } from "./types/UserPlaylist";
-import fetch from "../utils/orifetch";
-import type { Proxy } from "../proxy/proxy";
+import { try_json_parse } from "@common/utils/parse_util";
+import { encode_params } from "@common/utils/fetch_util";
+import type { RoZFetchRequestInit } from "@common/rozfetch";
+import rozfetch from "@common/rozfetch";
+import { base_get_headers, base_post_headers } from "@common/headers_base";
+import { generror } from "@common/utils/error_util";
 
 // Thanks to Lafou for providing test playlists such as:
 // https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl
 
 export namespace AppleMusic {
-    interface Opts { "cookie_jar"?: CookieJar, "proxy"?: Proxy.Proxy }
+    interface Opts { "cookie_jar"?: CookieJar, fetch_opts?: RoZFetchRequestInit }
     const client_cache = {client: {authorization: null as string|null}, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
@@ -27,15 +31,14 @@ export namespace AppleMusic {
     export function artist_urlid(playlist_url: string) {
         return urlid(playlist_url, "music.apple.com/", "us/", "artist/", "playlist/", "?l=en-US", /.+?\//);
     }
-    export async function extract_serialized_server_data(html: string, opts: Opts) {
+    async function extract_serialized_server_data(html: string, opts: Opts) {
         const serialized_server_data_regex = /<script type=\"application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
         const extraction = extract_string_from_pattern(html, serialized_server_data_regex);
         if (typeof extraction === "object") return extraction;
         const data = try_json_parse<SerializedServerData>(extraction);
         if("error" in data) return data;
-        if(client_cache_full()) {
+        if(client_cache_full()) 
             return {authorization: client_cache.client.authorization!, data: data};
-        }
         const bearer_path = extract_string_from_pattern(html, /<script type="module" crossorigin src="(.+?)"><\/script>/);
         if (typeof bearer_path === "object") return bearer_path;
         const bearer = await get_bearer(bearer_path, opts);
@@ -44,94 +47,47 @@ export namespace AppleMusic {
         return {data: data, authorization: bearer};
     }
     async function get_response(url: string, opts: Opts) {
-        const response = await fetch(url, {
-            headers: {
-                "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-language": "en-US,en;q=0.9",
-                "cache-control": "max-age=0",
-                "priority": "u=0, i",
-                "sec-ch-ua": "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"",
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": "\"Windows\"",
-                "sec-fetch-dest": "document",
-                "sec-fetch-mode": "navigate",
-                "sec-fetch-site": "none",
-                "sec-fetch-user": "?1",
-                "upgrade-insecure-requests": "1",
-                "cookie": opts.cookie_jar?.toString() as string
-            },
+        const response = await rozfetch(url, {
+            headers: base_get_headers(opts),
             referrerPolicy: "strict-origin-when-cross-origin",
             credentials: "include",
-            body: null,
             redirect: 'follow',
-            proxy: opts.proxy,
             method: "GET",
+            ...opts.fetch_opts
         });
         return response;
     }
     export async function get_serialized_server_data(url: string, opts: Opts) {
         const response = await get_response(url, opts);
-        if (!response.ok) return { error: new Error(String(response.status)) };
+        if ("error" in response) return response;
         const text = await response.text();
         return await extract_serialized_server_data(text, opts);
     }
     function get_api_headers(bearer: string, opts: Opts) {
-        const cookie_jar = opts.cookie_jar as CookieJar;
-        const media_user_token_cookie = cookie_jar.getCookie("media-user-token");
-        const media_user_token = media_user_token_cookie?.getData().value as string;
+        const cookie_jar = opts.cookie_jar;
+        const media_user_token_cookie = cookie_jar?.getCookie("media-user-token");
+        const media_user_token = media_user_token_cookie?.getData()?.value;
         return {
-            'accept': '*/*',
-            'accept-language': 'en-US,en;q=0.9',
+            ...base_post_headers(opts),
             'authorization': 'Bearer ' + bearer,
-            'cookie': cookie_jar.toString(),
-            'media-user-token': media_user_token,
+            'media-user-token': media_user_token as string,
             'origin': 'https://music.apple.com',
-            'priority': 'u=1, i',
             'referer': 'https://music.apple.com/',
-            'sec-ch-ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-site',
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
         }
     }
-    export async function get_bearer(path: string, opts: Opts) {
-        const response = await fetch(`https://music.apple.com${path}`, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-                "accept": "*/*",
-                "accept-language": "en-US,en;q=0.9",
-                "priority": "u=1",
-                "sec-ch-ua": "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"",
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": "\"Windows\"",
-                "sec-fetch-dest": "script",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-origin",
-                "Referer": "https://music.apple.com/",
-                "Referrer-Policy": "strict-origin",
-                "cookie": opts.cookie_jar?.toString() as string,
-            },
-            body: null,
-            redirect: 'follow',
-            proxy: opts.proxy,
-            method: "GET"
-        });
-        if (!response.ok) return { error: new Error(String(response.status)) };
+    async function get_bearer(path: string, opts: Opts) {
+        const response = await get_response(`https://music.apple.com${path}`, opts);
+        if ("error" in response) return response;
         const js = await response.text();
         const bearer = extract_string_from_pattern(js, /const .+? ?= ?["'`]([a-zA-Z0-9-._]{200,})["'`]/i);
         return bearer;
     }
-    async function api_check_response(opts: Opts, bearer: string, path: string, params: object, payload: null|object, method: "GET"|"POST"|"DELETE" = "GET") {
-        try {
-            if(opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
-            const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params as Record<string, string>)}`;
-            const response = await fetch(url, { method, proxy: opts.proxy, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts) });
-            return response;
-        } catch (error) { return { error: error as Error } }
+    type CheckCookies = "CHECK_COOKIES"|"NO_CHECK_COOKIES";
+    async function api_check_response<T>(opts: Opts, check_cookies: CheckCookies, bearer: string, path: string, params: Record<string, unknown>, payload: null|object, method: FetchMethod = "GET") {
+        if(check_cookies === "CHECK_COOKIES" && opts.cookie_jar === undefined) return generror("CookieJar is empty", {opts, bearer, path, params, payload, method});
+        const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params)}`;
+        return await rozfetch<T>(url, { method, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts), ...opts.fetch_opts });
     }
     export async function try_cached_client(url: string, opts: Opts) {
         if(client_cache_full()) return client_cache.client;
@@ -161,10 +117,9 @@ export namespace AppleMusic {
             "types": "activities,albums,apple-curators,artists,curators,editorial-items,music-movies,music-videos,playlists,record-labels,songs,stations,tv-episodes,uploaded-videos",
             "with": "lyricHighlights,lyrics,naturalLanguage,serverBubbles,subtitles",
         }
-        const api_search_response = await api_check_response(opts, search_response.authorization, `catalog/us/search`, params, null);
+        const api_search_response = await api_check_response<Search>(opts, "NO_CHECK_COOKIES", search_response.authorization, `catalog/us/search`, params, null);
         if ("error" in api_search_response) return api_search_response;
-        if(!api_search_response.ok) return {error: new Error(String(api_search_response.status))};
-        const search_result: Search|ResponseError = await api_search_response.json().catch(json_catch);
+        const search_result = await api_search_response.json();
         if("error" in search_result) return search_result;
         return {data: search_result, authorization: search_response.authorization};
     }
@@ -229,18 +184,16 @@ export namespace AppleMusic {
             };
             const playlist_id = playlist_urlid(playlist_path);
             try {
-                const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
+                const api_playlists_response = await api_check_response<UserPlaylist>(opts, "CHECK_COOKIES", playlist_response.authorization, `me/library/playlists/${playlist_id}`, params, null);
                 if ("error" in api_playlists_response) throw api_playlists_response.error;
-                if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
-                const user_playlist: UserPlaylist|ResponseError = await api_playlists_response.json().catch(json_catch);
+                const user_playlist = await api_playlists_response.json();
                 if("error" in user_playlist) throw user_playlist.error;
                 return {data: user_playlist, authorization: playlist_response.authorization};
             }
             catch(e){
-                const api_playlists_response = await api_check_response(opts, playlist_response.authorization, `catalog/us/playlists/${playlist_id}`, params, null);
+                const api_playlists_response = await api_check_response<UserPlaylist>(opts, "NO_CHECK_COOKIES", playlist_response.authorization, `catalog/us/playlists/${playlist_id}`, params, null);
                 if ("error" in api_playlists_response) return api_playlists_response;
-                if(!api_playlists_response.ok) return {error: new Error(String(api_playlists_response.status))};
-                const user_playlist: UserPlaylist|ResponseError = await api_playlists_response.json().catch(json_catch);
+                const user_playlist = await api_playlists_response.json();
                 if("error" in user_playlist) return user_playlist;
                 return {data: user_playlist, authorization: playlist_response.authorization};
             }
@@ -258,9 +211,9 @@ export namespace AppleMusic {
                 "include": "catalog",
                 "platform": "web",
             };
-            const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
+            const playlists_response = await api_check_response<UserPlaylist>(opts, "NO_CHECK_COOKIES", authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
             if ("error" in playlists_response) throw playlists_response.error;
-            return await playlists_response.json().catch(json_catch) as UserPlaylist|ResponseError;
+            return await playlists_response.json();
         }
         catch(e){
             const params = {
@@ -272,9 +225,9 @@ export namespace AppleMusic {
                 "include": "catalog",
                 "platform": "web",
             };
-            const playlists_response = await api_check_response(opts, authorization, `catalog/us/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
+            const playlists_response = await api_check_response<UserPlaylist>(opts, "NO_CHECK_COOKIES", authorization, `catalog/us/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
             if ("error" in playlists_response) return playlists_response;
-            return await playlists_response.json().catch(json_catch) as UserPlaylist|ResponseError;
+            return await playlists_response.json();
         }
     }
     export async function account_playlists(opts: Opts) {
@@ -292,9 +245,9 @@ export namespace AppleMusic {
             "omit%5Bresource%5D": "autos",
             "platform": "web"
         }
-        const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlist-folders/p.playlistsroot/children", params, null);
+        const playlists_response = await api_check_response<MyPlaylists>(opts, "CHECK_COOKIES", data.authorization!, "me/library/playlist-folders/p.playlistsroot/children", params, null);
         if ("error" in playlists_response) return playlists_response;
-        return await playlists_response.json().catch(json_catch) as MyPlaylists|ResponseError;
+        return await playlists_response.json();
     }
     export async function add_tracks_to_playlist(playlist_id: string, track_ids: {id: string, type: "songs"}[], opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
@@ -307,7 +260,7 @@ export namespace AppleMusic {
         const payload = {
             data: track_ids
         }
-        const playlists_response = await api_check_response(opts, data.authorization!, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, payload, "POST");
+        const playlists_response = await api_check_response(opts, "CHECK_COOKIES", data.authorization!, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, payload, "POST");
         return playlists_response;
     }
     export async function remove_track_from_playlist(playlist_id: string, track_id: string, authorization: string, opts: Opts) {
@@ -316,7 +269,7 @@ export namespace AppleMusic {
             "mode": "all",
             "art%5Burl%5D": "f"
         };
-        const playlists_response = await api_check_response(opts, authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null, "DELETE");
+        const playlists_response = await api_check_response(opts, "CHECK_COOKIES", authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null, "DELETE");
         return playlists_response;
     }
     export async function create_playlist(playlist_name: string, description: string, is_public: boolean, tracks: {"id": string, "type": "songs"}[], opts: Opts) {
@@ -334,10 +287,9 @@ export namespace AppleMusic {
             },
             relationships: { tracks: { data: tracks } }
         };
-        const playlists_response = await api_check_response(opts, data.authorization!, "me/library/playlists", params, payload, "POST");
+        const playlists_response = await api_check_response<CreatePlaylist>(opts, "CHECK_COOKIES", data.authorization!, "me/library/playlists", params, payload, "POST");
         if("error" in playlists_response) return playlists_response;
-        if(!playlists_response.ok) return {error: new Error(`Failed to create playlist with status code: ${playlists_response.status}`)};
-        return await playlists_response.json().catch(json_catch) as CreatePlaylist|ResponseError;
+        return await playlists_response.json();
     }
     export async function delete_playlist(playlist_id: string, opts: Opts) {
         const data = await try_cached_client("https://music.apple.com/us/library/all-playlists/", opts);
@@ -345,7 +297,7 @@ export namespace AppleMusic {
         const params = {
             "art%5Burl%5D": "f"
         };
-        const playlists_response = await api_check_response(opts, data.authorization!, `me/library/playlists/${playlist_urlid(playlist_id)}`, params, null, "DELETE");
+        const playlists_response = await api_check_response(opts, "CHECK_COOKIES", data.authorization!, `me/library/playlists/${playlist_urlid(playlist_id)}`, params, null, "DELETE");
         return playlists_response;
     }
 }

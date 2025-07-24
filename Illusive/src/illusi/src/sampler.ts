@@ -1,5 +1,5 @@
 import * as Origin from '../../../../origin/src/index';
-import { is_empty } from "../../../../origin/src/utils/util";
+import { is_empty } from "../../../../common/utils/util";
 import { Illusive } from "../../illusive";
 import { random_of, shuffle_array } from "../../illusive_utilts";
 import { Prefs } from "../../prefs";

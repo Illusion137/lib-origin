@@ -1,6 +1,6 @@
-import { jsdom_document, map_html_collection } from "../utils/jsdom";
-import type { PromiseResult } from "../utils/types";
-import { encode_params, google_query, base_response_fail_msg } from "../utils/util";
+import { jsdom_document, map_html_collection } from "../../../common/jsdom";
+import type { PromiseResult } from "../../../common/types";
+import { encode_params, google_query, base_response_fail_msg } from "../../../common/utils/util";
 import { decode_image_base64 } from "./img_decoder";
 import type { MangaGenres } from "./types/MangaGenres";
 import type { MangaTypes } from "./types/MangaTypes";

@@ -1,6 +1,6 @@
 import type { TranslationMap } from "./types/types";
 import type { RozContent, RozTextStructures, RozTextStructureType } from "./types/roz";
-import { extract_string_from_pattern, gen_uuid, isNumber } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, gen_uuid, is_number } from "@common/utils/util";
 
 function html_inner_text_content(html_line: string) {
     return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
@@ -120,7 +120,7 @@ export function run_translation_map(text: string, translation_map: TranslationMa
 }
 
 export function timestamp_to_string(t_seconds: number) {
-    if(!isNumber(t_seconds)) return '00:00:00';
+    if(!is_number(t_seconds)) return '00:00:00';
     if(t_seconds < 0) return '00:00:00';
     const hours = Math.floor(t_seconds / 3600);
     const minutes = Math.floor((t_seconds - hours * 3600) / 60);

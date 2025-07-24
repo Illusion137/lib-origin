@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as uuid from "react-native-uuid";
-import { CookieJar } from "../../origin/src/utils/cookie_util";
+import { CookieJar } from "../../common/utils/cookie_util";
 import { Constants } from './constants';
 import * as LegacyPrefs from './illusi/src/legacy/1307/legacy_prefs';
 import type { HexColor, LinkerLink } from './types';

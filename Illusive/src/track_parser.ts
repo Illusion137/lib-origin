@@ -5,16 +5,17 @@ import type { Item4 } from '../../origin/src/spotify/types/Album';
 import type { CollectionItem } from '../../origin/src/spotify/types/Collection';
 import type { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
 import type { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
-import { extract_string_from_pattern, generate_new_uid, is_empty, make_topic, parse_time } from '../../origin/src/utils/util'
+import { extract_string_from_pattern, generate_new_uid, is_empty } from '../../common/utils/util'
 import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
 import type { Track } from './types';
+import { parse_time } from '@common/utils/parse_util';
 
 export function parse_spotify_playlist_track(track: ContentItem): Track {
     return {
         uid: generate_new_uid(track.itemV2.data.name),
         title: track.itemV2.data.name,
         artists: track.itemV2.data.artists.items.map(artist => {
-            return {name: make_topic(artist.profile.name), uri: spotify_uri_to_uri(artist.uri)};
+            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
         }),
         plays: parseInt(track.itemV2.data.playcount),
         album: {name: track.itemV2.data.albumOfTrack.name, uri: spotify_uri_to_uri(track.itemV2.data.albumOfTrack.uri)},
@@ -29,7 +30,7 @@ export function parse_spotify_album_track(track: Item4, album: {name: string, ur
         uid: generate_new_uid(track.track.name),
         title: track.track.name,
         artists: track.track.artists.items.map(artist => {
-            return {name: make_topic(artist.profile.name), uri: spotify_uri_to_uri(artist.uri)};
+            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
         }),
         plays: parseInt(track.track.playcount),
         album: {name: album.name, uri: spotify_uri_to_uri(album.uri)},
@@ -58,7 +59,7 @@ export function parse_spotify_search_track(track: SpotifySearchTrack): Track {
         uid: generate_new_uid(track.item.data.name),
         title: track.item.data.name,
         artists: track.item.data.artists.items.map(artist => {
-            return {name: make_topic(artist.profile.name), uri: spotify_uri_to_uri(artist.uri)};
+            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
         }),
         album: {name: track.item.data.albumOfTrack.name, uri: spotify_uri_to_uri(track.item.data.albumOfTrack.uri)},
         duration: Math.floor(track.item.data.duration.totalMilliseconds/1000),
@@ -73,7 +74,7 @@ export function parse_amazon_music_playlist_track(track: AmazonTrack): Track {
     return {
         uid: generate_new_uid(track.primaryText),
         title: track.primaryText,
-        artists: [{name: make_topic(track.secondaryText1), uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
+        artists: [{name: track.secondaryText1, uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
         duration: parse_time(track.secondaryText3),
         album: {name: extract_string_from_pattern(track.secondaryText2, album_regex) as string, uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)/) as string)},
         explicit: track.secondaryText2.includes("[Explicit]") ? "EXPLICIT" : "NONE",
@@ -86,7 +87,7 @@ export function parse_amazon_music_search_track(track: AmazonSearchTrack): Track
     return {
         uid: generate_new_uid(title),
         title: title,
-        artists: [{name: is_empty(track.secondaryText) ? "" : make_topic(track.secondaryText!), uri: track.secondaryLink?.deeplink === undefined ? null : create_uri("amazonmusic", extract_string_from_pattern(track.secondaryLink.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
+        artists: [{name: is_empty(track.secondaryText) ? "" : track.secondaryText!, uri: track.secondaryLink?.deeplink === undefined ? null : create_uri("amazonmusic", extract_string_from_pattern(track.secondaryLink.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
         duration: NaN,
         explicit: track.tags.includes("E") ? "EXPLICIT" : "NONE",
         amazonmusic_id: Origin.AmazonMusic.get_track_id(track)

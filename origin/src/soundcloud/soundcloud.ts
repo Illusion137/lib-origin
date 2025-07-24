@@ -1,9 +1,10 @@
 import type { Proxy } from "../proxy/proxy";
-import { CookieJar } from "../utils/cookie_util";
-import type { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../utils/types";
-import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../utils/util";
+import { CookieJar } from "../../../common/utils/cookie_util";
+import type { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../../../common/types";
+import { extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../../../common/utils/util";
 import type { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
 import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
+import { encode_params } from "@common/utils/fetch_util";
 
 export namespace SoundCloud {
     interface Opts { cookie_jar?: CookieJar, client_id?: (string|ResponseError), proxy?: Proxy.Proxy }

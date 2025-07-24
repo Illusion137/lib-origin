@@ -1,4 +1,4 @@
-import type { CookieJar } from "../../origin/src/utils/cookie_util"
+import type { CookieJar } from "@common/utils/cookie_util"
 
 export interface RozeJNovelOptions {
 	id_or_url: string

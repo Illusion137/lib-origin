@@ -1,13 +1,13 @@
 import { SoundCloud, YouTubeMusic } from "../../origin/src";
-import { CookieJar } from "../../origin/src/utils/cookie_util";
-import { parse_runs } from "../../origin/src/utils/util";
-import { soundcloud_parse_track, soundcloud_parse_track_to_song } from "./gen/soundcloud_parser";
-import { parse_youtube_music_artist_album } from "./gen/youtube_music_parser";
+import { CookieJar } from "../../common/utils/cookie_util";
+import { soundcloud_parse_track, soundcloud_parse_track_to_song } from "./parsers/soundcloud_parser";
+import { parse_youtube_music_artist_album } from "./parsers/youtube_music_parser";
 import { apple_music_get_artist } from "./get_artist";
 import { create_uri } from "./illusive_utilts";
 import { Prefs } from "./prefs";
 import type { ArtistOpts, CompactPlaylist, NamedUUID, Track } from "./types";
 import type * as SoundcloudTypes from '../../origin/src/soundcloud/types/Search';
+import { parse_runs } from "@common/utils/parse_util";
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);

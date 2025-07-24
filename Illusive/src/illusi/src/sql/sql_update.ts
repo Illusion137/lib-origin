@@ -6,7 +6,7 @@ import { db, db_pre_1307, try_load_db_pre_1307 } from './database';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
 import { insert_track } from './sql_tracks';
-import { is_empty } from '../../../../../origin/src/utils/util';
+import { is_empty } from '../../../../../common/utils/util';
 import * as uuid from 'react-native-uuid';
 import { Prefs } from '../../../prefs';
 import { version_greater_than } from '../../../illusive_utilts';

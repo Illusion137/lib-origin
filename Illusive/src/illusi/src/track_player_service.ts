@@ -9,7 +9,7 @@ import TrackPlayer, {
     RepeatMode,
     TrackType
 } from 'react-native-track-player';
-import { is_empty } from '../../../../origin/src/utils/util';
+import { is_empty } from '../../../../common/utils/util';
 import { Constants } from '../../constants';
 import { Illusive } from '../../illusive';
 import type { ISOString, Track } from '../../types';
@@ -189,7 +189,7 @@ export async function playback_service() {
                     await track_player_next();
                 } else {
                     GLOBALS.global_var.playing_tracks[data.index + 1].playback!.added = true;
-                    await TrackPlayer.updateMetadataForTrack(data.index, new_react_native_track);
+                    // await TrackPlayer.updateMetadataForTrack(data.index, new_react_native_track);
                 }
                 await TrackPlayer.play();
             }

@@ -1,4 +1,5 @@
-import { extract_string_from_pattern, generate_new_uid, is_empty, parse_runs, parse_time } from "../../../origin/src/utils/util";
+import { parse_runs, parse_time } from "@common/utils/parse_util";
+import { extract_string_from_pattern, generate_new_uid, is_empty } from "../../../common/utils/util";
 import type { PlaylistPanelVideoRenderer } from "../../../origin/src/youtube/types/MixResults_0";
 import type { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
 import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";

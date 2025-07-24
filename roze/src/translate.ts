@@ -1,7 +1,7 @@
-import type { PromiseResult, ResponseError } from "../../origin/src/utils/types";
+import type { PromiseResult, ResponseError } from "@common/types";
 import { RozeHeaders } from "./headers";
 import type languages from './data/language.json';
-import { extract_string_from_pattern, generror_fetch, is_empty, json_catch } from "../../origin/src/utils/util";
+import { extract_string_from_pattern, generror_fetch, is_empty, json_catch } from "@common/utils/util";
 import { replace_html_codes } from "./utils";
 type LangCode = keyof typeof languages;
 

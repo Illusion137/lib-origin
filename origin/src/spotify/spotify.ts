@@ -1,6 +1,6 @@
-import type { Cookie, CookieJar } from "../utils/cookie_util";
-import type { ResponseError } from "../utils/types";
-import { encode_params, is_empty } from '../utils/util';
+import type { Cookie, CookieJar } from "../../../common/utils/cookie_util";
+import type { ResponseError } from "../../../common/types";
+import { is_empty } from '../../../common/utils/util';
 import type { Album } from "./types/Album";
 import type { Artist } from "./types/Artist";
 import type { Collection } from "./types/Collection";
@@ -15,6 +15,7 @@ import fetch from "../utils/orifetch";
 import type { Proxy } from "../proxy/proxy";
 import type { AppServerConfig, FeatureFlags, RemoteConfig } from "./types/Initial";
 import { Secret, TOTP } from "otpauth";
+import { encode_params } from "@common/utils/fetch_util";
 const Buffer = require('buffer/').Buffer
 
 export namespace Spotify {

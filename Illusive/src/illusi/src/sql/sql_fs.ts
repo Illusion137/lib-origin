@@ -1,14 +1,14 @@
-import * as FileSystem from 'expo-file-system';
-import { is_empty } from '../../../../../origin/src/utils/util';
+import { is_empty } from '../../../../../common/utils/util';
 import { Illusive } from '../../../illusive';
 import path_lib from 'path';
 import { alert_error } from '../alert';
+import { fs } from '@native/fs/fs';
 
 function forward_item(item: string) {
     return !is_empty(item) ? item : "";
 }
-export function cache_directory(path: string) { return FileSystem.cacheDirectory + path; }
-export function document_directory(path: string) { return FileSystem.documentDirectory + path; }
+export function cache_directory(path: string) { return fs.temp_directory(path); }
+export function document_directory(path: string) { return fs.document_directory(path); }
 export function sqlite_directory(item: string) { return document_directory(Illusive.sqlite_directory) + forward_item(item); }
 export function custom_thumbnail_directory(item: string) { return document_directory(Illusive.custom_thumbnail_archive_path) + forward_item(item); }
 export function thumbnail_directory(item: string) { return document_directory(Illusive.thumbnail_archive_path) + forward_item(item); }
@@ -17,13 +17,13 @@ export function lyrics_directory(item: string) { return document_directory(Illus
 
 async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
     const base_name = path_lib.basename(new_name ?? item);
-    await FileSystem.copyAsync({from: item, to: dir_func(base_name)});
+    await fs.copy(item, dir_func(base_name), {});
     return dir_func(base_name);
 }
 
 async function move_to(item: string, dir_func: (item: string) => string, new_name?: string) {
     const base_name = path_lib.basename(new_name ?? item);
-    await FileSystem.moveAsync({from: item, to: dir_func(base_name)});
+    await fs.move(item, dir_func(base_name), {});
     return dir_func(base_name);
 }
 
@@ -39,31 +39,31 @@ export async function delete_folder_of_file(file_path: string, safe = true) {
         for(const dir of Illusive.default_directories) 
             if(file_path.includes(dir)) return false;
     }
-    await FileSystem.deleteAsync(path_lib.dirname(file_path), {idempotent: true});
+    await fs.remove(path_lib.dirname(file_path));
     return true;
 }
 
-export async function mkdir(path: string) { await FileSystem.makeDirectoryAsync(path); }
-export async function info(path: string) { return await FileSystem.getInfoAsync(path); }
+export async function mkdir(path: string) { await fs.make_directory(path); }
+export async function info(path: string) { return await fs.get_info(path); }
 export async function delete_item(path: string) {
     if([media_directory(""), thumbnail_directory(""), lyrics_directory("")].includes(path)){
         alert_error({error: new Error(`Trying to delete important path: ${path}`)});
         return;
     }
-    await FileSystem.deleteAsync(path, {idempotent: true}); 
+    await fs.remove(path); 
 }
-export async function read_directory(path: string) { try { return await FileSystem.readDirectoryAsync(path); } catch(e) { return []; } }
-export function create_download_resumeable(uri: string, file_uri: string) { return FileSystem.createDownloadResumable(uri, file_uri); }
+export async function read_directory(path: string) { try { return await fs.read_directory(path); } catch(e) { return []; } }
+export function download_to_file(uri: string, file_uri: string) { return fs.download_to_file(uri, file_uri); }
 
 export async function create_file(path: string, data: string){
-    await FileSystem.writeAsStringAsync(path, data, {encoding: 'utf8'});
+    await fs.write_file_as_string(path, data, {encoding: 'utf8'});
     return path;
 }
 export async function read_file(path: string){
-    return await FileSystem.readAsStringAsync(path, {encoding: 'utf8'});
+    return await fs.read_as_string(path, {encoding: 'utf8'});
 }
 export async function file_created_at(path: string){
-    const file_info = await FileSystem.getInfoAsync(path, {});
-    if(file_info.exists) return new Date(file_info.modificationTime * 1000);
+    const file_info = await fs.get_info(path);
+    if(file_info.exists) return new Date(file_info.file_modified_ms);
     return new Date(0);
 }

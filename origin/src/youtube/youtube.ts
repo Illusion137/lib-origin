@@ -1,7 +1,7 @@
 import * as Parser from "./parser";
-import type { CookieJar } from "../utils/cookie_util";
-import type { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth1, urlid } from "../utils/util";
+import type { CookieJar } from "../../../common/utils/cookie_util";
+import type { PromiseResult, ResponseError } from '../../../common/types';
+import { extract_string_from_pattern, urlid } from "../../../common/utils/util";
 import type { Continuation } from "./types/Continuation";
 import type { ContinuedResults_0 } from './types/ContinuedResults_0';
 import type { CreatePlaylist } from "./types/CreatePlaylist";
@@ -9,6 +9,9 @@ import type { InitialData } from './types/types';
 import type { YTCFG } from "./types/YTCFG";
 import fetch from "../utils/orifetch";
 import type { Proxy } from "../proxy/proxy";
+import { sapisid_hash_auth1 } from "@common/utils/auth_utilt";
+import { try_json_eval } from "@common/utils/parse_util";
+import { encode_params, google_query } from "@common/utils/fetch_util";
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -100,16 +103,17 @@ export namespace YouTube {
 		let extracted = extract_string_from_pattern(html, initial_data_regex0);
 		if (typeof extracted === "object") {
 			extracted = extract_string_from_pattern(html, initial_data_regex1);
-			const initial_data: InitialData = eval_json(extracted as string);
+			const initial_data = try_json_eval<InitialData>(extracted as string);
 			return initial_data;
 		}
-		const initial_data: string = eval_json(extracted);
+		const initial_data = try_json_eval<string>(extracted);
+        if(typeof initial_data === "object") return initial_data;
 		return JSON.parse(initial_data) as InitialData;
 	}
-	function extract_ytcfg(html: string): YTCFG {
+	function extract_ytcfg(html: string): YTCFG|ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
 		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
-		const ytcfg: YTCFG = eval_json(extracted as string);
+		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}
 	async function get_initial_data_config(opts: Opts, url: string, tuser_agent?: string): Promise<ICFG | ResponseError> {
@@ -153,9 +157,13 @@ export namespace YouTube {
 				method: "GET"
 			});
 			const page_html = await page_response.text();
+            const initial_data = extract_initial_data(page_html);
+            if("error" in initial_data) return initial_data;
+            const ytcfg = extract_ytcfg(page_html);
+            if("error" in ytcfg) return ytcfg;
 			return {
-				initial_data: extract_initial_data(page_html),
-				ytcfg: extract_ytcfg(page_html)
+				initial_data,
+				ytcfg
 			};
 		} catch (error) { return { error: error as Error }; }
 	}

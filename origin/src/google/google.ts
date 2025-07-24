@@ -1,4 +1,5 @@
-import { google_query, is_empty } from "../utils/util";
+import { google_query } from "@common/utils/fetch_util";
+import { is_empty } from "../../../common/utils/util";
 
 export namespace Google {
     type SuggestionsResponse = [string, string[], any[], {"google:suggestsubtypes": number[][]}]

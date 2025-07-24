@@ -3,8 +3,8 @@
     "test": "jest",
     "build:osx": "sh ./scripts/build.sh",
     "build:win": "powershell ./scripts/build.ps1",
-    "discord_dev:win": "@powershell ./Illusive/src/illusicord/build/discord_dev.ps1",
-    "discord:win": "@powershell ./Illusive/src/illusicord/build/discord_start.ps1",
+    "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
+    "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
@@ -18,11 +18,12 @@
     "@types/request": "^2.48.12",
     "babel-jest": "^29.7.0",
     "drizzle-kit": "^0.31.4",
-    "eslint": "^9.15.0",
+    "eslint": "^9.31.0",
     "globals": "^15.12.0",
     "jest": "^29.7.0",
     "jest-transform-stub": "^2.0.0",
     "rn-nodeify": "github:tradle/rn-nodeify",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.15.0"
   },

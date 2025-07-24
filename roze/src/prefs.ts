@@ -1,7 +1,7 @@
-import { base_load_map, base_save_map, create_mmkv, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref } from "../native/mmkv/mmkv";
-import { CookieJar } from "../../origin/src/utils/cookie_util";
-import { fs } from "../native/fs/fs";
-import { gen_uuid } from "../../origin/src/utils/util";
+import { base_load_map, base_save_map, create_mmkv, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref } from "@native/mmkv/mmkv";
+import { CookieJar } from "@common/utils/cookie_util";
+import { fs } from "@native/fs/fs";
+import { gen_uuid } from "@common/utils/util";
 
 export namespace RozePrefs {
     export type OtherPrefTypes = string & {};

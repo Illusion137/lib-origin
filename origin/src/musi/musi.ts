@@ -1,5 +1,5 @@
-import type { ResponseError } from "../utils/types";
-import { json_catch, urlid } from "../utils/util";
+import type { ResponseError } from "../../../common/types";
+import { json_catch, urlid } from "../../../common/utils/util";
 import type { Explore, ExploreSuccess } from "./types/Explore";
 import type { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "./types/Playlist";
 import type { Support } from "./types/Support";

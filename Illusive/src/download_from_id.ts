@@ -1,7 +1,7 @@
 import * as Origin from '../../origin/src/index'
-import type { ResponseError } from '../../origin/src/utils/types';
+import type { ResponseError } from '../../common/types';
 import type { DownloadOptions, YTDLQuality } from '../../origin/src/youtube_dl/types';
-import { youtube_info_metadata } from './gen/youtube_parser';
+import { youtube_info_metadata } from './parsers/youtube_parser';
 import { Prefs } from './prefs';
 import type { DownloadFromIdResult } from './types';
 

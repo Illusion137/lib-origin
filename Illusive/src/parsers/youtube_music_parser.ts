@@ -1,4 +1,5 @@
-import { empty_undefined, generate_new_uid, is_empty, parse_runs, parse_time } from '../../../origin/src/utils/util'
+import { parse_runs, parse_time } from '@common/utils/parse_util';
+import { empty_undefined, generate_new_uid, is_empty } from '../../../common/utils/util'
 import type { NavigationEndpoint } from '../../../origin/src/youtube/types/ChannelResultsW';
 import { find_album_year } from '../../../origin/src/youtube_music/parser';
 import type { ArtistCarouselContent, ArtistTopTrack } from '../../../origin/src/youtube_music/types/ArtistResults_0';

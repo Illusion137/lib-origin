@@ -1,4 +1,4 @@
-import { extract_string_from_pattern, is_empty, milliseconds_of, remove, remove_topic, urlid } from "../../origin/src/utils/util";
+import { is_empty, milliseconds_of, urlid } from "../../common/utils/util";
 import type { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
 import { Prefs } from "./prefs";
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
@@ -6,24 +6,9 @@ import fuzzysort from "fuzzysort";
 import { seeded_rand } from "./seeding";
 import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
 import { Constants } from "./constants";
+import { remove, remove_topic } from "@common/utils/clean_util";
 
-export function has_file_extension(path: string){
-    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i);
-    return typeof extracted === "string";
-}
-export function extract_file_extension(path: string, mime?: "photo"|"video"|"none") {
-    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i);
-    if(typeof extracted === "object"){
-        switch(mime){
-            case "none": return "";
-            case "photo": return ".jpg";
-            case "video": return ".mp4";
-            case undefined:
-            default: return ".txt";
-        }
-    }
-    return extracted;
-}
+
 export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
 export function shuffle_array<T>(array: T[]) {
     let m = array.length, t, i;

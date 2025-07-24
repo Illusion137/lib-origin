@@ -3,9 +3,10 @@ import type { ArtistSectionItem, PinnedLeadingItemItem } from "../../../origin/s
 import type { SearchAlbum, SearchArtist, SearchPlaylist, SearchSong } from "../../../origin/src/apple_music/types/Search";
 import type { AppleTrack } from "../../../origin/src/apple_music/types/TrackListSection";
 import type { AppleUserPlaylistTrack } from "../../../origin/src/apple_music/types/UserPlaylist";
-import { generate_new_uid, is_empty, make_topic, remove, safe_date_iso, urlid } from "../../../origin/src/utils/util";
+import { generate_new_uid, is_empty, safe_date_iso, urlid } from "../../../common/utils/util";
 import { create_uri } from '../illusive_utilts';
 import type { CompactArtist, CompactPlaylist, ISOString, NamedUUID, Track } from "../types";
+import { remove } from "@common/utils/clean_util";
 
 export function parse_apple_music_artwork(url: string|undefined, size = 200): string|undefined {
     return url?.replace("{w}x{h}bb.{f}", `${size}x${size}bb.webp`)
@@ -23,7 +24,7 @@ export function parse_apple_music_playlist_track(track: AppleTrack): Track {
         uid: generate_new_uid(track.title),
         title: track.title,
         artists: track.subtitleLinks.map(link => {
-            return {name: make_topic(link.title), uri: create_uri("applemusic", link.segue.destination.contentDescriptor.url)};
+            return {name: link.title, uri: create_uri("applemusic", link.segue.destination.contentDescriptor.url)};
         }),
         album: track.tertiaryLinks?.[0] !== undefined ? {name: clean_album_title(track.tertiaryLinks[0].title), uri: create_uri("applemusic", track.tertiaryLinks[0].segue.destination.contentDescriptor.url)} : undefined,
         duration: Math.floor(track.duration / 1000),
@@ -38,7 +39,7 @@ export function parse_apple_music_user_playlist_track(track: AppleUserPlaylistTr
     return {
         uid: generate_new_uid(track.attributes.name),
         title: track.attributes.name,
-        artists: [{name: make_topic(track.attributes.artistName), uri: null}],
+        artists: [{name: track.attributes.artistName, uri: null}],
         album: {name: clean_album_title(track.attributes.albumName), uri: null},
         duration: Math.floor(track.attributes.durationInMillis / 1000),
         explicit: track.attributes.contentRating !== undefined && track.attributes.contentRating === "explicit" ? "EXPLICIT": "NONE",
@@ -51,7 +52,7 @@ export function parse_apple_music_search_track(track: SearchSong): Track {
     return {
         uid: generate_new_uid(track.attributes.name),
         title: track.attributes.name,
-        artists: [{name: make_topic(track.attributes.artistName), uri: null}],
+        artists: [{name: track.attributes.artistName, uri: null}],
         album: {name: clean_album_title(track.attributes.albumName), uri: null},
         duration: Math.floor(track.attributes.durationInMillis / 1000),
         prods: track.attributes?.composerName,

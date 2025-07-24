@@ -1,6 +1,7 @@
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
+import noRelativeImportPaths from 'eslint-plugin-no-relative-import-paths';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -15,7 +16,6 @@ export default [
         "origin/src/manga_reader/deob2.js",
     ]},
     pluginJs.configs.recommended,
-    // ...tseslint.configs.recommended,
     ...tseslint.configs.all,
     {
         languageOptions: {
@@ -26,6 +26,9 @@ export default [
         },
     },
     {
+        plugins: {
+            'no-relative-import-paths': noRelativeImportPaths,
+        },
         rules: {
             "@typescript-eslint/only-throw-error": "error",
             "@typescript-eslint/no-namespace": "off",
@@ -98,7 +101,8 @@ export default [
             "@typescript-eslint/no-dynamic-delete": "off",
             "@typescript-eslint/require-array-sort-compare": "off",
             "@typescript-eslint/class-methods-use-this": "off",
-            "@typescript-eslint/no-misused-promises": "off"
+            "@typescript-eslint/no-misused-promises": "off",
+            "no-relative-import-paths/no-relative-import-paths": "error"
         }
     }
 ];

@@ -1,7 +1,7 @@
 import fuzzysort from 'fuzzysort';
 import * as Origin from '../../origin/src/index'
-import { TimedCache, type PromiseResult, type ResponseError } from "../../origin/src/utils/types";
-import { extract_string_from_pattern, generror, is_empty, json_catch, remove_topic } from "../../origin/src/utils/util";
+import { TimedCache, type PromiseResult, type ResponseError } from "../../common/types";
+import { extract_string_from_pattern, is_empty, json_catch } from "../../common/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "./add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "./create_delete_playlist";
 import { soundcloud_download_from_id, youtube_download_from_id } from "./download_from_id";
@@ -16,8 +16,10 @@ import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "./types";
 import { MusicService } from "./types";
 import { youtube_music_get_new_releases } from './new_releases';
-import { parse_youtube_music_track } from './gen/youtube_music_parser';
+import { parse_youtube_music_track } from './parsers/youtube_music_parser';
 import { Constants } from './constants';
+import { generror } from '@common/utils/error_util';
+import { remove_topic } from '@common/utils/clean_util';
 
 export namespace Illusive {
     export const illusi_icon_index = 0;
@@ -325,7 +327,7 @@ export namespace Illusive {
     }
 
     async function lyrics_try_good_result(track: Track, search_query: string){
-        const search_response = await Origin.Genius.search(search_query);
+        const search_response = await Origin.Genius.search_songs(search_query, {});
         if("error" in search_response) return search_response;
         const best_result = search_response.find(hit => {
             const title_result = fuzzysort.single(
@@ -360,7 +362,7 @@ export namespace Illusive {
         ].filter(s => s !== undefined));
         if("error" in best_result) return best_result;
 
-        const lyrics_response = await Origin.Genius.get_lyrics(best_result);
+        const lyrics_response = await Origin.Genius.get_lyrics(best_result, {});
         return lyrics_response;
     }
 

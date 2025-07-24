@@ -1,6 +1,6 @@
 import * as Origin from '../../origin/src/index';
-import { soundcloud_parse_track } from './gen/soundcloud_parser';
-import { youtube_parse_videos } from './gen/youtube_parser';
+import { soundcloud_parse_track } from './parsers/soundcloud_parser';
+import { youtube_parse_videos } from './parsers/youtube_parser';
 import { Prefs } from './prefs';
 import type { Track } from './types';
 
