@@ -26,9 +26,6 @@ export default [
         },
     },
     {
-        plugins: {
-            'no-relative-import-paths': noRelativeImportPaths,
-        },
         rules: {
             "@typescript-eslint/only-throw-error": "error",
             "@typescript-eslint/no-namespace": "off",
@@ -102,10 +99,6 @@ export default [
             "@typescript-eslint/require-array-sort-compare": "off",
             "@typescript-eslint/class-methods-use-this": "off",
             "@typescript-eslint/no-misused-promises": "off",
-            "no-relative-import-paths/no-relative-import-paths": [
-                "warn",
-                { "allowSameFolder": true, "prefix": "@", "rootDir": "src" }
-            ]
         }
     }
 ];

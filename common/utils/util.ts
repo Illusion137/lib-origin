@@ -105,3 +105,78 @@ export function extract_file_extension(path: string, mime?: "photo"|"video"|"non
     }
     return extracted;
 }
+
+export function shuffle_array<T>(array: T[]) {
+    let m = array.length, t, i;
+    while (m) {
+        i = Math.floor(Math.random() * m--);
+        t = array[m];
+        array[m] = array[i];
+        array[i] = t;
+    }
+    return array;
+}
+
+export function closest_to(target: number, array: number[]) {
+    return array.reduce(function(prev, curr) {
+        return (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
+    });
+}
+
+export function cycle<T>(value: T, values: T[]): T {
+    const value_index = values.findIndex(item => item === value);
+    if(value_index === values.length - 1) return values[0];
+    return values[value_index + 1];
+}
+export function character_count(haystack: string, needle: string) {
+    let count = 0;
+    for(const char of haystack) if(char === needle) count++;
+    return count;
+}
+
+export function pad_value_left(value: unknown, padding: number) {
+    return String(value).padStart(padding, "0");
+}
+
+export function random_of<T>(arr: T[]): T {
+    const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
+    return arr[randidx];
+}
+export function seeded_random_of<T>(gen: () => number, arr: T[]): T {
+    const randidx = Math.floor(gen() * (Math.floor(arr.length) - 0) + 0);
+    return arr[randidx];
+}
+
+export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string, T[]> {
+    return items.reduce((accumulator: any, item) => {
+        const key = keyGetter(item);
+        (accumulator[key] = accumulator[key] || []).push(item);
+        return accumulator;
+    }, {});
+};
+
+export function version_greater_than(version: string, other_version: string): boolean{
+    try {
+        const [major, minor, patch] = version.split('.').map(item => parseInt(item));
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(item => parseInt(item));
+        if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
+        if(major > other_major) return true;
+        if(major === other_major && minor > other_minor) return true;
+        if(major === other_major && minor === other_minor && patch > other_patch) return true;
+        return false;
+    }
+    catch(e) {
+        return false;
+    }
+}
+
+export function single_case(str: string): string {
+    if(str.length <= 2) return str.toUpperCase();
+    const split = str.toLowerCase().split('');
+    split[0] = split?.[0].toUpperCase();
+    return split.join('');
+}
+
+export function recreate<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
+}

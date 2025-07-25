@@ -20,7 +20,7 @@ export async function youtube_download_from_id(video_id: string, quality: string
         try {
             // FIXME: YouTube Download From ID is silly
             const av_info = (await Origin.YouTubeDL.get_info(video_id, ytdl_opts));
-            if("error" in av_info) throw new Error(av_info.error as string);
+            if("error" in av_info) throw av_info.error;
             const av_format = Origin.YouTubeDL.choose_format(av_info.info, ytdl_opts);
             if(Prefs.get_pref('force_youtube_18_quality'))
                 return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
@@ -35,7 +35,7 @@ export async function youtube_download_from_id(video_id: string, quality: string
             if(!use_cookies_on_download) throw error;
             const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
             const av_result = await Origin.YouTubeDL.ytdl(video_id, {...ytdl_opts, requestOptions: {headers: {cookie: cookie_jar.toString()}}});
-            if("error" in av_result) throw new Error(av_result.error as string);
+            if("error" in av_result) throw av_result.error;
             return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
         }
     } catch (error) { return { error: error as Error }; }

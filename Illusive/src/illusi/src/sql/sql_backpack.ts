@@ -1,6 +1,5 @@
 import { IllusiIcons } from "@illusive/illusi_icons";
 import { Illusive } from "@illusive/illusive";
-import { all_promises } from "@illusive/illusive_utilts";
 import type { SQLTrack, Track } from "@illusive/types";
 import { alert_error } from "@illusive/illusi/src/alert";
 import { ExampleObj } from "@illusive/illusi/src/example_objs";
@@ -14,7 +13,7 @@ export async function delete_from_backpack(uid: string) {
     await db_run_async(`${sql_delete_from("backpack")} ${sql_where<Track>(["uid", uid])}`);
 }
 export async function toss_from_backpack(replacement_track: Track) {
-    await all_promises([
+    await Promise.all([
         insert_track(replacement_track),
         delete_from_backpack(replacement_track.uid)
     ])
@@ -33,7 +32,7 @@ export async function add_to_backpack(uid: string) {
         alert_error(track);
         return;
     }
-    await all_promises([
+    await Promise.all([
         delete_track(uid),
         db_run_async(sql_insert_values("backpack", ExampleObj.track_example0), track_to_sqllite_insertion(track))
     ]);

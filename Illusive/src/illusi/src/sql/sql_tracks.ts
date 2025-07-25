@@ -1,4 +1,4 @@
-import { error_undefined, is_empty } from "@common/utils/util";
+import { error_undefined, is_empty, random_of } from "@common/utils/util";
 import { Illusive } from "@illusive/illusive";
 import { Prefs } from "@illusive/prefs";
 import type { ISOString, NamedUUID, Promises, SQLTrack, SQLTrackArray, Track, TrackMetaData } from "@illusive/types";
@@ -12,7 +12,7 @@ import type { ResponseError} from "@common/types";
 import { TimedCacheValue } from "@common/types";
 import { alert_error, alert_info } from "@illusive/illusi/src/alert";
 import { clean_album_title } from "@illusive/parsers/apple_music_parser";
-import { generate_unique_track_tints, random_of, track_primary_key } from "@illusive/illusive_utilts";
+import { generate_unique_track_tints, track_primary_key } from "@illusive/illusive_utilts";
 import { Constants } from "@illusive/constants";
 import { try_download_track_lyrics } from "@illusive/illusi/src/lyrics";
 import { wait } from "@common/utils/timed_utilt";
@@ -316,11 +316,11 @@ export async function restore_thumbnail_cache(tracks?: Track[]) {
 export async function clean_thumbnail_cache() {
     const files = await SQLfs.read_directory(thumbnail_directory(""));
     if("error" in files) return;
-    const all_promises: Promises = [];
+    const promises: Promises = [];
     for(const file of files)
-        all_promises.push(SQLfs.delete_item(thumbnail_directory(file)))
+        promises.push(SQLfs.delete_item(thumbnail_directory(file)))
     await db_exec_async(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
-    await Promise.all(all_promises);
+    await Promise.all(promises);
     update_global_track_all_property('thumbnail_uri', '');
 }
 

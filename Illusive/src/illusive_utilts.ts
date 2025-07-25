@@ -1,25 +1,14 @@
-import { is_empty, milliseconds_of, urlid } from "@common/utils/util";
+import { groupby, is_empty, milliseconds_of, seeded_random_of, urlid } from "@common/utils/util";
 import type { Run3 } from "@origin/youtube/types/PlaylistResults_0";
 import { Prefs } from "@illusive/prefs";
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "@illusive/query_flags";
 import fuzzysort from "fuzzysort";
-import { seeded_rand } from "@illusive/seeding";
-import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "@illusive/types";
+import { seeded_rand } from "@common/seeding";
+import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from "@illusive/types";
 import { Constants } from "@illusive/constants";
 import { remove, remove_topic } from "@common/utils/clean_util";
 
 
-export function playlist_name_sql_friendly(playlist_name: string) { return playlist_name.replace(/\s/g, '_'); }
-export function shuffle_array<T>(array: T[]) {
-    let m = array.length, t, i;
-    while (m) {
-        i = Math.floor(Math.random() * m--);
-        t = array[m];
-        array[m] = array[i];
-        array[i] = t;
-    }
-    return array;
-}
 export function duration_to_string(track_duration: number): {left: number, duration: string} {
     if(track_duration/3600 >= 1) {
         const hours = Math.floor(track_duration / 3600);
@@ -53,9 +42,7 @@ export function best_thumbnail(thumbnails: IllusiveThumbnail[]|undefined) {
     }
     return thumbnails[best.index];
 }
-export function pad_number_left(num: number, padding: number): IntString {
-    return String(num).padStart(padding, "0") as IntString;
-}
+
 export function date_from(date: {year?: number, month?: number, day?: number, hour?: number, minute?: number, second?: number, ms?: number}) {
     const new_date = new Date();
     if(date.year) new_date.setFullYear(date.year);
@@ -267,16 +254,6 @@ export function artist_query_filter(compact_artists: CompactArtist[], query?: st
         }
     ).map(r => r.obj);
 }
-export function cycle<T>(value: T, values: T[]): T {
-    const value_index = values.findIndex(item => item === value);
-    if(value_index === values.length - 1) return values[0];
-    return values[value_index + 1];
-}
-export function character_count(haystack: string, needle: string) {
-    let count = 0;
-    for(const char of haystack) if(char === needle) count++;
-    return count;
-}
 export function time_to_timestamp(time_seconds: number): string {
     const time_ms = Math.floor(time_seconds * 1000);
     const time_min = Math.floor(time_ms / 60000);
@@ -432,17 +409,7 @@ export function number_epsilon_distance(num: number, expected: number, plus_minu
     const distance = Math.abs(num - expected);
     return distance <= plus_minus;
 }
-export function random_of<T>(arr: T[]): T {
-    const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
-    return arr[randidx];
-}
-export function seeded_random_of<T>(gen: () => number, arr: T[]): T {
-    const randidx = Math.floor(gen() * (Math.floor(arr.length) - 0) + 0);
-    return arr[randidx];
-}
-export async function all_promises(promises: Promises) {
-    return await Promise.all(promises);
-}
+
 export function all_words(str: string) {
     return str.split(" ").map(word => remove(word, /[^a-zA-Z\d\s:]/g));
 }
@@ -453,14 +420,6 @@ export function one_includes_word_not_other(word_group_1: string[], word_group_2
     return (!word_group_1.includes(needle) &&  word_group_2.includes(needle)) 
         || ( word_group_1.includes(needle) && !word_group_2.includes(needle));
 }
-
-export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string, T[]> {
-    return items.reduce((accumulator: any, item) => {
-        const key = keyGetter(item);
-        (accumulator[key] = accumulator[key] || []).push(item);
-        return accumulator;
-    }, {});
-};
 
 export function music_service_track_primary_key(type: MusicServiceType): keyof Track{
     switch(type){
@@ -504,28 +463,6 @@ export function artist_string(track_or_compact_playlist: Track|CompactPlaylist):
     return names.length
         ? names.join(', ') + ' & ' + final_name
             : final_name;
-}
-
-export function version_greater_than(version: string, other_version: string): boolean{
-    try {
-        const [major, minor, patch] = version.split('.').map(item => parseInt(item));
-        const [other_major, other_minor, other_patch] = other_version.split('.').map(item => parseInt(item));
-        if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
-        if(major > other_major) return true;
-        if(major === other_major && minor > other_minor) return true;
-        if(major === other_major && minor === other_minor && patch > other_patch) return true;
-        return false;
-    }
-    catch(e) {
-        return false;
-    }
-}
-
-export function single_case(str: string): string {
-    if(str.length <= 2) return str.toUpperCase();
-    const split = str.toLowerCase().split('');
-    split[0] = split?.[0].toUpperCase();
-    return split.join('');
 }
 
 export function tracks_with_artist(tracks: Track[], artist_name: string){
@@ -600,10 +537,6 @@ export function is_topic(str: string){
 export function clean_title(title: string){
     const cleaned = remove(title, /\(.+?\)/gi, /\[.+?\]/gi).trim();
     return cleaned;
-}
-
-export function recreate<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
 }
 
 export function should_automatic_refresh(last_refreshed: Date): boolean{

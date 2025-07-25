@@ -6,10 +6,9 @@ import { db, db_pre_1307, try_load_db_pre_1307 } from '@illusive/illusi/src/sql/
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from '@illusive/illusi/src/sql/sql_legacy_1307';
 import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from '@illusive/illusi/src/sql/sql_playlists';
 import { insert_track } from '@illusive/illusi/src/sql/sql_tracks';
-import { is_empty } from '@common/utils/util';
+import { is_empty, version_greater_than } from '@common/utils/util';
 import * as uuid from 'react-native-uuid';
 import { Prefs } from '@illusive/prefs';
-import { version_greater_than } from '@illusive/illusive_utilts';
 import { ExampleObj } from '@illusive/illusi/src/example_objs';
 
 export async function get_all_tables(database: SQLite.DB) {
@@ -76,16 +75,16 @@ export async function fix_to_new_update(version: string) {
             if (all_legacy_1307_table_names.includes("tracks") && current_tracks.length === 0) {
                 Alert.alert("Updating to 14.0.0 BETA");
                 await move_unsorted_media_to_folders();
-                const all_promises: Promises = [];
+                const promises: Promises = [];
                 for (const legacy_1307_track of legacy_1307_tracks)
-                    all_promises.push(insert_track(await legacy_1307_track_to_track(legacy_1307_track)));
+                    promises.push(insert_track(await legacy_1307_track_to_track(legacy_1307_track)));
                 for (const legacy_1307 of legacy_1307_playlists) {
                     const playlist_legacy_1307_tracks = await get_legacy_1307_playlist_tracks(db_pre_1307!, legacy_1307.playlist_name);
                     const playlist_uuid = await create_playlist(legacy_1307.playlist_name);
                     for (const legacy_1307_track of playlist_legacy_1307_tracks)
-                        all_promises.push(insert_track_playlist(playlist_uuid, legacy_1307_track.uid));
+                        promises.push(insert_track_playlist(playlist_uuid, legacy_1307_track.uid));
                 }
-                await Promise.all(all_promises);
+                await Promise.all(promises);
             }
         } catch (error) { }
     }

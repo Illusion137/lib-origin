@@ -2,7 +2,6 @@ import type * as SQLite from '@op-engineering/op-sqlite';
 import * as uuid from "react-native-uuid";
 import { is_empty } from "@common/utils/util";
 import { parse_youtube_title_artist } from '@illusive/parsers/youtube_parser';
-import { playlist_name_sql_friendly } from '@illusive/illusive_utilts';
 import type { ISOString, Track } from "@illusive/types";
 import type * as LegacyTypes1307 from '@illusive/illusi/src/legacy/1307/legacy_types';
 import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
@@ -51,5 +50,5 @@ export async function get_legacy_1307_playlists(database: SQLite.DB): Promise<Le
     return (await database.execute(sql_select("playlists", "*"))).rows as any;
 }
 export async function get_legacy_1307_playlist_tracks(database: SQLite.DB, playlist_name: string): Promise<LegacyTypes1307.Track[]> {
-    return (await database.execute(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name_sql_friendly(playlist_name)} AS p ON p.track_uid = t.uid ORDER BY p.id`)).rows as any;
+    return (await database.execute(`${sql_select("tracks", "*")} AS t JOIN ${playlist_name.replace(/\s/g, '_')} AS p ON p.track_uid = t.uid ORDER BY p.id`)).rows as any;
 }

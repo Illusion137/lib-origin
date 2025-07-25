@@ -1,5 +1,5 @@
 import * as uuid from "react-native-uuid";
-import { all_promises, track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utilts";
+import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utilts";
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLCount, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "@illusive/types";
 import { ExampleObj } from "@illusive/illusi/src/example_objs";
 import * as GLOBALS from "@illusive/illusi/src/globals";
@@ -221,14 +221,14 @@ export async function create_playlist(title: string, cuuid?: string): Promise<st
     return playlist_uuid;
 }
 export async function delete_playlist(playlist_uuid: string) {
-    await all_promises([
+    await Promise.all([
         db_exec_async(`${sql_delete_from("playlists")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`),
         db_exec_async(`${sql_delete_from("playlists_tracks")} ${sql_where<PlaylistsTracks>(["uuid", playlist_uuid])}`)
     ]);
 }
 export async function delete_all_playlists() {
     const playlists = await all_playlists_data();
-    await all_promises( playlists.map(async(playlist) => delete_playlist(playlist.uuid)) );
+    await Promise.all( playlists.map(async(playlist) => delete_playlist(playlist.uuid)) );
 }
 export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
     if(pin)

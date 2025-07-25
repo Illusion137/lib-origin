@@ -1,5 +1,4 @@
 import { is_empty } from "@common/utils/util";
-import { all_promises } from "@illusive/illusive_utilts";
 import { Prefs } from "@illusive/prefs";
 import type { SQLTrack, Track } from "@illusive/types";
 import { ExampleObj } from "@illusive/illusi/src/example_objs";
@@ -32,7 +31,7 @@ export async function cleanup_recently_played() {
     if(to_delete_recently_played_data.length <= recently_played_max_size) return;
     const sliced_to_delete_recently_played_data = to_delete_recently_played_data.slice(recently_played_max_size);
     
-    await all_promises(
+    await Promise.all(
         sliced_to_delete_recently_played_data.map(async track => delete_recently_played_track(track))
     );
 }

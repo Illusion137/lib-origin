@@ -1,7 +1,6 @@
 import * as Origin from '@origin/index';
-import { is_empty } from "@common/utils/util";
+import { is_empty, random_of, shuffle_array } from "@common/utils/util";
 import { Illusive } from "@illusive/illusive";
-import { random_of, shuffle_array } from "@illusive/illusive_utilts";
 import { Prefs } from "@illusive/prefs";
 import type { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "@illusive/types";
 import * as GLOBALS from '@illusive/illusi/src/globals';

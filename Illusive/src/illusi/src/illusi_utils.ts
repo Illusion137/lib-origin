@@ -6,6 +6,7 @@ import type BigList from 'react-native-big-list';
 import type { AlphabetScroll, Artwork, ImageArtwork } from '@illusive/types';
 import { alert_error } from '@illusive/illusi/src/alert';
 import { IllusiIcons } from '@illusive/illusi_icons';
+import { closest_to } from '@common/utils/util';
 
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [
@@ -19,12 +20,6 @@ export function catch_function_sync(func: () => any) {
 }
 export async function catch_function_async(func: () => Promise<any>) {
     try { return await func(); } catch (error) { alert_error({error: error as Error}); return {error: error as Error}; }
-}
-
-export function closest_to(target: number, array: number[]) {
-    return array.reduce(function(prev, curr) {
-        return (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
-    });
 }
 
 function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: string[]) {
