@@ -1,14 +1,14 @@
 import type { PromiseResult } from "@common/types";
 import { extract_string_from_pattern } from "@common/utils/util";
-import type { Children, LyricsPreloadedState } from "./types/Lyrics";
-import type { Result, Search } from "./types/Search";
+import type { Children, LyricsPreloadedState } from "@origin/genius/types/Lyrics";
+import type { Result, Search } from "@origin/genius/types/Search";
 import { generror, generror_catch } from "@common/utils/error_util";
 import { base_get_headers } from "@common/headers_base";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { try_json_eval, try_json_parse } from "@common/utils/parse_util";
 
 export namespace Genius {
-    type Opts = { fetch_opts?: RoZFetchRequestInit };
+    interface Opts { fetch_opts?: RoZFetchRequestInit }
     export async function search(query: string, opts: Opts){
         const search_response = await rozfetch<Search>(`https://genius.com/api/search/multi?per_page=5&q=${encodeURIComponent(query).split("%20").join("+")}`, {
             headers: {

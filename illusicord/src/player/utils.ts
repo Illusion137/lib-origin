@@ -1,5 +1,5 @@
 import { ChannelType, type GuildChannel } from "discord.js";
-import type { DiscordTrack } from "../types";
+import type { DiscordTrack } from "@illusicord/types";
 import type { Track } from "@illusive/types";
 
 export namespace Utils { 

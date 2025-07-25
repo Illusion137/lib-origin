@@ -1,4 +1,4 @@
-import type { FFMPEG } from "./ffmpeg.base";
+import type { FFMPEG } from "@native/ffmpeg/ffmpeg.base";
 import ffmpeg from 'ffmpeg-kit-react-native';
 
 export const mobile_ffmpeg: FFMPEG = {

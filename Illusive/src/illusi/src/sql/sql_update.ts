@@ -1,16 +1,16 @@
 import type * as SQLite from '@op-engineering/op-sqlite';
 import { Alert } from 'react-native';
-import type { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track } from '../../../types';
-import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_exec_async, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_update_table, sql_where } from '../sql/sql_utils';
-import { db, db_pre_1307, try_load_db_pre_1307 } from './database';
-import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
-import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from './sql_playlists';
-import { insert_track } from './sql_tracks';
-import { is_empty } from '../../../../../common/utils/util';
+import type { Playlist, PlaylistsTracks, Promises, SQLAlter, SQLPlaylist, SQLTable, SQLTrack, SQLType, Track } from '@illusive/types';
+import { create_delete_triggers_if_not_exists, create_timestamp_triggers_if_not_exists, db_exec_async, db_get_all_async, db_run_async, move_unsorted_media_to_folders, recreate_all_tables, sql_drop_table, sql_select, sql_update, sql_update_table, sql_where } from '@illusive/illusi/src/sql/sql_utils';
+import { db, db_pre_1307, try_load_db_pre_1307 } from '@illusive/illusi/src/sql/database';
+import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from '@illusive/illusi/src/sql/sql_legacy_1307';
+import { all_playlists_data, create_playlist, insert_track_playlist, update_playlist } from '@illusive/illusi/src/sql/sql_playlists';
+import { insert_track } from '@illusive/illusi/src/sql/sql_tracks';
+import { is_empty } from '@common/utils/util';
 import * as uuid from 'react-native-uuid';
-import { Prefs } from '../../../prefs';
-import { version_greater_than } from '../../../illusive_utilts';
-import { ExampleObj } from '../example_objs';
+import { Prefs } from '@illusive/prefs';
+import { version_greater_than } from '@illusive/illusive_utilts';
+import { ExampleObj } from '@illusive/illusi/src/example_objs';
 
 export async function get_all_tables(database: SQLite.DB) {
     const tables = (await database.execute(`${sql_select("sqlite_master", "*")} ${sql_where<{ type: string }>(["type", "table"])}`)).rows;

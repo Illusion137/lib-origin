@@ -1,4 +1,4 @@
-import type { GetAudioDuration } from "./get_audio_duration.base";
+import type { GetAudioDuration } from "@native/get_audio_duration/get_audio_duration.base";
 import { Audio } from 'expo-av';
 
 export const mobile_get_audio_duration: GetAudioDuration = {

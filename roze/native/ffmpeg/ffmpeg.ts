@@ -1,8 +1,8 @@
-import type { FFMPEG } from "./ffmpeg.base";
-import { get_native_platform } from "../native_mode";
-import { fs, gen_temp_file_name, use_temp_file } from "../fs/fs";
-import type { FileExtension } from "../../../common/types";
-import type { DurationImage } from "../../src/types/types";
+import type { FFMPEG } from "@native/ffmpeg/ffmpeg.base";
+import { get_native_platform } from "@native/native_mode";
+import { fs, gen_temp_file_name, use_temp_file } from "@native/fs/fs";
+import type { FileExtension } from "@common/types";
+import type { DurationImage } from "@roze/types/types";
 
 export let ffmpeg: FFMPEG;
 switch(get_native_platform()){

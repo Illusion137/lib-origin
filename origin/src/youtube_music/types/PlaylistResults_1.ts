@@ -1,4 +1,4 @@
-import type { Continuation } from "./Continuation"
+import type { Continuation } from "@origin/youtube_music/types/Continuation"
 
 export interface PlaylistResults_1 {
     responseContext: ResponseContext

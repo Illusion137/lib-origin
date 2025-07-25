@@ -1,12 +1,12 @@
 import type { Guild, GuildChannel, GuildChannelResolvable, VoiceChannel } from "discord.js";
-import { DMPErrors, DMPError } from "./dmp_error";
-import { StreamConnection } from "./stream_connection";
+import { DMPErrors, DMPError } from "@illusicord/player/dmp_error";
+import { StreamConnection } from "@illusicord/player/stream_connection";
 import { entersState, joinVoiceChannel, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
 import { Illusive } from "@illusive/illusive";
-import { RepeatMode, type DiscordTrack, type PlayerOptions } from "../types";
-import { Constants } from "../constants";
-import { Utils } from "./utils";
-import type { Player } from "./player";
+import { RepeatMode, type DiscordTrack, type PlayerOptions } from "@illusicord/types";
+import { Constants } from "@illusicord/constants";
+import { Utils } from "@illusicord/player/utils";
+import type { Player } from "@illusicord/player/player";
 
 export class Queue<T = unknown> {
     player: Player;

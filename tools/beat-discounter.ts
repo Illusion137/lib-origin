@@ -1,5 +1,5 @@
 // import { Proxy } from "../origin/src";
-import { Traktrain } from "../origin/src/traktrain/traktrain";
+import { Traktrain } from "@origin/traktrain/traktrain";
 import * as fs from 'fs';
 
 async function main(){

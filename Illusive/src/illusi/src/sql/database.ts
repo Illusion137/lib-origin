@@ -1,5 +1,5 @@
 import * as SQLite from '@op-engineering/op-sqlite';
-import { document_directory } from './sql_fs';
+import { document_directory } from '@illusive/illusi/src/sql/sql_fs';
 
 export const sqlite_location = document_directory('SQLite').replace('file://', '');
 export const db_pre_1307_path = "illusi-db.sqlite3";

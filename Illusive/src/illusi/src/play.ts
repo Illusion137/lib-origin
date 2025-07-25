@@ -1,17 +1,17 @@
 import * as Haptics from 'expo-haptics';
 import TrackPlayer from "react-native-track-player";
-import { is_empty } from "../../../../common/utils/util";
-import { Constants } from "../../constants";
-import { Illusive } from "../../illusive";
-import { Prefs } from "../../prefs";
-import type { Track } from "../../types";
-import { alert_error } from "./alert";
-import * as GLOBALS from "./globals";
-import * as SQLTracks from "./sql/sql_tracks";
-import * as SQLPlaylists from "./sql/sql_playlists";
-import { random_of, recreate, shuffle_array } from '../../illusive_utilts';
-import { check_push_next_track } from './track_player_service';
-import { default_playlists } from './default_playlists';
+import { is_empty } from "@common/utils/util";
+import { Constants } from "@illusive/constants";
+import { Illusive } from "@illusive/illusive";
+import { Prefs } from "@illusive/prefs";
+import type { Track } from "@illusive/types";
+import { alert_error } from "@illusive/illusi/src/alert";
+import * as GLOBALS from "@illusive/illusi/src/globals";
+import * as SQLTracks from "@illusive/illusi/src/sql/sql_tracks";
+import * as SQLPlaylists from "@illusive/illusi/src/sql/sql_playlists";
+import { random_of, recreate, shuffle_array } from '@illusive/illusive_utilts';
+import { check_push_next_track } from '@illusive/illusi/src/track_player_service';
+import { default_playlists } from '@illusive/illusi/src/default_playlists';
 
 export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];

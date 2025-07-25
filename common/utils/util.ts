@@ -1,5 +1,5 @@
-import type { ResponseError } from '../types';
-import { generror } from './error_util';
+import type { ResponseError } from '@common/types';
+import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
 
 export function generate_new_uid(prefix_name: string) {

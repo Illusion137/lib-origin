@@ -1,10 +1,10 @@
-import { is_empty } from "../../../../../common/utils/util";
-import { Constants } from "../../../constants";
-import type { Track } from "../../../types";
-import { alert_error } from "../alert";
-import * as GLOBALS from "../globals";
-import * as SQLPlaylists from "../sql/sql_playlists";
-import * as SQLTracks from "../sql/sql_tracks";
+import { is_empty } from "@common/utils/util";
+import { Constants } from "@illusive/constants";
+import type { Track } from "@illusive/types";
+import { alert_error } from "@illusive/illusi/src/alert";
+import * as GLOBALS from "@illusive/illusi/src/globals";
+import * as SQLPlaylists from "@illusive/illusi/src/sql/sql_playlists";
+import * as SQLTracks from "@illusive/illusi/src/sql/sql_tracks";
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 

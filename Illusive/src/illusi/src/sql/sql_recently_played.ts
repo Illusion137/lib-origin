@@ -1,11 +1,11 @@
-import { is_empty } from "../../../../../common/utils/util";
-import { all_promises } from "../../../illusive_utilts";
-import { Prefs } from "../../../prefs";
-import type { SQLTrack, Track } from "../../../types";
-import { ExampleObj } from "../example_objs";
-import { sql_tracks_to_tracks, track_to_sqllite_insertion } from "./sql_tracks";
-import { db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select, sql_where } from "./sql_utils";
-import * as GLOBALS from '../globals';
+import { is_empty } from "@common/utils/util";
+import { all_promises } from "@illusive/illusive_utilts";
+import { Prefs } from "@illusive/prefs";
+import type { SQLTrack, Track } from "@illusive/types";
+import { ExampleObj } from "@illusive/illusi/src/example_objs";
+import { sql_tracks_to_tracks, track_to_sqllite_insertion } from "@illusive/illusi/src/sql/sql_tracks";
+import { db_get_all_async, db_run_async, sql_delete_from, sql_insert_values, sql_select, sql_where } from "@illusive/illusi/src/sql/sql_utils";
+import * as GLOBALS from '@illusive/illusi/src/globals';
 
 export async function insert_recently_played_track(track: Track) {
     await db_run_async(`${sql_delete_from("recently_played_tracks")} ${sql_where<Track>(["uid", track.uid])}`);

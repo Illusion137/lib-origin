@@ -1,12 +1,12 @@
-import { Illusive } from "../../illusive";
-import type { CompactPlaylist, NamedUUID, Promises } from '../../types';
-import { is_empty, json_catch } from '../../../../common/utils/util';
-import { music_service_uri_to_music_service, split_uri } from "../../illusive_utilts";
-import { get_proxies } from "./sampler";
-import { Proxy } from "../../../../origin/src";
-import type { ResponseError } from "../../../../common/types";
-import { Constants } from "../../constants";
-import * as SQLTracks from './sql/sql_tracks';
+import { Illusive } from "@illusive/illusive";
+import type { CompactPlaylist, NamedUUID, Promises } from '@illusive/types';
+import { is_empty, json_catch } from '@common/utils/util';
+import { music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utilts";
+import { get_proxies } from "@illusive/illusi/src/sampler";
+import { Proxy } from "@origin/";
+import type { ResponseError } from "@common/types";
+import { Constants } from "@illusive/constants";
+import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
 
 async function add_playback_data_to_releases(releases: (CompactPlaylist[]|ResponseError)[]){
     return await Promise.all(releases

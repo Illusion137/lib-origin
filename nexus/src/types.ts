@@ -1,4 +1,4 @@
-import type { ExplicitMode } from "../../Illusive/src/types";
+import type { ExplicitMode } from "@illusive/types";
 
 export interface Track {
     uuid: string;

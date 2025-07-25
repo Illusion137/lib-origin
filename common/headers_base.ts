@@ -1,6 +1,6 @@
-import type { CookieJar } from "./utils/cookie_util";
+import type { CookieJar } from "@common/utils/cookie_util";
 
-type Opts = {cookie_jar?: CookieJar};
+interface Opts {cookie_jar?: CookieJar}
 
 export function base_get_headers(opts: Opts){
     return {

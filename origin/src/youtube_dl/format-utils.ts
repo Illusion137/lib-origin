@@ -1,6 +1,6 @@
-import { FORMATS } from './formats';
-import type { AVFormat, DownloadOptions, Filter } from './types';
-import * as utils from './utils';
+import { FORMATS } from '@origin/youtube_dl/formats';
+import type { AVFormat, DownloadOptions, Filter } from '@origin/youtube_dl/types';
+import * as utils from '@origin/youtube_dl/utils';
 
 // Use these to help sort formats, higher index is better.
 const audioEncodingRanks = [

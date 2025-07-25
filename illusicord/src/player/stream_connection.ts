@@ -1,11 +1,11 @@
 import { createAudioResource, createAudioPlayer, entersState, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } from "@discordjs/voice";
 import { EventEmitter } from "events";
 import { promisify } from "util";
-import { DMPError, DMPErrors } from "./dmp_error";
+import { DMPError, DMPErrors } from "@illusicord/player/dmp_error";
 import type { StageChannel, VoiceChannel } from "discord.js";
 import type { AudioResource, VoiceConnection, AudioPlayer, StreamType } from "@discordjs/voice";
 import type { Readable } from "stream";
-import type { DiscordTrack } from "../types";
+import type { DiscordTrack } from "@illusicord/types";
 
 const wait = promisify(setTimeout);
 export class StreamConnection extends EventEmitter {
@@ -135,6 +135,7 @@ export class StreamConnection extends EventEmitter {
     }
 
     leave() {
+        console.log(new Error("LEAVING").stack)
         this.player.stop(true);
         if (this.connection.state.status !== VoiceConnectionStatus.Destroyed)
             this.connection.destroy();

@@ -1,9 +1,9 @@
-import type { ResponseError } from "../../../common/types";
-import { json_catch, urlid } from "../../../common/utils/util";
-import type { Explore, ExploreSuccess } from "./types/Explore";
-import type { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "./types/Playlist";
-import type { Support } from "./types/Support";
-import type { Track } from "./types/types";
+import { milliseconds_of, urlid } from "@common/utils/util";
+import type { Explore, ExploreSuccess } from "@origin/musi/types/Explore";
+import type { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessData } from "@origin/musi/types/Playlist";
+import type { Support } from "@origin/musi/types/Support";
+import type { Track } from "@origin/musi/types/types";
+import rozfetch from "@common/rozfetch";
 
 // GET   /api/v4/support%@
 // GET   /api/v4/search/explore/@ld
@@ -26,18 +26,29 @@ export namespace Musi {
     export type MusiTrack = Track;
     export type MusiExplore = ExploreSuccess;
     export async function support() {
-        const response = await fetch(`https://feelthemusi.com/api/v4/support/`);
-        return await response.json().catch(json_catch) as Support|ResponseError;
+        const response = await rozfetch<Support>(`https://feelthemusi.com/api/v4/support/`, {cache_opts: {
+            cache_ms: milliseconds_of({months: 1}),
+            cache_ms_fail: milliseconds_of({minutes: 1}),
+            cache_mode: "file"
+        }});
+        if("error" in response) return response;
+        return await response.json();
     }
     export async function explore() {
-        const response = await fetch(`https://feelthemusi.com/api/v4/search/explore`);
-        return await response.json().catch(json_catch) as Explore|ResponseError;
+        const response = await rozfetch<Explore>(`https://feelthemusi.com/api/v4/search/explore`, {cache_opts: {
+            cache_ms: milliseconds_of({hours: 6}),
+            cache_ms_fail: milliseconds_of({minutes: 1}),
+            cache_mode: "file"
+        }});
+        if("error" in response) return response;
+        return await response.json();
     }
     
     export async function get_playlist(url: string) {
         const playlist_param = urlid(url, "feelthemusi.com/", "api/v4/playlists/fetch/", "playlist/");
-        const response = await fetch(`https://feelthemusi.com/api/v4/playlists/fetch/${playlist_param}`);
-        const playlist_response = await response.json().catch(json_catch) as PlaylistResponse|ResponseError;
+        const response = await rozfetch<PlaylistResponse>(`https://feelthemusi.com/api/v4/playlists/fetch/${playlist_param}`);
+        if("error" in response) return response;
+        const playlist_response = await response.json();
         if("error" in playlist_response) return playlist_response;
         const playlist_response_parsed_data: PlaylistResponseSuccessParsed = {
             success: {

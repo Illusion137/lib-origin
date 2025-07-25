@@ -1,5 +1,5 @@
-import type { GetAudioDuration } from "./get_audio_duration.base";
-import { get_native_platform } from "../native_mode";
+import type { GetAudioDuration } from "@native/get_audio_duration/get_audio_duration.base";
+import { get_native_platform } from "@native/native_mode";
 
 export let get_audio_duration: GetAudioDuration;
 switch(get_native_platform()){

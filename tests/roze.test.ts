@@ -1,4 +1,4 @@
-import { timestamp_to_string } from "../roze/src/utils";
+import { timestamp_to_string } from "@roze/utils";
 
 test("timestamp_to_string", async() => {
     expect(timestamp_to_string(0)).toBe("00:00:00");

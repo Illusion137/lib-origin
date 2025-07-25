@@ -1,8 +1,8 @@
-import { is_empty } from '../../../../common/utils/util';
-import { Prefs } from '../../prefs';
-import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "../../types";
-import * as GLOBALS from './globals';
-import * as SQLRecentlyPlayed from './sql/sql_recently_played';
+import { is_empty } from '@common/utils/util';
+import { Prefs } from '@illusive/prefs';
+import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from "@illusive/types";
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import * as SQLRecentlyPlayed from '@illusive/illusi/src/sql/sql_recently_played';
 
 // call await SQLTracks.fetch_track_data(); before track_function prolly
 export const default_playlists: DefaultPlaylist[] = [

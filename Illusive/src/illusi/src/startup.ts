@@ -1,15 +1,15 @@
 import { activateKeepAwakeAsync } from 'expo-keep-awake';
 import * as ffmpeg from 'ffmpeg-kit-react-native';
-import { Prefs } from '../../prefs';
-import type { BottomAlertType, Track } from '../../types';
-import { download_track } from './downloader'
-import * as GLOBALS from './globals';
-import { catch_function_async } from './illusi_utils';
-import * as SQLRecentlyPlayed from './sql/sql_recently_played';
-import * as SQLPlaylists from './sql/sql_playlists';
-import * as SQLTracks from './sql/sql_tracks';
-import * as SQLUpdate from './sql/sql_update';
-import * as SQLUtils from './sql/sql_utils';
+import { Prefs } from '@illusive/prefs';
+import type { BottomAlertType, Track } from '@illusive/types';
+import { download_track } from '@illusive/illusi/src/downloader'
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import { catch_function_async } from '@illusive/illusi/src/illusi_utils';
+import * as SQLRecentlyPlayed from '@illusive/illusi/src/sql/sql_recently_played';
+import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
+import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
+import * as SQLUpdate from '@illusive/illusi/src/sql/sql_update';
+import * as SQLUtils from '@illusive/illusi/src/sql/sql_utils';
 
 export async function illusi_startup(version: string, play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => void, set_theme: (theme: Prefs.Theme) => void, bottom_alert: (text: string, type: BottomAlertType) => void) {
     await catch_function_async(async() => {

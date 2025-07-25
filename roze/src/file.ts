@@ -1,13 +1,15 @@
-import type { RozChapterContents } from './types/roz';
+import type { RozChapterContents } from '@roze/types/roz';
 import type { TocElement } from 'epub2/lib/epub/const';
-import type Roz from './types/roz';
+import type Roz from '@roze/types/roz';
 import EPub from 'epub2';
 import Pdfparser from 'pdf2json';
 import pathlib from 'path';
-import { html_to_roz_content as html_to_roz_contents } from './utils';
-import { gen_uuid, generror_catch, try_json_parse } from '@common/utils/util';
+import { html_to_roz_content as html_to_roz_contents } from '@roze/utils';
+import { gen_uuid } from '@common/utils/util';
 import { fs, gen_temp_file_name, get_temp_file_path } from '@native/fs/fs';
 import type { FileExtension, PromiseResult } from '@common/types';
+import { try_json_parse } from '@common/utils/parse_util';
+import { generror_catch } from '@common/utils/error_util';
 // import * as docx from "docx";
 // import mammoth from "mammoth";
 

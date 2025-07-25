@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import request from 'request';
-import { GCC } from "../admin/gcc";
-import { Instagram } from "../origin/src/instagram/instragram";
-import type { MediaListItem } from "../origin/src/instagram/types/MediaList";
-import { CookieJar } from "../common/utils/cookie_util";
+import { GCC } from "@admin/gcc";
+import { Instagram } from "@origin/instagram/instragram";
+import type { MediaListItem } from "@origin/instagram/types/MediaList";
+import { CookieJar } from "@common/utils/cookie_util";
 
 const threshold = 72;
 const cookie_jar = CookieJar.fromString(GCC.dotenv_of('INSTRAGRAM_COOKIE_JAR'));

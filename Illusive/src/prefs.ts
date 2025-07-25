@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as uuid from "react-native-uuid";
-import { CookieJar } from "../../common/utils/cookie_util";
-import { Constants } from './constants';
-import * as LegacyPrefs from './illusi/src/legacy/1307/legacy_prefs';
-import type { HexColor, LinkerLink } from './types';
+import { CookieJar } from "@common/utils/cookie_util";
+import { Constants } from '@illusive/constants';
+import * as LegacyPrefs from '@illusive/illusi/src/legacy/1307/legacy_prefs';
+import type { HexColor, LinkerLink } from '@illusive/types';
 
 export namespace Prefs {
     export type PossibleThemes = keyof typeof themes;

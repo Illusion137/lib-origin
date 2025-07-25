@@ -1,7 +1,7 @@
 import { remove } from '@common/utils/clean_util';
-import * as Origin from '../../origin/src/index'
-import { create_uri, spotify_uri_to_uri } from './illusive_utilts';
-import { Prefs } from './prefs';
+import * as Origin from '@origin/index'
+import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { Prefs } from '@illusive/prefs';
 
 export async function spotify_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');

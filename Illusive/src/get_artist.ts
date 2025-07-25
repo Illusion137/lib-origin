@@ -1,13 +1,13 @@
-import { AppleMusic, SoundCloud, YouTubeMusic } from "../../origin/src";
-import { CookieJar } from "../../common/utils/cookie_util";
-import type { ResponseError } from "../../common/types";
-import { urlid } from "../../common/utils/util";
-import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from "./parsers/apple_music_parser";
-import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from "./parsers/soundcloud_parser";
-import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from "./parsers/youtube_music_parser";
-import { best_thumbnail, create_uri } from "./illusive_utilts";
-import { Prefs } from "./prefs";
-import type { ArtistOpts, MusicServiceArtist, NamedUUID } from "./types";
+import { AppleMusic, SoundCloud, YouTubeMusic } from "@origin/";
+import { CookieJar } from "@common/utils/cookie_util";
+import type { ResponseError } from "@common/types";
+import { urlid } from "@common/utils/util";
+import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from "@illusive/parsers/apple_music_parser";
+import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from "@illusive/parsers/soundcloud_parser";
+import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from "@illusive/parsers/youtube_music_parser";
+import { best_thumbnail, create_uri } from "@illusive/illusive_utilts";
+import { Prefs } from "@illusive/prefs";
+import type { ArtistOpts, MusicServiceArtist, NamedUUID } from "@illusive/types";
 import { parse_runs } from "@common/utils/parse_util";
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
@@ -94,13 +94,13 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
 }
 
 export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
-    const artist_id = await SoundCloud.permalink_to_artist_id({artist_permalink: id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy});
+    const artist_id = await SoundCloud.permalink_to_artist_id({artist_permalink: id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: {proxy: opts?.proxy}});
     if("error" in artist_id) return default_artist(artist_id);
 
     const [artist_tracks_response, artist_albums_response, artist_playlists_response] = await Promise.all([
-        SoundCloud.get_artist("TRACKS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 40, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy, client_id: artist_id.client_id}),
-        SoundCloud.get_artist("ALBUMS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy, client_id: artist_id.client_id}),
-        SoundCloud.get_artist("PLAYLISTS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), proxy: opts?.proxy, client_id: artist_id.client_id}),
+        SoundCloud.get_artist("TRACKS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 40, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: {proxy: opts?.proxy}, client_id: artist_id.client_id}),
+        SoundCloud.get_artist("ALBUMS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: {proxy: opts?.proxy}, client_id: artist_id.client_id}),
+        SoundCloud.get_artist("PLAYLISTS", {artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: {proxy: opts?.proxy}, client_id: artist_id.client_id}),
     ])
 
     if("error" in artist_tracks_response) return default_artist(artist_tracks_response);

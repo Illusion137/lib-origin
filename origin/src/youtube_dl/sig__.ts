@@ -1,6 +1,6 @@
-import Cache from './cache';
+import Cache from '@origin/youtube_dl/cache';
 import * as querystring from 'querystring';
-import * as utils from './utils';
+import * as utils from '@origin/youtube_dl/utils';
 const vm = require("vm-browserify");
 
 export const cache = new Cache(1);

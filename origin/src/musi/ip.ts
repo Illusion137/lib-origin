@@ -1,5 +1,7 @@
 // Reference https://cdn.feelthemusi.com/parsing/parsing_source.min.js
 
+import rozfetch from "@common/rozfetch";
+
 export namespace ProIP {
     export type IpResult = IpSuccessResult|IpFailureResult;
     export interface IpSuccessResult {
@@ -24,7 +26,8 @@ export namespace ProIP {
     }
       
     export async function pro_ip_api(api_key?: string) {
-        const response = await fetch(`https://pro.ip-api.com/json?key=${api_key}`);
-        return await response.json() as IpResult;
+        const response = await rozfetch<IpResult>(`https://pro.ip-api.com/json?key=${api_key}`);
+        if("error" in response) return response;
+        return await response.json();
     }
 }

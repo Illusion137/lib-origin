@@ -1,5 +1,5 @@
-import type { TranslationMap } from "./types/types";
-import type { RozContent, RozTextStructures, RozTextStructureType } from "./types/roz";
+import type { TranslationMap } from "@roze/types/types";
+import type { RozContent, RozTextStructures, RozTextStructureType } from "@roze/types/roz";
 import { extract_string_from_pattern, gen_uuid, is_number } from "@common/utils/util";
 
 function html_inner_text_content(html_line: string) {

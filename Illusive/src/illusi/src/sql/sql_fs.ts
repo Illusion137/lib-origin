@@ -1,7 +1,7 @@
-import { is_empty } from '../../../../../common/utils/util';
-import { Illusive } from '../../../illusive';
+import { is_empty } from '@common/utils/util';
+import { Illusive } from '@illusive/illusive';
 import path_lib from 'path';
-import { alert_error } from '../alert';
+import { alert_error } from '@illusive/illusi/src/alert';
 import { fs } from '@native/fs/fs';
 
 function forward_item(item: string) {
@@ -53,7 +53,7 @@ export async function delete_item(path: string) {
     await fs.remove(path); 
 }
 export async function read_directory(path: string) { try { return await fs.read_directory(path); } catch(e) { return []; } }
-export function download_to_file(uri: string, file_uri: string) { return fs.download_to_file(uri, file_uri); }
+export async function download_to_file(uri: string, file_uri: string) { return fs.download_to_file(uri, file_uri); }
 
 export async function create_file(path: string, data: string){
     await fs.write_file_as_string(path, data, {encoding: 'utf8'});

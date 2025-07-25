@@ -1,5 +1,5 @@
-import type { VoiceSynth } from "./voice_synth.base";
-import { get_native_platform } from "../native_mode";
+import type { VoiceSynth } from "@native/voice_synth/voice_synth.base";
+import { get_native_platform } from "@native/native_mode";
 
 // Install more voices for windows with https://github.com/gexgd0419/NaturalVoiceSAPIAdapter
 export let voice_synth: VoiceSynth;

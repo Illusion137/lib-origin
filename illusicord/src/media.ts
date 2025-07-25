@@ -1,5 +1,5 @@
-import { Utils } from './player/utils'
-import type { DiscordTrack } from './types'
+import { Utils } from '@illusicord/player/utils'
+import type { DiscordTrack } from '@illusicord/types'
 function make_media(data: {title: string; media_uri: string; duration: number;}): DiscordTrack{
     return Utils.track_to_discord_track({
         uid: data.title,

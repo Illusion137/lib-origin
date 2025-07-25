@@ -1,10 +1,11 @@
-import { is_empty, wait } from "../../../../common/utils/util";
-import { Illusive } from "../../illusive";
-import { random_of } from "../../illusive_utilts";
-import type { Track } from "../../types";
-import { ExampleObj } from "./example_objs";
-import * as SQLfs from './sql/sql_fs';
-import { db_run_async, obj_to_update_sql, sql_update_table, sql_where, update_global_track_item } from "./sql/sql_utils";
+import { wait } from "@common/utils/timed_utilt";
+import { is_empty } from "@common/utils/util";
+import { Illusive } from "@illusive/illusive";
+import { random_of } from "@illusive/illusive_utilts";
+import type { Track } from "@illusive/types";
+import { ExampleObj } from "@illusive/illusi/src/example_objs";
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import { db_run_async, obj_to_update_sql, sql_update_table, sql_where, update_global_track_item } from "@illusive/illusi/src/sql/sql_utils";
 
 export async function save_track_lyrics(track: Track, lyrics: string){
     const lyrics_file = `${track.uid}.txt`;

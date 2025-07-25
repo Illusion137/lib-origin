@@ -1,7 +1,7 @@
-import type * as Origin from '../../../origin/src/index';
-import type { MusiTrackV2 } from '../../../origin/src/musi/types/Explore';
-import { generate_new_uid } from '../../../common/utils/util';
-import type { Track } from '../types';
+import type * as Origin from '@origin/index';
+import type { MusiTrackV2 } from '@origin/musi/types/Explore';
+import { generate_new_uid } from '@common/utils/util';
+import type { Track } from '@illusive/types';
 
 export function musi_parse_track(track: Origin.Musi.MusiTrack): Track {
     return {

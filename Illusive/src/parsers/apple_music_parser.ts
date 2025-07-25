@@ -1,11 +1,11 @@
-import type { AlbumItem } from "../../../origin/src/apple_music/types/Album";
-import type { ArtistSectionItem, PinnedLeadingItemItem } from "../../../origin/src/apple_music/types/GetArtist";
-import type { SearchAlbum, SearchArtist, SearchPlaylist, SearchSong } from "../../../origin/src/apple_music/types/Search";
-import type { AppleTrack } from "../../../origin/src/apple_music/types/TrackListSection";
-import type { AppleUserPlaylistTrack } from "../../../origin/src/apple_music/types/UserPlaylist";
-import { generate_new_uid, is_empty, safe_date_iso, urlid } from "../../../common/utils/util";
-import { create_uri } from '../illusive_utilts';
-import type { CompactArtist, CompactPlaylist, ISOString, NamedUUID, Track } from "../types";
+import type { AlbumItem } from "@origin/apple_music/types/Album";
+import type { ArtistSectionItem, PinnedLeadingItemItem } from "@origin/apple_music/types/GetArtist";
+import type { SearchAlbum, SearchArtist, SearchPlaylist, SearchSong } from "@origin/apple_music/types/Search";
+import type { AppleTrack } from "@origin/apple_music/types/TrackListSection";
+import type { AppleUserPlaylistTrack } from "@origin/apple_music/types/UserPlaylist";
+import { generate_new_uid, is_empty, safe_date_iso, urlid } from "@common/utils/util";
+import { create_uri } from '@illusive/illusive_utilts';
+import type { CompactArtist, CompactPlaylist, ISOString, NamedUUID, Track } from "@illusive/types";
 import { remove } from "@common/utils/clean_util";
 
 export function parse_apple_music_artwork(url: string|undefined, size = 200): string|undefined {

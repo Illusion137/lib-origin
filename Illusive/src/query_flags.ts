@@ -1,6 +1,6 @@
 import fuzzysort from "fuzzysort";
-import { is_empty } from "../../common/utils/util";
-import type { CompactArtist, CompactPlaylist, Playlist, QueryFlag, Track } from "./types";
+import { is_empty } from "@common/utils/util";
+import type { CompactArtist, CompactPlaylist, Playlist, QueryFlag, Track } from "@illusive/types";
 import { remove_topic } from "@common/utils/clean_util";
 
 export const ANTI_QUERY_FLAG_PREFIX = '!';

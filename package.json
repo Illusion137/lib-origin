@@ -25,11 +25,12 @@
     "rn-nodeify": "github:tradle/rn-nodeify",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.15.0"
+    "typescript-eslint": "^8.15.0",
+    "eslint-plugin-no-relative-import-paths": "^1.6.1"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
-    "@discordjs/voice": "^0.18.0",
+    "@discordjs/voice": "^1.0.0-dev.1753316117-f2fec9177",
     "@distube/ytdl-core": "^4.16.12",
     "@echogarden/macos-native-tts": "^0.1.0",
     "@expo/vector-icons": "^14.0.4",
@@ -40,6 +41,7 @@
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/native": "^7.0.15",
     "@simform_solutions/react-native-audio-waveform": "^2.1.1",
+    "@snazzah/davey": "^0.1.6",
     "@tensorflow/tfjs-node": "^4.21.0",
     "@tensorflow/tfjs-node-gpu": "^4.21.0",
     "@tensorflow/tfjs-tflite": "^0.0.1-alpha.10",

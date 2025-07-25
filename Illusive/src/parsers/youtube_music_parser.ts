@@ -1,13 +1,13 @@
 import { parse_runs, parse_time } from '@common/utils/parse_util';
-import { empty_undefined, generate_new_uid, is_empty } from '../../../common/utils/util'
-import type { NavigationEndpoint } from '../../../origin/src/youtube/types/ChannelResultsW';
-import { find_album_year } from '../../../origin/src/youtube_music/parser';
-import type { ArtistCarouselContent, ArtistTopTrack } from '../../../origin/src/youtube_music/types/ArtistResults_0';
-import type { YouTubeMusicPlaylistTrack } from '../../../origin/src/youtube_music/types/PlaylistResults_0';
-import type { MusicCardShelfRenderer, SearchMusicResponsiveListItemRenderer } from '../../../origin/src/youtube_music/types/SearchResults_0';
-import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack } from '../../../origin/src/youtube_music/types/types';
-import { best_thumbnail, create_uri, is_duration_string, youtube_music_split_artists, youtube_views_number } from '../illusive_utilts';
-import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, NamedUUID, Runs, Track } from '../types';
+import { empty_undefined, generate_new_uid, is_empty } from '@common/utils/util'
+import type { NavigationEndpoint } from '@origin/youtube/types/ChannelResultsW';
+import { find_album_year } from '@origin/youtube_music/parser';
+import type { ArtistCarouselContent, ArtistTopTrack } from '@origin/youtube_music/types/ArtistResults_0';
+import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
+import type { MusicCardShelfRenderer, SearchMusicResponsiveListItemRenderer } from '@origin/youtube_music/types/SearchResults_0';
+import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack } from '@origin/youtube_music/types/types';
+import { best_thumbnail, create_uri, is_duration_string, youtube_music_split_artists, youtube_views_number } from '@illusive/illusive_utilts';
+import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, NamedUUID, Runs, Track } from '@illusive/types';
 
 const responsive_item_types = ["Song", "Video", "Single", "Album", "Playlist", "EP", "Profile"];
 

@@ -1,9 +1,9 @@
 import * as SQLite from '@op-engineering/op-sqlite';
-import * as SQLfs from './sql_fs';
-import { create_playlist, unique_playlist_uuids_from_playlist_tracks } from "./sql_playlists";
-import type { ResponseError } from '../../../../../common/types';
-import { alert_error } from '../alert';
-import { db, db_path, reasign_db, sqlite_location } from './database';
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import { create_playlist, unique_playlist_uuids_from_playlist_tracks } from "@illusive/illusi/src/sql/sql_playlists";
+import type { ResponseError } from '@common/types';
+import { alert_error } from '@illusive/illusi/src/alert';
+import { db, db_path, reasign_db, sqlite_location } from '@illusive/illusi/src/sql/database';
 
 export async function load_sql_file(__path: string|ResponseError){
     if(typeof __path === "object") { alert_error(__path); return; }

@@ -1,10 +1,10 @@
 import * as fs from 'fs';
-import { duration_to_string } from "../Illusive/src/illusive_utilts";
-import type { Track } from "../Illusive/src/types";
+import { duration_to_string } from "@illusive/illusive_utilts";
+import type { Track } from "@illusive/types";
 import playlist from '../sample/illusi/zayboy.json';
-import { remove_topic } from '../common/utils/util';
-import { Prefs } from '../Illusive/src/prefs';
-import { Illusive } from '../Illusive/src/illusive';
+import { Prefs } from '@illusive/prefs';
+import { Illusive } from '@illusive/illusive';
+import { remove_topic } from '@common/utils/clean_util';
 
 Prefs.prefs.use_cookies_on_search.current_value = false;
 

@@ -2,17 +2,17 @@
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import * as ffmpeg from 'ffmpeg-kit-react-native';
-import { is_empty } from '../../../../common/utils/util';
-import { Constants } from '../../constants';
-import { Illusive } from '../../illusive';
-import { create_uri, number_epsilon_distance } from '../../illusive_utilts';
-import type { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, SetState, Track, TrackMetaData } from "../../types";
-import { alert_error } from './alert';
-import * as GLOBALS from './globals';
-import { playlist_tracks } from './playlist_converter';
-import * as SQLBackpack from './sql/sql_backpack';
-import * as SQLfs from './sql/sql_fs';
-import * as SQLTracks from './sql/sql_tracks';
+import { is_empty } from '@common/utils/util';
+import { Constants } from '@illusive/constants';
+import { Illusive } from '@illusive/illusive';
+import { create_uri, number_epsilon_distance } from '@illusive/illusive_utilts';
+import type { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, SetState, Track, TrackMetaData } from "@illusive/types";
+import { alert_error } from '@illusive/illusi/src/alert';
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import { playlist_tracks } from '@illusive/illusi/src/playlist_converter';
+import * as SQLBackpack from '@illusive/illusi/src/sql/sql_backpack';
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 
 async function wait_for(condition_function: () => boolean) {

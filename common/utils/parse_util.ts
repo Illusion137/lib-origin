@@ -1,7 +1,7 @@
 import type { ResponseError } from "@common/types";
-import { generror_catch } from "./error_util";
-import { is_empty, small_string } from "./util";
-import { remove } from "./clean_util";
+import { generror_catch } from "@common/utils/error_util";
+import { is_empty, small_string } from "@common/utils/util";
+import { remove } from "@common/utils/clean_util";
 
 function json_eval<T>(json: string): T {
     const result = eval("let evaluated = " + json + "; evaluated;");

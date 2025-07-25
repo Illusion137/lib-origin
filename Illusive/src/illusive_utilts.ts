@@ -1,11 +1,11 @@
-import { is_empty, milliseconds_of, urlid } from "../../common/utils/util";
-import type { Run3 } from "../../origin/src/youtube/types/PlaylistResults_0";
-import { Prefs } from "./prefs";
-import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "./query_flags";
+import { is_empty, milliseconds_of, urlid } from "@common/utils/util";
+import type { Run3 } from "@origin/youtube/types/PlaylistResults_0";
+import { Prefs } from "@illusive/prefs";
+import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "@illusive/query_flags";
 import fuzzysort from "fuzzysort";
-import { seeded_rand } from "./seeding";
-import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "./types";
-import { Constants } from "./constants";
+import { seeded_rand } from "@illusive/seeding";
+import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, IntString, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Promises, QueryFlag, Track } from "@illusive/types";
+import { Constants } from "@illusive/constants";
 import { remove, remove_topic } from "@common/utils/clean_util";
 
 

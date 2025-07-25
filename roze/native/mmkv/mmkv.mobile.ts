@@ -1,4 +1,4 @@
-import type { MMKVModule, MMKVModuleOpts } from "./mmkv.base";
+import type { MMKVModule, MMKVModuleOpts } from "@native/mmkv/mmkv.base";
 import mmkv, { Mode } from 'react-native-mmkv';
 
 export class mobile_mmkv implements MMKVModule {

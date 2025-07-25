@@ -1,8 +1,8 @@
-import type { FeaturedArtistSection } from "./FeaturedArtistSection"
-import type { PlaylistHeaderSection } from "./PlaylistHeaderSection"
-import type { SpacerSection } from "./SpacerSection"
-import type { TrackListFooterSection } from "./TrackListFooterSection"
-import type { TrackListSection } from "./TrackListSection"
+import type { FeaturedArtistSection } from "@origin/apple_music/types/FeaturedArtistSection"
+import type { PlaylistHeaderSection } from "@origin/apple_music/types/PlaylistHeaderSection"
+import type { SpacerSection } from "@origin/apple_music/types/SpacerSection"
+import type { TrackListFooterSection } from "@origin/apple_music/types/TrackListFooterSection"
+import type { TrackListSection } from "@origin/apple_music/types/TrackListSection"
 
 export type Playlist = Root2[]
 

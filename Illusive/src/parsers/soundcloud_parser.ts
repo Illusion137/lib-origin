@@ -1,8 +1,8 @@
-import type { Playlist, Track, User } from "../../../origin/src/soundcloud/types/Search";
-import { generate_new_uid } from "../../../common/utils/util";
-import { create_uri } from "../illusive_utilts";
-import type { ISOString } from "../types";
-import type * as IllusiveTypes from "../types";
+import type { Playlist, Track, User } from "@origin/soundcloud/types/Search";
+import { generate_new_uid } from "@common/utils/util";
+import { create_uri } from "@illusive/illusive_utilts";
+import type { ISOString } from "@illusive/types";
+import type * as IllusiveTypes from "@illusive/types";
 import { remove_prod } from "@common/utils/clean_util";
 
 function highest_artwork(artwork_url: string) {

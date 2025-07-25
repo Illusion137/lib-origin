@@ -1,8 +1,8 @@
-import { split_uri } from "../../illusive_utilts";
-import { Prefs } from "../../prefs";
-import type { CompactPlaylist, ConvertTo, LinkerLink, MusicServiceType } from "../../types";
-import { convert_playlist, playlist_tracks } from "./playlist_converter";
-import { Wifi } from "./wifi_utils";
+import { split_uri } from "@illusive/illusive_utilts";
+import { Prefs } from "@illusive/prefs";
+import type { CompactPlaylist, ConvertTo, LinkerLink, MusicServiceType } from "@illusive/types";
+import { convert_playlist, playlist_tracks } from "@illusive/illusi/src/playlist_converter";
+import { Wifi } from "@illusive/illusi/src/wifi_utils";
 import * as uuid from "react-native-uuid";
 
 export function isdefault_playlist(compact_playlist: CompactPlaylist) {

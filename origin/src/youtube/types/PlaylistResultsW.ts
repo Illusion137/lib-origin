@@ -1,4 +1,4 @@
-import type { PageHeaderViewModel } from "./PageHeaderViewModel"
+import type { PageHeaderViewModel } from "@origin/youtube/types/PageHeaderViewModel"
 
 export interface PlaylistResultsW {
     responseContext: ResponseContext

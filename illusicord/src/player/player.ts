@@ -1,10 +1,10 @@
 import { Collection } from "discord.js";
 import type { Client, Snowflake, VoiceState } from "discord.js";
-import type { PlayerOptions } from "../types";
+import type { PlayerOptions } from "@illusicord/types";
 import EventEmitter from "events";
-import { Queue } from "./queue";
-import { DMPError, DMPErrors } from "./dmp_error";
-import { Constants } from "../constants";
+import { Queue } from "@illusicord/player/queue";
+import { DMPError, DMPErrors } from "@illusicord/player/dmp_error";
+import { Constants } from "@illusicord/constants";
 
 export class Player<OptionsData = any> extends EventEmitter {
     client: Client;
@@ -58,7 +58,7 @@ export class Player<OptionsData = any> extends EventEmitter {
         const queue = this.queues.get(old_state.guild.id);
         if (!queue?.connection)
             return;
-        const { deafenOnJoin, leaveOnEmpty, timeout } = queue.options;
+        const { deafenOnJoin, leaveOnEmpty } = queue.options;
         if (!new_state.channelId && this.client.user?.id === old_state.member?.id) {
             queue.leave();
             return void this.emit('clientDisconnect', queue);
@@ -70,13 +70,11 @@ export class Player<OptionsData = any> extends EventEmitter {
             return;
         if (!leaveOnEmpty || queue.connection.channel.members.size > 1)
             return;
-        setTimeout(() => {
-            if (queue.connection!.channel.members.size > 1)
-                return;
-            if (queue.connection!.channel.members.has(this.client.user!.id)) {
-                queue.leave();
-                this.emit('channelEmpty', queue);
-            }
-        }, timeout);
+        if (queue.connection.channel.members.size > 1)
+            return;
+        if (queue.connection.channel.members.has(this.client.user!.id)) {
+            queue.leave();
+            this.emit('channelEmpty', queue);
+        }
     }
 }

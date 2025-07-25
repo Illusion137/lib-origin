@@ -1,12 +1,12 @@
-import { is_empty } from "../../../../common/utils/util";
-import { Constants } from '../../constants';
-import { Illusive } from "../../illusive";
-import { music_service_track_primary_key, music_service_uri_to_music_service, split_uri } from "../../illusive_utilts";
+import { is_empty } from "@common/utils/util";
+import { Constants } from '@illusive/constants';
+import { Illusive } from "@illusive/illusive";
+import { music_service_track_primary_key, music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utilts";
 // import { Prefs } from "../../prefs";
-import type { ConvertTo, MusicServiceType, Track } from "../../types";
-import * as GLOBALS from './globals';
+import type { ConvertTo, MusicServiceType, Track } from "@illusive/types";
+import * as GLOBALS from '@illusive/illusi/src/globals';
 // import { sample_tracks_meta, sample_tracks_service } from './sampler';
-import * as SQLPlaylists from './sql/sql_playlists';
+import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
 // import { Wifi } from "./wifi_utils";
 
 interface ConvertPlaylistOpts {

@@ -1,16 +1,16 @@
 import type { CookieJar } from "@common/utils/cookie_util";
 import type { PromiseResult, ResponseError } from "@common/types";
 import { extract_string_from_pattern, milliseconds_of } from "@common/utils/util";
-import { RozeHeaders } from "./headers";
-import type { JNovel_Calender } from "./types/jnovel-calender";
-import type { JNovel_Home } from "./types/jnovel-home";
-import type { JNovel_Part, JNovel_Serie, JNovel_Toc } from "./types/jnovel-reader";
-import type { JNovel_Series } from "./types/jnovel-series";
-import type { JNovel_Series_Page } from "./types/jnovel-series-page";
-import type { JNovel_User } from "./types/jnovel-user";
-import type { RozContent } from "./types/roz";
-import { clean_html_text, html_to_roz_content } from "./utils";
-import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "../../common/rozfetch";
+import { RozeHeaders } from "@roze/headers";
+import type { JNovel_Calender } from "@roze/types/jnovel-calender";
+import type { JNovel_Home } from "@roze/types/jnovel-home";
+import type { JNovel_Part, JNovel_Serie, JNovel_Toc } from "@roze/types/jnovel-reader";
+import type { JNovel_Series } from "@roze/types/jnovel-series";
+import type { JNovel_Series_Page } from "@roze/types/jnovel-series-page";
+import type { JNovel_User } from "@roze/types/jnovel-user";
+import type { RozContent } from "@roze/types/roz";
+import { clean_html_text, html_to_roz_content } from "@roze/utils";
+import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror, generror_catch } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
 
@@ -27,14 +27,16 @@ export namespace JNovel {
 	};
 
 	async function get_response(url: string, opts: Opts) {
-		return await rozfetch(url, merge_rozfetch_defaults(opts, {
+		return await rozfetch(url, {
             headers: RozeHeaders.get_document_headers(opts.cookie_jar),
             referrerPolicy: "strict-origin-when-cross-origin",
             cache_opts: {
                 cache_ms: milliseconds_of({years: 1}),
                 cache_ms_fail: milliseconds_of({}),
                 cache_mode: "all"
-        }}).fetch_opts);
+            },
+            ...opts.fetch_opts
+        });
 	}
 	async function get_response_text(url: string, opts: Opts) {
 		const response = await get_response(url, opts);

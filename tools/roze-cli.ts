@@ -15,10 +15,10 @@
 // import * as fsExtra from "fs-extra";
 // import type Roz from "../roze/src/types/roz";
 // import type { RozSourceFileType } from "../roze/src/types/roz";
-// import { generror, is_empty } from "../origin/src/utils/util";
+// import { generror, is_empty } from "../@origin/utils/util";
 // import type { VoiceBank } from "../roze/native/voice_synth/voice_synth.base";
 // import { FileParser } from "../roze/src/file";
-// import type { PromiseResult } from "../origin/src/utils/types";
+// import type { PromiseResult } from "../@origin/utils/types";
 
 // const help_contents: string =
 // green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}

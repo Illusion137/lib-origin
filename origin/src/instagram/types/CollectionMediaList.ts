@@ -1,4 +1,4 @@
-import type { Status } from "./types"
+import type { Status } from "@origin/instagram/types/types"
 
 export interface CollectionMediaList {
     tabs: Tab[]

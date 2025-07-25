@@ -1,4 +1,4 @@
-import type { YTDLResponse } from './types/response';
+import type { YTDLResponse } from '@origin/youtube_dl/types/response';
 export type Filter = 'audioandvideo' | 'videoandaudio' | 'video' | 'videoonly' | 'audio' | 'audioonly' | ((format: AVFormat) => boolean);
 
 interface GetInfoOptions {

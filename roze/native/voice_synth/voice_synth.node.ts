@@ -1,5 +1,5 @@
-import { VoiceSynthConstants } from "./voice_synth_constants";
-import type { VoiceBank, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "./voice_synth.base";
+import { VoiceSynthConstants } from "@native/voice_synth/voice_synth_constants";
+import type { VoiceBank, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "@native/voice_synth/voice_synth.base";
 import tts from 'say';
 
 export const node_voice_synth: VoiceSynth = {

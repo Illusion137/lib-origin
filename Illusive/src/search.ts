@@ -1,21 +1,21 @@
-import * as Origin from '../../origin/src/index'
-import type { ClientSearchOf, Playlist, SearchOf, Track, User } from '../../origin/src/soundcloud/types/Search';
-import { CookieJar } from '../../common/utils/cookie_util';
-import type { ResponseError } from '../../common/types';
-import { is_empty } from '../../common/utils/util';
-import { parse_search_continuation_contents } from '../../origin/src/youtube/parser';
-import type * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
-import type * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
-import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_apple_music_search_playlist, parse_apple_music_search_track } from './parsers/apple_music_parser';
-import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from './parsers/soundcloud_parser';
-import { parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from './parsers/youtube_music_parser';
-import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from './parsers/youtube_parser';
-import { youtube_music_get_playlist } from './get_playlist';
-import { best_thumbnail, spotify_uri_to_uri } from './illusive_utilts';
-import { Prefs } from './prefs';
-import { parse_amazon_music_search_track, parse_spotify_search_track } from './track_parser';
-import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from './types';
-import type * as IllusiveTypes from './types';
+import * as Origin from '@origin/index'
+import type { ClientSearchOf, Playlist, Track, User } from '@origin/soundcloud/types/Search';
+import { CookieJar } from '@common/utils/cookie_util';
+import type { ResponseError } from '@common/types';
+import { is_empty } from '@common/utils/util';
+import { parse_search_continuation_contents } from '@origin/youtube/parser';
+import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
+import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
+import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_apple_music_search_playlist, parse_apple_music_search_track } from '@illusive/parsers/apple_music_parser';
+import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from '@illusive/parsers/soundcloud_parser';
+import { parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from '@illusive/parsers/youtube_music_parser';
+import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
+import { youtube_music_get_playlist } from '@illusive/get_playlist';
+import { best_thumbnail, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { Prefs } from '@illusive/prefs';
+import { parse_amazon_music_search_track, parse_spotify_search_track } from '@illusive/track_parser';
+import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from '@illusive/types';
+import type * as IllusiveTypes from '@illusive/types';
 import { parse_runs } from '@common/utils/parse_util';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
@@ -187,7 +187,7 @@ export async function soundcloud_search(query: string, opts?: SearchOpts): Promi
 export async function soundcloud_search_continuation(opts: SoundcloudSearchContinuation): Promise<MusicSearchResponse> {
     if(opts.next_href === null) return default_search();
     const cookie_jar = get_cookie_jar('soundcloud_cookie_jar');
-    const search_response = await Origin.SoundCloud.continuation(opts.next_href, {cookie_jar, client_id: opts.client_id}, 1) as SearchOf<Track|Playlist|User>;
+    const search_response = await Origin.SoundCloud.continuation<Playlist|Track|User>(opts.next_href, {cookie_jar, client_id: opts.client_id}, 1);
     return soundcloud_parse_search({data: search_response, client_id: opts.client_id});
 }
 

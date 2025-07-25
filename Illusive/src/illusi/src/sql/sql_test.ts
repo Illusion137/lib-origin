@@ -1,13 +1,13 @@
 import * as SQLite from '@op-engineering/op-sqlite';
 import path from 'path';
 import { Alert } from 'react-native';
-import type { SQLTrack, Track } from '../../../types';
-import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from './sql_legacy_1307';
-import { create_playlist, insert_all_tracks_playlist } from './sql_playlists';
-import { insert_all_tracks } from './sql_tracks';
-import { get_all_tables } from './sql_update';
-import { db_get_all_async, destroy_all_tables, move_unsorted_media_to_folders, recreate_all_tables, sql_select } from './sql_utils';
-import { sqlite_location } from './database';
+import type { SQLTrack, Track } from '@illusive/types';
+import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from '@illusive/illusi/src/sql/sql_legacy_1307';
+import { create_playlist, insert_all_tracks_playlist } from '@illusive/illusi/src/sql/sql_playlists';
+import { insert_all_tracks } from '@illusive/illusi/src/sql/sql_tracks';
+import { get_all_tables } from '@illusive/illusi/src/sql/sql_update';
+import { db_get_all_async, destroy_all_tables, move_unsorted_media_to_folders, recreate_all_tables, sql_select } from '@illusive/illusi/src/sql/sql_utils';
+import { sqlite_location } from '@illusive/illusi/src/sql/database';
 
 export async function test_import_1307_sqldb(__path: string) {
     const name = path.basename(__path).replace(".sqlite3", "101.sqlite3");

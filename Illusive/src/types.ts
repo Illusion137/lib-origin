@@ -1,10 +1,10 @@
-import type * as Origin from "../../origin/src";
-import type { CookieJar } from "../../common/utils/cookie_util"
-import type { ResponseError} from "../../common/types";
-import { TimedCache } from "../../common/types"
-import type { Chapter } from "../../origin/src/youtube_dl/types";
-import { Constants } from "./constants";
-import type { Prefs } from "./prefs";
+import type * as Origin from "@origin/";
+import type { CookieJar } from "@common/utils/cookie_util"
+import type { ResponseError} from "@common/types";
+import { TimedCache } from "@common/types"
+import type { Chapter } from "@origin/youtube_dl/types";
+import { Constants } from "@illusive/constants";
+import type { Prefs } from "@illusive/prefs";
 import { remove } from "@common/utils/clean_util";
 
 type ArtworkCacheType = 'force-cache';

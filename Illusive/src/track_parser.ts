@@ -1,13 +1,13 @@
-import type { AmazonSearchTrack } from '../../origin/src/amazon_music/types/SearchResult';
-import type { AmazonTrack } from '../../origin/src/amazon_music/types/ShowHomeCreateAndBindMethod';
-import * as Origin from '../../origin/src/index'
-import type { Item4 } from '../../origin/src/spotify/types/Album';
-import type { CollectionItem } from '../../origin/src/spotify/types/Collection';
-import type { SpotifySearchTrack } from '../../origin/src/spotify/types/SearchResult';
-import type { ContentItem } from '../../origin/src/spotify/types/UserPlaylist';
-import { extract_string_from_pattern, generate_new_uid, is_empty } from '../../common/utils/util'
-import { best_thumbnail, create_uri, spotify_uri_to_uri } from './illusive_utilts';
-import type { Track } from './types';
+import type { AmazonSearchTrack } from '@origin/amazon_music/types/SearchResult';
+import type { AmazonTrack } from '@origin/amazon_music/types/ShowHomeCreateAndBindMethod';
+import * as Origin from '@origin/index'
+import type { Item4 } from '@origin/spotify/types/Album';
+import type { CollectionItem } from '@origin/spotify/types/Collection';
+import type { SpotifySearchTrack } from '@origin/spotify/types/SearchResult';
+import type { ContentItem } from '@origin/spotify/types/UserPlaylist';
+import { extract_string_from_pattern, generate_new_uid, is_empty } from '@common/utils/util'
+import { best_thumbnail, create_uri, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import type { Track } from '@illusive/types';
 import { parse_time } from '@common/utils/parse_util';
 
 export function parse_spotify_playlist_track(track: ContentItem): Track {

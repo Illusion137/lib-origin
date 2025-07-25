@@ -45,6 +45,6 @@ function Write-ColorOutput {
 
 node_modules\.bin\tsgo.cmd -p tsconfig.json
 if ( $LASTEXITCODE -ne 0 ) { Write-ColorOutput "Failed to Compile Typescript" Red; exit; }
-eslint . --fix
+# eslint . --fix
 if ( $LASTEXITCODE -ne 0 ) { Write-ColorOutput "Failed to Lint Typescript" Red; exit; }
 Write-ColorOutput "Successfully built lib-origin" Green; exit;

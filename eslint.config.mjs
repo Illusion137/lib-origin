@@ -11,9 +11,9 @@ export default [
         "babel.config.js", 
         "eslint.config.mjs", 
         "jest.config.js",
-        "origin/src/youtube_dl/PATCH/sax/sax.js",
-        "origin/src/manga_reader/deob.js",
-        "origin/src/manga_reader/deob2.js",
+        "@origin/youtube_dl/PATCH/sax/sax.js",
+        "@origin/manga_reader/deob.js",
+        "@origin/manga_reader/deob2.js",
     ]},
     pluginJs.configs.recommended,
     ...tseslint.configs.all,
@@ -102,7 +102,10 @@ export default [
             "@typescript-eslint/require-array-sort-compare": "off",
             "@typescript-eslint/class-methods-use-this": "off",
             "@typescript-eslint/no-misused-promises": "off",
-            "no-relative-import-paths/no-relative-import-paths": "error"
+            // "no-relative-import-paths/no-relative-import-paths": [
+            //     "warn",
+            //     { "allowSameFolder": true, "prefix": "@", "rootDir": "src" }
+            // ]
         }
     }
 ];

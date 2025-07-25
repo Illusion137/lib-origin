@@ -9,20 +9,20 @@ import TrackPlayer, {
     RepeatMode,
     TrackType
 } from 'react-native-track-player';
-import { is_empty } from '../../../../common/utils/util';
-import { Constants } from '../../constants';
-import { Illusive } from '../../illusive';
-import type { ISOString, Track } from '../../types';
-import { alert_trackplayer_error } from './alert';
-import { handle_new_track_data } from './downloader';
-import * as GLOBALS from './globals';
-import * as SQLBackpack from './sql/sql_backpack';
-import * as SQLfs from './sql/sql_fs';
-import * as SQLRecentlyPlayed from './sql/sql_recently_played';
-import * as SQLTracks from './sql/sql_tracks';
-import { artist_string } from '../../illusive_utilts';
-import { sample } from './sampler';
-import { resolved_artwork } from './illusi_utils';
+import { is_empty } from '@common/utils/util';
+import { Constants } from '@illusive/constants';
+import { Illusive } from '@illusive/illusive';
+import type { ISOString, Track } from '@illusive/types';
+import { alert_trackplayer_error } from '@illusive/illusi/src/alert';
+import { handle_new_track_data } from '@illusive/illusi/src/downloader';
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import * as SQLBackpack from '@illusive/illusi/src/sql/sql_backpack';
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import * as SQLRecentlyPlayed from '@illusive/illusi/src/sql/sql_recently_played';
+import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
+import { artist_string } from '@illusive/illusive_utilts';
+import { sample } from '@illusive/illusi/src/sampler';
+import { resolved_artwork } from '@illusive/illusi/src/illusi_utils';
 // import { ffcache_yt } from './downloader';
 
 const placeholder_mp3 = require('../../assets/placeholder.mp3');

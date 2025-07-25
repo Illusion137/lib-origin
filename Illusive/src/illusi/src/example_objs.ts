@@ -1,4 +1,4 @@
-import type { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, SQLArtist, Track } from "../../types";
+import type { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, SQLArtist, Track } from "@illusive/types";
 
 export namespace ExampleObj {
     export const track_example0: Track = {

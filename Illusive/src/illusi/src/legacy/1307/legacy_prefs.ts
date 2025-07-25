@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { is_empty } from '../../../../../../common/utils/util';
+import { is_empty } from '@common/utils/util';
 
 export let prefs = get_default_prefs();
 

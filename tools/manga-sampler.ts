@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { MangaReader } from '../origin/src/manga_reader/manga_reader';
+import { MangaReader } from '@origin/manga_reader/manga_reader';
 
 
 async function sample_manga() {

@@ -3,9 +3,9 @@ import * as Sharing from 'expo-sharing';
 import type { GestureResponderEvent } from "react-native";
 import { Alert } from "react-native";
 import type BigList from 'react-native-big-list';
-import type { AlphabetScroll, Artwork, ImageArtwork } from '../../types';
-import { alert_error } from './alert';
-import { IllusiIcons } from '../../illusi_icons';
+import type { AlphabetScroll, Artwork, ImageArtwork } from '@illusive/types';
+import { alert_error } from '@illusive/illusi/src/alert';
+import { IllusiIcons } from '@illusive/illusi_icons';
 
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
     Alert.alert(title, msg, [

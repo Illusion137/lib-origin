@@ -1,7 +1,7 @@
 // Merging from Archived Proj. https://github.com/Illusion137/gomovies/
 const { JSDOM } = require('jsdom-jscore-rn');
 import axios from 'axios';
-import type { Country, Genre, GoMovie_Display_Content, GoMovieAjaxSource, GoMovieFilters, GoMovieMovie, GoMovieSearchPage, GoMovieSourceData, GoMovieTab, HrefString, MonoPath, Path } from './types/types';
+import type { Country, Genre, GoMovie_Display_Content, GoMovieAjaxSource, GoMovieFilters, GoMovieMovie, GoMovieSearchPage, GoMovieSourceData, GoMovieTab, HrefString, MonoPath, Path } from '@origin/gomovies/types/types';
 
 export namespace GoMovies {
     const BASE_URL = "https://gomovies.sx/";

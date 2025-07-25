@@ -1,15 +1,15 @@
-import type { ChannelResultsW } from "./types/ChannelResultsW";
-import type { ChannelResultsWContinuation } from "./types/ChannelResultsWContinuation";
+import type { ChannelResultsW } from "@origin/youtube/types/ChannelResultsW";
+import type { ChannelResultsWContinuation } from "@origin/youtube/types/ChannelResultsWContinuation";
 // import { HomeResultsW } from "./types/HomeResultsW";
-import type { HomeResultsWContinuation } from "./types/HomeResultsWContinuation";
-import type { LibraryResultsW } from "./types/LibraryResultsW";
-import type { MixResults_0 } from "./types/MixResults_0";
-import type { PlaylistResultsW, PlaylistVideoRenderer } from "./types/PlaylistResultsW";
-import type { PlaylistResultsWContinuation } from "./types/PlaylistResultsWContinuation";
-import type { SearchResultsM } from "./types/SearchResultsM";
-import type { SearchResultsW } from "./types/SearchResultsW";
-import type { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
-import type { InitialData } from "./types/types";
+import type { HomeResultsWContinuation } from "@origin/youtube/types/HomeResultsWContinuation";
+import type { LibraryResultsW } from "@origin/youtube/types/LibraryResultsW";
+import type { MixResults_0 } from "@origin/youtube/types/MixResults_0";
+import type { PlaylistResultsW, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
+import type { PlaylistResultsWContinuation } from "@origin/youtube/types/PlaylistResultsWContinuation";
+import type { SearchResultsM } from "@origin/youtube/types/SearchResultsM";
+import type { SearchResultsW } from "@origin/youtube/types/SearchResultsW";
+import type { SearchResultsWContinuation } from "@origin/youtube/types/SearchResultsWContinuation";
+import type { InitialData } from "@origin/youtube/types/types";
 
 export function parse_home_contents(initial_data: InitialData) {
     initial_data;

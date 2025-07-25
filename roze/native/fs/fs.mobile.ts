@@ -1,5 +1,6 @@
-import { gen_uuid, generror_catch } from "../../../common/utils/util";
-import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "./fs.base";
+import { generror_catch } from "@common/utils/error_util";
+import { gen_uuid } from "@common/utils/util";
+import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "@native/fs/fs.base";
 import expo_fs from 'expo-file-system';
 import path_lib from 'path';
 
@@ -27,19 +28,22 @@ export const mobile_fs: FileSystem = {
                 return {
                     exists: stats.exists,
                     file_modified_ms: stats.modificationTime * 1000,
-                    is_directory: stats.isDirectory
+                    is_directory: stats.isDirectory,
+                    uri: stats.uri
                 }
             }
             return {
                 exists: false,
                 file_modified_ms: 0,
                 is_directory: false,
+                uri: stats.uri
             }
         } catch (error) {
             return {
                 exists: false,
                 file_modified_ms: 0,
                 is_directory: false,
+                uri: path
             }
         }
     },

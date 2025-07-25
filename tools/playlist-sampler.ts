@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import { Illusive } from "../Illusive/src/illusive";
-import type { MusicServiceType } from "../Illusive/src/types";
-import load_cookies_env from '../Illusive/src/load_cookies_env';
+import { Illusive } from "@illusive/illusive";
+import type { MusicServiceType } from "@illusive/types";
+import load_cookies_env from '@illusive/load_cookies_env';
 
 load_cookies_env();
 

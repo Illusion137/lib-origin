@@ -1,7 +1,7 @@
-import { TimedCache } from "../../../../common/types";
-import { Constants } from "../../constants";
-import type { Prefs } from "../../prefs";
-import type { BottomAlertType, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SetState, Track } from "../../types";
+import { TimedCache } from "@common/types";
+import { Constants } from "@illusive/constants";
+import type { Prefs } from "@illusive/prefs";
+import type { BottomAlertType, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SetState, Track } from "@illusive/types";
 
 export const downloading: Downloading[] = [];
 

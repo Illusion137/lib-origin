@@ -1,6 +1,6 @@
 import { encode_params } from "@common/utils/fetch_util";
-import { GCC } from "../admin/gcc";
-import { CookieJar } from "../common/utils/cookie_util";
+import { GCC } from "@admin/gcc";
+import { CookieJar } from "@common/utils/cookie_util";
 import { is_empty } from "@common/utils/util";
 
 const mock_cookie_strings = {

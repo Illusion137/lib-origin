@@ -1,13 +1,13 @@
 import * as SQLite from '@op-engineering/op-sqlite';
-import { error_undefined, extract_file_extension, is_empty } from "../../../../../common/utils/util";
-import { Illusive } from '../../../illusive';
-import type { CompactPlaylist, Primitives, SQLArtist, SQLTables, Track } from "../../../types";
-import { ExampleObj } from '../example_objs';
-import * as GLOBALS from '../globals';
-import { db, db_path, reasign_db, sqlite_location } from './database';
-import * as SQLfs from './sql_fs';
-import { document_directory, sqlite_directory, thumbnail_directory } from './sql_fs';
-import { alert_error } from '../alert';
+import { error_undefined, extract_file_extension, is_empty } from "@common/utils/util";
+import { Illusive } from '@illusive/illusive';
+import type { CompactPlaylist, Primitives, SQLArtist, SQLTables, Track } from "@illusive/types";
+import { ExampleObj } from '@illusive/illusi/src/example_objs';
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import { db, db_path, reasign_db, sqlite_location } from '@illusive/illusi/src/sql/database';
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import { document_directory, sqlite_directory, thumbnail_directory } from '@illusive/illusi/src/sql/sql_fs';
+import { alert_error } from '@illusive/illusi/src/alert';
 
 export async function db_exec_async(source: string){
     try {
@@ -193,16 +193,21 @@ export async function download_thumbnail(track: Track) {
 }
 
 export async function move_unsorted_media_to_folders() {
-    for(const file of await SQLfs.read_directory(document_directory(""))) {
-        const info = await SQLfs.info(document_directory(file));
-        if(!info.isDirectory && info.exists) {
-            if(info.uri.includes(".mp4") || info.uri.includes(".mp3") || info.uri.includes(".m4a"))
-                await SQLfs.move_to_media_directory(info.uri);
+    const document_files = await SQLfs.read_directory(document_directory(""));
+    if(!("error" in document_files)){
+        for(const file of document_files) {
+            const info = await SQLfs.info(document_directory(file));
+            if(!info.is_directory && info.exists) {
+                if(info.uri.includes(".mp4") || info.uri.includes(".mp3") || info.uri.includes(".m4a"))
+                    await SQLfs.move_to_media_directory(info.uri);
+            }
         }
     }
-    for(const file of await SQLfs.read_directory(document_directory("CachedThumbnails"))) {
+    const thumbnail_files = await SQLfs.read_directory(document_directory(""));
+    if("error" in thumbnail_files) return;
+    for(const file of thumbnail_files) {
         const info = await SQLfs.info(document_directory("CachedThumbnails") + file);
-        if(!info.isDirectory && info.exists) {
+        if(!info.is_directory && info.exists) {
             if(info.uri.includes(".webp") || info.uri.includes(".png") || info.uri.includes(".jpg"))
                 await SQLfs.move_to_thumbnail_directory(info.uri);
         }
@@ -215,11 +220,14 @@ export async function delete_database(database: SQLite.DB, database_path: string
 }
 export async function delete_all_data() {
     await delete_database(db, db_path);
-    for(const file of await SQLfs.read_directory(document_directory(""))) {
-        try {
-            if(!(file.includes("RCTAsyncLocalStorage") || file == 'RCTAsyncLocalStorage_V1'))
-                await SQLfs.delete_item(document_directory(file));
-        } catch (error) {}
+    const document_files = await SQLfs.read_directory(document_directory(""));
+    if(!("error" in document_files)){
+        for(const file of document_files) {
+            try {
+                if(!(file.includes("RCTAsyncLocalStorage") || file == 'RCTAsyncLocalStorage_V1'))
+                    await SQLfs.delete_item(document_directory(file));
+            } catch (error) {}
+        }
     }
     reasign_db(SQLite.open({name: db_path, location: sqlite_location}));
     await create_default_directories();

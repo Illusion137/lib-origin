@@ -1,12 +1,12 @@
 import { concact_audio_files, generate_static_video_with_audio } from "@native/ffmpeg/ffmpeg";
-import { get_temp_file_path } from "../native/fs/fs";
-import { get_audio_duration } from "../native/get_audio_duration/get_audio_duration";
-import { voice_synth } from "../native/voice_synth/voice_synth";
-import { prepare_text_for_tts } from "./utils";
-import { Constants } from "./constants";
-import type Roz from "./types/roz";
-import type { VoiceOptions } from "../native/voice_synth/voice_synth.base";
-import type { RozChapterContents, RozContent, RozContentType } from "./types/roz";
+import { get_temp_file_path } from "@native/fs/fs";
+import { get_audio_duration } from "@native/get_audio_duration/get_audio_duration";
+import { voice_synth } from "@native/voice_synth/voice_synth";
+import { prepare_text_for_tts } from "@roze/utils";
+import { Constants } from "@roze/constants";
+import type Roz from "@roze/types/roz";
+import type { VoiceOptions } from "@native/voice_synth/voice_synth.base";
+import type { RozChapterContents, RozContent, RozContentType } from "@roze/types/roz";
 
 export namespace AudiobookGen {
     interface RozChapterToAudiobookCallbacks {

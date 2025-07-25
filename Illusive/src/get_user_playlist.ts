@@ -1,8 +1,8 @@
-import * as Origin from '../../origin/src/index'
-import { urlid } from '../../common/utils/util';
-import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from './illusive_utilts';
-import { Prefs } from './prefs';
-import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from './types';
+import * as Origin from '@origin/index'
+import { urlid } from '@common/utils/util';
+import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { Prefs } from '@illusive/prefs';
+import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from '@illusive/types';
 
 export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');

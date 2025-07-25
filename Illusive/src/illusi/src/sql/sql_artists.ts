@@ -1,6 +1,6 @@
-import type { Promises, SQLArtist } from "../../../types";
-import { ExampleObj } from "../example_objs";
-import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, sql_delete_from, sql_insert_values, sql_select, sql_where } from "./sql_utils";
+import type { Promises, SQLArtist } from "@illusive/types";
+import { ExampleObj } from "@illusive/illusi/src/example_objs";
+import { db_exec_async, db_get_all_async, db_get_all_sync, db_run_async, sql_delete_from, sql_insert_values, sql_select, sql_where } from "@illusive/illusi/src/sql/sql_utils";
 
 const artists_artwork_memo = {};
 

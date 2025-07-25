@@ -1,11 +1,18 @@
+import type { RoZFetchRequestInit } from "@common/rozfetch";
+import type { CookieJar } from "@common/utils/cookie_util";
+
 export interface ResponseError { "error": Error }
 export interface ResponseSuccess { "success": true }
 export type PromiseResult<T> = Promise<ResponseError|T>;
 export type FetchMethod = "GET"|"POST"|"DELETE"|"PUT"|"OPTIONS";
 
 export type HexColor = `#${string}`;
-
 export type FileExtension = ".txt"|".mp3"|".mp4"|".aac"|".mkv"|".ogg"|".m4a"|".wav"|".flv"|".epub"|".pdf"|".roz";
+
+export interface BaseOpts {
+    cookie_jar?: CookieJar; 
+    fetch_opts?: RoZFetchRequestInit;
+}
 
 export class TimedCacheValue<V> {
     lifespan_milliseconds: number

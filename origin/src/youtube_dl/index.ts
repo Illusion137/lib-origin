@@ -1,8 +1,8 @@
-import { urlid } from '../../../common/utils/util';
-import * as formatUtils from './format-utils';
-import * as getInfo from './info';
-import * as urlUtils from './url-utils';
-import type { DownloadOptions, VideoInfo } from './types';
+import { urlid } from '@common/utils/util';
+import * as formatUtils from '@origin/youtube_dl/format-utils';
+import * as getInfo from '@origin/youtube_dl/info';
+import * as urlUtils from '@origin/youtube_dl/url-utils';
+import type { DownloadOptions, VideoInfo } from '@origin/youtube_dl/types';
 
 export namespace YouTubeDL {
     export async function ytdl(link: string, options: DownloadOptions) {

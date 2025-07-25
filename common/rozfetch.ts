@@ -2,8 +2,8 @@ import { json_catch } from "@common/utils/util";
 import { ItemTimedCache, type PromiseResult, type ResponseError } from "@common/types";
 import { md5 } from 'js-md5';
 import { fs } from "@native/fs/fs";
-import { try_json_parse } from "./utils/parse_util";
-import { generror_catch, generror_fetch, is_timeout_error } from "./utils/error_util";
+import { try_json_parse } from "@common/utils/parse_util";
+import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
 import pathlib from 'path';
 
 interface RozFetchCacheOptsBase {
@@ -28,11 +28,14 @@ export interface RoZFetchRequestInit extends RequestInit {
     abort_ms?: number;
     proxy?: RozProxy;
 }
+type RozFetchText<T> = T extends never ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
 export interface RoZFetchResponse<T> extends Response {
+    // text: RozFetchText<T>; // TODO Investigate 
     json: RozFetchJSON<T>;
     invalidate_cache: () => Promise<void>;
     cache_timestamp: number;
+    ok: true;
 }
 
 const cache_file_extension = '.che';
@@ -75,7 +78,7 @@ async function check_rozfetch_cache<T>(init: RoZFetchRequestInit, cache_key: str
         const data = await fs.read_as_string(cache_file_path, {encoding: "utf8"});
         if(typeof data === "object") return;
         const response = new Response() as RoZFetchResponse<T>;
-        response.text = async() => data;
+        response.text = (async() => data) as RozFetchText<T>;
         response.json = (async() => try_json_parse<T>(data)) as RozFetchJSON<T>;
         response.invalidate_cache = async() => invalidate_rozfetch_cache(init, cache_key);
         response.cache_timestamp = file_info.file_modified_ms;
@@ -96,12 +99,12 @@ async function update_rozfetch_cache<T>(init: RoZFetchRequestInit, response: RoZ
     if(!init?.cache_opts || init.cache_opts.cache_mode === "none") return;
     const lifespan_ms = !response.ok ? init.cache_opts.cache_ms_fail ?? init.cache_opts.cache_ms : init.cache_opts.cache_ms;
     const clone_response = response.clone();
-    response.text = async() => {
+    response.text = (async() => {
         const text = await clone_response.text();
-        response.text = async() => text;
+        response.text = (async() => text) as RozFetchText<T>;
         await write_cache_file(init, cache_key, text);
         return text;
-    }
+    }) as RozFetchText<T>;
     response.json = (async() => {
         const json: T = await clone_response.json();
         response.json = (async() => json) as RozFetchJSON<T>;

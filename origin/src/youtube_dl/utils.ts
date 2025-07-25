@@ -1,6 +1,6 @@
 // import { sapisid_hash_auth0 } from "../utils/util";
-import type { DownloadOptions } from "./types";
-import * as AGENT from "./agent";
+import type { DownloadOptions } from "@origin/youtube_dl/types";
+import * as AGENT from "@origin/youtube_dl/agent";
 
 /**
  * Extract string inbetween another.

@@ -1,4 +1,4 @@
-import type { HydratableUser } from "./Hydration"
+import type { HydratableUser } from "@origin/soundcloud/types/Hydration"
 
 export interface ClientSearchOf<T> {
     data: SearchOf<T>

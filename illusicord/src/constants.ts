@@ -1,4 +1,4 @@
-import type { PlayerOptions } from "./types";
+import type { PlayerOptions } from "@illusicord/types";
 
 export namespace Constants {
     export const DEFAULT_PLAYER_OPTIONS: PlayerOptions = {

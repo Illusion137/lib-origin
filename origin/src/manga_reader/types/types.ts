@@ -1,5 +1,5 @@
-import type { MangaGenres } from "./MangaGenres";
-import type { MangaTypes } from "./MangaTypes";
+import type { MangaGenres } from "@origin/manga_reader/types/MangaGenres";
+import type { MangaTypes } from "@origin/manga_reader/types/MangaTypes";
 
 export type MangaReadMode = "vertical"|"horizontal";
 export type MangaReadQuality = "low"|"medium"|"high";

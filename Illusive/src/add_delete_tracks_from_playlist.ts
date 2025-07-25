@@ -1,8 +1,8 @@
-import * as Origin from '../../origin/src/index'
-import { is_empty } from '../../common/utils/util';
-import { Constants } from './constants';
-import { Prefs } from './prefs';
-import type { Track } from './types';
+import * as Origin from '@origin/index'
+import { is_empty } from '@common/utils/util';
+import { Constants } from '@illusive/constants';
+import { Prefs } from '@illusive/prefs';
+import type { Track } from '@illusive/types';
 
 export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');

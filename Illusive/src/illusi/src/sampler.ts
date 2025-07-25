@@ -1,17 +1,17 @@
-import * as Origin from '../../../../origin/src/index';
-import { is_empty } from "../../../../common/utils/util";
-import { Illusive } from "../../illusive";
-import { random_of, shuffle_array } from "../../illusive_utilts";
-import { Prefs } from "../../prefs";
-import type { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "../../types";
-import * as GLOBALS from './globals';
-import { Logger } from "./logger";
-import * as SQLTracks from './sql/sql_tracks';
-import * as SQLBackpack from './sql/sql_backpack';
-import * as SQLfs from './sql/sql_fs';
-import { alert_error } from './alert';
-import { Wifi } from './wifi_utils';
-import { Constants } from '../../constants';
+import * as Origin from '@origin/index';
+import { is_empty } from "@common/utils/util";
+import { Illusive } from "@illusive/illusive";
+import { random_of, shuffle_array } from "@illusive/illusive_utilts";
+import { Prefs } from "@illusive/prefs";
+import type { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "@illusive/types";
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import { Logger } from "@illusive/illusi/src/logger";
+import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
+import * as SQLBackpack from '@illusive/illusi/src/sql/sql_backpack';
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import { alert_error } from '@illusive/illusi/src/alert';
+import { Wifi } from '@illusive/illusi/src/wifi_utils';
+import { Constants } from '@illusive/constants';
 
 export async function get_proxies(sample_length: number){
     const proxies: Origin.Proxy.Proxy[] = [];

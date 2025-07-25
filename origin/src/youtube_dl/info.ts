@@ -1,10 +1,10 @@
 const sax = require('./PATCH/sax/index');
-import Cache from './cache';
-import * as formatUtils from './format-utils';
-import * as extras from './info-extras';
-import * as sig from './sig__';
-import * as urlUtils from './url-utils';
-import * as utils from './utils';
+import Cache from '@origin/youtube_dl/cache';
+import * as formatUtils from '@origin/youtube_dl/format-utils';
+import * as extras from '@origin/youtube_dl/info-extras';
+import * as sig from '@origin/youtube_dl/sig__';
+import * as urlUtils from '@origin/youtube_dl/url-utils';
+import * as utils from '@origin/youtube_dl/utils';
 
 const BASE_URL = "https://www.youtube.com/watch?v=";
 

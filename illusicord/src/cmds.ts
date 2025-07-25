@@ -1,13 +1,13 @@
 import type { Channel, Client, Message, OmitPartialGroupDMChannel } from "discord.js";
-import type { Player } from "./player/player";
-import { RepeatMode, type DiscordTrack } from "./types";
+import type { Player } from "@illusicord/player/player";
+import { RepeatMode, type DiscordTrack } from "@illusicord/types";
 import type { MusicServiceType, Track } from "@illusive/types";
 import { is_empty } from "@common/utils/util";
 import { Illusive } from "@illusive/illusive";
-import { MEDIA } from "./media";
+import { MEDIA } from "@illusicord/media";
 import { play_track_discord_recieve } from "@illusive/discord";
-import { Utils } from "./player/utils";
-import { Constants } from "./constants";
+import { Utils } from "@illusicord/player/utils";
+import { Constants } from "@illusicord/constants";
 import { duration_to_string } from "@illusive/illusive_utilts";
 
 export type DiscordClient = Client & { player: Player };

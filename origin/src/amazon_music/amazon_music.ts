@@ -1,13 +1,12 @@
-import type { CookieJar } from "@common/utils/cookie_util";
-import type { PromiseResult } from "@common/types";
+import type { BaseOpts, PromiseResult } from "@common/types";
 import { urlid } from "@common/utils/util";
-import type { Config } from "./types/Config";
-import type { CreatePlaylist } from "./types/CreatePlaylist";
-import type { AmazonSearchTrack, SearchResult } from "./types/SearchResult";
-import type { ShowHome } from "./types/ShowHome";
-import type { AmazonTrack, CreateAndBindMethod } from "./types/ShowHomeCreateAndBindMethod";
-import type { AmazonMusicLibraryPlaylist, ShowLibraryHome } from "./types/ShowLibraryHome";
-import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
+import type { Config } from "@origin/amazon_music/types/Config";
+import type { CreatePlaylist } from "@origin/amazon_music/types/CreatePlaylist";
+import type { AmazonSearchTrack, SearchResult } from "@origin/amazon_music/types/SearchResult";
+import type { ShowHome } from "@origin/amazon_music/types/ShowHome";
+import type { AmazonTrack, CreateAndBindMethod } from "@origin/amazon_music/types/ShowHomeCreateAndBindMethod";
+import type { AmazonMusicLibraryPlaylist, ShowLibraryHome } from "@origin/amazon_music/types/ShowLibraryHome";
+import rozfetch from "@common/rozfetch";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror } from "@common/utils/error_util";
 import { wait } from "@common/utils/timed_utilt";
@@ -19,7 +18,7 @@ export namespace AmazonMusic {
         token: string,
         expirationMS: number
     }
-    interface Opts { cookie_jar?: CookieJar, client?: Config, fetch_opts?: RoZFetchRequestInit }
+    interface Opts extends BaseOpts { client?: Config }
     const client_cache = {client: null as Config|null, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }

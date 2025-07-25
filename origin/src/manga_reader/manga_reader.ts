@@ -1,17 +1,15 @@
-import { jsdom_document, map_html_collection } from "../../../common/jsdom";
-import type { PromiseResult } from "../../../common/types";
-import { encode_params, google_query, base_response_fail_msg } from "../../../common/utils/util";
-import { decode_image_base64 } from "./img_decoder";
-import type { MangaGenres } from "./types/MangaGenres";
-import type { MangaTypes } from "./types/MangaTypes";
-import type { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageSize, MangaReadMode, MangaReadQuality, ReadingBy, SearchManga } from "./types/types";
+import rozfetch from "@common/rozfetch";
+import { jsdom_document, map_html_collection } from "@common/jsdom";
+import type { PromiseResult } from "@common/types";
+import { decode_image_base64 } from "@origin/manga_reader/img_decoder";
+import type { MangaGenres } from "@origin/manga_reader/types/MangaGenres";
+import type { MangaTypes } from "@origin/manga_reader/types/MangaTypes";
+import type { AjaxResult, ChapterImageItem, ChapterItem, MangaList, MangaReadHozPageSize, MangaReadMode, MangaReadQuality, ReadingBy, SearchManga } from "@origin/manga_reader/types/types";
+import { encode_params, google_query } from "@common/utils/fetch_util";
+import { generror } from "@common/utils/error_util";
 
 export namespace MangaReader {
     const base_url = "https://mangareader.to";
-
-    function gen_response_error_msg(response: Response): string{
-        return `MangaReader: ${gen_response_error_msg.caller} ${base_response_fail_msg(response)}`
-    }
 
     function parse_chapter_item(el: Element): ChapterItem {
         return {
@@ -57,17 +55,18 @@ export namespace MangaReader {
         return last_index === -1 ? href : href.slice(href.lastIndexOf("-") + 1);
     }
     export async function ajax(path: string) {
-        const response = await fetch(`${base_url}/ajax/${path}`);
-        if(!response.ok) return {error: new Error(gen_response_error_msg(response))};
-        const result: AjaxResult = await response.json();
-        if(!result.status) return {error: new Error(`MangaReader: Ajax status failed with: ${result.html}`)};
+        const response = await rozfetch<AjaxResult>(`${base_url}/ajax/${path}`);
+        if("error" in response) return response;
+        const result = await response.json();
+        if("error" in result) return result;
+        if(!result.status) return generror(`MangaReader: Ajax status failed with: ${result.html}`, {path});
         return result;
     }
     export async function manga_list(opts: {page?: number} & ({query: string}|{genre: MangaGenres}|{type: MangaTypes})): PromiseResult<MangaList> {
         const params: Record<string, any> = { page: opts.page ?? 1 };
         const path = "query" in opts ? "/search" : "genre" in opts ? opts.genre : opts.type;
-        const response = await fetch(`${base_url}${path}?${encode_params(params, "query" in opts ? ["keyword", google_query(opts.query)] : undefined)}`);
-        if(!response.ok) return {error: new Error(gen_response_error_msg(response))};
+        const response = await rozfetch(`${base_url}${path}?${encode_params(params, "query" in opts ? ["keyword", google_query(opts.query)] : undefined)}`);
+        if("error" in response) return response;
         const document = jsdom_document(await response.text());
         const manga_elements = document.querySelectorAll(".item.item-spc");
         const mangas = map_html_collection(manga_elements, parse_search_manga);

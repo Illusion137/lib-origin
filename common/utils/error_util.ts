@@ -1,6 +1,6 @@
-import type { ResponseError } from "../types";
-import { status_codes_descriptions } from "../status_codes";
-import { CookieJar } from "./cookie_util";
+import type { ResponseError } from "@common/types";
+import { status_codes_descriptions } from "@common/status_codes";
+import type { CookieJar } from "@common/utils/cookie_util";
 
 export function args_prettystring(args: object, indent = 2){
 	let str = '{\n';

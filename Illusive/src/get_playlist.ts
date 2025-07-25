@@ -1,29 +1,29 @@
-import * as Origin from '../../origin/src/index'
-import type * as SCSearch from '../../origin/src/soundcloud/types/Search';
-import type { Album } from '../../origin/src/spotify/types/Album';
-import type { Collection } from '../../origin/src/spotify/types/Collection';
-import type { UserPlaylist } from '../../origin/src/spotify/types/UserPlaylist';
-import type { ResponseError } from '../../common/types';
-import { is_empty, urlid } from '../../common/utils/util';
-import { parse_playlist_continuation_contents } from '../../origin/src/youtube/parser';
-import type * as YT_CONTINUATION from "../../origin/src/youtube/types/Continuation";
-import type * as YT_YTCFG from '../../origin/src/youtube/types/YTCFG';
-import type * as YTMUSIC_CONTINUATION from "../../origin/src/youtube_music/types/Continuation";
-import type { YouTubeMusicPlaylistTrack } from '../../origin/src/youtube_music/types/PlaylistResults_0';
-import type { PlaylistResults_1 } from '../../origin/src/youtube_music/types/PlaylistResults_1';
-import type { PlaylistResults_3 } from '../../origin/src/youtube_music/types/PlaylistResults_3';
-import type * as YTMUSIC_YTCFG from '../../origin/src/youtube_music/types/YTCFG';
-import type * as YTMUSIC_CONTINUATION_RENDERER from "../../origin/src/youtube/types/PlaylistResults_0";
-import { clean_album_title, parse_apple_music_album_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from './parsers/apple_music_parser';
-import { musi_parse_track } from './parsers/musi_parser';
-import { soundcloud_parse_track } from './parsers/soundcloud_parser';
-import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } from './parsers/youtube_music_parser';
-import { youtube_parse_playlist_header, youtube_parse_videos } from './parsers/youtube_parser';
-import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from './illusive_utilts';
-import { Prefs } from './prefs';
-import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './track_parser';
-import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from './types';
-import { Constants } from './constants';
+import * as Origin from '@origin/index'
+import type * as SCSearch from '@origin/soundcloud/types/Search';
+import type { Album } from '@origin/spotify/types/Album';
+import type { Collection } from '@origin/spotify/types/Collection';
+import type { UserPlaylist } from '@origin/spotify/types/UserPlaylist';
+import type { ResponseError } from '@common/types';
+import { is_empty, urlid } from '@common/utils/util';
+import { parse_playlist_continuation_contents } from '@origin/youtube/parser';
+import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
+import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
+import type * as YTMUSIC_CONTINUATION from "@origin/youtube_music/types/Continuation";
+import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
+import type { PlaylistResults_1 } from '@origin/youtube_music/types/PlaylistResults_1';
+import type { PlaylistResults_3 } from '@origin/youtube_music/types/PlaylistResults_3';
+import type * as YTMUSIC_YTCFG from '@origin/youtube_music/types/YTCFG';
+import type * as YTMUSIC_CONTINUATION_RENDERER from "@origin/youtube/types/PlaylistResults_0";
+import { clean_album_title, parse_apple_music_album_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from '@illusive/parsers/apple_music_parser';
+import { musi_parse_track } from '@illusive/parsers/musi_parser';
+import { soundcloud_parse_track } from '@illusive/parsers/soundcloud_parser';
+import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } from '@illusive/parsers/youtube_music_parser';
+import { youtube_parse_playlist_header, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
+import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from '@illusive/illusive_utilts';
+import { Prefs } from '@illusive/prefs';
+import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from '@illusive/track_parser';
+import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
+import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import { get_main_key } from '@common/utils/fetch_util';
@@ -245,7 +245,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
 
     const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {cookie_jar});
     if("error" in hydration) return {title: "", tracks: [], continuation: null, error: [hydration]};
-    const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, cookie_jar);
+    const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, {cookie_jar});
     if(typeof client_id === "object") return {title: "", tracks: [], continuation: null, error: [client_id]};
 
     if(url.includes("you/likes")) {

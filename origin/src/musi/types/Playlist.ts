@@ -1,5 +1,5 @@
-import type { ResponseError } from "../../../../common/types";
-import type { Track } from "./types";
+import type { ResponseError } from "@common/types";
+import type { Track } from "@origin/musi/types/types";
 
 export type PlaylistResponse = PlaylistResponseSuccess | ResponseError;
 export interface PlaylistSuccessData { title: string, data: Track[] }

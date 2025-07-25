@@ -2,9 +2,9 @@ import type { CookieJar } from "tough-cookie";
 import { jsdom_document, map_html_collection } from "@common/jsdom";
 import type { PromiseResult } from "@common/types";
 import { extract_string_from_pattern, gen_uuid, is_empty, is_number, milliseconds_of } from "@common/utils/util";
-import { Translate } from "./translate";
-import type { RozChapterContents } from "./types/roz";
-import rozfetch, { merge_rozfetch_defaults, type RoZFetchRequestInit } from "../../common/rozfetch";
+import { Translate } from "@roze/translate";
+import type { RozChapterContents } from "@roze/types/roz";
+import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror, generror_catch } from "@common/utils/error_util";
 
 export namespace Syosetu {
@@ -33,11 +33,17 @@ export namespace Syosetu {
     }
     export async function webnovel_chapter_contents(webnovel_id: string, chapter: number, opts: Opts & {translate_contents?: boolean}): PromiseResult<WebnovelContents>{
         opts.translate_contents ??= false;
-        const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/${chapter}/`, merge_rozfetch_defaults(opts, {cache_opts: {
-            cache_ms: milliseconds_of({years: 1}),
-            cache_ms_fail: milliseconds_of({}),
-            cache_mode: "file"
-        }}));
+        const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/${chapter}/`, {
+            ...opts, 
+            fetch_opts: {
+                cache_opts: {
+                    cache_ms: milliseconds_of({years: 1}),
+                    cache_ms_fail: milliseconds_of({}),
+                    cache_mode: "file"    
+                },
+                ...opts.fetch_opts
+            }
+        });
         if("error" in response_html) return response_html;
         const dom = jsdom_document(response_html.text);
         
@@ -87,11 +93,17 @@ export namespace Syosetu {
     }
     export async function webnovel_chapter_list(webnovel_id: string, opts: Opts & {page?: number}){
         opts.page ??= 1;
-        const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/?p=${opts.page}`, merge_rozfetch_defaults(opts, {cache_opts: {
-            cache_ms: milliseconds_of({minutes: 10}),
-            cache_ms_fail: milliseconds_of({}),
-            cache_mode: "file"
-        }}));
+        const response_html = await get_response_text(`https://ncode.syosetu.com/${webnovel_id}/?p=${opts.page}`, {
+            ...opts, 
+            fetch_opts: {
+                cache_opts: {
+                    cache_ms: milliseconds_of({minutes: 10}),
+                    cache_ms_fail: milliseconds_of({}),
+                    cache_mode: "file"    
+                },
+                ...opts.fetch_opts
+            }
+        });
         if("error" in response_html) return response_html;
         const dom = jsdom_document(response_html.text);
         const title = dom.querySelector(".p-novel__title")?.textContent;

@@ -1,4 +1,4 @@
-import type { PromiseResult, ResponseError } from '../../../common/types';
+import type { PromiseResult, ResponseError } from '@common/types';
 
 export interface NoOverwriteOpts {
     no_overwrite?: boolean;
@@ -11,6 +11,7 @@ export interface FileInfo {
     exists: boolean;
     is_directory: boolean;
     file_modified_ms: number;
+    uri: string;
 }
 export interface FileSystem {
     temp_directory: (...paths: string[]) => string;

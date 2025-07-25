@@ -1,6 +1,6 @@
 import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { StaticAssert, TypesAreEqual } from "../src/types/types";
-import { RozSourceFileTypeArray, type RozChapterContents, type SQLRoz } from "../src/types/roz";
+import type { StaticAssert, TypesAreEqual } from "@roze/types/types";
+import { RozSourceFileTypeArray, type RozChapterContents, type SQLRoz } from "@roze/types/roz";
 
 export const novels_table = sqliteTable("novels_table", {
     id: int().primaryKey({ autoIncrement: true }),

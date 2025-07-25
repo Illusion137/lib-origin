@@ -1,17 +1,15 @@
-import type { CookieJar } from "@common/utils/cookie_util";
-import type { FetchMethod } from "@common/types";
+import type { BaseOpts, FetchMethod } from "@common/types";
 import { extract_string_from_pattern, urlid } from "@common/utils/util";
-import type { Album } from "./types/Album";
-import type { CreatePlaylist } from "./types/CreatePlaylist";
-import type { GetArtistData } from "./types/GetArtist";
-import type { MyPlaylists } from "./types/MyPlaylists";
-import type { Playlist } from "./types/Playlist";
-import type { Search } from "./types/Search";
-import type { SerializedServerData } from "./types/type";
-import type { UserPlaylist } from "./types/UserPlaylist";
+import type { Album } from "@origin/apple_music/types/Album";
+import type { CreatePlaylist } from "@origin/apple_music/types/CreatePlaylist";
+import type { GetArtistData } from "@origin/apple_music/types/GetArtist";
+import type { MyPlaylists } from "@origin/apple_music/types/MyPlaylists";
+import type { Playlist } from "@origin/apple_music/types/Playlist";
+import type { Search } from "@origin/apple_music/types/Search";
+import type { SerializedServerData } from "@origin/apple_music/types/type";
+import type { UserPlaylist } from "@origin/apple_music/types/UserPlaylist";
 import { try_json_parse } from "@common/utils/parse_util";
 import { encode_params } from "@common/utils/fetch_util";
-import type { RoZFetchRequestInit } from "@common/rozfetch";
 import rozfetch from "@common/rozfetch";
 import { base_get_headers, base_post_headers } from "@common/headers_base";
 import { generror } from "@common/utils/error_util";
@@ -20,7 +18,7 @@ import { generror } from "@common/utils/error_util";
 // https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl
 
 export namespace AppleMusic {
-    interface Opts { "cookie_jar"?: CookieJar, fetch_opts?: RoZFetchRequestInit }
+    type Opts = BaseOpts;
     const client_cache = {client: {authorization: null as string|null}, enabled: true};
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }

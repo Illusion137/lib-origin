@@ -1,12 +1,11 @@
 import * as DocumentPicker from 'react-native-document-picker'
-import { generate_new_uid } from '../../../../common/utils/util';
-import type { Playlist, Promises, Track } from '../..//types';
-import { extract_file_extension } from '../../illusive_utilts';
-import * as SQLfs from './sql/sql_fs';
-import * as SQLPlaylists from './sql/sql_playlists';
-import * as SQLTracks from './sql/sql_tracks';
-import * as GLOBALS from './globals';
-import { alert_error } from './alert';
+import { extract_file_extension, generate_new_uid } from '@common/utils/util';
+import type { Playlist, Promises, Track } from '@illusive/types';
+import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
+import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
+import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
+import * as GLOBALS from '@illusive/illusi/src/globals';
+import { alert_error } from '@illusive/illusi/src/alert';
 import ImagePicker from 'react-native-image-crop-picker';
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 

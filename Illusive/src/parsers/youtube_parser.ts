@@ -1,13 +1,13 @@
 import { parse_runs, parse_time } from "@common/utils/parse_util";
-import { extract_string_from_pattern, generate_new_uid, is_empty } from "../../../common/utils/util";
-import type { PlaylistPanelVideoRenderer } from "../../../origin/src/youtube/types/MixResults_0";
-import type { PageHeaderViewModel } from "../../../origin/src/youtube/types/PageHeaderViewModel";
-import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "../../../origin/src/youtube/types/PlaylistResultsW";
-import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "../../../origin/src/youtube/types/SearchResultsM";
-import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "../../../origin/src/youtube/types/SearchResultsW";
-import type { VideoInfo } from "../../../origin/src/youtube_dl/types";
-import { best_thumbnail, create_uri, youtube_views_number } from "../illusive_utilts";
-import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "../types";
+import { extract_string_from_pattern, generate_new_uid, is_empty } from "@common/utils/util";
+import type { PlaylistPanelVideoRenderer } from "@origin/youtube/types/MixResults_0";
+import type { PageHeaderViewModel } from "@origin/youtube/types/PageHeaderViewModel";
+import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
+import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "@origin/youtube/types/SearchResultsM";
+import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/youtube/types/SearchResultsW";
+import type { VideoInfo } from "@origin/youtube_dl/types";
+import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utilts";
+import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;

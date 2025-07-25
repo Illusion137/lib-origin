@@ -1,11 +1,12 @@
 import fs from 'fs';
 import os from 'os';
 import path_lib from 'path';
-import { gen_uuid, generror_catch } from "../../../common/utils/util";
+import { gen_uuid } from "@common/utils/util";
 import { Readable } from 'stream';
-import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "./fs.base";
+import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "@native/fs/fs.base";
 import type { ReadableStream } from 'stream/web';
 import { finished } from 'stream/promises';
+import { generror_catch } from '@common/utils/error_util';
 
 export const node_fs: FileSystem = {
     temp_directory: (...paths: string[]) => path_lib.join(os.tmpdir(), ...paths),
@@ -30,13 +31,15 @@ export const node_fs: FileSystem = {
             return {
                 exists: true,
                 file_modified_ms: stats.mtime.getTime(),
-                is_directory: stats.isDirectory()
+                is_directory: stats.isDirectory(),
+                uri: path
             }
         } catch (error) {
             return {
                 exists: false,
                 file_modified_ms: 0,
-                is_directory: false
+                is_directory: false,
+                uri: path
             }
         }
     },
