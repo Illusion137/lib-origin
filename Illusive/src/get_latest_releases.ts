@@ -1,4 +1,4 @@
-import { SoundCloud, YouTubeMusic } from "@origin/";
+import { SoundCloud, YouTubeMusic } from "@origin/index";
 import { CookieJar } from "@common/utils/cookie_util";
 import { soundcloud_parse_track, soundcloud_parse_track_to_song } from "@illusive/parsers/soundcloud_parser";
 import { parse_youtube_music_artist_album } from "@illusive/parsers/youtube_music_parser";

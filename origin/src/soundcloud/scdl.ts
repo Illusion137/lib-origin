@@ -21,7 +21,7 @@ export namespace SoundCloudDL {
         const client_id = await SoundCloud.get_client_id(hydration.scripts_urls, {cookie_jar});
         if (typeof client_id === "object") return client_id;
         const sound_hyrdration: HydratableSound = hydration.hydration.find((hydratable) => hydratable.hydratable === "sound") as HydratableSound;
-        if (sound_hyrdration.data.media.transcodings.length === 0) return generror("No transcodings available", {permalink, cookie_jar});
+        if (sound_hyrdration?.data?.media?.transcodings === undefined || sound_hyrdration.data.media.transcodings.length === 0) return generror("No transcodings available", {permalink, cookie_jar});
         const filtered_transcodings = sound_hyrdration.data.media.transcodings.filter(transcoding => transcoding.format.protocol === "hls");
         let dl_url: Awaited<ReturnType<typeof get_download_url>> = generror("Unable to find good transcoding", {permalink, cookie_jar});
         for(const transcoding of filtered_transcodings){

@@ -10,7 +10,7 @@ export async function soundcloud_download_from_id(permalink: string, _: string):
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     const url = await Origin.SoundCloudDL.get_download_info_from_permalink(permalink, use_cookies_on_download ? cookie_jar : undefined);
     if(typeof url === "object") return url;
-    return {url: url}
+    return {url: url};
 }
 export async function youtube_download_from_id(video_id: string, quality: string): Promise<DownloadFromIdResult|ResponseError> {
     const ytdl_opts: DownloadOptions = {

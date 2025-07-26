@@ -3,7 +3,7 @@ import type { CompactPlaylist, NamedUUID, Promises } from '@illusive/types';
 import { is_empty, json_catch } from '@common/utils/util';
 import { music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utilts";
 import { get_proxies } from "@illusive/illusi/src/sampler";
-import { Proxy } from "@origin/";
+import { Proxy } from "@origin/index";
 import type { ResponseError } from "@common/types";
 import { Constants } from "@illusive/constants";
 import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';

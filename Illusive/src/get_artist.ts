@@ -1,4 +1,4 @@
-import { AppleMusic, SoundCloud, YouTubeMusic } from "@origin/";
+import { AppleMusic, SoundCloud, YouTubeMusic } from "@origin/index";
 import { CookieJar } from "@common/utils/cookie_util";
 import type { ResponseError } from "@common/types";
 import { urlid } from "@common/utils/util";

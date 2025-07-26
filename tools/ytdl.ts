@@ -1,4 +1,4 @@
-import * as Origin from "@origin/";
+import * as Origin from "@origin/index";
 import { spawn } from 'child_process';
 
 const output_folder = "/Users/illusion/ytdl_out/";

@@ -1,4 +1,4 @@
-import type * as Origin from "@origin/";
+import type * as Origin from "@origin/index";
 import type { CookieJar } from "@common/utils/cookie_util"
 import type { ResponseError} from "@common/types";
 import { TimedCache } from "@common/types"

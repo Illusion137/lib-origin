@@ -5,6 +5,7 @@
     "build:win": "powershell ./scripts/build.ps1",
     "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
     "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
+    "gen_native": "ts-node ./scripts/gen_native.ts",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
@@ -13,20 +14,21 @@
     "@babel/preset-typescript": "^7.24.7",
     "@eslint/js": "^9.15.0",
     "@jest/globals": "^29.7.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/deasync": "^0.1.5",
     "@types/jest": "^29.5.13",
     "@types/request": "^2.48.12",
     "babel-jest": "^29.7.0",
     "drizzle-kit": "^0.31.4",
     "eslint": "^9.31.0",
+    "eslint-plugin-no-relative-import-paths": "^1.6.1",
     "globals": "^15.12.0",
     "jest": "^29.7.0",
     "jest-transform-stub": "^2.0.0",
     "rn-nodeify": "github:tradle/rn-nodeify",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.15.0",
-    "eslint-plugin-no-relative-import-paths": "^1.6.1"
+    "typescript-eslint": "^8.15.0"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
@@ -55,6 +57,7 @@
     "@typescript/native-preview": "^7.0.0-dev.20250705.1",
     "assert": "^1.5.1",
     "axios": "^1.7.7",
+    "better-sqlite3": "^12.2.0",
     "browserify-zlib": "^0.1.4",
     "buffer": "^4.9.2",
     "canvas": "^3.1.0",
@@ -70,7 +73,7 @@
     "docx": "^9.5.0",
     "domain-browser": "^1.2.0",
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.44.2",
+    "drizzle-orm": "^0.44.3",
     "epub2": "^3.0.2",
     "events": "^1.1.1",
     "expo-av": "^14.0.7",

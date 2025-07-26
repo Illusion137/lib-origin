@@ -155,8 +155,16 @@ export class Queue<T = unknown> {
             opts.seek = play_track.discord_playback_data.seek_time;
 
         if(opts?.immediate === true || queue_size === 0){
-            const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
-            if("error" in download_url) throw download_url.error;
+            let download_url;
+            try {
+                download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
+            }
+            catch (e){
+                console.error(e);
+                this.skip();
+                return;
+            }
+            if("error" in download_url) { this.skip(); return; }
         
             const resource = this.connection.create_audio_stream(download_url.url.replace(Illusive.media_archive_path, ''), {
                 metadata: play_track,

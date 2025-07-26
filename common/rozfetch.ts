@@ -31,7 +31,7 @@ export interface RoZFetchRequestInit extends RequestInit {
 type RozFetchText<T> = T extends never ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
 export interface RoZFetchResponse<T> extends Response {
-    // text: RozFetchText<T>; // TODO Investigate 
+    // text: RozFetchText<T>; // TODO Investigate
     json: RozFetchJSON<T>;
     invalidate_cache: () => Promise<void>;
     cache_timestamp: number;
