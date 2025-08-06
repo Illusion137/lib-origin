@@ -1,0 +1,6 @@
+import { ipcRenderer } from "electron";
+__IMPORT_NATIVE_MODULES__
+
+export const preload_electron = {
+__LOAD_PRELOAD_MODULES__
+};

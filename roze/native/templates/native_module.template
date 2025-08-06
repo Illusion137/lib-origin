@@ -1,0 +1,35 @@
+import type { __NATIVE_MODULE_INTERFACE__ } from "@native/__NATIVE_MODULE__/__NATIVE_MODULE__.base";
+import { get_native_platform } from "@native/native_mode";
+
+let __NATIVE_MODULE___instance: __NATIVE_MODULE_INTERFACE__;
+
+export async function load_native___NATIVE_MODULE__(): Promise<__NATIVE_MODULE_INTERFACE__>{
+	if (__NATIVE_MODULE___instance) return __NATIVE_MODULE___instance;
+	switch (get_native_platform()) {
+		case "WEB":
+			console.error("Web Native __NATIVE_MODULE_INTERFACE__ is NOT implemented");
+			break;
+		case "ELECTRON_RENDERER":
+			try {
+				__NATIVE_MODULE___instance = (await import("../gen/electron/modules/__NATIVE_MODULE__.electron_renderer")).electron_renderer___NATIVE_MODULE__;
+			} catch (e) {}
+			break;
+		case "NODE":
+			try {
+				__NATIVE_MODULE___instance = (await import("./__NATIVE_MODULE__.node")).node___NATIVE_MODULE__;
+			} catch (e) {}
+			break;
+		case "REACT_NATIVE":
+			try {
+				__NATIVE_MODULE___instance = (await import("./__NATIVE_MODULE__.mobile")).mobile___NATIVE_MODULE__;
+			} catch (e) {}
+			break;
+	}
+	return __NATIVE_MODULE___instance;
+}
+
+export function __NATIVE_MODULE__(): __NATIVE_MODULE_INTERFACE__ {
+	if (__NATIVE_MODULE___instance) return __NATIVE_MODULE___instance;
+    console.error(new Error("Native Module [__NATIVE_MODULE__/__NATIVE_MODULE_INTERFACE__] is NOT loaded"));
+	return __NATIVE_MODULE___instance;
+}

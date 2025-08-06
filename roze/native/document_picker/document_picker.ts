@@ -1,9 +1,35 @@
 import type { DocumentPicker } from "@native/document_picker/document_picker.base";
 import { get_native_platform } from "@native/native_mode";
 
-export let document_picker: DocumentPicker;
-switch(get_native_platform()){
-    case "WEB": throw new Error("Web Native DocumentPicker is NOT implemented");
-    case "NODE": try {document_picker = require("./document_picker.node").node_document_picker;} catch(e) {} break;
-    case "REACT_NATIVE": try {document_picker = require("./document_picker.mobile").mobile_document_picker;} catch(e) {} break;
+let document_picker_instance: DocumentPicker;
+
+export async function load_native_document_picker(): Promise<DocumentPicker>{
+    if (document_picker_instance) return document_picker_instance;
+    switch (get_native_platform()) {
+        case "WEB":
+            console.error("Web Native document_picker is NOT implemented");
+            break;
+        case "ELECTRON_RENDERER":
+            try {
+                // document_picker_instance = (await import("../gen/electron/modules/document_picker.electron_renderer")).electron_renderer_document_picker;
+            } catch (e) {}
+            break;
+        case "NODE":
+            try {
+                document_picker_instance = (await import("./document_picker.node")).node_document_picker;
+            } catch (e) {}
+            break;
+        case "REACT_NATIVE":
+            try {
+                document_picker_instance = (await import("./document_picker.mobile")).mobile_document_picker;
+            } catch (e) {}
+            break;
+    }
+    return document_picker_instance;
+}
+
+export function document_picker(): DocumentPicker {
+    if (document_picker_instance) return document_picker_instance;
+    console.error(new Error("Native Module [document_picker/DocumentPicker] is NOT loaded"));
+    return document_picker_instance;
 }

@@ -2,12 +2,7 @@ import { is_empty } from "@common/utils/util";
 import { Constants } from '@illusive/constants';
 import { Illusive } from "@illusive/illusive";
 import { music_service_track_primary_key, music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utilts";
-// import { Prefs } from "../../prefs";
 import type { ConvertTo, MusicServiceType, Track } from "@illusive/types";
-import * as GLOBALS from '@illusive/illusi/src/globals';
-// import { sample_tracks_meta, sample_tracks_service } from './sampler';
-import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
-// import { Wifi } from "./wifi_utils";
 
 interface ConvertPlaylistOpts {
     to: ConvertTo;
@@ -15,37 +10,18 @@ interface ConvertPlaylistOpts {
     divide_and_conquer: boolean;
 }
 
-export function track_intersection(f: Track, t: Track): boolean {
-    if(!is_empty(f.illusi_id) && !is_empty(t.illusi_id) && f.illusi_id === t.illusi_id) return true;
-    if(!is_empty(f.youtube_id) && !is_empty(t.youtube_id) && f.youtube_id === t.youtube_id) return true;
-    if(!is_empty(f.youtubemusic_id) && !is_empty(t.youtubemusic_id) && f.youtubemusic_id === t.youtubemusic_id) return true;
-    if(!is_empty(f.spotify_id) && !is_empty(t.spotify_id) && f.spotify_id === t.spotify_id) return true;
-    if(!is_empty(f.amazonmusic_id) && !is_empty(t.amazonmusic_id) && f.amazonmusic_id === t.amazonmusic_id) return true;
-    if(!is_empty(f.applemusic_id) && !is_empty(t.applemusic_id) && f.applemusic_id === t.applemusic_id) return true;
-    if(!is_empty(f.soundcloud_id) && !is_empty(t.soundcloud_id) && f.soundcloud_id === t.soundcloud_id) return true;
-    if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
-    return false;
-}
-export async function playlist_tracks(uuid_uri: string) {
-    if(uuid_uri === Constants.library_write_playlist) {
-        return GLOBALS.global_var.sql_tracks.slice();
-    }
-    const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
-    const is_uuid = uuidv4_regex.test(uuid_uri);
-    if(is_uuid) return await SQLPlaylists.playlist_tracks(uuid_uri);
-    const [service, id] = split_uri(uuid_uri);
-    const tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
-    if("error" in tracks) return [];
-    return tracks.tracks;
-}
-export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_uri: string) {
-    const ptracks = await playlist_tracks(uuid_uri);
-    return tracks.filter((f) => {
-        for(const t of ptracks)
-            if(track_intersection(f, t)) false;    
-        return true;
-    });
-}
+// export function track_intersection(f: Track, t: Track): boolean {
+//     if(!is_empty(f.illusi_id) && !is_empty(t.illusi_id) && f.illusi_id === t.illusi_id) return true;
+//     if(!is_empty(f.youtube_id) && !is_empty(t.youtube_id) && f.youtube_id === t.youtube_id) return true;
+//     if(!is_empty(f.youtubemusic_id) && !is_empty(t.youtubemusic_id) && f.youtubemusic_id === t.youtubemusic_id) return true;
+//     if(!is_empty(f.spotify_id) && !is_empty(t.spotify_id) && f.spotify_id === t.spotify_id) return true;
+//     if(!is_empty(f.amazonmusic_id) && !is_empty(t.amazonmusic_id) && f.amazonmusic_id === t.amazonmusic_id) return true;
+//     if(!is_empty(f.applemusic_id) && !is_empty(t.applemusic_id) && f.applemusic_id === t.applemusic_id) return true;
+//     if(!is_empty(f.soundcloud_id) && !is_empty(t.soundcloud_id) && f.soundcloud_id === t.soundcloud_id) return true;
+//     if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
+//     return false;
+// }
+
 
 interface PlaylistDifferences {
     to_add: Track[],

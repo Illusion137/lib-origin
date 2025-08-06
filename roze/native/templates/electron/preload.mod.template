@@ -1,0 +1,1 @@
+    __KEY__: async (...args: Parameters<ReturnType<(typeof __NATIVE_MODULE__)>["__KEY__"]>) => await ipcRenderer.invoke("__KEY__", ...args),

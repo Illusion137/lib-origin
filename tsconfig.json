@@ -32,7 +32,8 @@
             "@illusive/*": ["Illusive/src/*"],
             "@illusicord/*": ["illusicord/src/*"],
             "@common/*": ["common/*"],
-            "@admin/*": ["admin/*"]
+            "@admin/*": ["admin/*"],
+            "@sample/*": ["sample/*"],
         }
     },
     "ts-node": {

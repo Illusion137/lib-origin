@@ -80,7 +80,9 @@ export interface AlphabetScroll {
     current_position: number,
     top_scroll: number
 }
-export type ConvertTo = { uuid_uri: string } | { title: string };
+export interface ConvertToUUIDURI { uuid_uri: string };
+export interface ConvertToTitle { title: string };
+export type ConvertTo = ConvertToUUIDURI | ConvertToTitle;
 export interface LinkerLink {
     link_uuid: string;
     uuid_uri: string;
@@ -377,8 +379,8 @@ export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
 
-export interface CompactPlaylistsResult {"playlists": CompactPlaylist[], "error"?: Error}
-export interface TrackMix { "tracks": Track[], "error"?: Error }
+export type CompactPlaylistsResult = {"playlists": CompactPlaylist[]} | ResponseError;
+export type TrackMix = { "tracks": Track[], "error"?: Error } | ResponseError;
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
 export interface SearchOpts {limit?: number; proxy?: Origin.Proxy.Proxy}
@@ -477,7 +479,7 @@ export class MusicService {
         const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
         if(this.get_user_playlists === undefined) return {error: [{error: new Error("get_user_playlist is undefined")}], map};
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {error: [account_playlists as ResponseError], map};
+        if("error" in account_playlists) return {error: [account_playlists], map};
         const service_domain_map: Record<MusicServiceURI, string> = {
             illusi: "",
             musi: "",
