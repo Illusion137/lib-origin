@@ -7,7 +7,11 @@ declare class GenericSQLiteDatabase<TSchema extends Record<string, unknown> = Re
     static readonly [entityKind]: string;
 }
 
+export interface SQLiteConnectionOpts {
+    name: string;
+}
+
 export interface SQLite {
-    create_database_connection: () => {}
-    create_database_handle: () => GenericSQLiteDatabase
+    create_database_connection: (opts: SQLiteConnectionOpts) => Promise<unknown>
+    create_database_handle: (connection: unknown) => Promise<GenericSQLiteDatabase>
 };

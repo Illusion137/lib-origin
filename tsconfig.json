@@ -8,7 +8,7 @@
         "noEmit": true,
         "module": "commonjs",
         "esModuleInterop": true,
-        "target": "esnext",
+        "target": "es2022",
         "moduleResolution": "node",
         "resolveJsonModule": true,
         "sourceMap": true,

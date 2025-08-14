@@ -13,6 +13,43 @@ export interface BaseOpts {
     cookie_jar?: CookieJar; 
     fetch_opts?: RoZFetchRequestInit;
 }
+export class Counter<T extends number|string|object> {
+    readonly K!: T extends number ? number : string;
+    counter: Map<typeof this.K, number>;
+    
+    constructor(){
+        this.counter = new Map<typeof this.K, number>();
+    }
+    keygen(value: T): typeof this.K{
+        if(typeof value === "number") return value as typeof this.K;
+        if(typeof value === "string") return value as typeof this.K;
+        return JSON.stringify(value) as typeof this.K;
+    }
+    add(value: T){
+        const key = this.keygen(value);
+        const current_count = this.counter.get(key);
+        if(current_count !== undefined) this.counter.set(key, current_count + 1);
+        else this.counter.set(key, 1);
+    }
+    get(value: T){
+        const key = this.keygen(value);
+        return this.counter.get(key);
+    }
+    all(): [typeof this.K, number][]{
+        return [...this.counter.entries()]
+            .map<[string|number,number]>(value => [isNaN(Number(value[0])) ? value[0] : Number(value[0]), value[1]])
+            .sort((a,b) => b[1] - a[1]) as [typeof this.K, number][];
+    }
+    first_non_zero(): [typeof this.K, number]|undefined {
+        return this.all().find(item => item[0] !== 0);
+    }
+    non_zero(nth: number){
+        return this.all().filter(item => item[0] !== 0)[nth];
+    }
+    reset(){
+        this.counter = new Map<typeof this.K, number>();
+    }
+}
 
 export class TimedCacheValue<V> {
     lifespan_milliseconds: number

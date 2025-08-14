@@ -3,6 +3,8 @@ import { fs } from "./fs";
 import type { FileExtension } from "@common/types";
 import type { EncodingOpts } from "./fs.base";
 
+export type CleanTempFiles = "NO_CLEAN"|"CLEAN_FILES";
+
 export async function gen_temp_file_name(prefix?: string): Promise<string> {
 	return (prefix ?? "") + gen_uuid();
 }

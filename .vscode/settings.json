@@ -1,11 +1,14 @@
 {
 	"editor.codeActionsOnSave": {
-		// "source.fixAll.eslint": "always",
-		// "source.organizeImports": "always"
+		// "source.removeUnused.ts": "never",
+		// "source.sortImports": "always",
+		// "source.organizeImports": "always",
+		// "source.fixAll.eslint": "explicit"
 	},
 	"editor.formatOnSave": false,
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.wordWrap": "on",
+	"editor.formatOnSaveMode": "file",
 	"markdownlint.config": {
 		"MD041": false
 	}

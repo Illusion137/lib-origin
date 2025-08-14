@@ -1,6 +1,7 @@
 import type { TranslationMap } from "@roze/types/types";
 import type { RozContent, RozTextStructures, RozTextStructureType } from "@roze/types/roz";
 import { extract_string_from_pattern, gen_uuid, is_number } from "@common/utils/util";
+import type Roz from "@roze/types/roz";
 
 function html_inner_text_content(html_line: string) {
     return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
@@ -111,12 +112,22 @@ export function generate_translation_map(file_buffer: string): TranslationMap {
     }
     return translation_map;
 }
-export function run_translation_map(text: string, translation_map: TranslationMap){
+export function run_translation_map_string(text: string, translation_map: TranslationMap){
     // TODO: Add ablility to match case
     for(const translation_line of translation_map){
         text = text.replace(translation_line.from, `$1${translation_line.to}$4`);
     }
     return text;
+}
+export function run_translation_map_roz(roz: Roz, translation_map: TranslationMap){
+    roz.content.forEach(chapter => {
+        chapter.chapter.title = run_translation_map_string(chapter.chapter.title ?? "", translation_map);
+        chapter.contents.forEach(content => {
+            if(content.type !== "IMAGE")
+                content.content = run_translation_map_string(content.content, translation_map);
+        })
+    });
+    return roz;
 }
 
 export function timestamp_to_string(t_seconds: number) {

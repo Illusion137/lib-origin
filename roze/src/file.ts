@@ -1,21 +1,25 @@
-import type { RozChapterContents } from '@roze/types/roz';
+import type { RozChapterContents, RozContent } from '@roze/types/roz';
 import type { TocElement } from 'epub2/lib/epub/const';
 import type Roz from '@roze/types/roz';
 import EPub from 'epub2';
-import Pdfparser from 'pdf2json';
 import pathlib from 'path';
 import { html_to_roz_content as html_to_roz_contents } from '@roze/utils';
 import { gen_uuid } from '@common/utils/util';
-import { fs, gen_temp_file_name, get_temp_file_path } from '@native/fs/fs';
-import type { FileExtension, PromiseResult } from '@common/types';
-import { try_json_parse } from '@common/utils/parse_util';
+import { fs } from '@native/fs/fs';
+import { Counter, type FileExtension, type PromiseResult } from '@common/types';
+import { force_json_parse, parse_pdf_date, try_json_parse } from '@common/utils/parse_util';
 import { generror_catch } from '@common/utils/error_util';
+import { gen_temp_file_name, get_temp_file_path } from '@native/fs/fs_utils';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api';
+import pdfjs_lib, { type PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
+import sharp, { type Channels } from 'sharp';
+import { reinterpret_cast } from '@common/cast';
 // import * as docx from "docx";
 // import mammoth from "mammoth";
 
 export namespace FileParser {
     interface ParseFileOpts {
-        donwload_to_directory?: string;
+        download_to_directory?: string;
         file_name_no_ext?: string
     };
 
@@ -30,24 +34,27 @@ export namespace FileParser {
 
     async function transform_url_to_path(file_path_or_url: string, file_extension: FileExtension, opts: ParseFileOpts): PromiseResult<string>{
         if(!is_url(file_path_or_url)) return file_path_or_url;
-        const file_name = opts.file_name_no_ext ? opts.file_name_no_ext + file_extension : gen_temp_file_name(file_extension);
-        const to_download_path = opts.donwload_to_directory ? 
-            pathlib.join(opts.donwload_to_directory, file_name)
-            : get_temp_file_path(file_extension);
-        return await fs.download_to_file(file_path_or_url, to_download_path);
+        const file_name = opts.file_name_no_ext ? opts.file_name_no_ext + file_extension : await gen_temp_file_name(file_extension);
+        const to_download_path = opts.download_to_directory ? 
+            pathlib.join(opts.download_to_directory, file_name)
+            : await get_temp_file_path(file_extension);
+        return await fs().download_to_file(file_path_or_url, to_download_path);
     }
 
     export async function parse_roz(file_path_or_url: string, opts: ParseFileOpts): PromiseResult<Roz> {
         const file_path_err = await transform_url_to_path(file_path_or_url, ".roz", opts);
         if(typeof file_path_err === "object") return file_path_err;
-        const strerr = await fs.read_as_string(file_path_err, {encoding: 'utf8'});
+        const strerr = await fs().read_as_string(file_path_err, {encoding: 'utf8'});
         if(typeof strerr === "string") return try_json_parse<Roz>(strerr);
         return strerr;
+    }
+    function base_64_image(data_base64: string, type: string){
+        return `data:${type};base64,${data_base64}`;
     }
     async function epub_get_image_base64(epub: EPub, html_image_path: string) {
         const image_id = epub.listImage().find(image => image.href && html_image_path.replace(epub.imageroot, '') === image.href)?.id;
         const image: [Buffer, string] = await epub.getImageAsync(image_id!); 
-        return `data:${image[1]};base64,${image[0].toString('base64')}`;
+        return base_64_image(image[0].toString('base64'), image[1]);
     }
     async function parse_epub_flow(epub: EPub){
         const sections: { contents: string; chapter: TocElement; }[] = [];
@@ -87,7 +94,7 @@ export namespace FileParser {
             const roz_sections = await parse_epub_sections_to_roz_content(epub, sections);
             return {
                 uuid: gen_uuid(),
-                source_file: file_path_or_url,
+                source_file: pathlib.resolve(file_path_or_url),
                 source_file_type: "EPUB",
                 title: epub.metadata.title ?? "Unknown EPub",
                 author: epub.metadata.creator ?? null,
@@ -103,39 +110,230 @@ export namespace FileParser {
             return generror_catch(e, "Failed to parse epub", {file_path_or_url, file_path_err, opts});
         }
     }
+    interface PDFOptions {
+        margin_cutoff_header?: number|"autodetect";
+        margin_cutoff_footer?: number|"autodetect";
+    }
+    function pdf_is_cutoff(text_item: TextItem, opts: PDFOptions){
+        return (opts.margin_cutoff_footer && typeof opts.margin_cutoff_footer === "number" && text_item.transform[5] <= opts.margin_cutoff_footer) ||
+        (opts.margin_cutoff_header && typeof opts.margin_cutoff_header === "number" && text_item.transform[5] >= opts.margin_cutoff_header)
+    }
+    async function detect_pdf_spacing(pdf: PDFDocumentProxy, opts: PDFOptions){
+        interface YText {y: number, text: string};
+        const text_y_differences_counter = new Counter<number>();
+        const header_text_height_counter = new Counter<YText>();
+        const footer_text_height_counter = new Counter<YText>();
+        const most_pages_count = pdf.numPages * 0.75;
+        for (let page_num = 1; page_num <= pdf.numPages; page_num++) {
+            const page = await pdf.getPage(page_num);
+            const viewport = page.getViewport({ scale: 1 });
+            const operator_list = await page.getOperatorList();
 
-    export async function parse_pdf(file_path_or_url: string, opts: {
-        pdf_start_page: number;
-        pdf_end_page?: number;
-        pdf_margin_inches: [number, number];
-    } & ParseFileOpts): PromiseResult<string> {
-        const file_path_err = await transform_url_to_path(file_path_or_url, ".pdf", opts);
-        if(typeof file_path_err === "object") return file_path_err;
-        try {
-            let rtxt_content = "";
-            const parser = new Pdfparser();
-            const promise = new Promise((resolve) => {parser.on("pdfParser_dataReady", (data) => {
-                for(const page of data.Pages.slice(opts.pdf_start_page, opts.pdf_end_page)){
-                    console.log(JSON.stringify(page));
-                    for (const t of page.Texts) {
-                        for (const r of t.R) {
-                            if (t.y > opts.pdf_margin_inches[0] && t.y < opts.pdf_margin_inches[1]) {
-                                const txt = decodeURIComponent(r.T)
-                                // rtxt
-                                if(txt === null){
-                                    rtxt_content += '\n';
-                                }
-                                rtxt_content += txt + '\r\n';
-                            }
+            const top_threshold = viewport.height * 0.9;
+            const bottom_threshold = viewport.height * 0.1;
+
+            const text_content = await page.getTextContent();
+            let text_index = 0;
+            let last_y = 0;
+
+            for (const fn_id of operator_list.fnArray) {
+                if (fn_id === pdfjs_lib.OPS.showText || fn_id === pdfjs_lib.OPS.showSpacedText) {
+                    while (text_index < text_content.items.length) {
+                        const text_item = text_content.items[text_index++] as TextItem;
+                        if(pdf_is_cutoff(text_item, opts)) continue;
+                        const this_y = text_item.transform[5];
+                        if(this_y > top_threshold && text_item.str.trim()){
+                            header_text_height_counter.add({y: this_y, text: text_item.str});
                         }
+                        if(this_y < bottom_threshold){
+                            footer_text_height_counter.add({y: this_y, text: text_item.str});
+                        }
+
+                        const y_difference = Math.abs(this_y - last_y);
+                        text_y_differences_counter.add(y_difference);
+
+                        last_y = this_y;
                     }
                 }
-                resolve(0);
-                });
-            });
-            await parser.loadPDF(file_path_or_url);
-            await promise;
-            return rtxt_content;
+            }
+        }
+        const maybe_margin_cutoff_header = header_text_height_counter.all().find((value) => value[1] >= most_pages_count)?.[0];
+        const maybe_margin_cutoff_footer = footer_text_height_counter.all().find((value) => value[1] >= most_pages_count)?.[0];
+        return {
+            paragraph_gap: (text_y_differences_counter.first_non_zero()?.[0] ?? 0) + 2,
+            margin_cutoff_header: maybe_margin_cutoff_header ? force_json_parse<YText>(maybe_margin_cutoff_header).y : Infinity,
+            margin_cutoff_footer: maybe_margin_cutoff_footer ? force_json_parse<YText>(maybe_margin_cutoff_footer).y : 0,
+        };
+    }
+    type RozPDFContent = RozContent & {pdf_text_height?: number};
+    function roz_pdf_contents_to_roz_chapter_contents(contents: RozPDFContent[], text_height_counter: Counter<number>){
+        const roz_chapter_contents: RozChapterContents[] = [];
+        let chapter_contents: RozContent[] = [];
+        let prev_chapter_title = "Cover";
+        for(const content of contents){
+            if(content.type === "IMAGE"){
+                delete content.pdf_text_height;
+                chapter_contents.push(content);
+            }
+            else if(content.type === "PARAGRAPH"){
+                if(content.pdf_text_height === text_height_counter.non_zero(0)[0]){
+                    delete content.pdf_text_height;
+                    chapter_contents.push(content);
+                }
+                else if(content.pdf_text_height === text_height_counter.non_zero(1)[0]){
+                    delete content.pdf_text_height;
+                    roz_chapter_contents.push({
+                        chapter: {
+                            title: prev_chapter_title
+                        },
+                        contents: chapter_contents
+                    });
+                    prev_chapter_title = content.content;
+                    chapter_contents = [];
+                    chapter_contents.push({...content, type: "CHAPTER_TITLE"});
+                }
+            }
+        }
+        return roz_chapter_contents;
+    }
+    export async function parse_pdf(file_path_or_url: string, opts: {
+        paragraph_gap: number|"autodetect";
+        cover_look_slice?: number;
+        on_pdf_load_progress?: (progress: {loaded: number, total: number}) => void;
+    } & PDFOptions & ParseFileOpts): PromiseResult<Roz> {
+        const file_path_err = await transform_url_to_path(file_path_or_url, ".pdf", opts);
+        if(typeof file_path_err === "object") return file_path_err;
+        const pdf_document_base64_data = await fs().read_as_string(file_path_err, {encoding: 'base64'});
+        if(typeof pdf_document_base64_data === "object") return pdf_document_base64_data;
+        const pdf_document_bytes = Uint8Array.from(atob(pdf_document_base64_data.replace(/^data[^,]+,/,'')), v => v.charCodeAt(0));
+        try {
+            const loading_task = pdfjs_lib.getDocument({ data: pdf_document_bytes, verbosity: 0});
+            loading_task.onProgress = opts.on_pdf_load_progress ?? (() => { return });
+            
+            const pdf = await loading_task.promise;
+            const detected_spacing = await detect_pdf_spacing(pdf, opts);
+            const paragraph_gap = opts.paragraph_gap === "autodetect" ? detected_spacing.paragraph_gap : opts.paragraph_gap;
+            opts.margin_cutoff_header = opts.margin_cutoff_header === "autodetect" ? detected_spacing.margin_cutoff_header : opts.margin_cutoff_header; 
+            opts.margin_cutoff_footer = opts.margin_cutoff_footer === "autodetect" ? detected_spacing.margin_cutoff_footer : opts.margin_cutoff_footer; 
+
+            const contents: RozPDFContent[] = [];
+            const text_height_counter = new Counter<number>();
+            const paragraph_text_heights_counter = new Counter<number>();
+    
+            for (let page_num = 1; page_num <= pdf.numPages; page_num++) {
+                const page = await pdf.getPage(page_num);
+                const operator_list = await page.getOperatorList();
+    
+                const text_content = await page.getTextContent();
+                let text_index = 0;
+                let current_paragraph = "";
+                let last_y: number|null = null;
+                let last_x: number|null = null;
+    
+                const push_paragraph_if_needed = () => {
+                    if (current_paragraph.trim().length > 0) {
+                        contents.push({ pdf_text_height: paragraph_text_heights_counter.first_non_zero()?.[0], type: "PARAGRAPH", content: current_paragraph.trim(), uuid: gen_uuid(), duration: 0 });
+                        current_paragraph = "";
+                        paragraph_text_heights_counter.reset();
+                    }
+                };
+                const append_text_with_layout = (text_item: TextItem) => {
+                    text_height_counter.add(text_item.height);
+                    paragraph_text_heights_counter.add(text_item.height);
+                    const this_x = text_item.transform[4];
+                    const this_y = text_item.transform[5];
+    
+                    const y_tolerance = 1.5; // pixels tolerance for same line
+                    const space_gap = 3; // horizontal gap to count as space
+    
+                    if (last_y !== null) {
+                        const y_diff = Math.abs(this_y - last_y);
+                        if (y_diff <= y_tolerance) {
+                            if (last_x !== null && this_x - last_x > space_gap) {
+                                current_paragraph += " " + text_item.str;
+                            } else {
+                                current_paragraph += text_item.str;
+                            }
+                        } else if (y_diff < paragraph_gap) {
+                            current_paragraph += " " + text_item.str;
+                        } else {
+                            push_paragraph_if_needed();
+                            current_paragraph += text_item.str;
+                        }
+                    } else {
+                        current_paragraph += text_item.str;
+                    }
+    
+                    last_y = this_y;
+                    last_x = this_x + text_item.width;
+                };
+                
+                for (let i = 0; i < operator_list.fnArray.length; i++) {
+                    const fn_id = operator_list.fnArray[i];
+                    const args = operator_list.argsArray[i];
+    
+                    if (fn_id === pdfjs_lib.OPS.showText || fn_id === pdfjs_lib.OPS.showSpacedText) {
+                        while (text_index < text_content.items.length) {
+                            const text_item = text_content.items[text_index++] as TextItem;
+                            if(pdf_is_cutoff(text_item, opts)) continue;
+                            append_text_with_layout(text_item);
+                        }
+                    }
+    
+                    if (fn_id === pdfjs_lib.OPS.paintImageXObject || fn_id === pdfjs_lib.OPS.paintImageXObjectRepeat) {
+                        push_paragraph_if_needed();
+    
+                        const image_name = args[0];
+                        const image_obj = await new Promise<any>((resolve) => {
+                            page.objs.get(image_name, (img: any) => resolve(img));
+                        });
+                
+                        if (image_obj?.data) {
+                            const channels = image_obj.dataLen / (image_obj.height * image_obj.width);
+                            const png_buffer = await sharp(Buffer.from(image_obj.data), {
+                                raw: {
+                                    width: image_obj.width,
+                                    height: image_obj.height,
+                                    channels: reinterpret_cast<Channels>(channels)
+                                }
+                            }).raw().png().toBuffer();
+                
+                            contents.push({type: "IMAGE", content: base_64_image(png_buffer.toString("base64"), "png"), uuid: gen_uuid(), duration: 0});
+                        }
+    
+                        last_y = null;
+                        last_x = null;
+                    }
+                }
+                push_paragraph_if_needed();
+            }
+            const pdf_info: {
+                PDFFormatVersion?: string,
+                IsAcroFormPresent?: boolean,
+                IsXFAPresent?: boolean,
+                Title?: string,
+                Author?: string,
+                Creator?: string,
+                Producer?: string,
+                CreationDate?: string,
+                ModDate?: string
+            } = (await pdf.getMetadata()).info;
+
+            const cover = contents.slice(0, opts.cover_look_slice ?? 3).find(content => content.type === "IMAGE");
+
+            return {
+                uuid: gen_uuid(),
+                source_file: pathlib.resolve(file_path_or_url),
+                source_file_type: "PDF",
+                title: pdf_info.Title ?? pathlib.basename(file_path_or_url),
+                author: pdf_info.Author ?? null,
+                publisher: pdf_info.Producer ?? null,
+                date: pdf_info.CreationDate ? parse_pdf_date(pdf_info.CreationDate)?.toISOString() : new Date().toISOString(),
+                cover: cover?.content ?? null,
+                series_name: null,
+                series_no: null,
+                content: roz_pdf_contents_to_roz_chapter_contents(contents, text_height_counter)
+            };
         }
         catch(e){
             return generror_catch(e, "Failed to parse pdf", {file_path_or_url, file_path_err, opts});
@@ -148,12 +346,12 @@ export namespace FileParser {
         const file_path_err = await transform_url_to_path(file_path_or_url, ".txt", opts);
         if(typeof file_path_err === "object") return file_path_err;
         try {
-            const text_contents = await fs.read_as_string(file_path_or_url, {});
+            const text_contents = await fs().read_as_string(file_path_or_url, {});
             if(typeof text_contents === "object") return text_contents;
             const line_normalized_text_contents = text_contents.replace(/\r\n/g, '\n');
             return {
                 uuid: gen_uuid(),
-                source_file: file_path_or_url,
+                source_file: pathlib.resolve(file_path_or_url),
                 source_file_type: "TXT",
                 title: title,
                 author: null,

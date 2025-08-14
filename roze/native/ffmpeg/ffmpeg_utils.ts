@@ -2,7 +2,7 @@ import { ffmpeg } from "@native/ffmpeg/ffmpeg";
 import { fs } from "@native/fs/fs";
 import type { FileExtension } from "@common/types";
 import type { DurationImage } from "@roze/types/types";
-import { gen_temp_file_name, use_temp_file } from "@native/fs/fs_utils";
+import { gen_temp_file_name, use_temp_file, type CleanTempFiles } from "@native/fs/fs_utils";
 
 export async function generate_static_video_with_audio(cover_path: string, audio_path: string, extension: FileExtension) {
 	const out_file_path = await fs().temp_directory((await gen_temp_file_name()) + extension);
@@ -11,18 +11,18 @@ export async function generate_static_video_with_audio(cover_path: string, audio
 	return out_file_path;
 }
 
-export async function combine_audio_and_video(video_path: string, audio_path: string, extension: FileExtension, clean_temp_files: boolean) {
+export async function combine_audio_and_video(video_path: string, audio_path: string, extension: FileExtension, clean_temp_files: CleanTempFiles) {
 	const combined_video_out_path = await fs().temp_directory((await gen_temp_file_name()) + extension);
 	const arg_list = ["-i", video_path, "-i", audio_path, "-c:v", "copy", "-c:a", "aac", "-shortest", combined_video_out_path];
 	await ffmpeg().execute_args(arg_list);
-	if (clean_temp_files) {
+	if (clean_temp_files === "CLEAN_FILES") {
 		await fs().remove(video_path);
 		await fs().remove(audio_path);
 	}
 	return combined_video_out_path;
 }
 
-export async function generate_dynamic_video_with_audio(duration_images: DurationImage[], audio_path: string, extension: FileExtension, clean_temp_files: boolean) {
+export async function generate_dynamic_video_with_audio(duration_images: DurationImage[], audio_path: string, extension: FileExtension, clean_temp_files: CleanTempFiles) {
 	const image_list_file_contents = duration_images.map((duration_image) => `file ${duration_image.image_path.replace(/\\/g, "/")}\nduration ${duration_image.duration}`).join("\n");
 	const temp_video_generated_path = await fs().temp_directory((await gen_temp_file_name()) + extension);
 	await use_temp_file(image_list_file_contents, ".txt", { encoding: "utf8" }, async (temp_images_list_file_path) => {
@@ -30,21 +30,21 @@ export async function generate_dynamic_video_with_audio(duration_images: Duratio
 		await ffmpeg().execute_args(arg_list);
 	});
 	await combine_audio_and_video(temp_video_generated_path, audio_path, extension, clean_temp_files);
-	if (clean_temp_files) {
+	if (clean_temp_files === "CLEAN_FILES") {
 		for (const { image_path } of duration_images) {
 			await fs().remove(image_path);
 		}
 	}
 }
 
-export async function concact_audio_files(file_paths: string[], extension: FileExtension, clean_temp_files: boolean) {
+export async function concact_audio_files(file_paths: string[], extension: FileExtension, clean_temp_files: CleanTempFiles) {
 	const audio_list_file_contents = file_paths.map((file_path) => `file ${file_path.replace(/\\/g, "/")}`).join("\n");
 	const out_file_path = await fs().temp_directory((await gen_temp_file_name()) + extension);
 	await use_temp_file(audio_list_file_contents, ".txt", { encoding: "utf8" }, async (temp_audio_list_file_path) => {
 		const arg_list = ["-f", "concat", "-safe", "0", "-i", temp_audio_list_file_path, "-c", "copy", out_file_path];
 		await ffmpeg().execute_args(arg_list);
 	});
-	if (clean_temp_files) {
+	if (clean_temp_files === "CLEAN_FILES") {
 		for (const file_path of file_paths) {
 			await fs().remove(file_path);
 		}

@@ -9,7 +9,7 @@ import type { AmazonMusicLibraryPlaylist, ShowLibraryHome } from "@origin/amazon
 import rozfetch from "@common/rozfetch";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror } from "@common/utils/error_util";
-import { wait } from "@common/utils/timed_utilt";
+import { wait } from "@common/utils/timed_util";
 import { base_get_headers, base_post_headers } from "@common/headers_base";
 
 export namespace AmazonMusic {

@@ -25,6 +25,9 @@ export function extract_string_from_pattern(str: string, pattern: RegExp) {
 	const extracted = body_groups[1];
 	return extracted;
 }
+export function extract_string_undef(str: string, pattern: RegExp){
+    return error_undefined(extract_string_from_pattern(str, pattern));
+}
 export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const matched = str.matchAll(pattern);
     const match_spread = [...matched];

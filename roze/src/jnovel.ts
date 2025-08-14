@@ -116,7 +116,7 @@ export namespace JNovel {
 		const index = reader_result.toc.findIndex(volume => volume.chapters.findIndex(chapter => chapter.uuid === opts.legacy_id) !== -1);
 		const volume_parts = reader_result.toc[index].chapters;
 		for (const volume_part of volume_parts)
-			if (volume_part.selected != true)
+			if (volume_part.selected !== true)
 				uuids.push(volume_part.uuid);
 		for (const uuid of uuids) {
 			const temp_reader = await reader({ ...opts, legacy_id: uuid });

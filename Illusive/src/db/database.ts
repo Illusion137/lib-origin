@@ -1,15 +1,14 @@
-import { open } from '@op-engineering/op-sqlite';
-import { drizzle } from 'drizzle-orm/op-sqlite';
-import { document_directory } from '@illusive/illusi/src/sql/sql_fs';
+import { SQLfs } from '@illusive/sql/sql_fs';
+import { sqlite } from '@native/sqlite/sqlite';
 
 export const db_path = "illusi-db-1400.sqlite3";
-export const sqlite_location = async() => (await document_directory('SQLite')).replace('file://', '');
+export const sqlite_location = async() => (await SQLfs.document_directory('SQLite')).replace('file://', '');
 
-export let db_connection: ReturnType<typeof open>;
-export let db: ReturnType<typeof drizzle>;
-export async function load_database(){
-    db_connection = open({
-        name: db_path
+let db_connection: Awaited<ReturnType<typeof sqlite.create_database_connection>>;
+export let db: Awaited<ReturnType<typeof sqlite.create_database_handle>>;
+export async function load_database(path?: string){
+    db_connection = await sqlite.create_database_connection({
+        name: path ?? db_path
     });
-    db = drizzle(db_connection);
+    db = await sqlite.create_database_handle(db_connection);
 }

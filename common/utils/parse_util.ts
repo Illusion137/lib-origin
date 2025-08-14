@@ -7,6 +7,9 @@ function json_eval<T>(json: string): T {
     const result = eval("let evaluated = " + json + "; evaluated;");
     return result;
 }
+export function force_json_parse<T>(json_string: string): T {
+	try { return JSON.parse(json_string) as T; } catch (error) { return {} as never; }
+}
 export function try_json_parse<T>(json_string: string): T|ResponseError {
 	try { return JSON.parse(json_string) as T; } catch (error) { return generror_catch(error, "Failed to parse JSON", {json_string: small_string(json_string)}); }
 }
@@ -40,4 +43,17 @@ export function youtube_views_number(views_string?: string): number {
 export function parse_runs(runs: ({text: string}[]) | undefined, join_with?: string ): string {
     if(runs === undefined) return "";
     return runs.map(run => run.text).join(join_with ?? " ");
+}
+
+export function parse_pdf_date(pdf_date: string): Date{
+    if(!pdf_date.startsWith("D:")) return new Date(0);
+    pdf_date = pdf_date.slice(2);
+    const date = new Date(0);
+    date.setFullYear(Number(pdf_date.slice(0,4)));
+    date.setMonth(Number(pdf_date.slice(4,6)));
+    date.setDate(Number(pdf_date.slice(6,8)));
+    date.setHours(Number(pdf_date.slice(8,10)));
+    date.setMinutes(Number(pdf_date.slice(10,12)));
+    date.setSeconds(Number(pdf_date.slice(12,14)));
+    return date;
 }

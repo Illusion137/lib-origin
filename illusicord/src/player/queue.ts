@@ -81,12 +81,12 @@ export class Queue<T = unknown> {
             });
         }
         this.connection!
-            .on('start', (resource: {metadata: DiscordTrack}) => {
+        .on('start', (resource: {metadata: DiscordTrack}) => {
             this.is_playing = true;
             if (resource?.metadata?.discord_playback_data.is_first && resource?.metadata?.discord_playback_data.seek_time === 0)
                 this.player.emit('songFirst', this, this.now_playing);
         })
-            .on('end', async (_) => {
+        .on('end', async (_) => {
             if (this.destroyed) {
                 this.player.emit('queueDestroyed', this);
                 return;
@@ -117,7 +117,7 @@ export class Queue<T = unknown> {
                 return this.play(this.tracks[0], { immediate: true });
             }
         })
-            .on('error', (err) => this.player.emit('error', err.message, this));
+        .on('error', (err) => this.player.emit('error', err.message, this));
         return this;
     }
 
@@ -155,25 +155,21 @@ export class Queue<T = unknown> {
             opts.seek = play_track.discord_playback_data.seek_time;
 
         if(opts?.immediate === true || queue_size === 0){
-            let download_url;
-            try {
-                download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
+            const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
+            if("error" in download_url){
+                console.log(download_url);
             }
-            catch (e){
-                console.error(e);
-                this.skip();
-                return;
-            }
-            if("error" in download_url) { this.skip(); return; }
-        
-            const resource = this.connection.create_audio_stream(download_url.url.replace(Illusive.media_archive_path, ''), {
+            const resource = "error" in download_url ? this.connection.create_audio_stream("C:/dev/Illusi/lib-origin/illusicord/media/5-seconds-of-silence.mp3", {
+                metadata: play_track,
+                inputType: StreamType.Arbitrary
+            }) : this.connection.create_audio_stream(download_url.url.replace(Illusive.media_archive_path, ''), {
                 metadata: play_track,
                 inputType: StreamType.Arbitrary
             });
-            this.connection.play_audio_stream(resource)
-                .then(__ => {
-                this.set_volume(this.options.volume ?? 100);
-            }).catch(e => e);
+            this.connection
+                .play_audio_stream(resource)
+                .then(__ => this.set_volume(this.options.volume ?? 100))
+                .catch(e => e);
             return play_track;
         }
         return play_track;
@@ -202,7 +198,7 @@ export class Queue<T = unknown> {
             throw new DMPError(DMPErrors.QUEUE_DESTROYED);
         if (!this.connection)
             throw new DMPError(DMPErrors.NO_VOICE_CONNECTION);
-        this.tracks.splice(1, index);
+        this.tracks.splice(index, 1);
         const skipped_song = this.tracks[0];
         this.connection.stop();
         return skipped_song;

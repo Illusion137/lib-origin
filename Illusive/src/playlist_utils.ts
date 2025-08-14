@@ -1,11 +1,9 @@
-import type { ConvertTo, MusicServiceType, Track } from "./types";
-import { music_service_track_primary_key, music_service_uri_to_music_service, split_uri } from "./illusive_utilts";
+import type { PromiseResult } from "@common/types";
+import { generror } from "@common/utils/error_util";
 import { Constants } from "./constants";
 import { Illusive } from "./illusive";
-import { generror } from "@common/utils/error_util";
-import type { PromiseResult } from "@common/types";
-import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
-import { Prefs } from "./prefs";
+import { music_service_uri_to_music_service, split_uri } from "./illusive_utilts";
+import type { CompactPlaylistData, ConvertTo, MusicServiceType, Playlist, SortType, Track } from "./types";
 
 export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track[], sql_playlist_tracks: (uuid: string) => Promise<Track[]>) {
     if(uuid_uri === Constants.library_write_playlist) {
@@ -45,35 +43,9 @@ export async function playlist_tracks_differences_actions(playlist_tracks: Track
     }
     return differences;
 }
-export async function playlist_tracks_excluding_playlist(tracks: Track[], uuid_uri: string, global_tracks: Track[], get_sql_playlist_tracks: (uuid: string) => Promise<Track[]>) {
-    const ptracks = await get_playlist_tracks(uuid_uri, global_tracks, get_sql_playlist_tracks);
-    return tracks.filter((f) => {
-        for(const t of ptracks)
-            if(track_intersection(f, t)) false;    
-        return true;
-    });
-}
-type MutilatePlaylistMode = "ADD"|"REMOVE";
-type MutilatePlaylistResponse = PromiseResult<{ok: boolean}>;
-export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse{
-    if("title" in convert_opts) {
-        const all_playlists = await SQLPlaylists.all_playlists_data();
-        const found_playlist = all_playlists.find(playlist => playlist.title === convert_opts.title);
-        if(found_playlist !== undefined){
-            //TODO check if tracks exist in library first
-            if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
-            if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
-            return {ok: true};
-        }
-        const playlist_uuid = await SQLPlaylists.create_playlist(convert_opts.title);
-        await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, incoming_tracks.map(({uid}) => uid));
-        return {ok: true};
-    } else {
-        if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
-        if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
-        return {ok: true};
-    }
-}
+export type MutilatePlaylistMode = "ADD"|"REMOVE";
+export type MutilatePlaylistResponse = PromiseResult<{ok: boolean}>;
+
 export async function mutilate_to_service_playlist(to_service: MusicServiceType, convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse{
     const service = Illusive.music_service.get(to_service)!;
     if("title" in convert_opts) {
@@ -94,60 +66,55 @@ export async function mutilate_to_service_playlist(to_service: MusicServiceType,
     else if(mode === "REMOVE") return {ok: await service.delete_tracks_from_playlist!(incoming_tracks, playlist_id)};
     return generror("Unknown Mutilate Mode", {to_service, convert_opts, mode});
 }
-export async function mutilate_playlist(to_service: MusicServiceType, convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode){
-    if(to_service === "Illusi") return mutilate_to_illusi_playlist(convert_opts, incoming_tracks, mode);
-    else return mutilate_to_service_playlist(to_service, convert_opts, incoming_tracks, mode);
+
+function date_time(date?: string): number{
+    if(date) return new Date(date).getTime();
+    return 0;
 }
 
-async function playlist_convert_divide_and_conquer(to: MusicServiceType, convert_to: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode, depth: number): Promise<boolean>{
-    if(depth >= 16) return false;
-    if(incoming_tracks.length === 0) return true;
-    if(incoming_tracks.length === 1) {
-        const status = await mutilate_playlist(to, convert_to, incoming_tracks, mode);
-        if(!("error" in status) && !status.ok){
-            // TODO Maybe sample
-            // await sample_tracks_meta(from_tracks);
-        }
-        return true;
+export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Track[] {
+    switch(sort_mode) {
+        case undefined:
+        case "OLDEST":                  return tracks;
+        case "NEWEST":                  return tracks.slice().reverse();
+        case "ALPHABETICAL":            return tracks.sort((a, b) => a.title.localeCompare(b.title) );
+        case "ALPHABETICAL_REVERSE":    return tracks.sort((a, b) => b.title.localeCompare(a.title) );
+        case "DURATION_HILOW":          return tracks.sort((a, b) => b.duration - a.duration);
+        case "DURATION_LOWHI":          return tracks.sort((a, b) => a.duration - b.duration);
+        case "PLAYS_HILOW":             return tracks.sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0));
+        case "PLAYS_LOWHI":             return tracks.sort((a, b) => (a.meta?.plays ?? 0) - (b.meta?.plays ?? 0));
+        case "VIEWS_HILOW":             return tracks.sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0));
+        case "VIEWS_LOWHI":             return tracks.sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0));
+        case "ADDED_DATE_HILOW":        return tracks.sort((a, b) => date_time(b.meta?.added_date) - date_time(a.meta?.added_date)); 
+        case "ADDED_DATE_LOWHI":        return tracks.sort((a, b) => date_time(a.meta?.added_date) - date_time(b.meta?.added_date));
+        case "DOWNLOAD_DATE_HILOW":     return tracks.sort((a, b) => date_time(b.meta?.downloaded_date) - date_time(a.meta?.downloaded_date));
+        case "DOWNLOAD_DATE_LOWHI":     return tracks.sort((a, b) => date_time(a.meta?.downloaded_date) - date_time(b.meta?.downloaded_date));
+        case "LAST_PLAYED_DATE_HILOW":  return tracks.sort((a, b) => date_time(b.meta?.last_played_date) - date_time(a.meta?.last_played_date));
+        case "LAST_PLAYED_DATE_LOWHI":  return tracks.sort((a, b) => date_time(a.meta?.last_played_date) - date_time(b.meta?.last_played_date));
+        case "LAST_SAMPLED_DATE_HILOW": return tracks.sort((a, b) => date_time(b.meta?.last_sampled_date) - date_time(a.meta?.last_sampled_date));
+        case "LAST_SAMPLED_DATE_LOWHI": return tracks.sort((a, b) => date_time(a.meta?.last_sampled_date) - date_time(b.meta?.last_sampled_date));
+        default: return tracks;
     }
-    const conquer = await mutilate_playlist(to, convert_to, incoming_tracks, mode);
-    if(!("error" in conquer) && conquer.ok) return true;
-    const left_conquer = await playlist_convert_divide_and_conquer(to, convert_to, incoming_tracks.slice(0, incoming_tracks.length / 2), mode, depth + 1);
-    const right_conquer = await playlist_convert_divide_and_conquer(to, convert_to, incoming_tracks.slice(incoming_tracks.length / 2), mode, depth + 1);
-    return left_conquer && right_conquer;
 }
 
-interface ConvertPlaylistOpts {
-    convert_opts: ConvertTo;
-    full_sample: "NONE"|"SPEED_SAMPLE"|"SUPER_SPEED_SAMPLE";
-    divide_and_conquer: boolean;
-    check_connection: boolean;
+export function sort_compact_playlists_data(playlists: CompactPlaylistData[]) {
+    const ordered_playlists: CompactPlaylistData[] = [];
+    for(const playlist of playlists) {
+        if(playlist.pinned)
+            ordered_playlists.unshift(playlist);
+        else
+            ordered_playlists.push(playlist);
+    }
+    return ordered_playlists;
 }
-export async function convert_playlist(playlist_tracks: Track[], incoming_tracks: Track[], to_service: MusicServiceType, opts: ConvertPlaylistOpts) {
-    if(opts.check_connection && Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
-    const service = Illusive.music_service.get(to_service)!;
-    const to_ok = service.create_playlist !== undefined && service.add_tracks_to_playlist !== undefined;
-    if(!to_ok) return {error: new Error(`Unable to create/modify playlist from ${to_service}`)};
-    if(opts.full_sample !== "NONE" && service.search === undefined) return {error: new Error(`Unable to sample tracks to ${to_service}; Missing search function`)};
-    //TODO SAMPLING
-    // if(opts.full_sample === "SPEED_SAMPLE") from_tracks = await sample_tracks_service(from_tracks, to);
-    if(to_service === "YouTube" || to_service === "YouTube Music") {
-        // await speed_sample_unavailable_tracks(from_tracks); 
-        incoming_tracks = incoming_tracks.filter(track => !(track.meta?.unavailable ?? false));
+
+export function sort_playlists(playlists: Playlist[]) {
+    const ordered_playlists: Playlist[] = [];
+    for(const playlist of playlists) {
+        if(playlist.pinned)
+            ordered_playlists.unshift(playlist);
+        else
+            ordered_playlists.push(playlist);
     }
-    if(!("uuid_uri" in opts.convert_opts)){
-        const status = await mutilate_playlist(to_service, opts.convert_opts, incoming_tracks, "ADD");
-        return status;
-    }
-    const differences = await playlist_tracks_differences_actions(playlist_tracks, incoming_tracks, music_service_track_primary_key(to_service));
-    if(opts.divide_and_conquer){
-        const ok = 
-        {ok: await playlist_convert_divide_and_conquer(to_service, opts.convert_opts, differences.to_add, "ADD", 0)}.ok && 
-        {ok: await playlist_convert_divide_and_conquer(to_service, opts.convert_opts, differences.to_remove, "REMOVE", 0)}.ok;
-        return {ok};
-    }    
-    const status_add = await mutilate_playlist(to_service, opts.convert_opts, differences.to_add, "ADD");
-    const status_remove = await mutilate_playlist(to_service, opts.convert_opts, differences.to_remove, "REMOVE");
-    const ok = (!("error" in status_add) && status_add.ok) && (!("error" in status_remove) && status_remove.ok);
-    return {ok};
+    return ordered_playlists;
 }

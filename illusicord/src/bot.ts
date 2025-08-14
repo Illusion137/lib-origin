@@ -8,11 +8,11 @@ const client: DiscordClient = new Client({
 }) as any;
 
 const player = new Player(client, {
-    leaveOnEnd: false,
+    leaveOnEnd: true,
     timeout: 1000 * 600,
     deafenOnJoin: true,
     leaveOnStop: true,
-    leaveOnEmpty: false, // This options are optional.
+    leaveOnEmpty: true, // This options are optional.
 });
 client.player = player;
 
@@ -23,7 +23,7 @@ client.player
     // .on('playlistAdd', (_, playlist) => console.log(`Playlist ${playlist} with ${playlist.songs.length} was added to the queue.`))
     .on('queueDestroyed', () => console.log(`The queue was destroyed.`))
     .on('queueEnd', () => console.log(`The queue has ended.`))
-    .on('songChanged', (_, newSong, __) => console.log(`${newSong} is now playing.`))
+    .on('songChanged', (_, newSong, __) => console.log(`${newSong.title} is now playing.`))
     .on('songFirst', (_, song) => send_message(client, `> Started playing -> ` + track_to_string(song)))
     .on('clientDisconnect', () => console.log(`I was kicked from the Voice Channel, queue ended.`))
     .on('clientUndeafen', () => console.log(`I got undefeanded.`))

@@ -1,4 +1,3 @@
-import * as uuid from "react-native-uuid";
 import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utilts";
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLCount, SQLPlaylist, SQLPlaylistArray, SQLTrack, Track } from "@illusive/types";
 import { ExampleObj } from "@illusive/illusi/src/example_objs";
@@ -9,6 +8,8 @@ import { sort_playlist_tracks } from "@illusive/illusi/src/playlist";
 import { is_empty } from "@common/utils/util";
 import { default_playlists } from "@illusive/illusi/src/default_playlists";
 import { TimedCache } from "@common/types";
+import { db } from "./database";
+import { playlists_tracks_table } from "@illusive/db/schema";
 
 function playlist_to_sqllite_insertion(playlist: Playlist) {
     const to_array: SQLPlaylistArray = [

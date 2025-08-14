@@ -68,3 +68,18 @@ export function generror(msg: string, args: object = {}): ResponseError{
 export function generror_fetch(response: Response, msg: string, maybe_jar?: {cookie_jar?: CookieJar}, args: object = {}): ResponseError{
 	return generror(`${msg};\n Response failed with status code ${response.status}(${status_codes_descriptions[response.status]}) : "${response.statusText}"${maybe_jar?.cookie_jar !== undefined ? " [Using Cookies]" : ""}`, args);
 }
+
+export function catch_else_sync<T>(value: () => T, fail_value: (e: unknown) => T): T {
+    try {
+        return value();
+    } catch (e) {
+        return fail_value(e);
+    }
+}
+export async function catch_else<T>(value: () => Promise<T>, fail_value: (e: unknown) => Promise<T>): Promise<T> {
+    try {
+        return await value();
+    } catch (e) {
+        return await fail_value(e);
+    }
+}

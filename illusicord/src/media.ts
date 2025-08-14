@@ -12,6 +12,7 @@ function make_media(data: {title: string; media_uri: string; duration: number;})
 }
 
 export const MEDIA = [
+	make_media({"title":"5-seconds-of-silence.mp3","media_uri":"C:\\dev\\Illusi\\lib-origin\\illusicord\\media\\5-seconds-of-silence.mp3","duration":5}),
 	make_media({"title":"A Wendy’s Christmas.m4a","media_uri":"C:\\dev\\Illusi\\lib-origin\\illusicord\\media\\A Wendy’s Christmas.m4a","duration":135}),
 	make_media({"title":"BoutMyMoneyMaster.m4a","media_uri":"C:\\dev\\Illusi\\lib-origin\\illusicord\\media\\BoutMyMoneyMaster.m4a","duration":116}),
 	make_media({"title":"BrolyTiming(otherset).m4a","media_uri":"C:\\dev\\Illusi\\lib-origin\\illusicord\\media\\BrolyTiming(otherset).m4a","duration":92}),

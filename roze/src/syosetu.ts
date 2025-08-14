@@ -1,11 +1,13 @@
 import type { CookieJar } from "tough-cookie";
 import { jsdom_document, map_html_collection } from "@common/jsdom";
-import type { PromiseResult } from "@common/types";
+import type { PromiseResult, ResponseError } from "@common/types";
 import { extract_string_from_pattern, gen_uuid, is_empty, is_number, milliseconds_of } from "@common/utils/util";
 import { Translate } from "@roze/translate";
 import type { RozChapterContents } from "@roze/types/roz";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror, generror_catch } from "@common/utils/error_util";
+import { reinterpret_cast } from "@common/cast";
+import type Roz from "@roze/types/roz";
 
 export namespace Syosetu {
     export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }
@@ -83,7 +85,7 @@ export namespace Syosetu {
         if(opts.range_start < 1 || opts.range_end < opts.range_start) return [];
         opts.translate_contents ??= false;
 
-        const chapters: Awaited<ReturnType<typeof webnovel_chapter_contents>>[] = [];
+        const chapters: (WebnovelContents|ResponseError)[] = [];
     	for (let i = opts.range_start; i <= opts.range_end; i++) {
 	        const chapter_contents = await webnovel_chapter_contents(webnovel_id, i, opts);
             chapters.push(chapter_contents);
@@ -142,6 +144,23 @@ export namespace Syosetu {
                 uuid: gen_uuid(),
                 duration: 0,
             }))
+        };
+    }
+    export function webnovel_chapters_contents_to_roz(webnovel_contents: (WebnovelContents|ResponseError)[]): Roz{
+        const filtered_contents = reinterpret_cast<WebnovelContents[]>(webnovel_contents.filter(content => !("error" in content)));
+        // TODO fetch metadata
+        return {
+            uuid: gen_uuid(),
+            title: "",
+            author: null,
+            source_file: "", // TODO FIX THIS
+            source_file_type: "SYOSETU",
+            cover: null,
+            publisher: null,
+            date: null,
+            series_name: null,
+            series_no: null,
+            content: filtered_contents.map(webnovel_chapter_contents_to_roz_chapter_contents)
         };
     }
 };

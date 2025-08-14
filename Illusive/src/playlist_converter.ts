@@ -1,134 +1,83 @@
-import { is_empty } from "@common/utils/util";
-import { Constants } from '@illusive/constants';
-import { Illusive } from "@illusive/illusive";
-import { music_service_track_primary_key, music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utilts";
-import type { ConvertTo, MusicServiceType, Track } from "@illusive/types";
+import type { ConvertTo, MusicServiceType, Track } from "./types";
+import { music_service_track_primary_key } from "./illusive_utilts";
+import { Illusive } from "./illusive";
+import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
+import { mutilate_to_service_playlist, playlist_tracks_differences_actions, type MutilatePlaylistMode, type MutilatePlaylistResponse } from "./playlist_utils";
 
-interface ConvertPlaylistOpts {
-    to: ConvertTo;
-    full_sample: boolean;
-    divide_and_conquer: boolean;
-}
-
-// export function track_intersection(f: Track, t: Track): boolean {
-//     if(!is_empty(f.illusi_id) && !is_empty(t.illusi_id) && f.illusi_id === t.illusi_id) return true;
-//     if(!is_empty(f.youtube_id) && !is_empty(t.youtube_id) && f.youtube_id === t.youtube_id) return true;
-//     if(!is_empty(f.youtubemusic_id) && !is_empty(t.youtubemusic_id) && f.youtubemusic_id === t.youtubemusic_id) return true;
-//     if(!is_empty(f.spotify_id) && !is_empty(t.spotify_id) && f.spotify_id === t.spotify_id) return true;
-//     if(!is_empty(f.amazonmusic_id) && !is_empty(t.amazonmusic_id) && f.amazonmusic_id === t.amazonmusic_id) return true;
-//     if(!is_empty(f.applemusic_id) && !is_empty(t.applemusic_id) && f.applemusic_id === t.applemusic_id) return true;
-//     if(!is_empty(f.soundcloud_id) && !is_empty(t.soundcloud_id) && f.soundcloud_id === t.soundcloud_id) return true;
-//     if(!is_empty(f.imported_id) && !is_empty(t.imported_id) && f.imported_id === t.imported_id) return true;
-//     return false;
-// }
-
-
-interface PlaylistDifferences {
-    to_add: Track[],
-    to_remove: Track[]
-}
-type PrimaryKeyId = string|number;
-export async function playlist_tracks_differences(tracks: Track[], uuid_uri: string, primary_key: keyof Track): Promise<PlaylistDifferences> {
-    const ptracks = await playlist_tracks(uuid_uri);
-    const differences: PlaylistDifferences = {
-        to_add: [],
-        to_remove: []
-    }
-    const primary_tracks_track_ids = new Set(ptracks.map(t => t[primary_key] as PrimaryKeyId));
-    const primary_playlist_track_ids = new Set(ptracks.map(t => t[primary_key] as PrimaryKeyId));
-
-    for(const track of tracks){
-        if(!primary_playlist_track_ids.has(track[primary_key] as PrimaryKeyId)){
-            differences.to_add.push(track);
-        }
-    }
-    for(const ptrack of ptracks){
-        if(!primary_tracks_track_ids.has(ptrack[primary_key] as PrimaryKeyId)){
-            differences.to_remove.push(ptrack);
-        }
-    }
-    return differences;
-}
-export async function mutilate_playlist(to_service: MusicServiceType, to: ConvertTo, tracks: Track[], mode: "ADD"|"REMOVE"): Promise<{ok: boolean}> {
-    if("title" in to) {
-        if(to_service === "Illusi") {
-            // const all_playlists = await SQLPlaylists.all_playlists_data()
-            // const found_playlist = all_playlists.find(playlist => playlist.title === to.title);
-            // if(found_playlist !== undefined){
-            //     if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, tracks.map(({uid}) => uid));
-            //     if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(found_playlist.uuid, tracks.map(({uid}) => uid));
-            //     return {ok: true};
-            // }
-            // const playlist_uuid = await SQLPlaylists.create_playlist(to.title);
-            // await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, tracks.map(({uid}) => uid));
-            // return {ok: true};
-        }
-        const service = Illusive.music_service.get(to_service)!;
-        const all_playlists = await service.get_user_playlists!();
-        if("error" in all_playlists) return {ok: false};
-        const found_playlist = all_playlists.playlists.find(playlist => playlist.title.name === to.title);
+export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse{
+    if("title" in convert_opts) {
+        const all_playlists = await SQLPlaylists.all_playlists_data();
+        const found_playlist = all_playlists.find(playlist => playlist.title === convert_opts.title);
         if(found_playlist !== undefined){
-            if(found_playlist.title.uri === undefined) return {ok: false};
-            const [, playlist_id] = split_uri(found_playlist.title.uri!);
-            if(mode === "ADD") return { ok: await service.add_tracks_to_playlist!(tracks, playlist_id)};
-            if(mode === "REMOVE") return { ok: await service.delete_tracks_from_playlist!(tracks, playlist_id)};
+            //TODO check if tracks exist in library first
+            if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
+            if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
+            return {ok: true};
         }
-        const [, playlist_id] = split_uri(await service.create_playlist!(to.title));
-        return {ok: await service.add_tracks_to_playlist!(tracks, playlist_id)};
+        const playlist_uuid = await SQLPlaylists.create_playlist(convert_opts.title);
+        await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, incoming_tracks.map(({uid}) => uid));
+        return {ok: true};
     } else {
-        if(to_service === "Illusi") {
-            // if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(to.uuid_uri, tracks.map(({uid}) => uid)); 
-            // if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(to.uuid_uri, tracks.map(({uid}) => uid)); 
-            // return {ok: true};
-        }
-        const service = Illusive.music_service.get(to_service)!;
-        const [_, playlist_id] = split_uri(to.uuid_uri);
-        if(mode === "ADD") return {ok: await service.add_tracks_to_playlist!(tracks, playlist_id)};
-        return {ok: await service.delete_tracks_from_playlist!(tracks, playlist_id)}; //MODE === "REMOVE"
+        if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
+        if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
+        return {ok: true};
     }
 }
+export async function mutilate_playlist(to_service: MusicServiceType, convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode){
+    if(to_service === "Illusi") return mutilate_to_illusi_playlist(convert_opts, incoming_tracks, mode);
+    else return mutilate_to_service_playlist(to_service, convert_opts, incoming_tracks, mode);
+}
 
-async function divide_and_conquer(to: MusicServiceType, convert_to: ConvertTo, from_tracks: Track[], mode: "ADD"|"REMOVE", depth = 0): Promise<boolean>{
+async function playlist_convert_divide_and_conquer(to: MusicServiceType, convert_to: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode, depth: number): Promise<boolean>{
     if(depth >= 16) return false;
-    if(from_tracks.length === 0) return true;
-    if(from_tracks.length === 1) {
-        const status = await mutilate_playlist(to, convert_to, from_tracks, mode);
-        if(!status.ok){
+    if(incoming_tracks.length === 0) return true;
+    if(incoming_tracks.length === 1) {
+        const status = await mutilate_playlist(to, convert_to, incoming_tracks, mode);
+        if(!("error" in status) && !status.ok){
+            // TODO Maybe sample
             // await sample_tracks_meta(from_tracks);
         }
         return true;
     }
-    const conquer = await mutilate_playlist(to, convert_to, from_tracks, mode);
-    if(conquer.ok) return true;
-    const left_conquer = await divide_and_conquer(to, convert_to, from_tracks.slice(0, from_tracks.length / 2), mode, depth + 1);
-    const right_conquer = await divide_and_conquer(to, convert_to, from_tracks.slice(from_tracks.length / 2), mode, depth + 1);
+    const conquer = await mutilate_playlist(to, convert_to, incoming_tracks, mode);
+    if(!("error" in conquer) && conquer.ok) return true;
+    const left_conquer = await playlist_convert_divide_and_conquer(to, convert_to, incoming_tracks.slice(0, incoming_tracks.length / 2), mode, depth + 1);
+    const right_conquer = await playlist_convert_divide_and_conquer(to, convert_to, incoming_tracks.slice(incoming_tracks.length / 2), mode, depth + 1);
     return left_conquer && right_conquer;
 }
 
-export async function convert_playlist(from_tracks: Track[], to: MusicServiceType, opts: ConvertPlaylistOpts) {
-    // if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
-    const to_service = Illusive.music_service.get(to)!;
-    const to_ok = to_service.create_playlist !== undefined && to_service.add_tracks_to_playlist !== undefined;
-    if(!to_ok) return {error: new Error(`Unable to create/modify playlist from ${to}`)};
-    if(opts.full_sample && to_service.search === undefined) return {error: new Error(`Unable to sample tracks to ${to}; Missing search function`)};
-    // if(opts.full_sample) from_tracks = await sample_tracks_service(from_tracks, to);
-    if(to === "YouTube" || to === "YouTube Music") {
+interface ConvertPlaylistOpts {
+    convert_opts: ConvertTo;
+    full_sample: "NONE"|"SPEED_SAMPLE"|"SUPER_SPEED_SAMPLE";
+    divide_and_conquer: boolean;
+    check_connection: boolean;
+}
+
+export async function convert_playlist(playlist_tracks: Track[], incoming_tracks: Track[], to_service: MusicServiceType, opts: ConvertPlaylistOpts) {
+    // if(opts.check_connection && Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
+    const service = Illusive.music_service.get(to_service)!;
+    const to_ok = service.create_playlist !== undefined && service.add_tracks_to_playlist !== undefined;
+    if(!to_ok) return {error: new Error(`Unable to create/modify playlist from ${to_service}`)};
+    if(opts.full_sample !== "NONE" && service.search === undefined) return {error: new Error(`Unable to sample tracks to ${to_service}; Missing search function`)};
+    //TODO SAMPLING
+    // if(opts.full_sample === "SPEED_SAMPLE") from_tracks = await sample_tracks_service(from_tracks, to);
+    if(to_service === "YouTube" || to_service === "YouTube Music") {
         // await speed_sample_unavailable_tracks(from_tracks); 
-        from_tracks = from_tracks.filter(track => !(track.meta?.unavailable ?? false));
+        incoming_tracks = incoming_tracks.filter(track => !(track.meta?.unavailable ?? false));
     }
-    if("uuid_uri" in opts.to){
-        const differences = await playlist_tracks_differences(from_tracks, opts.to.uuid_uri, music_service_track_primary_key(to));
-        const status_add = await mutilate_playlist(to, opts.to, differences.to_add, "ADD");
-        const status_remove = await mutilate_playlist(to, opts.to, differences.to_remove, "REMOVE");
-        let ok = status_add.ok && status_remove.ok;
-        if(!status_add.ok && (opts.divide_and_conquer ?? false)){
-            ok = {ok: await divide_and_conquer(to, opts.to, differences.to_add, "ADD")}.ok;
-        }
-        if(!status_remove.ok && (opts.divide_and_conquer ?? false)){
-            ok = {ok: await divide_and_conquer(to, opts.to, differences.to_remove, "REMOVE")}.ok;
-        }
+    if(!("uuid_uri" in opts.convert_opts)){
+        const status = await mutilate_playlist(to_service, opts.convert_opts, incoming_tracks, "ADD");
+        return status;
+    }
+    const differences = await playlist_tracks_differences_actions(playlist_tracks, incoming_tracks, music_service_track_primary_key(to_service));
+    if(opts.divide_and_conquer){
+        const ok = 
+        {ok: await playlist_convert_divide_and_conquer(to_service, opts.convert_opts, differences.to_add, "ADD", 0)}.ok && 
+        {ok: await playlist_convert_divide_and_conquer(to_service, opts.convert_opts, differences.to_remove, "REMOVE", 0)}.ok;
         return {ok};
-    }
-    const status = await mutilate_playlist(to, opts.to, from_tracks, "ADD");
-    return status;
+    }    
+    const status_add = await mutilate_playlist(to_service, opts.convert_opts, differences.to_add, "ADD");
+    const status_remove = await mutilate_playlist(to_service, opts.convert_opts, differences.to_remove, "REMOVE");
+    const ok = (!("error" in status_add) && status_add.ok) && (!("error" in status_remove) && status_remove.ok);
+    return {ok};
 }

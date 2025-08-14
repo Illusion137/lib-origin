@@ -4,6 +4,7 @@ import type { DownloadOptions, YTDLQuality } from '@origin/youtube_dl/types';
 import { youtube_info_metadata } from '@illusive/parsers/youtube_parser';
 import { Prefs } from '@illusive/prefs';
 import type { DownloadFromIdResult } from '@illusive/types';
+import { generror_catch } from '@common/utils/error_util';
 
 export async function soundcloud_download_from_id(permalink: string, _: string): Promise<DownloadFromIdResult|ResponseError> {
     const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
@@ -38,5 +39,5 @@ export async function youtube_download_from_id(video_id: string, quality: string
             if("error" in av_result) throw av_result.error;
             return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
         }
-    } catch (error) { return { error: error as Error }; }
+    } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", {video_id, quality}); }
 }

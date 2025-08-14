@@ -3,13 +3,18 @@ import * as formatUtils from '@origin/youtube_dl/format-utils';
 import * as getInfo from '@origin/youtube_dl/info';
 import * as urlUtils from '@origin/youtube_dl/url-utils';
 import type { DownloadOptions, VideoInfo } from '@origin/youtube_dl/types';
+import { generror_catch } from '@common/utils/error_util';
 
 export namespace YouTubeDL {
     export async function ytdl(link: string, options: DownloadOptions) {
-        const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=", /&.+/);
-        const info: VideoInfo = await ytdl.getInfo(video_id, options);
-        const format = ytdl.chooseFormat(info.formats, options);
-        return {av: format, info, formats: info.formats};
+        try {            
+            const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=", /&.+/);
+            const info: VideoInfo = await ytdl.getInfo(video_id, options);
+            const format = ytdl.chooseFormat(info.formats, options);
+            return {av: format, info, formats: info.formats};
+        } catch (error) {
+            return generror_catch(error, "YTDL Failed", {link, options});
+        }
     };
     
     export async function get_info(link: string, options: DownloadOptions){

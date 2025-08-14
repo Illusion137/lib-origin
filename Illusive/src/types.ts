@@ -46,6 +46,8 @@ export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE"
     | "LAST_PLAYED_DATE_HILOW" | "LAST_PLAYED_DATE_LOWHI"
     | "LAST_SAMPLED_DATE_HILOW" | "LAST_SAMPLED_DATE_LOWHI"
 
+export type OnErrorCallback = (err: ResponseError) => void
+
 export type BottomAlertType = "GOOD"|"INFO"|"WARN";
 
 export interface SQLTable {
@@ -226,7 +228,7 @@ export interface InheritedSearch {
     query: string
     mode: PlaylistInheritanceMode
 }
-type LinkedPlaylist = { max_depth: number, uri: IllusiveURI, uuid?: never } | { max_depth: number, uri?: never, uuid: string };
+export type LinkedPlaylist = { max_depth: number, uri: IllusiveURI, uuid?: never } | { max_depth: number, uri?: never, uuid: string };
 interface PlaylistVisualData {
     four_track?: Track[]
     track_count?: number
@@ -275,6 +277,7 @@ export interface PlaylistsTracks {
 
 export type MaybeErrors = ResponseError[] | undefined;
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
+export type CompactPlaylistAlbumType = "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG";
 export interface Basic_CompactPlaylist<T, U, V, W> {
     title: T
     artist: U
@@ -283,8 +286,8 @@ export interface Basic_CompactPlaylist<T, U, V, W> {
     date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType
-    album_type?: "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG"
-    song_track?: W
+    album_type?: CompactPlaylistAlbumType
+    song_track?: W|null
 }
 export type SQLCompactPlaylist = Basic_CompactPlaylist<string, string, string, string>;
 export type CompactPlaylist = Basic_CompactPlaylist<NamedUUID, NamedUUID[], IllusiveThumbnail[], Track>;

@@ -10,6 +10,10 @@ const cookie_jar = CookieJar.fromString(GCC.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
 const cat_posters_usernames: string[] = ["maoxiaosi_219", "brownsugar_ddang", "sasuke.0116"];
 const cat_regex = /(cat)|(kitty)/ig;
 
+//GUESS 2025
+//[SETH]CATS - 14750 +- 100 : 10000 DANIEL
+//[SETH]BUNNY - 3290 +- 100 : 3000 DANIEL
+
 async function main() {
 	// const all_collections = await Instagram.all_collections({cookie_jar});
 	// console.log(all_collections);

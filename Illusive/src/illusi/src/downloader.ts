@@ -169,7 +169,8 @@ export async function download_track(track: Track, redownload = false, progress_
                     } catch (error) {
                         download_error_callback("Failed To Download:", error as Error, track, start_download);
                     }
-                }, () => {return}, () => {return}).then(ff_session => {
+                }, () => {return}, () => {return})
+                .then(ff_session => {
                     const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
                     if(item_index !== -1)
                         GLOBALS.downloading[item_index].execution_id = ff_session.getSessionId();
