@@ -1,24 +1,18 @@
 import { VoiceSynthConstants } from "@native/voice_synth/voice_synth_constants";
-import type { VoiceBank, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "@native/voice_synth/voice_synth.base";
-import tts from 'say';
+import type { VoiceBank, VoiceExportBatchTexts, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "@native/voice_synth/voice_synth.base";
+import tts from '@lib/say/say';
 
 export const node_voice_synth: VoiceSynth = {
     get_voices: async() => {
-        return await new Promise((resolve) => {
-            tts.getInstalledVoices((_: any, voices: string[]) => {
-                const voice_banks: VoiceBank[] = (voices ?? []).map(voice => ({id: voice, language: 'en', name: voice, quality: '', installed: true}));
-                resolve(voice_banks);
-            });
-        })
+        const voices = await tts.get_voices();
+        if("error" in voices) return [];
+        const voice_banks: VoiceBank[] = (voices ?? []).map(voice => ({id: voice, language: 'en', name: voice, quality: '', installed: true}));
+        return voice_banks;
     },
     speak: async(text: string, opts: VoiceOptions) => {
-        return await new Promise((resolve) => {
-            tts.speak(text, opts.voice_bank?.id ?? "", opts.rate ?? VoiceSynthConstants.default_node_speach_rate, () => resolve(0));
-        });
+        return await tts.speak(text, opts.voice_bank?.id ?? "", opts.rate ?? VoiceSynthConstants.default_node_speach_rate);
     },
-    speak_export: async(text: string, opts: VoiceOptionsExport) => {
-        return await new Promise((resolve) => {
-            tts.export(text, opts.voice_bank?.id ?? "", opts.rate ?? VoiceSynthConstants.default_node_speach_rate, opts.file_path, () => resolve(0));
-        });
+    speak_export: async(texts: VoiceExportBatchTexts, opts: VoiceOptionsExport) => {
+        return await tts.export_batch(texts, opts.voice_bank?.id ?? "", opts.rate ?? VoiceSynthConstants.default_node_speach_rate, opts.on_data);
     }
 }

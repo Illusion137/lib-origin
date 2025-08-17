@@ -1,12 +1,17 @@
 import type { TranslationMap } from "@roze/types/types";
 import type { RozContent, RozTextStructures, RozTextStructureType } from "@roze/types/roz";
-import { extract_string_from_pattern, gen_uuid, is_number } from "@common/utils/util";
+import { gen_uuid, is_number } from "@common/utils/util";
 import type Roz from "@roze/types/roz";
+import { fs } from "@native/fs/fs";
+import { get_temp_file_path, type RegisterAsTemp } from "@native/fs/fs_utils";
+import { reinterpret_cast } from "@common/cast";
+import type { FileExtension } from "@common/types";
+import { jsdom_document, map_html_collection } from "@common/jsdom";
 
-function html_inner_text_content(html_line: string) {
+export function html_inner_text_content(html_line: string) {
     return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
 }
-function html_img_src(html_line: string) {
+export function html_img_src(html_line: string) {
     return (/<img.+?src="(.+?)"/.exec(html_line) as RegExpExecArray)?.[1]?.trim();
 }
 
@@ -38,45 +43,42 @@ export function fix_punctuation(text: string){
                 .replace(/''/g, '"');
 }
 
-export function html_to_roz_content(html_content: string){
-    const content: RozContent[] = [];
-    const xhtml_lines = replace_html_codes(html_content)
-        .replace(/\r\n/g, '\n')
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line);
-    //TODO add multiline support ?>> JSDOM
-    if(xhtml_lines.join('\n').includes("<nav epub:type=\"toc\"")) return [];
-    for(const line of xhtml_lines){
-        type HTMLClass = 'img' | 'p' | 'h1' | 'h2' | 'div' | '/div' | 'hr/' | 'br/' | 'section' | '/section';
-        const extract_type_regex = /<(.+?)(>|\s)/;
-        const type_err = extract_string_from_pattern(line, extract_type_regex);
-        if(typeof type_err === "object") {
-            console.error(type_err);
-            continue;
-        }
-        const type = type_err as HTMLClass;
-        switch (type) {
-            case 'img':
-                content.push({ type: "IMAGE", content: html_img_src(line), uuid: gen_uuid(), duration: 0}); break;
-            case 'p':
-                content.push({ type: "PARAGRAPH", content: html_inner_text_content(line), uuid: gen_uuid(), duration: 0}); break;
-            case 'h1':
-                content.push({ type: "CHAPTER_TITLE", content: html_inner_text_content(line), uuid: gen_uuid(), duration: 0}); break;
-            case 'h2':
-                content.push({ type: "CHAPTER_SUBTITLE", content: html_inner_text_content(line), uuid: gen_uuid(), duration: 0}); break;
-            case 'br/':
-                content.push({ type: "LINE_BREAK", content: "-", uuid: gen_uuid(), duration: 0}); break;
-            case 'hr/':
-                content.push({ type: "THEME_BREAK", content: "-", uuid: gen_uuid(), duration: 0}); break;
-            case 'div': break;
-            case '/div': break;
-            case 'section': break;
-            case '/section': break;
-            default: console.error(type, ": ", line); break;
-        }
+type ElementTagName = "IMG"|"P"|"H1"|"H2"|"BR"|"HR"|"A";
+function html_tag_to_roz_content(el: Element): RozContent|undefined{
+    const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
+    switch(element_tag_name){
+        case "IMG": return { type: "IMAGE", content: reinterpret_cast<HTMLImageElement>(el).src, uuid: gen_uuid(), duration: 0};
+        case "P": return { type: "PARAGRAPH", content: reinterpret_cast<HTMLParagraphElement>(el).innerHTML, uuid: gen_uuid(), duration: 0};
+        case "H1": return { type: "CHAPTER_TITLE", content: reinterpret_cast<HTMLHeadingElement>(el).innerHTML, uuid: gen_uuid(), duration: 0};
+        case "H2": return { type: "CHAPTER_SUBTITLE", content: reinterpret_cast<HTMLHeadingElement>(el).innerHTML, uuid: gen_uuid(), duration: 0};
+        case "BR": return { type: "LINE_BREAK", content: '-', uuid: gen_uuid(), duration: 0};
+        case "HR": return { type: "THEME_BREAK", content: '-', uuid: gen_uuid(), duration: 0};
+        case "A": return undefined;
+        default: console.error("Unaccounted Tag: ", element_tag_name); break;
     }
-    return content.filter(c => c.content);
+    return undefined;
+}
+export function html_to_roz_contents(html_content: string|Document, container?: Element ){
+    const contents: RozContent[] = [];
+    const document: Document = typeof html_content === "string" ? jsdom_document(html_content) : html_content;
+    
+    const body = container ?? document.querySelector("body") ?? document.children[0];
+    if(body === null || body === undefined) return contents;
+
+    const ignore_tag_names: ElementTagName[] = ['P','H1','H2'];
+    const extracted_contents = map_html_collection(body.children, (el) => {
+        const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
+        if(el.children.length > 0 && !ignore_tag_names.includes(element_tag_name)) return html_to_roz_contents(document, el);
+        return html_tag_to_roz_content(el);
+    });
+
+    for(const extracted_content of extracted_contents){
+        if(extracted_content === undefined) continue;
+        if(Array.isArray(extracted_content)) contents.push(...extracted_content);
+        else contents.push(extracted_content);
+    }
+
+    return contents.filter(c => c.content);
 }
 
 export function generate_text_structure(text: string): RozTextStructures{
@@ -143,6 +145,13 @@ export function timestamp_to_string(t_seconds: number) {
         ":" +
         String(Math.floor(seconds)).padStart(2, "0")
     );
+}
+
+export async function save_base64_image_to_file(base64: string, file_path: string|undefined, register_as_temp?: RegisterAsTemp){
+    const ext = base64.split(';')[0].replace('data:', '').replace('image/', '');
+    const ufile_path = file_path ?? await get_temp_file_path( reinterpret_cast<FileExtension>(`.${ext}`), register_as_temp ?? "NO_REGISTER");
+    const write_result = await fs().write_file_as_string(ufile_path, base64.replace(/data:.+?;base64,/, ''), {encoding: 'base64'});
+    return {path: ufile_path, write_result};
 }
 
 // export function generate_table_of_contents(roz: Roz): RozTableOfContents{

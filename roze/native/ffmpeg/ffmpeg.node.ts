@@ -1,10 +1,10 @@
 import { spawn } from "child_process";
 import { parse_time } from "@common/utils/parse_util";
 import { extract_string_undef } from "@common/utils/util";
-import { default_ffmpeg_stats, type FFMPEG, type FFMPEGBitrateType, type FFMPEGSizeType, type FFMPEGStatistics, type StatisticsCallback } from "@native/ffmpeg/ffmpeg.base";
+import { default_ffmpeg_stats, type DataCallback, type FFMPEG, type FFMPEGBitrateType, type FFMPEGSizeType, type FFMPEGStatistics, type StatisticsCallback } from "@native/ffmpeg/ffmpeg.base";
 
 export const node_ffmpeg: FFMPEG = {
-    execute_args: async(args: string[], statistics_callback?: StatisticsCallback) => {
+    execute_args: async(args: string[], statistics_callback?: StatisticsCallback, data_callback?: DataCallback) => {
         const start_time = new Date().getTime();
         const stats: FFMPEGStatistics = {...default_ffmpeg_stats};
         
@@ -12,6 +12,7 @@ export const node_ffmpeg: FFMPEG = {
         const ffmpeg_cmd_instance = new Promise<number>((resolve, _) => {
             ffmpeg_spawn.stderr?.on('data', (data) => {
                 const output: string = data.toString();
+                data_callback?.(output);
                 stats.command_elapsed_ms = new Date().getTime() - start_time;
                 stats.frame = Number(extract_string_undef(output, /frame=\s*([\d.]+)/) ?? stats.frame);
                 stats.fps = Number(extract_string_undef(output, /fps=\s*([\d.]+)/) ?? stats.fps);

@@ -1,12 +1,16 @@
-import { default_ffmpeg_stats, type FFMPEG, type StatisticsCallback } from "@native/ffmpeg/ffmpeg.base";
+import { default_ffmpeg_stats, type DataCallback, type FFMPEG, type StatisticsCallback } from "@native/ffmpeg/ffmpeg.base";
 import ffmpeg from 'ffmpeg-kit-react-native';
 
 export const mobile_ffmpeg: FFMPEG = {
-    execute_args: async(args: string[], statistics_callback?: StatisticsCallback) => {
+    execute_args: async(args: string[], statistics_callback?: StatisticsCallback, data_callback?: DataCallback) => {
         const start_time = new Date().getTime();
         const stats = {...default_ffmpeg_stats};
 
-        const ffmpeg_result = await ffmpeg.FFmpegKit.executeWithArgumentsAsync(args, undefined, undefined, (fstats) => {
+        const ffmpeg_result = await ffmpeg.FFmpegKit.executeWithArgumentsAsync(args, undefined, 
+            (log) => {
+                data_callback?.(log.getMessage().toString());
+            }, 
+            (fstats) => {
             stats.command_elapsed_ms = new Date().getTime() - start_time;
             stats.frame = fstats.getVideoFrameNumber();
             stats.fps = fstats.getVideoFps();

@@ -6,7 +6,7 @@ export const node_get_audio_duration: GetAudioDuration = {
         try {
             return await getAudioDurationInSeconds(path);
         } catch (error) {
-            return -1;
+            return 0;
         }
     }
 };

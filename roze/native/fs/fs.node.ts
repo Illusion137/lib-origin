@@ -1,4 +1,5 @@
-import fs from "fs";
+import fs from "fs/promises";
+import fs_sync from "fs";
 import os from "os";
 import path_lib from "path";
 import { gen_uuid } from "@common/utils/util";
@@ -13,21 +14,21 @@ export const node_fs: FileSystem = {
 	document_directory: async (...paths: string[]) => path_lib.join(os.homedir(), ...paths),
 	read_as_string: async (path: string, opts: EncodingOpts) => {
 		try {
-			return fs.readFileSync(path, opts).toString();
+			return (await fs.readFile(path, opts)).toString();
 		} catch (error) {
 			return generror_catch(error, "Failed to read file as string", { path, opts });
 		}
 	},
 	read_directory: async (path: string) => {
 		try {
-			return fs.readdirSync(path);
+			return await fs.readdir(path);
 		} catch (error) {
 			return generror_catch(error, "Failed to read directory", { path });
 		}
 	},
 	get_info: async (path: string) => {
 		try {
-			const stats = fs.statSync(path);
+			const stats = await fs.stat(path);
 			return {
 				exists: true,
 				file_modified_ms: stats.mtime.getTime(),
@@ -45,36 +46,36 @@ export const node_fs: FileSystem = {
 	},
 	write_file_as_string: async (path: string, contents: string, opts: EncodingOpts) => {
 		try {
-			fs.writeFileSync(path, contents, opts);
+			await fs.writeFile(path, contents, opts);
 			return;
 		} catch (error) {
-			return generror_catch(error, "Failed to write file", { path, opts, contents });
+			return generror_catch(error, "Failed to write file", { path, opts, contents: contents.slice(0, 50) });
 		}
 	},
 	move: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
-			return fs.renameSync(from_path, to_path);
+			return await fs.rename(from_path, to_path);
 		} catch (error) {
 			return generror_catch(error, "Failed to move file/directory", { from_path, to_path, opts });
 		}
 	},
 	copy: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
-			return fs.cpSync(from_path, to_path, { force: !opts.no_overwrite, recursive: true });
+			return await fs.cp(from_path, to_path, { force: !opts.no_overwrite, recursive: true });
 		} catch (error) {
 			return generror_catch(error, "Failed to copy file/directory", { from_path, to_path, opts });
 		}
 	},
 	make_directory: async (path: string) => {
 		try {
-			return fs.mkdirSync(path);
+			return await fs.mkdir(path);
 		} catch (error) {
 			return generror_catch(error, "Failed to make directory", { path });
 		}
 	},
 	remove: async (path: string) => {
 		try {
-			return fs.rmSync(path);
+			return fs.rm(path);
 		} catch (error) {
 			return generror_catch(error, "Failed to remove file/directory", { path });
 		}
@@ -90,7 +91,7 @@ export const node_fs: FileSystem = {
 			}
 
 			const body = Readable.fromWeb(response.body as ReadableStream);
-			const file_stream = fs.createWriteStream(to_path);
+			const file_stream = fs_sync.createWriteStream(to_path);
 
 			await finished(body.pipe(file_stream));
 			return to_path;

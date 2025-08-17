@@ -25,6 +25,7 @@
         "baseUrl": "./",
         "paths": {
             "@native/*": ["roze/native/*"],
+            "@lib/*": ["roze/lib/*"],
             "@roze/*": ["roze/src/*", "roze/*"],
             "@origin/*": ["origin/src/*"],
             "@lutz/*": ["lutz/src/*"],

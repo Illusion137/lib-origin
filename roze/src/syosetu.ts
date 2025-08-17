@@ -54,7 +54,6 @@ export namespace Syosetu {
         
         const sections_of_lines_of_text = dom.querySelectorAll(".js-novel-text");
         if(sections_of_lines_of_text === undefined) return generror("Failed to find lines_of_text", {webnovel_id, chapter});
-        
         const lines_of_text = map_html_collection(sections_of_lines_of_text, (el) => el.children)
             .map(node_list => map_html_collection(node_list, (el) => el.textContent ?? ""))
             .flat();
@@ -76,7 +75,7 @@ export namespace Syosetu {
         range_start?: number;
         range_end?: number;
         translate_contents?: boolean;
-        on_chapter_parse?: (progress: number) => void;
+        on_chapter_parse?: (index: number, progress: number, elapsed_ms: number) => void;
     }
     export async function webnovel_chapter_contents_range(webnovel_id: string, opts: Opts & WebnovelChapterContentsRangeOpts){
         if (is_empty(webnovel_id)) return [];
@@ -86,10 +85,12 @@ export namespace Syosetu {
         opts.translate_contents ??= false;
 
         const chapters: (WebnovelContents|ResponseError)[] = [];
+        let time = new Date().getTime();
     	for (let i = opts.range_start; i <= opts.range_end; i++) {
 	        const chapter_contents = await webnovel_chapter_contents(webnovel_id, i, opts);
             chapters.push(chapter_contents);
-	        opts.on_chapter_parse?.( (opts.range_start-1)/(opts.range_end-1) );
+	        opts.on_chapter_parse?.(i, (opts.range_start-1)/(opts.range_end-1), new Date().getTime() - time);
+            time = new Date().getTime();
 	    }
         return chapters;
     }

@@ -207,7 +207,6 @@ const parseAdditionalManifests = (player_response, options) => {
   return manifests;
 };
 
-// TODO: Clean up this function for readability and support more clients
 /**
  * Gets info from a video additional formats and deciphered URLs.
  *

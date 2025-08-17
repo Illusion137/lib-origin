@@ -9,7 +9,7 @@ import {
     bold,
     magenta,
 } from "colors";
-import { generate_new_uid } from "@common/utils/util";
+import { generate_new_uid, milliseconds_of } from "@common/utils/util";
 import { Syosetu } from "@roze/syosetu";
 import { TimeLog } from "@common/time_log";
 import type { RozSourceFileType } from "@roze/types/roz";
@@ -25,7 +25,11 @@ import type Roz from "@roze/types/roz";
 import type { PromiseResult } from "@common/types";
 import { AudiobookGen } from "@roze/audiobook_gen";
 import ora, { type Ora } from 'ora';
+import cliprogress from "cli-progress";
 import path from "path";
+import { FSCache } from "@common/fs_cache";
+import { registered_session_temp_file_paths } from "@native/fs/fs_utils";
+import { rmSync } from "fs";
 
 const help_contents: string =
 green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}
@@ -34,19 +38,21 @@ ${magenta("roz")} ${cyan("<input>")} ${cyan("<options>")}                       
 ${magenta("roz")} ${cyan("-lv")}                                                                          Lists the available downloaded voices 
 Usage:
 
-${magenta("roz")} ${blue("-i")} ${yellow("[syosetu|jnovel|pdf|text|roz|witchcult_translations]")}                                                Sets input type
-  ${magenta("roz")} ${blue("-i")} ${yellow("syosetu")} ${cyan("<web-novel-id>")} ${cyan("<range-start>")}${red("(1)")} ${cyan("<range-end>")}${red("(<range-start>)")}     Webnovel from https://ncode.syosetu.com/{web-novel-id}
+${magenta("roz")} ${blue("-i")} ${yellow("[syosetu|jnovel|pdf|text|roz|witchcult_translations]")}                      Sets input type
+  ${magenta("roz")} ${blue("-i")} ${yellow("syosetu")} ${cyan("<web-novel-id>")} ${cyan("<range-start>")}${red("(1)")} ${cyan("<range-end>")}${red("(<range-start>)")}      Webnovel from https://ncode.syosetu.com/{web-novel-id}
   ${magenta("roz")} ${blue("-i")} ${yellow("jnovel")} ${cyan("<jnovel-embeded-link-start>")} ${cyan("<uuid-offset>")}${red("(0)")}                     JNovel from https://labs.j-novel.club/embed/... (must be logged into JNovel on Chrome)
   ${magenta("roz")} ${blue("-i")} ${yellow("pdf")} ${cyan("<pdf-file-path/url>")}                                                 PDF at {pdf-file-path}    
-  ${magenta("roz")} ${blue("-i")} ${yellow("txt")} ${cyan("<text-file-path/url>")}                                               Text file at {text-file-path}
-  ${magenta("roz")} ${blue("-i")} ${yellow("docx")} ${cyan("<docx-file-path/url>")}                                               Text file at {text-file-path}
-  ${magenta("roz")} ${blue("-i")} ${yellow("roz")} ${cyan("<roz-file-path/url>")}                                               Roz file at {text-file-path}
-  ${magenta("roz")} ${blue("-i")} ${yellow("witchcult_translations")}                                                            NO_DETAIL
+  ${magenta("roz")} ${blue("-i")} ${yellow("txt")} ${cyan("<text-file-path/url>")}                                                Text file at {text-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("docx")} ${cyan("<docx-file-path/url>")}                                               Docx file at {docx-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("roz")} ${cyan("<roz-file-path/url>")}                                                 Roz file at {roz-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("witchcult_translations")} ${cyan("<witchcult_translations-url>")}                     NO_DETAIL
 
 ${magenta("roz")} ${cyan("<input>")} ${blue("-v")} ${cyan("<voice>")}                                                           Sets the voice for the audiobook
-${magenta("roz")} ${cyan("<input>")} ${blue("-c")} ${cyan("<cover>")}                                                           Sets the cover image for the audiobook if not using JNovel Club
+${magenta("roz")} ${cyan("<input>")} ${blue("-c")} ${cyan("<cache?>")}                                                          Enables cache
+${magenta("roz")} ${cyan("<input>")} ${blue("-d")} ${cyan("<clear-cache?>")}                                                    Clears cache
 ${magenta("roz")} ${cyan("<input>")} ${blue("-m")} ${cyan("<translation-map>")}                                                 Sets the translation-map file
 ${magenta("roz")} ${cyan("<input>")} ${blue("-a")} ${cyan("<audiobook?>")}                                                      Enables audiobook
+${magenta("roz")} ${cyan("<input>")} ${blue("-b")} ${cyan("<audiovideobook?>")}                                                 Enables audiovideobook
 ${magenta("roz")} ${cyan("<input>")} ${blue("-h")} ${cyan("<hide-chapter-names?>")}                                             Hide chapter names when exporting audiobook
 ${magenta("roz")} ${cyan("<input>")} ${blue("-p")} ${cyan("<proxy?>")}                                                          Sets the use of WebNovel Proxy
 ${magenta("roz")} ${cyan("<input>")} ${blue("-t")} ${cyan("<translate?>")}                                                      Translate the Input?
@@ -69,7 +75,7 @@ const MIN_ARGS_TABLE: Record<RozSourceFileType, number> = {
     PDF: 1,
     JNOVEL: 1,
     WITCHCULT: 1,
-    SYOSETU: 3,
+    SYOSETU: 1,
     EPUB: 1,
     DOCX: 1,
     FILEBASE: 1
@@ -80,7 +86,7 @@ const input_source_file_type_table: Record<string, RozSourceFileType> = {
     "pdf": "PDF",
     "jnovel": "JNOVEL",
     "witchcult_translations": "WITCHCULT",
-    "webnovel": "SYOSETU",
+    "syosetu": "SYOSETU",
     "epub": "EPUB",
     "docx": "DOCX",
     "roz": "FILEBASE"
@@ -91,8 +97,10 @@ const options = {
     proxy: false,
     translate: false,
     audiobook: false,
+    audiovideobook: false,
     hide_chapter_names: false,
-    cover: "temp/img/cover.jpg",
+    cache: false,
+    clear_cache: false,
     translation_map_path: "",
     voice: {id: "", language: "", name: "", quality: ""} as VoiceBank,
     text_to_speach_speed: 1,
@@ -132,13 +140,17 @@ function spinner_result(spinner: Ora, result: unknown){
 }
 
 async function get_roz(source_file_type: RozSourceFileType, input_options: string[]): PromiseResult<Roz>{
-    const no_roz: Roz = {} as never;
+    const no_roz: Roz = generror("No Roz", {source_file_type, input_options}) as never;
     if(input_options.length < MIN_ARGS_TABLE[source_file_type]){
         log_input_error(`Not enough arguments provided for ${source_file_type}`, "__START__"); return no_roz;
     }
     switch (source_file_type) {
         case "TXT": {
-            return await FileParser.parse_txt(input_options[0], generate_new_uid(input_options[0]), {download_to_directory: process.cwd()});
+            const text_loading_text = `Loading Text-File at ${path.resolve(input_options[0])}`;
+            const spinner = ora({text: text_loading_text, color: "yellow"}).start();
+            const text_result = await FileParser.parse_txt(input_options[0], generate_new_uid(input_options[0]), {download_to_directory: process.cwd()});
+            spinner_result(spinner, text_result);
+            return text_result;
         }
         case "DOCX": {
             return generror("Docx is currently not supported");
@@ -160,18 +172,28 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
             return pdf_result;
         }
         case "SYOSETU": {
+            const syosetu_progress_bar = new cliprogress.SingleBar({stopOnComplete: true}, cliprogress.Presets.shades_classic);
+
             const web_novel_id = input_options[0];
-            const range_start = parseInt(input_options[1]);
-            const range_end = parseInt(input_options[2]);
+            const range_start = input_options[1] ? Number(input_options[1]) : 1;
+            const range_end = input_options[2] ? Number(input_options[2]) : range_start;
 
             if (!/(\w|\d){5,}/.test(web_novel_id)) { log_input_error("Invalid Web-Novel ID", "SYOSETU"); return no_roz; }
             if (range_start < -1) { log_input_error("Range-Start must be >= 1", "SYOSETU"); return no_roz; }
             if (range_end < -1) { log_input_error("Range-End must be >= 1", "SYOSETU"); return no_roz; }
             if (range_end < range_start) { log_input_error("Range-End must be >= Range-Start", "SYOSETU"); return no_roz; }
-            const webnovel_contents =  await Syosetu.webnovel_chapter_contents_range(web_novel_id, {range_start, range_end, translate_contents: options.translate});
+            syosetu_progress_bar.start(range_end - range_start + 1, 0);
+            
+            const webnovel_contents =  await Syosetu.webnovel_chapter_contents_range(web_novel_id, {
+                range_start, 
+                range_end, 
+                translate_contents: options.translate,
+                on_chapter_parse: () => {syosetu_progress_bar.increment()}
+            });
+
             return Syosetu.webnovel_chapters_contents_to_roz(webnovel_contents);
         }
-        case "JNOVEL": {
+        case "JNOVEL": { // TODO
             return generror("JNOVEL is currently not supported");
             // return await JNovel.reader_volume({legacy_id: input_options[0]});
         }
@@ -181,7 +203,7 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
         case "WITCHCULT": {
             return generror("WITCHCULT is currently not supported");
         }
-        case "FILEBASE": {
+        case "FILEBASE": { // TODO
             return generror("FILEBASE is currently not supported");
         }
         default:
@@ -203,10 +225,13 @@ async function __roze_cli_main__() {
     if (opts.findIndex((opt) => opt[0] == "-t") != -1) options.translate = true;
     if (opts.findIndex((opt) => opt[0] == "-p") != -1) options.proxy = true;
     if (opts.findIndex((opt) => opt[0] == "-a") != -1) options.audiobook = true;
+    if (opts.findIndex((opt) => opt[0] == "-b") != -1) options.audiovideobook = true;
     if (opts.findIndex((opt) => opt[0] == "-h") != -1) options.hide_chapter_names = true;
+    if (opts.findIndex((opt) => opt[0] == "-c") != -1) options.cache = true;
+    if (opts.findIndex((opt) => opt[0] == "-d") != -1) options.clear_cache = true;
     let hold_index = -1;
     if ((hold_index = opts.findIndex((opt) => opt[0] == "-v")) !== -1) options.voice = voice_list[Number(opts[hold_index][1])];
-    if ((hold_index = opts.findIndex((opt) => opt[0] == "-c")) !== -1) options.cover = opts[hold_index][1];
+    if ((hold_index = opts.findIndex((opt) => opt[0] == "-r")) !== -1) options.text_to_speach_speed = Number(opts[hold_index][1]);
     if ((hold_index = opts.findIndex((opt) => opt[0] == "-m")) !== -1) options.translation_map_path = opts[hold_index][1];
     
     if (opts.length == 0) {
@@ -216,8 +241,16 @@ async function __roze_cli_main__() {
     } else if (opts[0][0] == "-i") {
         const input_type = input_source_file_type_table[opts[0][1]];
         const opt_in = opts[0].slice(2);
+        
+        const cache_payload = "ROZ: " + JSON.stringify(opt_in);
+        const cache_result = options.cache ? await FSCache.check_cache<Roz>(cache_payload, milliseconds_of({hours: 1}), {}) : undefined;
+        if(cache_result !== undefined && !options.clear_cache) log_info(`Reading cache data...`);
+        if(options.clear_cache) {
+            log_info(`Clearing cache data...`);
+            await FSCache.clear_cache(cache_payload, {});
+        }
 
-        const roz = await get_roz(input_type, opt_in);
+        const roz = cache_result ? cache_result : await get_roz(input_type, opt_in);
         if("error" in roz) {
             log_error("Couldn't get Roz-data");
             console.error(roz);
@@ -225,6 +258,11 @@ async function __roze_cli_main__() {
         }
         log_info(`Source File: ${roz.source_file}`);
         console.log(cyan("Roz Info: "), {...roz, cover: roz.cover ? "{ BASE64_ENCODED_DATA }" : roz.cover});
+
+        if(options.cache && cache_result === undefined){
+            log_info(`Writing data to cache...`);
+            await FSCache.insert_cache(cache_payload, roz, {});
+        }
 
         if(options.translation_map_path) {
             const translation_map_file_contents = await fs().read_as_string(options.translation_map_path, {encoding: 'utf8'});
@@ -236,8 +274,65 @@ async function __roze_cli_main__() {
             run_translation_map_roz(roz, translation_map);
         }
 
-        if(options.audiobook) {
-            await AudiobookGen.roz_full_audio(roz, {}, {rate: options.text_to_speach_speed, voice_bank: options.voice}, "CLEAN_FILES");
+        if(options.audiobook || options.audiovideobook) {
+            roz.content = roz.content.slice(0,4);
+            const audiobook_progress_multibar = new cliprogress.MultiBar({
+                clearOnComplete: false,
+                stopOnComplete: true,
+                hideCursor: true,
+                format: ` ${cyan('{bar}')} | {chapter_name} | {value}/{total} | ETA: {eta}s | Elapsed: {duration}s`,
+            }, cliprogress.Presets.shades_grey);
+            const hidden_text = "[HIDDEN]";
+            const chapter_title_max_length = Math.max(...roz.content.map(chapter => (chapter.chapter.title ?? "").length));
+            const audiobook_progress_bars = roz.content.map((chapter) => ({
+                chapter,
+                bar: audiobook_progress_multibar.create(chapter.contents.length * 2, 0, {chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length)})
+            }));
+            const ffmpeg_merge_bar = new cliprogress.SingleBar({
+                clearOnComplete: false,
+                stopOnComplete: true,
+                hideCursor: true,
+                format: `${green(' {bar}')} | ${'FFMPEG Merge'.padEnd(chapter_title_max_length)} | {percentage}% | ETA: {eta}s | Speed: {speed}x | Elapsed: {duration}s`,
+            }, cliprogress.Presets.shades_grey);
+            const full_audio = options.audiobook ? 
+            await AudiobookGen.roz_full_audio(roz, {
+                on_chapter_content_skip(roz_chapter) {
+                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+                },
+                on_chapter_content_export(roz_chapter) {
+                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+                },
+                on_chapter_content_duration_check(roz_chapter) {
+                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+                }
+            }, {rate: options.text_to_speach_speed, voice_bank: options.voice}, "CLEAN_FILES")
+            : await AudiobookGen.roz_audio_data_to_dynamic_flv(roz, {
+                on_chapter_content_skip(roz_chapter) {
+                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+                },
+                on_chapter_content_export(roz_chapter) {
+                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+                },
+                on_chapter_content_duration_check(roz_chapter) {
+                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+                },
+                on_full_audio_complete(complete_full_audio) {
+                    audiobook_progress_multibar.stop(); complete_full_audio;
+                    ffmpeg_merge_bar.start(Math.floor(complete_full_audio.chapter_audiobooks.map(({duration}) => duration).reduce((p, c) => p + c, 0)), 0, {speed: 0});
+                },
+                on_ffmpeg_stats(stats){
+                    ffmpeg_merge_bar.update(stats.time_seconds, {speed: stats.speed});
+                },
+            }, {rate: options.text_to_speach_speed, voice_bank: options.voice}, "CLEAN_FILES");
+            audiobook_progress_multibar.stop();
+            ffmpeg_merge_bar.stop();
+            if("error" in full_audio) {
+                log_error("Couldn't get full_audio");
+                console.error(full_audio);
+                process.exit(1);
+            }
+            console.log(full_audio.ffmpeg_gen_result.retcode);
+            console.log(green(full_audio.ffmpeg_gen_result.out_file_path));
         }
     }
 }
@@ -247,3 +342,25 @@ TimeLog.log_fn_async(
     async() => await __roze_cli_main__().catch(console.error))
 .catch(console.error);
 //ts-node main.ts -i webnovel n4830bu 652 668 -t
+
+process.on('SIGINT', function () {
+    if(registered_session_temp_file_paths.length === 0) process.exit();
+
+    const cleanup_bar = new cliprogress.SingleBar({
+        clearOnComplete: false,
+        stopOnComplete: true,
+        hideCursor: true,
+        format: `${yellow(' {bar}')} | Cleanup | {percentage}% | ETA: {eta}s | {file} | Elapsed: {duration}s`}, 
+        cliprogress.Presets.shades_grey);
+    cleanup_bar.start(registered_session_temp_file_paths.length, 0, {file: registered_session_temp_file_paths[0]});
+
+    registered_session_temp_file_paths.forEach(file_path => {
+        cleanup_bar.increment(1, {file: file_path});
+        try {
+            rmSync(file_path);
+        } catch (e) {} 
+    })
+
+    cleanup_bar.stop();
+    process.exit();
+});

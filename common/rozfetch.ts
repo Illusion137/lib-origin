@@ -29,10 +29,10 @@ export interface RoZFetchRequestInit extends RequestInit {
 	abort_ms?: number;
 	proxy?: RozProxy;
 }
-type RozFetchText<T> = T extends never ? () => Promise<string> : never;
+type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
 export interface RoZFetchResponse<T> extends Response {
-	// text: RozFetchText<T>; // TODO Investigate
+	text: RozFetchText<T>;
 	json: RozFetchJSON<T>;
 	invalidate_cache: () => Promise<void>;
 	cache_timestamp: number;

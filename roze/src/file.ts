@@ -3,7 +3,6 @@ import type { TocElement } from 'epub2/lib/epub/const';
 import type Roz from '@roze/types/roz';
 import EPub from 'epub2';
 import pathlib from 'path';
-import { html_to_roz_content as html_to_roz_contents } from '@roze/utils';
 import { gen_uuid } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
 import { Counter, type FileExtension, type PromiseResult } from '@common/types';
@@ -14,13 +13,14 @@ import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import pdfjs_lib, { type PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp, { type Channels } from 'sharp';
 import { reinterpret_cast } from '@common/cast';
+import { html_to_roz_contents } from './utils';
 // import * as docx from "docx";
 // import mammoth from "mammoth";
 
 export namespace FileParser {
     interface ParseFileOpts {
         download_to_directory?: string;
-        file_name_no_ext?: string
+        file_name_no_ext?: string;
     };
 
     function is_url(test_url: string): boolean {
@@ -37,7 +37,7 @@ export namespace FileParser {
         const file_name = opts.file_name_no_ext ? opts.file_name_no_ext + file_extension : await gen_temp_file_name(file_extension);
         const to_download_path = opts.download_to_directory ? 
             pathlib.join(opts.download_to_directory, file_name)
-            : await get_temp_file_path(file_extension);
+            : await get_temp_file_path(file_extension, "NO_REGISTER");
         return await fs().download_to_file(file_path_or_url, to_download_path);
     }
 
@@ -170,7 +170,8 @@ export namespace FileParser {
         const roz_chapter_contents: RozChapterContents[] = [];
         let chapter_contents: RozContent[] = [];
         let prev_chapter_title = "Cover";
-        for(const content of contents){
+        for(let i = 0; i < contents.length; i++){
+            const content = contents[i];
             if(content.type === "IMAGE"){
                 delete content.pdf_text_height;
                 chapter_contents.push(content);
@@ -181,6 +182,13 @@ export namespace FileParser {
                     chapter_contents.push(content);
                 }
                 else if(content.pdf_text_height === text_height_counter.non_zero(1)[0]){
+                    let lookahead_index = 1;
+                    let lookahead_content = contents[i + lookahead_index];
+                    while(lookahead_content.pdf_text_height === content.pdf_text_height){
+                        delete lookahead_content.pdf_text_height;
+                        lookahead_content = contents[i + ++lookahead_index];
+                    }
+
                     delete content.pdf_text_height;
                     roz_chapter_contents.push({
                         chapter: {
@@ -188,9 +196,9 @@ export namespace FileParser {
                         },
                         contents: chapter_contents
                     });
-                    prev_chapter_title = content.content;
+                    prev_chapter_title = contents.slice(i, i + lookahead_index).map(c => c.content).join(' ');
                     chapter_contents = [];
-                    chapter_contents.push({...content, type: "CHAPTER_TITLE"});
+                    chapter_contents.push({...content, content: prev_chapter_title, type: "CHAPTER_TITLE"});
                 }
             }
         }
@@ -199,6 +207,7 @@ export namespace FileParser {
     export async function parse_pdf(file_path_or_url: string, opts: {
         paragraph_gap: number|"autodetect";
         cover_look_slice?: number;
+        password?: string;
         on_pdf_load_progress?: (progress: {loaded: number, total: number}) => void;
     } & PDFOptions & ParseFileOpts): PromiseResult<Roz> {
         const file_path_err = await transform_url_to_path(file_path_or_url, ".pdf", opts);
@@ -207,9 +216,9 @@ export namespace FileParser {
         if(typeof pdf_document_base64_data === "object") return pdf_document_base64_data;
         const pdf_document_bytes = Uint8Array.from(atob(pdf_document_base64_data.replace(/^data[^,]+,/,'')), v => v.charCodeAt(0));
         try {
-            const loading_task = pdfjs_lib.getDocument({ data: pdf_document_bytes, verbosity: 0});
+            const loading_task = pdfjs_lib.getDocument({ data: pdf_document_bytes, password: opts.password, verbosity: 0});
             loading_task.onProgress = opts.on_pdf_load_progress ?? (() => { return });
-            
+
             const pdf = await loading_task.promise;
             const detected_spacing = await detect_pdf_spacing(pdf, opts);
             const paragraph_gap = opts.paragraph_gap === "autodetect" ? detected_spacing.paragraph_gap : opts.paragraph_gap;
@@ -243,8 +252,8 @@ export namespace FileParser {
                     const this_x = text_item.transform[4];
                     const this_y = text_item.transform[5];
     
-                    const y_tolerance = 1.5; // pixels tolerance for same line
-                    const space_gap = 3; // horizontal gap to count as space
+                    const y_tolerance = 1.5;
+                    const space_gap = 3;
     
                     if (last_y !== null) {
                         const y_diff = Math.abs(this_y - last_y);

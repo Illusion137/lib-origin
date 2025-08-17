@@ -17,8 +17,9 @@ export interface FFMPEGStatistics {
     speed: number;
 }
 export type StatisticsCallback = (stats: FFMPEGStatistics) => void;
+export type DataCallback = (data: string) => void;
 export interface FFMPEG {
-    execute_args: (args: string[], statistics_callback?: StatisticsCallback) => Promise<FFMPEGReturn>;
+    execute_args: (args: string[], statistics_callback?: StatisticsCallback, data_callback?: DataCallback) => Promise<FFMPEGReturn>;
 }
 
 export const default_ffmpeg_stats: FFMPEGStatistics = {

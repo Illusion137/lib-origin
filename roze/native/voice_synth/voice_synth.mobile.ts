@@ -1,6 +1,6 @@
 import type { ResponseError } from "@common/types";
 import { VoiceSynthConstants } from "@native/voice_synth/voice_synth_constants";
-import type { VoiceOptions, VoiceOptionsExport, VoiceSynth } from "@native/voice_synth/voice_synth.base";
+import type { VoiceExportBatchTexts, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "@native/voice_synth/voice_synth.base";
 import tts from 'react-native-tts-export';
 
 function voice_synth_mobile_init(){
@@ -30,13 +30,15 @@ export const mobile_voice_synth: VoiceSynth = {
             androidParams: {} as never
         }) as string;
     },
-    speak_export: async(text: string, opts: VoiceOptionsExport) => {
-        return await tts.export(text, {
-            overwrite: true, 
-            filename: opts.file_path, 
-            rate: opts.rate ?? VoiceSynthConstants.default_mobile_speach_rate, 
-            iosVoiceId: opts.voice_bank?.id ?? "", 
-            androidParams: {} as never
-        });
+    speak_export: async(texts: VoiceExportBatchTexts, opts: VoiceOptionsExport) => {
+        return await Promise.all(texts.map(async(job) => {
+            return await tts.export(job.text, {
+                overwrite: true, 
+                filename: job.export_path, 
+                rate: opts.rate ?? VoiceSynthConstants.default_mobile_speach_rate, 
+                iosVoiceId: opts.voice_bank?.id ?? "", 
+                androidParams: {} as never
+            });
+        }));
     }
 }
