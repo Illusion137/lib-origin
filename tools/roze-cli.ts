@@ -105,7 +105,8 @@ const options = {
     voice: {id: "", language: "", name: "", quality: ""} as VoiceBank,
     text_to_speach_speed: 1,
     pdf_margin: [0, 48],
-    pdf_start: 0
+    pdf_start: 0,
+    output_to: "",
 };
 
 //Part 5 Volume 10
@@ -113,6 +114,7 @@ const options = {
 // parse_webnovel("n4830bu", 636, 649); // Volume 10 LN
 
 function args_to_opts(argv: string[]) {
+    argv = argv.filter(arg => arg).flat();
     const opts: string[][] = [];
     for (let i = 2, o = -1; i < argv.length; i++)
         if (argv[i][0].startsWith("-")) {
@@ -213,6 +215,8 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 }
 
 async function __roze_cli_main__() {
+    //TODO add speed v. size flag
+    //TODO update USAGE
     await load_native_fs();
     await load_native_ffmpeg();
     await load_native_get_audio_duration();
@@ -233,6 +237,7 @@ async function __roze_cli_main__() {
     if ((hold_index = opts.findIndex((opt) => opt[0] == "-v")) !== -1) options.voice = voice_list[Number(opts[hold_index][1])];
     if ((hold_index = opts.findIndex((opt) => opt[0] == "-r")) !== -1) options.text_to_speach_speed = Number(opts[hold_index][1]);
     if ((hold_index = opts.findIndex((opt) => opt[0] == "-m")) !== -1) options.translation_map_path = opts[hold_index][1];
+    if ((hold_index = opts.findIndex((opt) => opt[0] == "-o")) !== -1) options.output_to = opts[hold_index][1];
     
     if (opts.length == 0) {
         console.log(help_contents);
@@ -335,6 +340,10 @@ async function __roze_cli_main__() {
             }
             console.log(full_audio.ffmpeg_gen_result.retcode);
             console.log(green(full_audio.ffmpeg_gen_result.out_file_path));
+            if(options.output_to) {
+                log_info(`Moving ${full_audio.ffmpeg_gen_result.out_file_path} to ${options.output_to}`);
+                await fs().move(full_audio.ffmpeg_gen_result.out_file_path, options.output_to, {});
+            }
         }
     }
 }
