@@ -275,7 +275,7 @@ async function __roze_cli_main__() {
         }
 
         if(options.audiobook || options.audiovideobook) {
-            roz.content = roz.content.slice(0,4);
+            // roz.chapters = roz.chapters.slice(0,4);
             const audiobook_progress_multibar = new cliprogress.MultiBar({
                 clearOnComplete: false,
                 stopOnComplete: true,
@@ -283,14 +283,14 @@ async function __roze_cli_main__() {
                 format: ` ${cyan('{bar}')} | {chapter_name} | {value}/{total} | ETA: {eta}s | Elapsed: {duration}s`,
             }, cliprogress.Presets.shades_grey);
             const hidden_text = "[HIDDEN]";
-            const chapter_title_max_length = Math.max(...roz.content.map(chapter => (chapter.chapter.title ?? "").length));
-            const audiobook_progress_bars = roz.content.map((chapter) => ({
+            const chapter_title_max_length = Math.max(...roz.chapters.map(chapter => (chapter.chapter.title ?? "").length));
+            const audiobook_progress_bars = roz.chapters.map((chapter) => ({
                 chapter,
                 bar: audiobook_progress_multibar.create(chapter.contents.length * 2, 0, {chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length)})
             }));
             const ffmpeg_merge_bar = new cliprogress.SingleBar({
                 clearOnComplete: false,
-                stopOnComplete: true,
+                stopOnComplete: false,
                 hideCursor: true,
                 format: `${green(' {bar}')} | ${'FFMPEG Merge'.padEnd(chapter_title_max_length)} | {percentage}% | ETA: {eta}s | Speed: {speed}x | Elapsed: {duration}s`,
             }, cliprogress.Presets.shades_grey);
@@ -306,7 +306,9 @@ async function __roze_cli_main__() {
                     audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
                 }
             }, {rate: options.text_to_speach_speed, voice_bank: options.voice}, "CLEAN_FILES")
-            : await AudiobookGen.roz_audio_data_to_dynamic_flv(roz, {
+            : await AudiobookGen.roz_audio_data_to_dynamic_mp4(roz, {
+                srt_subtitles: true //TODO make this flag
+            }, {
                 on_chapter_content_skip(roz_chapter) {
                     audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
                 },
@@ -318,11 +320,11 @@ async function __roze_cli_main__() {
                 },
                 on_full_audio_complete(complete_full_audio) {
                     audiobook_progress_multibar.stop(); complete_full_audio;
-                    ffmpeg_merge_bar.start(Math.floor(complete_full_audio.chapter_audiobooks.map(({duration}) => duration).reduce((p, c) => p + c, 0)), 0, {speed: 0});
+                    ffmpeg_merge_bar.start(Math.floor(complete_full_audio.roz.chapters.map(c => c.chapter.duration ?? 0).reduce((p, c) => p + c, 0)), 0, {speed: 0});
                 },
                 on_ffmpeg_stats(stats){
                     ffmpeg_merge_bar.update(stats.time_seconds, {speed: stats.speed});
-                },
+                }
             }, {rate: options.text_to_speach_speed, voice_bank: options.voice}, "CLEAN_FILES");
             audiobook_progress_multibar.stop();
             ffmpeg_merge_bar.stop();

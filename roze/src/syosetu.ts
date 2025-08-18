@@ -161,7 +161,7 @@ export namespace Syosetu {
             date: null,
             series_name: null,
             series_no: null,
-            content: filtered_contents.map(webnovel_chapter_contents_to_roz_chapter_contents)
+            chapters: filtered_contents.map(webnovel_chapter_contents_to_roz_chapter_contents)
         };
     }
 };

@@ -6,13 +6,15 @@ export interface RozContent {
     content: string;
     duration: number;
 }
+export interface RozChapter {
+    id?: string;
+    title: string;
+    audio_path?: string;
+    duration?: number;
+}
 export interface RozChapterContents {
     contents: RozContent[];
-    chapter: {
-        id?: string;
-        title?: string;
-        audio_path?: string;
-    };
+    chapter: RozChapter
 }
 
 export type RozSourceFileType = 'TXT'|'PDF'|'JNOVEL'|'WITCHCULT'|'SYOSETU'|'EPUB'|'DOCX'|'FILEBASE';
@@ -28,7 +30,7 @@ export default interface Roz {
     date: string|null;
     series_name: string|null;
     series_no: number|null;
-    content: RozChapterContents[];
+    chapters: RozChapterContents[];
 };
 export type RozTextStructureType = "NONE"|"em"|"b";
 export interface RozTextStructure {
@@ -36,12 +38,7 @@ export interface RozTextStructure {
     type: RozTextStructureType;
 };
 export type RozTextStructures = RozTextStructure[];
-export type RozTableOfContents = {
-    chapter_title: string;
-    start_content_index: number;
-    end_content_index: number;
-    inner_chapters: RozTableOfContents[];
-}[];
+
 export interface SQLRoz extends Roz {
     id: number;
     //meta

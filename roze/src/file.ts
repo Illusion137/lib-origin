@@ -74,7 +74,11 @@ export namespace FileParser {
             }
             if(section.chapter.title || section.chapter.id?.toLowerCase() === "cover"){
                 roz_sections.push({
-                    ...section, 
+                    ...section,
+                    chapter: {
+                        ...section.chapter,
+                        title: section.chapter.title ?? ""
+                    },
                     contents: roz_contents 
                 });
             }
@@ -103,7 +107,7 @@ export namespace FileParser {
                 cover: roz_sections.map(item => item.contents).flat().find(item => item.type === "IMAGE")?.content ?? null,
                 series_name: null,
                 series_no: null,
-                content: roz_sections
+                chapters: roz_sections
             }
         }
         catch(e) {
@@ -341,7 +345,7 @@ export namespace FileParser {
                 cover: cover?.content ?? null,
                 series_name: null,
                 series_no: null,
-                content: roz_pdf_contents_to_roz_chapter_contents(contents, text_height_counter)
+                chapters: roz_pdf_contents_to_roz_chapter_contents(contents, text_height_counter)
             };
         }
         catch(e){
@@ -369,7 +373,7 @@ export namespace FileParser {
                 cover: null,
                 series_name: null,
                 series_no: null,
-                content: [{
+                chapters: [{
                     chapter: {title},
                     contents: line_normalized_text_contents
                         .split('\n')

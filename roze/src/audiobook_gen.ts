@@ -1,6 +1,6 @@
 import { get_audio_duration } from "@native/get_audio_duration/get_audio_duration";
 import { voice_synth } from "@native/voice_synth/voice_synth";
-import { prepare_text_for_tts, save_base64_image_to_file } from "@roze/utils";
+import { generate_srt_subtitles_contents, prepare_text_for_tts, save_base64_image_to_file } from "@roze/utils";
 import { Constants } from "@roze/constants";
 import type Roz from "@roze/types/roz";
 import type { VoiceOptions } from "@native/voice_synth/voice_synth.base";
@@ -11,6 +11,7 @@ import { is_empty } from "@common/utils/util";
 import type { DurationImage } from "./types/types";
 import path from "path";
 import type { DataCallback, StatisticsCallback } from "@native/ffmpeg/ffmpeg.base";
+import { fs } from "@native/fs/fs";
 
 export namespace AudiobookGen {
     interface RozChapterToAudiobookCallbacks {
@@ -24,18 +25,12 @@ export namespace AudiobookGen {
         on_ffmpeg_stats?: StatisticsCallback;
         on_ffmpeg_data?: DataCallback;
     }
-    interface RozChapterAudiobook {
-        duration: number;
-        chapter_audio_file_path: string|undefined;
-        retcode: number|undefined;
-        roz_chapter: RozChapterContents;
-    }
     export interface RozFullAudio {
         ffmpeg_gen_result: {
             retcode: number;
             out_file_path: string;
         }
-        chapter_audiobooks: RozChapterAudiobook[];
+        roz: Roz;
     }
     export const skip_content_types: Record<RozContentType, boolean> = {
         TITLE: false,
@@ -49,7 +44,7 @@ export namespace AudiobookGen {
         THEME_BREAK: true
     };
 
-    export async function roz_chapter_to_audiobook(roz_chapter: RozChapterContents, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"): Promise<RozChapterAudiobook>{
+    export async function roz_chapter_to_audiobook(roz_chapter: RozChapterContents, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"): Promise<RozChapterContents>{
         const content_file_path_list: string[] = [];
 
         let total_duration = 0;
@@ -65,10 +60,12 @@ export namespace AudiobookGen {
             callbacks.on_chapter_content_duration_check?.(roz_chapter, undefined);
         }    
         if(preped_content.length === 0) return {
-            duration: total_duration,
-            chapter_audio_file_path: undefined,
-            retcode: undefined,
-            roz_chapter
+            ...roz_chapter,
+            chapter: {
+                ...roz_chapter.chapter,
+                duration: total_duration,
+                audio_path: undefined,
+            }
         };
         
         await voice_synth().speak_export(preped_content.map(([_, __, prep_text, content_temp_file_path]) => ({text: prep_text, export_path: content_temp_file_path})), {
@@ -92,19 +89,22 @@ export namespace AudiobookGen {
         callbacks.on_chapter_finish?.(roz_chapter, concat_audio_result?.out_file_path);
 
         return {
-            duration: total_duration,
-            chapter_audio_file_path: concat_audio_result?.out_file_path,
-            retcode: concat_audio_result?.retcode,
-            roz_chapter
+            ...roz_chapter,
+            chapter: {
+                ...roz_chapter.chapter,
+                duration: total_duration,
+                audio_path: concat_audio_result?.out_file_path,
+            }
         };
     }
     export async function roz_full_audio(roz: Roz, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"): Promise<RozFullAudio>{
-        const chapter_audiobooks = await Promise.all(roz.content.map(async(chapter) => roz_chapter_to_audiobook(chapter, callbacks, voice_options)));
-        const ffmpeg_gen_result = await concact_audio_files(chapter_audiobooks.filter(chapter => chapter?.chapter_audio_file_path !== undefined).map(chapter => chapter?.chapter_audio_file_path ?? ""), Constants.TTS_DEFAULT_FILE_EXTENSION, clean_temp_files);
-        return {ffmpeg_gen_result, chapter_audiobooks};
+        const chapter_audiobooks = await Promise.all(roz.chapters.map(async(chapter) => roz_chapter_to_audiobook(chapter, callbacks, voice_options)));
+        const ffmpeg_gen_result = await concact_audio_files(chapter_audiobooks.filter(chapter => chapter?.chapter.audio_path !== undefined).map(chapter => chapter.chapter?.audio_path ?? ""), Constants.TTS_DEFAULT_FILE_EXTENSION, clean_temp_files);
+        roz.chapters = chapter_audiobooks;
+        return {ffmpeg_gen_result, roz};
     }
     export async function roz_to_chapter_full_audio(roz: Roz, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}){
-        const chapter_audiobooks = await Promise.all(roz.content.map(async(chapter) => roz_chapter_to_audiobook(chapter, callbacks, voice_options)));
+        const chapter_audiobooks = await Promise.all(roz.chapters.map(async(chapter) => roz_chapter_to_audiobook(chapter, callbacks, voice_options)));
         return chapter_audiobooks;
     }
     export async function roz_audio_data_to_static_flv(roz: Roz, callbacks: RozToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"){
@@ -118,10 +118,10 @@ export namespace AudiobookGen {
         const duration = contents.slice(init_i + 1, end_index === -1 ? undefined : init_i + 1 + end_index).map(content => content.duration).reduce((p, c) => p + c, 0);
         return {duration, image: contents[end_index]};
     }
-    export async function roz_audio_data_to_dynamic_flv(roz: Roz, callbacks: RozToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"){
+    export async function roz_audio_data_to_dynamic_mp4(roz: Roz, opts: {srt_subtitles?: boolean; yt_chapters?: boolean}, callbacks: RozToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"){
         const full_audio = await roz_full_audio(roz, callbacks, voice_options, clean_temp_files);
         callbacks.on_full_audio_complete?.(full_audio);
-        const contents = full_audio.chapter_audiobooks.map(chapter => chapter.roz_chapter.contents).flat();
+        const contents = full_audio.roz.chapters.map(chapter => chapter.contents).flat();
 
         const saved_cover_image = roz.cover !== null ? await save_base64_image_to_file(roz.cover, undefined, "REGISTER") : undefined;
         const initial_duration_image: DurationImage = saved_cover_image !== undefined && typeof saved_cover_image?.write_result !== "object" 
@@ -170,7 +170,11 @@ export namespace AudiobookGen {
             If single image then it'll last till next image [if cover !== null ? MAX(15 min) : INFINITY]
             If multiple images then it'll spread out till next image
         */
-        const ffmpeg_gen_result = await generate_dynamic_video_with_audio(duration_images, full_audio.ffmpeg_gen_result.out_file_path, ".flv", clean_temp_files, callbacks.on_ffmpeg_stats, callbacks.on_ffmpeg_data);
+        const temp_srt_file_path = opts.srt_subtitles ? await get_temp_file_path(".srt", "REGISTER") : undefined;
+        const temp_srt_file_result = temp_srt_file_path ? await fs().write_file_as_string(temp_srt_file_path, generate_srt_subtitles_contents(roz.chapters), {encoding: 'utf8'}) : undefined;
+        const srt_file_path = temp_srt_file_path === undefined || typeof temp_srt_file_result === "object" ? undefined : temp_srt_file_path
+
+        const ffmpeg_gen_result = await generate_dynamic_video_with_audio(duration_images, full_audio.ffmpeg_gen_result.out_file_path, srt_file_path, ".mp4", clean_temp_files, callbacks.on_ffmpeg_stats, callbacks.on_ffmpeg_data);
         return {ffmpeg_gen_result, full_audio};
     }
 };

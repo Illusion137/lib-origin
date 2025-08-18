@@ -25,6 +25,7 @@ export async function use_temp_file_keep(file_contents: string, file_extension: 
 
 export async function use_temp_file<T>(file_contents: string, file_extension: FileExtension, opts: EncodingOpts, on_file_created: (temp_file_path: string) => Promise<T>): Promise<T> {
 	const temp_file_path = await use_temp_file_keep(file_contents, file_extension, opts);
+
 	const result = await on_file_created(temp_file_path);
 	await fs().remove(temp_file_path);
     return result;

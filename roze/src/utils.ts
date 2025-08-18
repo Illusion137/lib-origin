@@ -1,5 +1,5 @@
 import type { TranslationMap } from "@roze/types/types";
-import type { RozContent, RozTextStructures, RozTextStructureType } from "@roze/types/roz";
+import type { RozChapterContents, RozContent, RozContentType, RozTextStructures, RozTextStructureType } from "@roze/types/roz";
 import { gen_uuid, is_number } from "@common/utils/util";
 import type Roz from "@roze/types/roz";
 import { fs } from "@native/fs/fs";
@@ -122,7 +122,7 @@ export function run_translation_map_string(text: string, translation_map: Transl
     return text;
 }
 export function run_translation_map_roz(roz: Roz, translation_map: TranslationMap){
-    roz.content.forEach(chapter => {
+    roz.chapters.forEach(chapter => {
         chapter.chapter.title = run_translation_map_string(chapter.chapter.title ?? "", translation_map);
         chapter.contents.forEach(content => {
             if(content.type !== "IMAGE")
@@ -132,7 +132,7 @@ export function run_translation_map_roz(roz: Roz, translation_map: TranslationMa
     return roz;
 }
 
-export function timestamp_to_string(t_seconds: number) {
+export function timestamp_to_timecode(t_seconds: number) {
     if(!is_number(t_seconds)) return '00:00:00';
     if(t_seconds < 0) return '00:00:00';
     const hours = Math.floor(t_seconds / 3600);
@@ -146,6 +146,24 @@ export function timestamp_to_string(t_seconds: number) {
         String(Math.floor(seconds)).padStart(2, "0")
     );
 }
+export function timestamp_to_srt_timecode(t_seconds: number) {
+    if(!is_number(t_seconds)) return '00:00:00,000';
+    if(t_seconds < 0) return '00:00:00,000';
+    const milliseconds = (t_seconds - Math.floor(t_seconds)) * 1000;
+    t_seconds = Math.floor(t_seconds);
+    const hours = Math.floor(t_seconds / 3600);
+    const minutes = Math.floor((t_seconds - hours * 3600) / 60);
+    const seconds = t_seconds - hours * 3600 - minutes * 60;
+    return (
+        String(Math.floor(hours)).padStart(2, "0") +
+        ":" +
+        String(Math.floor(minutes)).padStart(2, "0") +
+        ":" +
+        String(Math.floor(seconds)).padStart(2, "0") + 
+        ',' +
+        String(Math.floor(milliseconds)).padStart(3, "0")
+    );
+}
 
 export async function save_base64_image_to_file(base64: string, file_path: string|undefined, register_as_temp?: RegisterAsTemp){
     const ext = base64.split(';')[0].replace('data:', '').replace('image/', '');
@@ -154,6 +172,25 @@ export async function save_base64_image_to_file(base64: string, file_path: strin
     return {path: ufile_path, write_result};
 }
 
-// export function generate_table_of_contents(roz: Roz): RozTableOfContents{
-//     return [];
-// }
+export function generate_youtube_chapters(chapters: RozChapterContents[]): string{
+    let total_duration = 0;
+    return chapters.map(({chapter}) => {
+        total_duration += chapter.duration ?? 0;
+        return `${timestamp_to_timecode(total_duration)} ${chapter.title}`;
+    }).join('\n');
+}
+export function generate_srt_subtitles_contents(chapters: RozChapterContents[]): string{
+    const accepted_content_types: RozContentType[] = ["PARAGRAPH", "CHAPTER_TITLE", "CHAPTER_SUBTITLE", "HEADING", "TITLE"];
+    let sequence_number = 1;
+    let total_duration = 0;
+    const flat_contents = chapters.map(({contents}) => contents).flat();
+    return flat_contents.filter(content => accepted_content_types.includes(content.type)).map(content => {
+        const before_duration = total_duration;
+        total_duration += content.duration;
+        return [
+            String(sequence_number++),
+            `${timestamp_to_srt_timecode(before_duration)} --> ${timestamp_to_srt_timecode(total_duration)}`,
+            content.content
+        ].join('\n');
+    }).join('\n\n');
+}

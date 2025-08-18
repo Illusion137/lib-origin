@@ -24,27 +24,23 @@ export async function combine_audio_and_video(video_path: string, audio_path: st
 	return {combined_video_out_path, retcode: await ffmpeg_result.retcode};
 }
 
-export async function generate_dynamic_video_with_audio(duration_images: DurationImage[], audio_path: string, extension: FileExtension, clean_temp_files: CleanTempFiles, ffmpeg_statistics_callback?: StatisticsCallback, ffmpeg_data_callback?: DataCallback) {
-	const image_list_file_contents = duration_images.map((duration_image) => `file ${duration_image.image_path.replace(/\\/g, "/")}\nduration ${duration_image.duration}`).join("\n")
-        + `\nfile ${duration_images[duration_images.length - 1].image_path.replace(/\\/g, "/")}`;
+export async function generate_dynamic_video_with_audio(duration_images: DurationImage[], audio_path: string, srt_path: string|undefined, extension: FileExtension, clean_temp_files: CleanTempFiles, ffmpeg_statistics_callback?: StatisticsCallback, ffmpeg_data_callback?: DataCallback) {
+	const image_list_file_contents = duration_images.map((duration_image) => `file ${duration_image.image_path.replace(/\\/g, "/")}\nduration ${duration_image.duration}`).join("\n") + `\nfile ${duration_images[duration_images.length - 1].image_path.replace(/\\/g, "/")}`;
 	const temp_video_generated_path = await fs().temp_directory((await gen_temp_file_name()) + extension);
 	const retcode = await use_temp_file(image_list_file_contents, ".txt", { encoding: "utf8" }, async (temp_images_list_file_path) => {
-        //  "-acodec", "copy", 
-        // "-r", "1", 
-        // "-shortest",
-        // "-vf", "scale=860:1223",
-		const arg_list = ["-f", "concat", "-safe", "0", "-i", temp_images_list_file_path, "-i", audio_path, "-acodec", "copy", "-r", "1", "-shortest", "-vf", "scale=860:1223", temp_video_generated_path];
+		const arg_list = srt_path ? ["-f", "concat", "-safe", "0", "-i", temp_images_list_file_path, "-i", audio_path, "-i", srt_path, "-c:s", "mov_text", "-acodec", "copy", "-r", "1", "-shortest", "-vf", "scale=860:1223", temp_video_generated_path]
+            : ["-f", "concat", "-safe", "0", "-i", temp_images_list_file_path, "-i", audio_path, "-acodec", "copy", "-r", "1", "-shortest", "-vf", "scale=860:1223", temp_video_generated_path];
 		const ffmpeg_result = await ffmpeg().execute_args(arg_list, ffmpeg_statistics_callback, ffmpeg_data_callback);
         return await ffmpeg_result.retcode;
 	});
 	if (clean_temp_files === "CLEAN_FILES") {
         await fs().remove(audio_path);
+        if(srt_path) await fs().remove(srt_path);
 		for (const { image_path } of duration_images) {
 			await fs().remove(image_path);
 		}
 	}
     return {retcode, out_file_path: temp_video_generated_path};
-    // return combine_result;
 }
 
 export async function concact_audio_files(file_paths: string[], extension: FileExtension, clean_temp_files: CleanTempFiles, ffmpeg_statistics_callback?: StatisticsCallback, ffmpeg_data_callback?: DataCallback) {
