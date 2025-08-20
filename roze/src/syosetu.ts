@@ -58,7 +58,10 @@ export namespace Syosetu {
             .map(node_list => map_html_collection(node_list, (el) => el.textContent ?? ""))
             .flat();
         if(opts.translate_contents){
-            const translated = await Translate.google_translate_html([chapter_title_jp, ...lines_of_text], "ja", "en");
+            const translated = await Translate.google_translate_html([chapter_title_jp, ...lines_of_text], {
+                lang_from: "ja",
+                lang_to: "en",
+            });
             if("error" in translated) return translated;
             const [translated_title, ...translated_contents] = translated;
             return {

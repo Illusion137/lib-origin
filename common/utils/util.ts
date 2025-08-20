@@ -183,3 +183,16 @@ export function single_case(str: string): string {
 export function recreate<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));
 }
+
+export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: number): Promise<T[]>{
+    const batches = chunkify(fns, batch_size);
+    const results: T[][] = [];
+    for(const batch of batches){
+        results.push(
+            await Promise.all(
+                batch.map(item => item())
+            )
+        );
+    }
+    return results.flat();
+}

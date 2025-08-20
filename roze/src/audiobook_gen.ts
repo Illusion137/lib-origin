@@ -71,8 +71,9 @@ export namespace AudiobookGen {
         await voice_synth().speak_export(preped_content.map(([_, __, prep_text, content_temp_file_path]) => ({text: prep_text, export_path: content_temp_file_path})), {
             ...voice_options,
             on_data: (uuid, data) => {
+                data = data.replaceAll('\r\n', '\n');
                 voice_options.on_data?.(uuid, data);
-                data.split('\r\n').filter(line => line === uuid).forEach(() => callbacks.on_chapter_content_export?.(roz_chapter));
+                data.split('\n').filter(line => line === uuid).forEach(() => callbacks.on_chapter_content_export?.(roz_chapter));
             }
         });
         

@@ -1,10 +1,11 @@
 import type { PromiseResult, ResponseError } from "@common/types";
 
+export type OnTextExport = (uuid: string, data: string) => any;
 export interface SayPlatformBase {
     get_voices: () => PromiseResult<string[]>;
     speak: (text: string, voice?: string, speed?: number) => PromiseResult<number>;
     // export: (text: string, voice?: string, speed?: number, file_path?: string) => PromiseResult<number>
-    export_batch: (texts: {text: string, export_path: string}[], voice?: string, speed?: number, on_text_export?: (data: string) => any) => PromiseResult<number>|Promise<(number|ResponseError)[]>
+    export_batch: (texts: {text: string, export_path: string}[], voice?: string, speed?: number, on_text_export?: OnTextExport) => PromiseResult<number>|Promise<(number|ResponseError)[]>
 }
 
 // export default class SayPlatformBase {

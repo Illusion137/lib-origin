@@ -168,7 +168,6 @@ export const SayPlatformWin32: SayPlatformBase = {
 		// Write temp files
 		await fs.writeFile(script_path, psScript, "utf8");
 		await fs.writeFile(json_path, JSON.stringify(texts), { encoding: "utf8", flag: "w" });
-		await fs.stat(json_path);
 
 		// Run the script (powershell.exe exists everywhere; pwsh not required)
 		return await new Promise<number | ResponseError>((resolve) => {

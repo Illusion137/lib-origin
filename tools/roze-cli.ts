@@ -280,7 +280,7 @@ async function __roze_cli_main__() {
         }
 
         if(options.audiobook || options.audiovideobook) {
-            // roz.chapters = roz.chapters.slice(0,4);
+            // roz.chapters = roz.chapters.slice(4,-4);
             const audiobook_progress_multibar = new cliprogress.MultiBar({
                 clearOnComplete: false,
                 stopOnComplete: true,
@@ -291,7 +291,7 @@ async function __roze_cli_main__() {
             const chapter_title_max_length = Math.max(...roz.chapters.map(chapter => (chapter.chapter.title ?? "").length));
             const audiobook_progress_bars = roz.chapters.map((chapter) => ({
                 chapter,
-                bar: audiobook_progress_multibar.create(chapter.contents.length * 2, 0, {chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length)})
+                bar: audiobook_progress_multibar.create(chapter.contents.length, 0, {chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length)})
             }));
             const ffmpeg_merge_bar = new cliprogress.SingleBar({
                 clearOnComplete: false,
@@ -307,9 +307,6 @@ async function __roze_cli_main__() {
                 on_chapter_content_export(roz_chapter) {
                     audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
                 },
-                on_chapter_content_duration_check(roz_chapter) {
-                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
-                }
             }, {rate: options.text_to_speach_speed, voice_bank: options.voice}, "CLEAN_FILES")
             : await AudiobookGen.roz_audio_data_to_dynamic_mp4(roz, {
                 srt_subtitles: true //TODO make this flag
@@ -318,9 +315,6 @@ async function __roze_cli_main__() {
                     audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
                 },
                 on_chapter_content_export(roz_chapter) {
-                    audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
-                },
-                on_chapter_content_duration_check(roz_chapter) {
                     audiobook_progress_bars.find(bar => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
                 },
                 on_full_audio_complete(complete_full_audio) {

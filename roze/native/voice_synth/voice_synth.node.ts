@@ -1,5 +1,5 @@
 import { VoiceSynthConstants } from "@native/voice_synth/voice_synth_constants";
-import type { VoiceBank, VoiceExportBatchTexts, VoiceOptions, VoiceOptionsExport, VoiceSynth } from "@native/voice_synth/voice_synth.base";
+import type { VoiceBank, VoiceExportBatchTexts, VoiceOptions, VoiceSynth } from "@native/voice_synth/voice_synth.base";
 import tts from '@lib/say/say';
 
 export const node_voice_synth: VoiceSynth = {
@@ -12,7 +12,7 @@ export const node_voice_synth: VoiceSynth = {
     speak: async(text: string, opts: VoiceOptions) => {
         return await tts.speak(text, opts.voice_bank?.id ?? "", opts.rate ?? VoiceSynthConstants.default_node_speach_rate);
     },
-    speak_export: async(texts: VoiceExportBatchTexts, opts: VoiceOptionsExport) => {
+    speak_export: async(texts: VoiceExportBatchTexts, opts: VoiceOptions) => {
         return await tts.export_batch(texts, opts.voice_bank?.id ?? "", opts.rate ?? VoiceSynthConstants.default_node_speach_rate, opts.on_data);
     }
 }
