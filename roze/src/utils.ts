@@ -5,8 +5,9 @@ import type Roz from "@roze/types/roz";
 import { fs } from "@native/fs/fs";
 import { get_temp_file_path, type RegisterAsTemp } from "@native/fs/fs_utils";
 import { reinterpret_cast } from "@common/cast";
-import type { FileExtension } from "@common/types";
+import type { FileExtension, PromiseResult } from "@common/types";
 import { jsdom_document, map_html_collection } from "@common/jsdom";
+import rozfetch from "@common/rozfetch";
 
 export function html_inner_text_content(html_line: string) {
     return html_line.trim().replace(/<(p|\/p|h1|\/h1|h2|\/h2|h3|\/h3|h4|\/h4)>/g, '').trim();
@@ -81,6 +82,26 @@ export function html_to_roz_contents(html_content: string|Document, container?: 
     return contents.filter(c => c.content);
 }
 
+export function roz_contents_to_roz_chapters_contents(contents: RozContent[]): RozChapterContents[]{
+    const roz_chapter_contents: RozChapterContents[] = [];
+    let chapter_contents: RozContent[] = [];
+    let prev_chapter_title = "Cover";
+    for(const content of contents){
+        if(content.type === "CHAPTER_TITLE" || content.type === "CHAPTER_SUBTITLE"){
+            roz_chapter_contents.push({
+                chapter: {
+                    title: prev_chapter_title
+                },
+                contents: chapter_contents
+            });
+            prev_chapter_title = content.content;
+            chapter_contents = [];
+        }
+        chapter_contents.push(content);
+    }
+    return roz_chapter_contents;
+}
+
 export function generate_text_structure(text: string): RozTextStructures{
     const tag_regex = /<(.+?)>(.+?)<\/.+?>/gi;
     const tag_matches = [...text.matchAll(tag_regex)];
@@ -105,17 +126,15 @@ export function generate_translation_map(file_buffer: string): TranslationMap {
     const lines = file_buffer.split('\n');
     const translation_map: TranslationMap = [];
     for(const line of lines){
-        const [phrase_from, phrase_to, match_case] = line.split('[::]').map(str => str.trim());
+        const [phrase_from, phrase_to] = line.split('[::]').map(str => str.trim());
         translation_map.push({
             from: new RegExp(`${punctuation_regex_presufix}(${phrase_from})${punctuation_regex_presufix}`, 'gi'),
             to: phrase_to,
-            match_case: match_case.toLowerCase().startsWith('y')
         });
     }
     return translation_map;
 }
 export function run_translation_map_string(text: string, translation_map: TranslationMap){
-    // TODO: Add ablility to match case
     for(const translation_line of translation_map){
         text = text.replace(translation_line.from, `$1${translation_line.to}$4`);
     }
@@ -163,6 +182,26 @@ export function timestamp_to_srt_timecode(t_seconds: number) {
         ',' +
         String(Math.floor(milliseconds)).padStart(3, "0")
     );
+}
+
+export async function filepath_to_bufer(file_path: string): PromiseResult<Uint8Array<ArrayBuffer>>{
+    const base64_data = await fs().read_as_string(file_path, {encoding: 'base64'});
+    if(typeof base64_data === "object") return base64_data;
+    const bytes = Uint8Array.from(atob(base64_data.replace(/^data[^,]+,/,'')), v => v.charCodeAt(0));
+    return bytes;
+}
+
+export function base_64_image(data_base64: string, type: string){
+    return `data:${type};base64,${data_base64}`;
+}
+
+export async function image_url_to_base_64(url: string){
+    const image_response = await rozfetch(url);
+    if("error" in image_response) return image_response;
+    const buffer = await image_response.arrayBuffer();
+    let data = "";
+    (new Uint8Array(buffer)).forEach((byte) => data += String.fromCharCode(byte))
+    return base_64_image(btoa(data), image_response.headers.get('content-type') ?? "png")
 }
 
 export async function save_base64_image_to_file(base64: string, file_path: string|undefined, register_as_temp?: RegisterAsTemp){

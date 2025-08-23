@@ -1,6 +1,6 @@
 import type { CookieJar } from "@common/utils/cookie_util";
 import type { PromiseResult, ResponseError } from "@common/types";
-import { extract_string_from_pattern, milliseconds_of } from "@common/utils/util";
+import { extract_string_from_pattern, gen_uuid, milliseconds_of } from "@common/utils/util";
 import { RozeHeaders } from "@roze/headers";
 import type { JNovel_Calender } from "@roze/types/jnovel-calender";
 import type { JNovel_Home } from "@roze/types/jnovel-home";
@@ -8,11 +8,12 @@ import type { JNovel_Part, JNovel_Serie, JNovel_Toc } from "@roze/types/jnovel-r
 import type { JNovel_Series } from "@roze/types/jnovel-series";
 import type { JNovel_Series_Page } from "@roze/types/jnovel-series-page";
 import type { JNovel_User } from "@roze/types/jnovel-user";
-import type { RozContent } from "@roze/types/roz";
-import { clean_html_text, html_to_roz_content } from "@roze/utils";
+import type { RozChapterContents, RozContent } from "@roze/types/roz";
+import { clean_html_text, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from "@roze/utils";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror, generror_catch } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
+import type Roz from "@roze/types/roz";
 
 export namespace JNovel {
 	export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }
@@ -31,7 +32,7 @@ export namespace JNovel {
             headers: RozeHeaders.get_document_headers(opts.cookie_jar),
             referrerPolicy: "strict-origin-when-cross-origin",
             cache_opts: {
-                cache_ms: milliseconds_of({years: 1}),
+                cache_ms: milliseconds_of({days: 1}),
                 cache_ms_fail: milliseconds_of({}),
                 cache_mode: "all"
             },
@@ -93,7 +94,7 @@ export namespace JNovel {
 	export async function reader_contents(opts: Opts & { legacy_id: string }): PromiseResult<RozContent[]> {
 		const xhtml = await get_response_text(`https://labs.j-novel.club/embed/v2/${opts.legacy_id}/data.xhtml`, opts);
 		if (typeof xhtml === "object") return xhtml;
-		return html_to_roz_content(xhtml);
+		return html_to_roz_contents(xhtml);
 	}
 	export async function reader(opts: Opts & { legacy_id: string }): PromiseResult<JNovel_Reader> {
 		const [reader_init, contents] = await Promise.all([reader_initial(opts), reader_contents(opts)]);
@@ -108,8 +109,9 @@ export namespace JNovel {
 			toc: reader_init.toc
 		}
 	}
-	export async function reader_volume(opts: Opts & { legacy_id: string }): PromiseResult<JNovel_Reader[]> {
+	export async function reader_volume(opts: Opts & { legacy_id: string, on_uuid_count?: (count: number) => any, on_reader_complete?: () => any }): PromiseResult<JNovel_Reader[]> {
 		const reader_result = await reader(opts);
+        opts.on_reader_complete?.();
 		if ("error" in reader_result) return reader_result;
 		const parts = [reader_result];
 		const uuids: string[] = [opts.legacy_id];
@@ -120,9 +122,28 @@ export namespace JNovel {
 				uuids.push(volume_part.uuid);
 		for (const uuid of uuids) {
 			const temp_reader = await reader({ ...opts, legacy_id: uuid });
+            opts.on_reader_complete?.();
 			if ("error" in temp_reader) return temp_reader;
 			parts.push(temp_reader);
 		}
 		return parts;
 	}
+
+
+    export function readers_to_roz(readers: JNovel_Reader[]): Roz{
+        const metadata: JNovel_Reader|undefined = readers[0];
+        return {
+            uuid: gen_uuid(),
+            source_file: metadata.part.legacy_id,
+            source_file_type: "JNOVEL",
+            title: metadata.part.title,
+            cover: metadata.volume_img_uri,
+            author: null,
+            publisher: null,
+            date: new Date(metadata.serie.created.seconds * 1000).toISOString(),
+            series_name: metadata.part.title,
+            series_no: metadata.part.number,
+            chapters: readers.map<RozChapterContents[]>(jreader => roz_contents_to_roz_chapters_contents(jreader.content)).flat()
+        };
+    }
 }

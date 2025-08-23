@@ -7,7 +7,7 @@ export type PromiseResult<T> = Promise<ResponseError|T>;
 export type FetchMethod = "GET"|"POST"|"DELETE"|"PUT"|"OPTIONS";
 
 export type HexColor = `#${string}`;
-export type FileExtension = ".txt"|".mp3"|".mp4"|".aac"|".mkv"|".ogg"|".m4a"|".wav"|".flv"|".epub"|".pdf"|".roz"|".ps1"|".json"|".srt"|".aiff";
+export type FileExtension = ".txt"|".mp3"|".mp4"|".aac"|".mkv"|".ogg"|".m4a"|".wav"|".flv"|".epub"|".pdf"|".roz"|".ps1"|".json"|".srt"|".aiff"|".ytc"|".png"|"jpg"|".jpeg";
 
 export interface BaseOpts {
     cookie_jar?: CookieJar; 

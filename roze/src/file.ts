@@ -7,15 +7,14 @@ import { gen_uuid } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
 import { Counter, type FileExtension, type PromiseResult } from '@common/types';
 import { force_json_parse, parse_pdf_date, try_json_parse } from '@common/utils/parse_util';
-import { generror_catch } from '@common/utils/error_util';
+import { generror, generror_catch } from '@common/utils/error_util';
 import { gen_temp_file_name, get_temp_file_path } from '@native/fs/fs_utils';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import pdfjs_lib, { type PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp, { type Channels } from 'sharp';
 import { reinterpret_cast } from '@common/cast';
-import { html_to_roz_contents } from './utils';
-// import * as docx from "docx";
-// import mammoth from "mammoth";
+import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from './utils';
+import mammoth from "mammoth";
 
 export namespace FileParser {
     interface ParseFileOpts {
@@ -48,18 +47,24 @@ export namespace FileParser {
         if(typeof strerr === "string") return try_json_parse<Roz>(strerr);
         return strerr;
     }
-    function base_64_image(data_base64: string, type: string){
-        return `data:${type};base64,${data_base64}`;
-    }
     async function epub_get_image_base64(epub: EPub, html_image_path: string) {
         const image_id = epub.listImage().find(image => image.href && html_image_path.replace(epub.imageroot, '') === image.href)?.id;
         const image: [Buffer, string] = await epub.getImageAsync(image_id!); 
         return base_64_image(image[0].toString('base64'), image[1]);
     }
+    const bad_chapter_ids = ["JLN.xhtml", "Just_Light_Novels.xhtml"];
     async function parse_epub_flow(epub: EPub){
         const sections: { contents: string; chapter: TocElement; }[] = [];
         for(const chapter of epub.flow) {
             if(!chapter.id) continue;
+            let do_continue = false;
+            for(const bad_chapter_id of bad_chapter_ids){
+                if(chapter.id.toLowerCase().includes(bad_chapter_id.toLowerCase())) {
+                    do_continue = true;
+                    break;
+                }
+            }
+            if(do_continue) continue;
             sections.push({contents: await epub.getChapterAsync(chapter.id), chapter});
         }
         return sections;
@@ -216,9 +221,8 @@ export namespace FileParser {
     } & PDFOptions & ParseFileOpts): PromiseResult<Roz> {
         const file_path_err = await transform_url_to_path(file_path_or_url, ".pdf", opts);
         if(typeof file_path_err === "object") return file_path_err;
-        const pdf_document_base64_data = await fs().read_as_string(file_path_err, {encoding: 'base64'});
-        if(typeof pdf_document_base64_data === "object") return pdf_document_base64_data;
-        const pdf_document_bytes = Uint8Array.from(atob(pdf_document_base64_data.replace(/^data[^,]+,/,'')), v => v.charCodeAt(0));
+        const pdf_document_bytes = await filepath_to_bytes(file_path_err);
+        if("error" in pdf_document_bytes) return pdf_document_bytes;
         try {
             const loading_task = pdfjs_lib.getDocument({ data: pdf_document_bytes, password: opts.password, verbosity: 0});
             loading_task.onProgress = opts.on_pdf_load_progress ?? (() => { return });
@@ -352,9 +356,33 @@ export namespace FileParser {
             return generror_catch(e, "Failed to parse pdf", {file_path_or_url, file_path_err, opts});
         }
     }
-    // async function docx_buffer(document: docx.Document) {
-    //     return await docx.Packer.toBuffer(document);
-    // }
+    export async function parse_docx(file_path_or_url: string, opts: ParseFileOpts): PromiseResult<Roz> {
+        const file_path_err = await transform_url_to_path(file_path_or_url, ".txt", opts);
+        if(typeof file_path_err === "object") return file_path_err;
+        try {
+            const docx_document_bytes = await filepath_to_bytes(file_path_err);
+            if("error" in docx_document_bytes) return docx_document_bytes;
+            const docx_result = await mammoth.convertToHtml({arrayBuffer: docx_document_bytes.buffer});
+            if(docx_result.messages.some(msg => msg.type === "error")) return generror("Error in docx_result", {file_path_or_url, opts, messages: docx_result.messages});
+            const html = docx_result.value;
+            return {
+                uuid: gen_uuid(),
+                source_file: pathlib.resolve(file_path_or_url),
+                source_file_type: "DOCX",
+                title: pathlib.basename(file_path_or_url),
+                author: null,
+                publisher: null,
+                date: new Date().toISOString(),
+                cover: null,
+                series_name: null,
+                series_no: null,
+                chapters: roz_contents_to_roz_chapters_contents(html_to_roz_contents(html))
+            }
+        }
+        catch(e){
+            return generror_catch(e, "Failed to parse txt", {file_path_or_url, file_path_err, opts});
+        }
+    }
     export async function parse_txt(file_path_or_url: string, title: string, opts: ParseFileOpts): PromiseResult<Roz> {
         const file_path_err = await transform_url_to_path(file_path_or_url, ".txt", opts);
         if(typeof file_path_err === "object") return file_path_err;

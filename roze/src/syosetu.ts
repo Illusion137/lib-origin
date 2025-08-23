@@ -8,11 +8,23 @@ import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror, generror_catch } from "@common/utils/error_util";
 import { reinterpret_cast } from "@common/cast";
 import type Roz from "@roze/types/roz";
+import { remove } from "@common/utils/clean_util";
 
 export namespace Syosetu {
     export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }
 
+    export interface WebnovelContentsHeader {
+        series_name: string;
+        series_id: string;
+        series_section?: string;
+        author: string;
+        author_id: string;
+        current_chapter_number: number;
+        last_chapter_number: number;
+    }
+
     export interface WebnovelContents {
+        header: WebnovelContentsHeader;
         chapter_title: string;
         contents: string[];
     };
@@ -48,29 +60,55 @@ export namespace Syosetu {
         });
         if("error" in response_html) return response_html;
         const dom = jsdom_document(response_html.text);
+
+        let series_name = dom.querySelector(`a[href="/${remove(webnovel_id, /\//g)}/"]`)?.textContent;
+        if(typeof series_name !== "string") return generror("Failed to find series_name", {webnovel_id, chapter, opts});
         
-        const chapter_title_jp = dom.querySelector(".p-novel__title")?.textContent;
-        if(typeof chapter_title_jp !== "string") return generror("Failed to find chapter_title", {webnovel_id, chapter});
+        const NO_SERIES_SECTION = "NO_SERIES_SECTION";
+        let series_section = dom.querySelector(`a[href*="https://mypage.syosetu.com/"]`)?.textContent ?? NO_SERIES_SECTION;
+        
+        const author_element = dom.querySelector<HTMLAnchorElement>(`a[href*="https://mypage.syosetu.com/"]`);
+        if(author_element === null) return generror("Failed to find author_element", {webnovel_id, chapter, opts});
+        const author_id = remove(author_element.href, "https://mypage.syosetu.com/", "/");
+        let author_name = author_element.textContent;
+
+        const chapter_numbers_text = dom.querySelector(".p-novel__number.js-siori")?.textContent;
+        if(typeof chapter_numbers_text !== "string") return generror("Failed to find chapter_numbers_text", {webnovel_id, chapter, opts});
+        const chapter_numbers_split = chapter_numbers_text.split('/').map(v => Number(v)) as [number, number];
+        if(chapter_numbers_split.length !== 2) return generror("chapter_numbers_split length !== 2", {webnovel_id, chapter, opts});
+        
+        let chapter_title = dom.querySelector(".p-novel__title")?.textContent;
+        if(typeof chapter_title !== "string") return generror("Failed to find chapter_title", {webnovel_id, chapter, opts});
         
         const sections_of_lines_of_text = dom.querySelectorAll(".js-novel-text");
-        if(sections_of_lines_of_text === undefined) return generror("Failed to find lines_of_text", {webnovel_id, chapter});
-        const lines_of_text = map_html_collection(sections_of_lines_of_text, (el) => el.children)
+        if(sections_of_lines_of_text === undefined) return generror("Failed to find lines_of_text", {webnovel_id, chapter, opts});
+        let lines_of_text = map_html_collection(sections_of_lines_of_text, (el) => el.children)
             .map(node_list => map_html_collection(node_list, (el) => el.textContent ?? ""))
             .flat();
         if(opts.translate_contents){
-            const translated = await Translate.google_translate_html([chapter_title_jp, ...lines_of_text], {
+            const translated = await Translate.google_translate_html([chapter_title, ...lines_of_text], {
                 lang_from: "ja",
                 lang_to: "en",
             });
             if("error" in translated) return translated;
-            const [translated_title, ...translated_contents] = translated;
-            return {
-                chapter_title: translated_title,
-                contents: translated_contents
-            };
+            const [translated_series_name, translated_series_section, translated_author_name, translated_title, ...translated_contents] = translated;
+            series_name = translated_series_name;
+            series_section = translated_series_section;
+            author_name = translated_author_name;
+            chapter_title = translated_title;
+            lines_of_text = translated_contents;
         }
         return {
-            chapter_title: chapter_title_jp,
+            header: {
+                series_name: series_name,
+                series_id: webnovel_id,
+                series_section: series_section === NO_SERIES_SECTION ? undefined : series_section,
+                author: author_name,
+                author_id: author_id,
+                current_chapter_number: chapter_numbers_split[0],
+                last_chapter_number: chapter_numbers_split[1],
+            },
+            chapter_title: chapter_title,
             contents: lines_of_text
         }
     }
@@ -152,17 +190,17 @@ export namespace Syosetu {
     }
     export function webnovel_chapters_contents_to_roz(webnovel_contents: (WebnovelContents|ResponseError)[]): Roz{
         const filtered_contents = reinterpret_cast<WebnovelContents[]>(webnovel_contents.filter(content => !("error" in content)));
-        // TODO fetch metadata
+        const metadata_header: WebnovelContentsHeader|undefined = filtered_contents[0].header;
         return {
             uuid: gen_uuid(),
-            title: "",
-            author: null,
-            source_file: "", // TODO FIX THIS
+            title: metadata_header.series_name ?? "",
+            author: metadata_header.author ?? null,
+            source_file: metadata_header.series_id ?? "",
             source_file_type: "SYOSETU",
             cover: null,
             publisher: null,
             date: null,
-            series_name: null,
+            series_name: metadata_header.series_name ?? null,
             series_no: null,
             chapters: filtered_contents.map(webnovel_chapter_contents_to_roz_chapter_contents)
         };

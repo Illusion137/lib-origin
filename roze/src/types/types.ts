@@ -24,7 +24,6 @@ export type StaticAssert<T extends true> = T;
 export type TranslationMap = {
     from: RegExp;
     to: string;
-    match_case: boolean;
 }[];
 export interface DurationImage { image_path: string; duration: number; }
 export interface TimestampedContent { uuid: string; timestamp: string };
