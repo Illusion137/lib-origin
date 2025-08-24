@@ -13,6 +13,7 @@ scratch*
 scratch.**
 translate
 catids.txt
-*.m4a
+*.roz.json
+*.wav
 *.wav
 *.mp3

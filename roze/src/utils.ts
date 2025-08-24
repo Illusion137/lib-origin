@@ -45,7 +45,7 @@ export function fix_punctuation(text: string){
 }
 
 type ElementTagName = "IMG"|"P"|"H1"|"H2"|"BR"|"HR"|"A";
-function html_tag_to_roz_content(el: Element): RozContent|undefined{
+function html_tag_to_roz_content(el: Element): RozContent|undefined{ // TODO Account for paragraph inline br/ and hr/ and other balony
     const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
     switch(element_tag_name){
         case "IMG": return { type: "IMAGE", content: reinterpret_cast<HTMLImageElement>(el).src, uuid: gen_uuid(), duration: 0};
@@ -105,18 +105,20 @@ export function roz_contents_to_roz_chapters_contents(contents: RozContent[]): R
 export function generate_text_structure(text: string): RozTextStructures{
     const tag_regex = /<(.+?)>(.+?)<\/.+?>/gi;
     const tag_matches = [...text.matchAll(tag_regex)];
-    if(tag_matches.length === 0) return [{content: text, type: "NONE"}];
+    if (tag_matches.length === 0) return [{ content: text, type: "NONE" }];
     const text_structure: RozTextStructures = [];
-    for(const tag_match of tag_matches){
-        const [fullstr, tagstr, contentstr] = [tag_match[0], tag_match[1], tag_match[2]];
-        const prestring = text.substring(0, tag_match.index);
-        if(prestring.length !== 0) text_structure.push({content: prestring, type: "NONE"});
-        if(tagstr === undefined || contentstr === undefined) continue;
-        text_structure.push({content: contentstr, type: tagstr as RozTextStructureType});
-        text = text.substring(tag_match.index + fullstr.length);
+    const original_text = text;
+    for (const tag_match of tag_matches) {
+        const [fullstr, tagstr, contentstr] = [tag_match[0], tag_match[1].trim(), tag_match[2]];
+        const prestring = original_text.substring(original_text.length - text.length, tag_match.index);
+        if (prestring.length !== 0) text_structure.push({ content: prestring, type: "NONE" });
+        if (tagstr === undefined || contentstr === undefined) continue;
+        text_structure.push({ content: contentstr, type: tagstr as RozTextStructureType });
+        text = original_text.substring(tag_match.index + fullstr.length);
     }
-    if(text.length !== 0) text_structure.push({content: text, type: "NONE"});
+    if (text.length !== 0) text_structure.push({ content: text, type: "NONE" });
     
+    text_structure.forEach(struct => struct.content = struct.content.replaceAll('<br/>', '\n').replaceAll('<br />', '\n'));
     return text_structure;
 }
 
