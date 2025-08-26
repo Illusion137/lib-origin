@@ -106,7 +106,7 @@ export function extract_file_extension(path: string, mime?: "photo"|"video"|"non
             default: return ".txt";
         }
     }
-    return extracted;
+    return extracted.toLowerCase();
 }
 
 export function shuffle_array<T>(array: T[]) {
@@ -190,7 +190,7 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
     for(const batch of batches){
         results.push(
             await Promise.all(
-                batch.map(item => item())
+                batch.map(async(item) => item())
             )
         );
     }

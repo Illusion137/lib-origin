@@ -37,20 +37,19 @@ export function extract_query_flags<T>(query: string, QUERY_FLAGS: QueryFlag<T>[
     const query_flags_flags = QUERY_FLAGS.map(flag => flag.flag).concat(QUERY_FLAGS.map(flag => ANTI_QUERY_FLAG_PREFIX + flag.flag));
     const extracted_query_flags: [QueryFlag<T>, string[], boolean][] = [];
     for(let i = 0; i < words.length; i++){
-        if(query_flags_flags.includes(words[i])){
-            const found_flag = words.splice(i--, 1)[0];
-            const is_antiflag: boolean = found_flag.includes(ANTI_QUERY_FLAG_PREFIX);
-            const full_query_flag = QUERY_FLAGS.find(flag => flag.flag === found_flag.replace(ANTI_QUERY_FLAG_PREFIX, ''))!;
-            const found_args: string[] = [];
-            const end_on_flag = full_query_flag?.args === -1;
-            const args_length = end_on_flag ? UNTIL_FLAG_ARG_AMOUNT : full_query_flag?.args ?? 0;
-            for(let j = 0; j < args_length; j++){
-                if(query_flags_flags.includes(words[i + 1])) break;
-                i++;
-                found_args.push(...words.splice(i--, 1));
-            }
-            extracted_query_flags.push([full_query_flag, found_args, is_antiflag])
+        if(!query_flags_flags.includes(words[i])) continue;
+        const found_flag = words.splice(i--, 1)[0];
+        const is_antiflag: boolean = found_flag.includes(ANTI_QUERY_FLAG_PREFIX);
+        const full_query_flag = QUERY_FLAGS.find(flag => flag.flag === found_flag.replace(ANTI_QUERY_FLAG_PREFIX, ''))!;
+        const found_args: string[] = [];
+        const end_on_flag = full_query_flag?.args === -1;
+        const args_length = end_on_flag ? UNTIL_FLAG_ARG_AMOUNT : full_query_flag?.args ?? 0;
+        for(let j = 0; j < args_length; j++){
+            if(query_flags_flags.includes(words[i + 1])) break;
+            i++;
+            found_args.push(...words.splice(i--, 1));
         }
+        extracted_query_flags.push([full_query_flag, found_args, is_antiflag])
     }
     return {
         new_query: words.join(' '),

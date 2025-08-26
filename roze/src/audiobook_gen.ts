@@ -48,7 +48,8 @@ export namespace AudiobookGen {
         PARAGRAPH: false,
         IMAGE: true,
         LINE_BREAK: true,
-        THEME_BREAK: true
+        THEME_BREAK: true,
+        TABLE_OF_CONTENTS_CHAPTER: true
     };
 
     export async function roz_chapter_to_audiobook(roz_chapter: RozChapterContents, opts: RozFullAudioOpts, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"): Promise<RozChapterContents>{
