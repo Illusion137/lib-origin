@@ -1,11 +1,20 @@
 import path from "path";
 import { fs, load_native_fs } from "@native/fs/fs";
+import { asset_loader, load_native_asset_loader } from "@native/asset_loader/asset_loader";
+import { load_native_miscnative, miscnative } from "@native/miscnative/miscnative";
+import { load_native_sqlite, sqlite } from "@native/sqlite/sqlite";
+import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
+import { ffmpeg, load_native_ffmpeg } from "@native/ffmpeg/ffmpeg";
 
 type NativeModuleInfo = [string, () => object, string, () => Promise<any>];
 type NativeModuleInfoWithKeys = [string, () => object, string, () => Promise<any>, string[]];
 const native_scripts: NativeModuleInfo[] = [
-	["fs", fs, "FileSystem", load_native_fs]
-	// ["ffmpeg", ffmpeg]
+	["fs", fs, "FileSystem", load_native_fs],
+	["ffmpeg", ffmpeg, "FFMPEG", load_native_ffmpeg],
+	["miscnative", miscnative, "MiscNative", load_native_miscnative],
+	["sqlite", sqlite, "SQLite", load_native_sqlite],
+	["mmkv", mmkv, "MMKVModule", load_native_mmkv],
+    ["asset_loader", asset_loader, "AssetLoader", load_native_asset_loader]
 ];
 
 function gendependencies(module_titles: string[], type_only: boolean): string {

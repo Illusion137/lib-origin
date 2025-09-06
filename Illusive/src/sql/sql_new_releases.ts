@@ -1,7 +1,7 @@
 import { try_json_parse } from '@common/utils/parse_util';
 import { groupby, is_empty, milliseconds_of } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
-import { db } from '@illusive/db/database';
+import { db_exec } from '@illusive/db/database';
 import { new_releases_table } from '@illusive/db/schema';
 import { Prefs } from "@illusive/prefs";
 import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, TimestampedCompactPlaylist } from "@illusive/types";
@@ -10,7 +10,7 @@ import { reinterpret_cast } from '@common/cast';
 
 export namespace SQLNewReleases {
     export async function new_releases_count(): Promise<number>{
-        return db.$count(new_releases_table);
+        return await db_exec(async(db) => await db.$count(new_releases_table));
     }
     
     export async function sql_compact_playlist_to_compact_playlist(playlist: CompactPlaylist|SQLCompactPlaylist): Promise<CompactPlaylist>{
@@ -32,14 +32,14 @@ export namespace SQLNewReleases {
     
     export async function get_all_new_releases(){
         return await Promise.all(
-            (await db.select().from(new_releases_table)).map(sql_compact_playlist_to_compact_playlist)
+            (await db_exec(async(db) => await db.select().from(new_releases_table))).map(sql_compact_playlist_to_compact_playlist)
         ) as TimestampedCompactPlaylist[];
     }
     
-    async function add_playback_saved_data_to_new_releases(releases: CompactPlaylist[]): Promise<CompactPlaylist[]>{
+    function add_playback_saved_data_to_new_releases(releases: CompactPlaylist[]): CompactPlaylist[]{
         for(const release of releases){
             if(release.song_track !== undefined && release.song_track !== null){
-                release.song_track = await SQLTracks.add_playback_saved_data_to_track(release.song_track);
+                release.song_track = SQLTracks.add_playback_saved_data_to_track(release.song_track);
             }
         }
         return releases;
@@ -77,18 +77,18 @@ export namespace SQLNewReleases {
     
         for(const not_seen_playlist of not_seen){
             if(not_seen_playlist.song_track !== undefined && not_seen_playlist.song_track !== null){
-                not_seen_playlist.song_track = await SQLTracks.add_playback_saved_data_to_track(not_seen_playlist.song_track);
+                not_seen_playlist.song_track = SQLTracks.add_playback_saved_data_to_track(not_seen_playlist.song_track);
             }
         }
         return add_playback_saved_data_to_new_releases(not_seen);
     }
     
     export async function delete_all_from_new_releases(){
-        await db.delete(new_releases_table);
+        await db_exec(async(db) => await db.delete(new_releases_table));
     }
     export async function insert_all_into_new_releases(new_releases: CompactPlaylist[]){
         // const promises: Promises = [];
-        await db.insert(new_releases_table).values(new_releases);
+        await db_exec(async(db) => await db.insert(new_releases_table).values(new_releases));
         // for(const new_release of new_releases){
         //     promises.push(db_run_async(sql_insert_values("new_releases", ExampleObj.new_releases_example0), compact_playlist_to_sqllite_insertion(new_release)));
         // }

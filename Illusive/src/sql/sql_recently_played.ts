@@ -1,5 +1,5 @@
 import { is_empty } from "@common/utils/util";
-import { db } from "@illusive/db/database";
+import { db_exec } from "@illusive/db/database";
 import { recently_played_tracks_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
 import { Prefs } from "@illusive/prefs";
@@ -9,18 +9,18 @@ import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLRecentlyPlayed {
     export async function insert_recently_played_track(track: Track) {
-        await db.transaction(async(tx) => {
+        await db_exec(db => db.transaction(async(tx) => {
             await tx.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
             await tx.insert(recently_played_tracks_table).values(track);
-        })
+        }));
     }
     export async function delete_recently_played_track(track: Track) {
-        await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
+        await db_exec(db =>db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
     }
     export async function recently_played_tracks(limit?: number): Promise<Track[]> {
         // TODO dont hard code 1000;
-        const recently_played_sql_tracks = await db.select().from(recently_played_tracks_table).limit(limit ?? 1000).orderBy(desc(recently_played_tracks_table.id));
-        const mapped_recently_played_tracks = await SQLTracks.sql_tracks_to_tracks(recently_played_sql_tracks);
+        const recently_played_sql_tracks = await db_exec(db =>db.select().from(recently_played_tracks_table).limit(limit ?? 1000).orderBy(desc(recently_played_tracks_table.id)));
+        const mapped_recently_played_tracks = SQLTracks.sql_tracks_to_tracks(recently_played_sql_tracks);
         const global_tracks_uuid_set = new Set<string>(GLOBALS.global_var.sql_tracks.map(({uid}) => uid));
         const global_tracks_uuid_track_map = new Map<string, Track>(GLOBALS.global_var.sql_tracks.map(track => [track.uid, track]));
         for(let i = 0; i < mapped_recently_played_tracks.length; i++) {

@@ -5,16 +5,17 @@ export interface MMKVModuleOpts {
     encryption_key?: string;
 }
 export interface MMKVModule {
-    set_string: (key: string, value: string) => string;
-    get_string: (key: string) => string | undefined;
-    set_boolean: (key: string, value: boolean) => boolean;
-    get_boolean: (key: string) => boolean | undefined;
-    set_number: (key: string, value: number) => number;
-    get_number: (key: string) => number | undefined;
+    load_mmkv: (opts: Readonly<MMKVModuleOpts>) => Promise<void>;
+    set_string: (key: string, value: string) => Promise<string>;
+    get_string: (key: string) => Promise<string | undefined>;
+    set_boolean: (key: string, value: boolean) => Promise<boolean>;
+    get_boolean: (key: string) => Promise<boolean | undefined>;
+    set_number: (key: string, value: number) => Promise<number>;
+    get_number: (key: string) => Promise<number | undefined>;
 
-    contains_key: (key: string) => boolean;
-    get_keys: () => string[];
-    remove_key: (key: string) => void;
-    clear_memory_cache: () => void;
-    clear_all: () => void;
+    contains_key: (key: string) => Promise<boolean>;
+    get_keys: () => Promise<string[]>;
+    remove_key: (key: string) => Promise<void>;
+    clear_memory_cache: () => Promise<void>;
+    clear_all: () => Promise<void>;
 }

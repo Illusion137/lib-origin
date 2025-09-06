@@ -1,1 +1,2 @@
-module.exports = require('./sax')
+import sax from './sax';
+export default sax as any;

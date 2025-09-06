@@ -196,3 +196,10 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
     }
     return results.flat();
 }
+
+export function catch_function_sync(func: () => any, on_error: (error: unknown) => any) {
+    try { return func(); } catch (error) { on_error(error); }
+}
+export async function catch_function_async(func: () => Promise<any>, on_error: (error: unknown) => any) {
+    try { return await func(); } catch (error) { on_error(error); }
+}

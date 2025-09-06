@@ -8,6 +8,11 @@
     "gen_native": "ts-node ./scripts/gen_native.ts",
     "check-types": "tsc --noEmit"
   },
+  "cmake-js": {
+    "runtime": "node",
+    "runtimeVersion": "24.3.0",
+    "arch": "x64"
+  },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.4",
@@ -71,6 +76,7 @@
     "chrome-cookie": "^1.0.6",
     "chrome-cookies-secure": "^2.1.1",
     "cli-progress": "^3.12.0",
+    "cmake-js": "^7.3.1",
     "colors": "^1.4.0",
     "console-browserify": "^1.2.0",
     "constants-browserify": "^1.0.0",

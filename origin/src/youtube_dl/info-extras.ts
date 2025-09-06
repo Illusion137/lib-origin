@@ -1,6 +1,6 @@
 import * as qs from 'querystring';
 import * as utils from '@origin/youtube_dl/utils';
-const { parse_timestamp } = require('./PATCH/m3u8stream/index');
+import { parse_timestamp } from './PATCH/m3u8stream/index';
 
 const BASE_URL = 'https://www.youtube.com/watch?v=';
 const TITLE_TO_CATEGORY: Record<string, { "name": string, url: string }> = {

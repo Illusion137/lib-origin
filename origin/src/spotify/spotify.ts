@@ -16,7 +16,7 @@ import type { Proxy } from "@origin/proxy/proxy";
 import type { AppServerConfig, FeatureFlags, RemoteConfig } from "@origin/spotify/types/Initial";
 import { Secret, TOTP } from "otpauth";
 import { encode_params } from "@common/utils/fetch_util";
-const Buffer = require('buffer/').Buffer
+import Buffer from "buffer/";
 
 export namespace Spotify {
     interface ClientSession {
@@ -92,7 +92,7 @@ export namespace Spotify {
 
     function calculate_token(hex: number[]) {
         const token = hex.map((v, i) => v ^ ((i % 33) + 9));
-        const buffer_token = Buffer.from(token.join(""), "utf8").toString("hex");
+        const buffer_token = Buffer.Buffer.from(token.join(""), "utf8").toString("hex");
 
         return Secret.fromHex(buffer_token);
     }

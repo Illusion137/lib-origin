@@ -1,5 +1,4 @@
 import type { ResponseError } from "@common/types";
-import { db } from "@illusive/db/database";
 import { backpack_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
 import { track_exists } from "@illusive/illusive_utilts";
@@ -9,10 +8,10 @@ import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLBackpack {
     export async function empty_backpack() {
-        await db.delete(backpack_table);
+        await db_exec(async(db) => await db.delete(backpack_table));
     }
     export async function delete_from_backpack(track_uid: string) {
-        await db.delete(backpack_table).where(eq(backpack_table.uid, track_uid));
+        await db_exec(async(db) => await db.delete(backpack_table).where(eq(backpack_table.uid, track_uid)));
     }
     export async function toss_from_backpack(replacement_track: Track) {
         await Promise.all([
@@ -22,8 +21,8 @@ export namespace SQLBackpack {
     }
     
     export async function backpack_tracks() {
-        const sql_tracks = await db.select().from(backpack_table);
-        const tracks: Track[] = await SQLTracks.sql_tracks_to_tracks(sql_tracks);
+        const sql_tracks = await db_exec(async(db) => await db.select().from(backpack_table));
+        const tracks: Track[] = SQLTracks.sql_tracks_to_tracks(sql_tracks);
         // TODO investigate icon map
         // for(const track of tracks) track.playback!.artwork = IllusiIcons.icon_map[Illusive.illusi_dark_icon_index];
         return tracks;
@@ -38,7 +37,7 @@ export namespace SQLBackpack {
         }
         await Promise.all([
             SQLTracks.delete_track(uid),
-            db.insert(backpack_table).values(track)
+            db_exec(async(db) => await db.insert(backpack_table).values(track))
         ]);
     }
 }

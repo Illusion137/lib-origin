@@ -1,4 +1,4 @@
-const { Cookie, CookieJar, canonicalDomain } = require("tough-cookie");
+import { Cookie, CookieJar, canonicalDomain } from "tough-cookie";
 // const { CookieAgent } = require("http-cookie-agent/undici");
 
 const convertSameSite = sameSite => {

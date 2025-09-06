@@ -2,7 +2,7 @@ import type { RozChapterContents, RozContent } from '@roze/types/roz';
 import type { TocElement } from 'epub2/lib/epub/const';
 import type Roz from '@roze/types/roz';
 import EPub from 'epub2';
-import pathlib from 'path';
+import pathlib from 'path-browserify';
 import { gen_uuid } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
 import { Counter, type FileExtension, type PromiseResult } from '@common/types';

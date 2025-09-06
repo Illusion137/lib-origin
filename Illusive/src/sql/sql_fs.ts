@@ -1,29 +1,44 @@
 import { is_empty } from '@common/utils/util';
 import { Illusive } from '@illusive/illusive';
 import { fs } from '@native/fs/fs';
-import path_lib from 'path';
+import path_lib from 'path-browserify';
 
 export namespace SQLfs {
+    let cached_temp_directory: (...paths: string[]) => string = () => "";
+    let cached_document_directory: (...paths: string[]) => string = () => "";
+
+    export async function cache_load_directories(){
+        const hold_temp_directory = await fs().temp_directory();
+        const hold_document_directory = await fs().document_directory();
+        cached_temp_directory = (...paths: string[]) => {
+            return path_lib.join(hold_temp_directory, ...paths);
+        };
+        cached_document_directory = (...paths: string[]) => {
+            return path_lib.join(hold_document_directory, ...paths);
+        };
+    }
+
     function forward_item(item: string) {
         return !is_empty(item) ? item : "";
     }
-    export async function cache_directory(path: string) { return await fs().temp_directory(path); }
-    export async function document_directory(path: string) { return await fs().document_directory(path); }
-    export async function sqlite_directory(item: string) { return await document_directory(Illusive.sqlite_directory) + forward_item(item); }
-    export async function custom_thumbnail_directory(item: string) { return await document_directory(Illusive.custom_thumbnail_archive_path) + forward_item(item); }
-    export async function thumbnail_directory(item: string) { return await  document_directory(Illusive.thumbnail_archive_path) + forward_item(item); }
-    export async function media_directory(item: string) { return await document_directory(Illusive.media_archive_path) + forward_item(item); }
-    export async function lyrics_directory(item: string) { return await document_directory(Illusive.lyrics_archive_path) + forward_item(item); }
+
+    export function cache_directory(path: string) { return cached_temp_directory(path); }
+    export function document_directory(path: string) { return cached_document_directory(path); }
+    export function sqlite_directory(item: string) { return document_directory(Illusive.sqlite_directory) + forward_item(item); }
+    export function custom_thumbnail_directory(item: string) { return document_directory(Illusive.custom_thumbnail_archive_path) + forward_item(item); }
+    export function thumbnail_directory(item: string) { return  document_directory(Illusive.thumbnail_archive_path) + forward_item(item); }
+    export function media_directory(item: string) { return document_directory(Illusive.media_archive_path) + forward_item(item); }
+    export function lyrics_directory(item: string) { return document_directory(Illusive.lyrics_archive_path) + forward_item(item); }
     
-    async function copy_to(item: string, dir_func: (item: string) => Promise<string>, new_name?: string) {
+    async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
         const base_name = path_lib.basename(new_name ?? item);
-        await fs().copy(item, await dir_func(base_name), {});
+        await fs().copy(item, dir_func(base_name), {});
         return dir_func(base_name);
     }
     
-    async function move_to(item: string, dir_func: (item: string) => Promise<string>, new_name?: string) {
+    async function move_to(item: string, dir_func: (item: string) => string, new_name?: string) {
         const base_name = path_lib.basename(new_name ?? item);
-        await fs().move(item, await dir_func(base_name), {});
+        await fs().move(item, dir_func(base_name), {});
         return dir_func(base_name);
     }
     
@@ -46,7 +61,7 @@ export namespace SQLfs {
     export async function mkdir(path: string) { await fs().make_directory(path); }
     export async function info(path: string) { return await fs().get_info(path); }
     export async function delete_item(path: string) {
-        if([await media_directory(""), await thumbnail_directory(""), await lyrics_directory("")].includes(path)){
+        if([media_directory(""), thumbnail_directory(""), lyrics_directory("")].includes(path)){
             return;
         }
         await fs().remove(path); 
