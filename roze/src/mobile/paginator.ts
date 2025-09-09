@@ -38,6 +38,9 @@ export async function measure_text_roz_content_height_px(roz_content: RozContent
     });
     return points_to_px(measurement.height);
 }
+// export async function measure_roz_content_height_px_batch(roz_contents: RozContent[], roz_text_style: TextStyle, window_size: WindowSize){
+//     rn_text_size.flatHeights({text:, fontWeight:})
+// }
 export async function paginate_roz_contents(roz_chapter_contents: RozChapterContents[], window_size: WindowSize, text_bottom_margin: number) {
     const roz_pages: RozContent[][] = [];
     let page_content_bucket: RozContent[] = [];
@@ -59,13 +62,13 @@ export async function paginate_roz_contents(roz_chapter_contents: RozChapterCont
                 try_insert_bucket();
                 continue;
             }
-            const text_measurement = await measure_text_roz_content_height_px(content, text_style_map[content.type]("#ffffff"), window_size);
+            const text_measurement = await measure_text_roz_content_height_px(content, text_style_map[content.type]("#ffffff"), window_size) + text_bottom_margin;
             if (accumulated_height + text_measurement >= window_size.height) {
                 try_insert_bucket();
                 page_content_bucket = [content];
             }
             else {
-                accumulated_height += text_measurement + text_bottom_margin;
+                accumulated_height += text_measurement;
                 page_content_bucket.push(content);
             }
         }

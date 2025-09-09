@@ -179,7 +179,7 @@ export namespace Syosetu {
 
     export function webnovel_chapter_contents_to_roz_chapter_contents(webnovel_contents: WebnovelContents): RozChapterContents{
         return {
-            chapter: { title: webnovel_contents.chapter_title },
+            chapter: { uuid: gen_uuid(), title: webnovel_contents.chapter_title },
             contents: webnovel_contents.contents.map(line => ({
                 content: line,
                 type: "PARAGRAPH",

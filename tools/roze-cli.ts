@@ -277,7 +277,7 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 	}
 	log_info(`Source File: ${roz.source_file}`);
 	console.log(cyan("Roz Info: "), { ...roz, chapters: `{JSON_ENCODED ${roz.chapters.length} CHAPTERS}`, cover: roz.cover ? "{ BASE64_ENCODED_DATA }" : roz.cover });
-	// await fs().write_file_as_string("./example.roz", JSON.stringify(roz), {});
+	// await fs().write_file_as_string("./example.roz.json", JSON.stringify(roz), {});
 
 	if (options.cache && cache_result === undefined) {
 		log_info(`Writing data to cache...`);

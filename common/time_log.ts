@@ -11,7 +11,7 @@ export namespace TimeLog {
         const seconds = Math.floor(((duration_ms % 3600000) % 60000) / 1000);
         const milliseconds = duration_ms % 1000;
 
-        const str = `${hours > 0 ? `${hours}h ` : "" }${minutes > 0 ? `${minutes}m ` : "" }${seconds > 0 ? `${seconds}s ` : "" }${milliseconds > 0 ? `${milliseconds}ms` : "" }`;
+        const str = `${hours > 0 ? `${hours}h ` : "" }${minutes > 0 ? `${minutes}m ` : "" }${seconds > 0 ? `${seconds}s ` : "" }${milliseconds >= 0 ? `${milliseconds}ms` : "" }`;
 
         console.log((msg ?? "") + " : " + str);
         time = new Date().getTime();

@@ -7,6 +7,7 @@ export interface RozContent {
     duration: number;
 }
 export interface RozChapter {
+    uuid: string;
     id?: string;
     title: string;
     audio_path?: string;
@@ -19,7 +20,7 @@ export interface RozChapterContents {
 
 export type RozSourceFileType = 'TXT'|'PDF'|'JNOVEL'|'WITCHCULT'|'SYOSETU'|'EPUB'|'DOCX'|'FILEBASE'|"FOLDER";
 export const RozSourceFileTypeArray = ['TXT','PDF','JNOVEL','WITCHCULT','SYOSETU','EPUB','DOCX','FILEBASE'] as const;
-export default interface Roz {
+export default interface Roz { // TODO add versions to format
     uuid: string;
     source_file: string;
     source_file_type: RozSourceFileType;

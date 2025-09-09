@@ -132,6 +132,7 @@
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.20.2",
     "react-native-image-crop-picker": "^0.42.0",
+    "react-native-ios-context-menu": "^3.1.0-0",
     "react-native-level-fs": "^3.0.1",
     "react-native-mmkv": "^3.3.0",
     "react-native-os": "^1.2.6",

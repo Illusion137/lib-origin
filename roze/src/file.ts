@@ -82,6 +82,7 @@ export namespace FileParser {
                     ...section,
                     chapter: {
                         ...section.chapter,
+                        uuid: gen_uuid(),
                         title: section.chapter.title ?? ""
                     },
                     contents: roz_contents 
@@ -201,6 +202,7 @@ export namespace FileParser {
                     delete content.pdf_text_height;
                     roz_chapter_contents.push({
                         chapter: {
+                            uuid: gen_uuid(),
                             title: prev_chapter_title
                         },
                         contents: chapter_contents
@@ -402,7 +404,7 @@ export namespace FileParser {
                 series_name: null,
                 series_no: null,
                 chapters: [{
-                    chapter: {title},
+                    chapter: {uuid: gen_uuid(), title},
                     contents: line_normalized_text_contents
                         .split('\n')
                         .map(content => ({content, type: 'PARAGRAPH', uuid: gen_uuid(), duration: 0}))
