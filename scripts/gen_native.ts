@@ -37,11 +37,11 @@ export const node_${native_name}: ${native_iname} = {
 `;
 
 async function gen_native_main() {
-	await fs.make_directory(pathlib.join(base_path, native_name));
-	await fs.write_file_as_string(pathlib.join(base_path, native_name, native_name + ".ts"), import_ts_contents, {});
-	await fs.write_file_as_string(pathlib.join(base_path, native_name, native_name + ".base.ts"), base_ts_contents, {});
-	await fs.write_file_as_string(pathlib.join(base_path, native_name, native_name + ".mobile.ts"), mobile_ts_contents, {});
-	await fs.write_file_as_string(pathlib.join(base_path, native_name, native_name + ".node.ts"), node_ts_contents, {});
+	await fs().make_directory(pathlib.join(base_path, native_name));
+	await fs().write_file_as_string(pathlib.join(base_path, native_name, native_name + ".ts"), import_ts_contents, {});
+	await fs().write_file_as_string(pathlib.join(base_path, native_name, native_name + ".base.ts"), base_ts_contents, {});
+	await fs().write_file_as_string(pathlib.join(base_path, native_name, native_name + ".mobile.ts"), mobile_ts_contents, {});
+	await fs().write_file_as_string(pathlib.join(base_path, native_name, native_name + ".node.ts"), node_ts_contents, {});
 }
 
 gen_native_main().catch((e) => console.error(e));

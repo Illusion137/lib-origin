@@ -15,13 +15,6 @@ export async function if_confirm(title: string, msg: string, on_press: () => Pro
     ])
 }
 
-export function catch_function_sync(func: () => any) {
-    try { return func(); } catch (error) { alert_error({error: error as Error}); return {error: error as Error}; }
-}
-export async function catch_function_async(func: () => Promise<any>) {
-    try { return await func(); } catch (error) { alert_error({error: error as Error}); return {error: error as Error}; }
-}
-
 function populate_alphabet_scroll(alphabet_scroll: AlphabetScroll, char_data: string[]) {
     alphabet_scroll.all_alphabet_fast_scroll_locations = [];
     for(let i = 0; i < char_data.length; i++) {
@@ -48,8 +41,3 @@ export async function share_item(item: {link: string}|{uri: string}) {
     else await Sharing.shareAsync(item.uri, { UTI });
 }
 
-export function resolved_artwork(artwork: Artwork): ImageArtwork{
-    if(typeof artwork === "number") return IllusiIcons.icon_map[artwork] as any as ImageArtwork;
-    else if(typeof artwork === "string") return {uri: artwork, cache: 'force-cache'};
-    else return artwork;
-}

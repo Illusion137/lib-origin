@@ -2,7 +2,7 @@ import * as querystring from 'querystring';
 import Cache from '@origin/youtube_dl/cache';
 // import { AVFormat, DownloadOptions } from './types';
 import * as utils from '@origin/youtube_dl/utils';
-const vm = require("vm-browserify");
+import vm from 'vm-browserify';
 
 export const cache = new Cache(1);
 

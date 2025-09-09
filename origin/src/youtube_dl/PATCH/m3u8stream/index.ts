@@ -39,4 +39,4 @@ const humanStr = (time: string | number) => {
     }
 };
 
-// exports.parse_timestamp = humanStr;
+export const parse_timestamp = humanStr;

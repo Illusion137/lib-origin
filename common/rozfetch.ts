@@ -5,7 +5,7 @@ import MD5 from "crypto-js/md5";
 import { fs } from "@native/fs/fs";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
-import pathlib from "path";
+import pathlib from "path-browserify";
 
 interface RozFetchCacheOptsBase {
 	cache_ms: number;

@@ -1,6 +1,6 @@
 import { TimedCache } from "@common/types";
 import { gen_uuid, is_empty } from "@common/utils/util";
-import { db } from "@illusive/db/database";
+import { db_exec } from "@illusive/db/database";
 import { playlists_table, playlists_tracks_table, tracks_table } from "@illusive/db/schema";
 import { default_playlists } from "@illusive/default_playlists";
 import { GLOBALS } from '@illusive/globals';
@@ -12,7 +12,7 @@ import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLPlaylists {
     // async function update_playlist_table(playlist_uuid: string, new_playlist: SQLiteUpdateSetSource<typeof playlists_table>){
-    //     return (await db.update(playlists_table).set(new_playlist).where(eq(playlists_table.uuid, playlist_uuid)));
+    //     return (await db_exec(async(db) => await db.update(playlists_table).set(new_playlist).where(eq(playlists_table.uuid, playlist_uuid))));
     // }
     
     // function playlist_to_sqllite_insertion(playlist: Playlist) {
@@ -34,15 +34,16 @@ export namespace SQLPlaylists {
     //     return to_array;
     // }
     export async function track_exists_in_playlist(playlist_track: PlaylistsTracks) {
-        return (await db.$count(playlists_tracks_table,
-                and(
-                    eq(playlists_tracks_table.uuid, playlist_track.uuid),
-                    eq(playlists_tracks_table.track_uid, playlist_track.track_uid)
-                )
-            )) !== 0;
+        return (await db_exec(async(db) => await db
+                .$count(playlists_tracks_table,
+                    and(
+                        eq(playlists_tracks_table.uuid, playlist_track.uuid),
+                        eq(playlists_tracks_table.track_uid, playlist_track.track_uid)
+                    )
+            ))) !== 0;
     }
     export async function playlists_count(){
-        return await db.$count(playlists_table) ?? 0;
+        return await db_exec(async(db) => await db.$count(playlists_table) ?? 0);
     }
     export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: string, tracks: Track[]): Promise<void> {
         const promises: Promises = tracks.map(async(track) => {
@@ -63,10 +64,10 @@ export namespace SQLPlaylists {
         };
     }
     export async function raw_playlist_tracks(){
-        return (await db
+        return (await db_exec(async(db) => await db
             .select()
             .from(playlists_tracks_table)
-        );
+        ));
     }
     export async function unique_playlist_uuids_from_playlist_tracks(){
         const unique_uuids = new Set<string>((await raw_playlist_tracks()).map(p => p.uuid));
@@ -77,7 +78,7 @@ export namespace SQLPlaylists {
         const default_playlist_names = default_playlists.map(playlist => playlist.name);
         if(default_playlist_names.includes(playlist_uuid)) return await default_playlists.find(playlist => playlist.name === playlist_uuid)!.track_function();
         if(!skip_inheritance && playlist_tracks_cache.get(playlist_uuid)) return playlist_tracks_cache.get(playlist_uuid)!;
-        const playlist = await db
+        const playlist = await db_exec(async(db) => await db
             .select()
             .from(tracks_table)
             .leftJoin(playlists_tracks_table, 
@@ -85,7 +86,7 @@ export namespace SQLPlaylists {
                     eq(playlists_tracks_table.track_uid, tracks_table.uid),
                     eq(playlists_tracks_table.uuid, playlist_uuid)
                 )
-            ).orderBy(playlists_table.id);
+            ).orderBy(playlists_table.id));
         
         // const playlist = await db_get_all_async<SQLTrack>(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
         let tracks: Track[] = playlist.map(p => p.tracks);
@@ -144,7 +145,7 @@ export namespace SQLPlaylists {
         all_playlist_data_memo = await Promise.all(all_playlist_data_memo.map(async(playlist) => ({...playlist, visual_data: {...playlist.visual_data ?? {}, four_track: await Promise.resolve(playlist.visual_data!.four_track ?? []) }})))
     }
     export async function all_playlists_data(ignore_tracks?: IgnoreTracks) {
-        const playlists = await db.select().from(playlists_table);
+        const playlists = await db_exec(async(db) => await db.select().from(playlists_table));
         all_playlist_data_memo = await Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, ignore_tracks ?? "PROMISE", playlist.archived ?? false)));
         resolve_all_playlist_data_memo().catch(e => e);
         return all_playlist_data_memo;
@@ -181,31 +182,31 @@ export namespace SQLPlaylists {
     }
     export async function insert_track_playlist(playlist_track: PlaylistsTracks) {
         if(await track_exists_in_playlist(playlist_track)) return;
-        await db.insert(playlists_tracks_table).values(playlist_track);
+        await db_exec(async(db) => await db.insert(playlists_tracks_table).values(playlist_track));
     }
     
     export async function delete_all_tracks_playlist(many_playlist_tracks: PlaylistsTracks[]) {
         await Promise.all( many_playlist_tracks.map( async(playlist_track) => delete_track_playlist(playlist_track) ) );
     }
     export async function delete_track_playlist(playlist_track: PlaylistsTracks) {
-        await db
+        await db_exec(async(db) => await db
             .delete(playlists_tracks_table)
             .where(
                 and(
                     eq(playlists_tracks_table.uuid, playlist_track.uuid),
                     eq(playlists_tracks_table.track_uid, playlist_track.track_uid),
                 )
-            );
+        ));
     }
     export async function delete_track_from_all_playlists(track_uid: PlaylistsTracks['track_uid']) {
-        await db
+        await db_exec(async(db) => await db
             .delete(playlists_tracks_table)
             .where(
                 eq(playlists_tracks_table.track_uid, track_uid)
-            );
+        ));
     }
     export async function all_playlists_names(): Promise<{"title": string}[]> {
-        return await db.select({title: playlists_table.title}).from(playlists_table);
+        return await db_exec(async(db) => await db.select({title: playlists_table.title}).from(playlists_table));
     }
     const playlist_name_memo: Record<string, string> = {};
     export async function get_playlist_name(playlist_uuid: Playlist['uuid']) {
@@ -214,7 +215,7 @@ export namespace SQLPlaylists {
         if(try_default_playlist_name_find) return try_default_playlist_name_find;
         if(playlist_name_memo[playlist_uuid]) return playlist_name_memo[playlist_uuid];
         
-        const title_result = await db.select({title: playlists_table.title}).from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get();
+        const title_result = await db_exec(async(db) => await db.select({title: playlists_table.title}).from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get());
         
         // const title = db_get_all_sync<{"title": string}>(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
         if(!title_result) return undefined;
@@ -225,12 +226,12 @@ export namespace SQLPlaylists {
         const found = all_playlist_data_memo.find(playlist => playlist.uuid === playlist_uuid);
         if(found) return found;
         
-        const playlist = await db.select().from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get();
+        const playlist = await db_exec(async(db) => await db.select().from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get());
         if(!playlist) return undefined;
         return await sql_playlist_to_playlist(playlist, ignore_tracks);
     }
     export async function update_playlist(playlist_uuid: Playlist['uuid'], new_playlist: Playlist) {
-        await db.update(playlists_table).set(new_playlist).where(eq(playlists_table.uuid, playlist_uuid));
+        await db_exec(async(db) => await db.update(playlists_table).set(new_playlist).where(eq(playlists_table.uuid, playlist_uuid)));
     }
     export async function create_playlist(title: string, cuuid?: string): Promise<string> {
         const playlist_names = await all_playlists_names();
@@ -242,50 +243,49 @@ export namespace SQLPlaylists {
                 title = `${title} ${count}`;
         }
         const playlist_uuid = cuuid ?? gen_uuid();
-        await db.insert(playlists_table).values({uuid: playlist_uuid, title});
+        await db_exec(async(db) => await db.insert(playlists_table).values({uuid: playlist_uuid, title}));
         return playlist_uuid;
     }
     export async function delete_playlist(playlist_uuid: string) {
-        await db.transaction(async(tx) => {
+        await db_exec(async(db) => await db.transaction(async(tx) => {
             await tx.delete(playlists_table).where(eq(playlists_table.uuid, playlist_uuid));
             await tx.delete(playlists_tracks_table).where(eq(playlists_tracks_table.uuid, playlist_uuid));
-        });
+        }));
     }
     export async function delete_all_playlists() {
         const playlists = await all_playlists_data();
         await Promise.all( playlists.map(async(playlist) => delete_playlist(playlist.uuid)) );
     }
     export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
-        return (await db.update(playlists_table).set({pinned: pin}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({pinned: pin}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function public_private_playlist(playlist_uuid: string, is_public: boolean) {
-        return (await db.update(playlists_table).set({public: is_public}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({public: is_public}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function archive_playlist(playlist_uuid: string, archive: boolean) {
-        return (await db.update(playlists_table).set({archived: archive}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({archived: archive}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function is_playlist_pinned(playlist_uuid: string): Promise<boolean> {
-        const pinned_result = await db
-            .select({pinned: playlists_table.pinned})
+        const pinned_result = await db_exec(async(db) => await db.select({pinned: playlists_table.pinned})
             .from(playlists_table)
             .where(eq(playlists_table.uuid, playlist_uuid))
-            .get();
+            .get());
         return Boolean(pinned_result?.pinned);
     }
     export async function update_playlist_title(playlist_uuid: string, title: string) {
-        return (await db.update(playlists_table).set({title: title}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({title: title}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function update_playlist_description(playlist_uuid: string, description: string) {
-        return (await db.update(playlists_table).set({description: description}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({description: description}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function update_playlist_sort_mode(playlist_uuid: string, sort_mode: SortType) {
-        return (await db.update(playlists_table).set({sort: sort_mode}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({sort: sort_mode}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function update_playlist_inherited_playlists(playlist_uuid: string, inherited_playlists: InheritedPlaylist[]) {
-        return (await db.update(playlists_table).set({inherited_playlists: inherited_playlists}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({inherited_playlists: inherited_playlists}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export async function update_playlist_inherited_searchs(playlist_uuid: string, inherited_searchs: InheritedSearch[]) {
-        return (await db.update(playlists_table).set({inherited_searchs: inherited_searchs}).where(eq(playlists_table.uuid, playlist_uuid)));
+        return (await db_exec(async(db) => await db.update(playlists_table).set({inherited_searchs: inherited_searchs}).where(eq(playlists_table.uuid, playlist_uuid))));
     }
     export function inherited_playlists_action(inherited_playlists: InheritedPlaylist[], new_iplaylist: InheritedPlaylist, action: "ADD"|"REMOVE"): InheritedPlaylist[] {
         if(action === "ADD") return inherited_playlists.concat(new_iplaylist);

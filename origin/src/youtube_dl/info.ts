@@ -1,4 +1,5 @@
-const sax = require('./PATCH/sax/index');
+import sax from './PATCH/sax/index';
+
 import Cache from '@origin/youtube_dl/cache';
 import * as formatUtils from '@origin/youtube_dl/format-utils';
 import * as extras from '@origin/youtube_dl/info-extras';
@@ -632,21 +633,22 @@ const getM3U8 = async (url, options) => {
 };
 
 // Cache get info functions.
+// TODO Investigate
 // In case a user wants to get a video's info before downloading.
-for (const funcName of ["getBasicInfo", "getInfo"]) {
-  /**
-   * @param {string} link
-   * @param {Object} options
-   * @returns {Promise<Object>}
-   */
-  const func = exports[funcName];
-  exports[funcName] = async (link, options: any = {}) => {
-//     utils.checkForUpdates();
-    const id = urlUtils.getVideoID(link);
-    const key = [funcName, id, options.lang].join("-");
-    return cache.getOrSet(key, () => func(id, options));
-  };
-}
+// for (const funcName of ["getBasicInfo", "getInfo"]) {
+//   /**
+//    * @param {string} link
+//    * @param {Object} options
+//    * @returns {Promise<Object>}
+//    */
+//   const func = exports[funcName];
+//   exports[funcName] = async (link, options: any = {}) => {
+// //     utils.checkForUpdates();
+//     const id = urlUtils.getVideoID(link);
+//     const key = [funcName, id, options.lang].join("-");
+//     return cache.getOrSet(key, () => func(id, options));
+//   };
+// }
 
 // Export a few helpers.
 export const validateID = urlUtils.validateID;

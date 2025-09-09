@@ -1,5 +1,10 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { fs } from "@native/fs/fs";
+import type { ffmpeg } from "@native/ffmpeg/ffmpeg";
+import type { miscnative } from "@native/miscnative/miscnative";
+import type { sqlite } from "@native/sqlite/sqlite";
+import type { mmkv } from "@native/mmkv/mmkv";
+import type { asset_loader } from "@native/asset_loader/asset_loader";
 
 export interface ElectronPreloadContext {
 	temp_directory: (...args: Parameters<ReturnType<(typeof fs)>["temp_directory"]>) => Promise<ReturnType<ReturnType<(typeof fs)>["temp_directory"]>>;
@@ -13,6 +18,24 @@ export interface ElectronPreloadContext {
 	make_directory: (...args: Parameters<ReturnType<(typeof fs)>["make_directory"]>) => Promise<ReturnType<ReturnType<(typeof fs)>["make_directory"]>>;
 	remove: (...args: Parameters<ReturnType<(typeof fs)>["remove"]>) => Promise<ReturnType<ReturnType<(typeof fs)>["remove"]>>;
 	download_to_file: (...args: Parameters<ReturnType<(typeof fs)>["download_to_file"]>) => Promise<ReturnType<ReturnType<(typeof fs)>["download_to_file"]>>;
+	execute_args: (...args: Parameters<ReturnType<(typeof ffmpeg)>["execute_args"]>) => Promise<ReturnType<ReturnType<(typeof ffmpeg)>["execute_args"]>>;
+	keep_mobile_awake: (...args: Parameters<ReturnType<(typeof miscnative)>["keep_mobile_awake"]>) => Promise<ReturnType<ReturnType<(typeof miscnative)>["keep_mobile_awake"]>>;
+	create_database_connection: (...args: Parameters<ReturnType<(typeof sqlite)>["create_database_connection"]>) => Promise<ReturnType<ReturnType<(typeof sqlite)>["create_database_connection"]>>;
+	create_database_handle: (...args: Parameters<ReturnType<(typeof sqlite)>["create_database_handle"]>) => Promise<ReturnType<ReturnType<(typeof sqlite)>["create_database_handle"]>>;
+	db_execute: (...args: Parameters<ReturnType<(typeof sqlite)>["db_execute"]>) => Promise<ReturnType<ReturnType<(typeof sqlite)>["db_execute"]>>;
+	load_mmkv: (...args: Parameters<ReturnType<(typeof mmkv)>["load_mmkv"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["load_mmkv"]>>;
+	set_string: (...args: Parameters<ReturnType<(typeof mmkv)>["set_string"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["set_string"]>>;
+	get_string: (...args: Parameters<ReturnType<(typeof mmkv)>["get_string"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["get_string"]>>;
+	set_boolean: (...args: Parameters<ReturnType<(typeof mmkv)>["set_boolean"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["set_boolean"]>>;
+	get_boolean: (...args: Parameters<ReturnType<(typeof mmkv)>["get_boolean"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["get_boolean"]>>;
+	set_number: (...args: Parameters<ReturnType<(typeof mmkv)>["set_number"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["set_number"]>>;
+	get_number: (...args: Parameters<ReturnType<(typeof mmkv)>["get_number"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["get_number"]>>;
+	contains_key: (...args: Parameters<ReturnType<(typeof mmkv)>["contains_key"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["contains_key"]>>;
+	get_keys: (...args: Parameters<ReturnType<(typeof mmkv)>["get_keys"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["get_keys"]>>;
+	remove_key: (...args: Parameters<ReturnType<(typeof mmkv)>["remove_key"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["remove_key"]>>;
+	clear_memory_cache: (...args: Parameters<ReturnType<(typeof mmkv)>["clear_memory_cache"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["clear_memory_cache"]>>;
+	clear_all: (...args: Parameters<ReturnType<(typeof mmkv)>["clear_all"]>) => Promise<ReturnType<ReturnType<(typeof mmkv)>["clear_all"]>>;
+	get_asset: (...args: Parameters<ReturnType<(typeof asset_loader)>["get_asset"]>) => Promise<ReturnType<ReturnType<(typeof asset_loader)>["get_asset"]>>;
 };
 export type ElectronWindow = typeof Window & {
 	electron: ElectronAPI;

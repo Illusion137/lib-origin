@@ -1,6 +1,6 @@
 import { is_empty } from '@common/utils/util';
 import { Illusive } from '@illusive/illusive';
-import path_lib from 'path';
+import path_lib from 'path-browserify';
 import { alert_error } from '@illusive/illusi/src/alert';
 import { fs } from '@native/fs/fs';
 

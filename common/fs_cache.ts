@@ -1,6 +1,6 @@
 import { fs } from "@native/fs/fs";
 import { MD5 } from "crypto-js";
-import path from "path";
+import path from "path-browserify";
 
 export namespace FSCache {
     const cache_file_extension = ".che";

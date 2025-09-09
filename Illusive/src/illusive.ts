@@ -20,6 +20,7 @@ import { parse_youtube_music_track } from '@illusive/parsers/youtube_music_parse
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { remove_topic } from '@common/utils/clean_util';
+import pathlib from 'path-browserify';
 
 export namespace Illusive {
     export const illusi_icon_index = 0;
@@ -218,7 +219,7 @@ export namespace Illusive {
     const download_url_timed_cache = new TimedCache<string, (DownloadFromIdResult&ExportTrack)|ResponseError>(Constants.playlist_cache_duration_seconds); 
     export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean): Promise<(DownloadFromIdResult&ExportTrack)|ResponseError> {
         if(!is_empty(track.media_uri) && !(redownload_mode ?? false))
-            return { url: document_directory + media_archive_path + track.media_uri! };
+            return { url: pathlib.join(document_directory, media_archive_path, track.media_uri!) };
         const key = track.uid + (track.illusi_id ?? "") + ";:;" + quality;
         if(download_url_timed_cache.get(key)) return download_url_timed_cache.get(key)!;
         if(!is_empty(track.youtube_id))
@@ -297,7 +298,7 @@ export namespace Illusive {
         if(!is_empty(track.imported_id))
             return imported_thumbnail_index;
         if(!is_empty(track.thumbnail_uri))
-            return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
+            return {uri: pathlib.join(document_directory, thumbnail_archive_path, track.thumbnail_uri!), cache: 'force-cache'};
         if(!is_empty(track.artwork_url))
             return {uri: await get_highest_quality_service_thumbnail_uri(track.artwork_url!), cache: 'force-cache'};
         if(!is_empty(track.youtube_id))
@@ -308,9 +309,9 @@ export namespace Illusive {
     export function get_track_artwork(document_directory: string, track: Track): Artwork {
         if(!is_empty(track.thumbnail_uri)){
             if(track.thumbnail_uri!.includes(track.uid))
-                return {uri: document_directory + thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
+                return {uri: pathlib.join(document_directory, thumbnail_archive_path, track.thumbnail_uri!), cache: 'force-cache'};
             else
-                return {uri: document_directory + custom_thumbnail_archive_path + track.thumbnail_uri!, cache: 'force-cache'};
+                return {uri: pathlib.join(document_directory, custom_thumbnail_archive_path, track.thumbnail_uri!), cache: 'force-cache'};
         }
         if(!is_empty(track.imported_id))
             return imported_thumbnail_index;

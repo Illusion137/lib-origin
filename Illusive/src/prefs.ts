@@ -1,157 +1,96 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as uuid from "react-native-uuid";
 import { CookieJar } from "@common/utils/cookie_util";
-import { Constants } from '@illusive/constants';
-import * as LegacyPrefs from '@illusive/illusi/src/legacy/1307/legacy_prefs';
 import type { HexColor, LinkerLink } from '@illusive/types';
+import { gen_uuid } from '@common/utils/util';
+import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref, type BasePrefLoadMap, type BasePrefSaveMap, type BasePrefTypes } from '@native/mmkv/mmkv_utils';
+import { fs } from '@native/fs/fs';
+import type { MMKVModule } from '@native/mmkv/mmkv.base';
+import { Constants } from "./constants";
+import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
 
 export namespace Prefs {
+    export type OtherPrefTypes = "LINKER_LINKS";
+
     export type PossibleThemes = keyof typeof themes;
-    type PrefType = "COOKIE_JAR" | "DATE" | "NUMBER" | "BOOLEAN" | "STRING_ARRAY" | "STRING" | "LINKER_LINKS";
-    type ShowInSettings = "MISC"|"EXPERIMENTAL";
-    export interface Pref<T> {
-        default_value: T
-        current_value: T
-        type: PrefType
-        section?: "Audioplayer"|"Playlist"|"Search"|"Interactions"|"Visual"|"Automation"|"Data"|"Other"
-        show_in_settings?: boolean
-        range?: {"start": number, "end": number}
-        options?: string[]
-        description?: string
-        show_in_type?: ShowInSettings
-    };
-    const user_uuid = uuid.default.v4();
+
+    export async function load_mmkv_module(){
+        await load_native_mmkv();
+        await mmkv().load_mmkv({
+            id: 'illusi.illusion.com',
+            path: await fs().document_directory(".illusi", "ipref.mmkv")
+        });
+    }
+
+    const user_uuid = gen_uuid();
+
     export const prefs = {
-        legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as Pref<string>,
-        youtube_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        youtube_music_cookie_jar:              {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        soundcloud_cookie_jar:                 {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        spotify_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as Pref<CookieJar>,
-        user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as Pref<string>,
-        last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
-        automatic_new_releases_last_refreshed: {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
-        new_releases_last_refreshed:           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as Pref<Date>,
-        discord_webhook_url:                   {default_value: '', current_value: '', type: "STRING"}       as Pref<string>,
-        latest_version:                        {default_value: "0.0.0", current_value: "0.0.0", type: "STRING"} as Pref<string>,
-        recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as Pref<string[]>,
-        last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as Pref<number>,
-        linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as Pref<LinkerLink[]>,
-        primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as Pref<HexColor>,
-        theme:                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as Pref<PossibleThemes>,
+        legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as BasePref<string, OtherPrefTypes>,
+        youtube_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        youtube_music_cookie_jar:              {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        soundcloud_cookie_jar:                 {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        spotify_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as BasePref<string, OtherPrefTypes>,
+        last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
+        automatic_new_releases_last_refreshed: {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
+        new_releases_last_refreshed:           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
+        discord_webhook_url:                   {default_value: '', current_value: '', type: "STRING"}       as BasePref<string, OtherPrefTypes>,
+        latest_version:                        {default_value: "0.0.0", current_value: "0.0.0", type: "STRING"} as BasePref<string, OtherPrefTypes>,
+        recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as BasePref<string[], OtherPrefTypes>,
+        last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as BasePref<number, OtherPrefTypes>,
+        linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as BasePref<LinkerLink[], OtherPrefTypes>,
+        primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as BasePref<HexColor, OtherPrefTypes>,
+        theme:                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as BasePref<PossibleThemes, OtherPrefTypes>,
         
-        default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as Pref<number>,
-        recently_played_max_size:              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as Pref<number>,
-        fuzzy_search_threshold:                {default_value: 50, current_value: 100, type: "NUMBER", range: {start: 0, end: 100}, show_in_settings: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)"}       as Pref<number>,
-        default_to_strict_search:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Your searches will default to the strict-search over fuzzy-search"} as Pref<boolean>,
-        compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller"} as Pref<boolean>,
-        album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as Pref<boolean>,
-        only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)"}  as Pref<boolean>,
-        always_shuffle:                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Always shuffle user-made playlists and library"}    as Pref<boolean> ,
-        play_without_popup:                    {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Prevents Audioplayer from popping up when playing a new queue"} as Pref<boolean>,
-        auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track media whenever added to library"}  as Pref<boolean>,
-        auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track thumbnail whenever added to library"}  as Pref<boolean>,
-        auto_cache_lyrics:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track lyrics whenever added to library"}  as Pref<boolean>,
-        expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi"}    as Pref<boolean>,
+        default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as BasePref<number, OtherPrefTypes>,
+        recently_played_max_size:              {default_value: 100, current_value: 100, type: "NUMBER", show_in_settings: true, section: "Playlist"}       as BasePref<number, OtherPrefTypes>,
+        fuzzy_search_threshold:                {default_value: 50, current_value: 100, type: "NUMBER", range: {start: 0, end: 100}, show_in_settings: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)"}       as BasePref<number, OtherPrefTypes>,
+        default_to_strict_search:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Your searches will default to the strict-search over fuzzy-search"} as BasePref<boolean, OtherPrefTypes>,
+        compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller"} as BasePref<boolean, OtherPrefTypes>,
+        album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as BasePref<boolean, OtherPrefTypes>,
+        only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)"}  as BasePref<boolean, OtherPrefTypes>,
+        always_shuffle:                        {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Always shuffle user-made playlists and library"}    as BasePref<boolean, OtherPrefTypes> ,
+        play_without_popup:                    {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Interactions", description: "Prevents Audioplayer from popping up when playing a new queue"} as BasePref<boolean, OtherPrefTypes>,
+        auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track media whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
+        auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track thumbnail whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
+        auto_cache_lyrics:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, section: "Automation", description: "Download track lyrics whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
+        expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", show_in_settings: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi"}    as BasePref<boolean, OtherPrefTypes>,
         
         // Settings that have a chance of breaking things; use with caution; all disabled by default
-        enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
-        enable_sampler:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
-        fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as Pref<boolean>,
-        quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as Pref<boolean>,
-        force_youtube_18_quality:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as Pref<boolean>,
-        use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as Pref<boolean>,
-        use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as Pref<boolean>,
-        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as Pref<boolean>,
-        dev_mode:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)"}  as Pref<boolean>,
+        enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
+        enable_sampler:                        {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
+        fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
+        quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as BasePref<boolean, OtherPrefTypes>,
+        force_youtube_18_quality:              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as BasePref<boolean, OtherPrefTypes>,
+        use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
+        use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
+        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
+        dev_mode:                              {default_value: false, current_value: false, type: "BOOLEAN", show_in_settings: true, show_in_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)"}  as BasePref<boolean, OtherPrefTypes>,
     };
+    export type PrefOptions = keyof typeof prefs;
     const user_uuid_key: PrefOptions = "user_uuid";
 
-    export async function load_legacy_prefs(legacy_prefs: typeof LegacyPrefs.prefs) {
-        await Promise.all([
-            save_pref("youtube_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.youtube_cookies)),
-            save_pref("youtube_music_cookie_jar", CookieJar.fromString(legacy_prefs.external_services.youtube_music_cookies)),
-            save_pref("spotify_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.spotify_cookies)),
-            save_pref("amazon_music_cookie_jar",  CookieJar.fromString(legacy_prefs.external_services.amazon_music_cookies)),
-            save_pref("legacy_prefs",             JSON.stringify(legacy_prefs))
-        ]);
-        await LegacyPrefs.clear_prefs();
-    }
-    export type PrefOptions = keyof typeof prefs;
     export function get_pref<T extends PrefOptions>(pref_key: T): (typeof prefs)[T]['default_value'] { return prefs[pref_key].current_value; }
 
+    export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
+        ...base_load_map,
+        LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? "[]")
+    };
+    export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
+        ...base_save_map,
+        LINKER_LINKS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[]))
+    };
+
     export async function load_prefs() {
-        const storage_user_uuid = await AsyncStorage.getItem(user_uuid_key);
-        if(storage_user_uuid === null) await AsyncStorage.setItem(user_uuid_key, user_uuid);
-        const keys: (keyof typeof prefs)[] = Object.keys(prefs) as (keyof typeof prefs)[];
-        const all_keys = await AsyncStorage.getAllKeys();
-        for(const key of keys) {
-            if(all_keys.includes(key))
-                switch(prefs[key].type) {
-                    case "STRING":            prefs[key].current_value = (await AsyncStorage.getItem(key))!; break;
-                    case "BOOLEAN":           prefs[key].current_value = await AsyncStorage.getItem(key) === "true" ? true : false; break;
-                    case "NUMBER":            prefs[key].current_value = parseInt((await AsyncStorage.getItem(key))!); break;
-                    case "DATE":              prefs[key].current_value = new Date( await AsyncStorage.getItem(key) as string ); break;
-                    case "COOKIE_JAR":        prefs[key].current_value = CookieJar.fromString((await AsyncStorage.getItem(key))!); break;
-                    case "STRING_ARRAY":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
-                    case "LINKER_LINKS":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
-                }
-            else prefs[key].current_value = prefs[key].default_value;
-        }
+        const storage_user_uuid = await mmkv().get_string(user_uuid_key);
+        if(storage_user_uuid === null) await mmkv().set_string(user_uuid_key, user_uuid);
+        await generic_load_prefs<OtherPrefTypes, PrefOptions>(mmkv(), prefs, illusi_pref_load_map);
     }
-    
-    export async function save_pref<T extends PrefOptions>(pref: T, value: (typeof prefs)[T]['default_value']) {
-        switch(prefs[pref].type) {
-            case "STRING":            await AsyncStorage.setItem(pref, value as string); break;
-            case "BOOLEAN":           await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            case "NUMBER":            await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            case "DATE":              await AsyncStorage.setItem(pref, (value as Date).toISOString()); break;
-            case "COOKIE_JAR":        await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
-            case "STRING_ARRAY":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-            case "LINKER_LINKS":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-        }
-        await load_prefs();
+    export async function save_pref<T extends PrefOptions>(pref_key: T, value: (typeof prefs)[T]['default_value']) {
+        await generic_save_pref<OtherPrefTypes, PrefOptions>(mmkv(), prefs, pref_key, value, illusi_pref_save_map);
     }
     export async function reset_prefs() {
-        const keys = (Object.keys(prefs) as PrefOptions[]).filter(opt => opt !== user_uuid_key);
-        await AsyncStorage.multiRemove(keys);
-        await load_prefs();
-    }
-
-    export async function try_remove_from_recent_searches(query: string) {
-        const recent_searches: string[] = get_pref('recent_searches');
-        const recent_search_index = recent_searches.findIndex(search => search === query);
-        if(recent_search_index !== -1) {
-            recent_searches.splice(recent_search_index, 1);
-        }
-        await save_pref('recent_searches', recent_searches);
-        return recent_searches;
-    }
-    export async function add_to_recent_searches(query: string) {
-        let recent_searches = await try_remove_from_recent_searches(query);
-		      recent_searches.unshift(query);
-        recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
-        await save_pref('recent_searches', recent_searches);
-        return recent_searches;
-    }
-
-    export function snake_case_to_plain_text(text: string) {
-        text = text.replace(/_/g,' ')
-        const words = text.split(" ");
-        for (let i = 0; i < words.length; i++) {
-            words[i] = words[i][0].toUpperCase() + words[i].slice(1);
-        }
-        return words.join(" ");
-    }
-    export async function set_settings_number(key: PrefOptions, value: number) {
-        await save_pref(key, value);
-    }
-    export async function set_settings_toggle(key: PrefOptions, value: boolean) {
-        await save_pref(key, value);
-    }
-    export async function set_settings_dropdown() {
-        await AsyncStorage.setItem('Prefs', JSON.stringify(prefs));
+        await generic_reset_prefs(mmkv(), [user_uuid_key], load_prefs);
     }
 
     export interface Theme {
@@ -283,6 +222,106 @@ export namespace Prefs {
         dark: dark_theme,
         oled: oled_theme
     }
+
+
+    // type ShowInSettings = "MISC"|"EXPERIMENTAL";
+    // export interface Pref<T> {
+    //     default_value: T
+    //     current_value: T
+    //     type: PrefType
+    //     section?: "Audioplayer"|"Playlist"|"Search"|"Interactions"|"Visual"|"Automation"|"Data"|"Other"
+    //     show_in_settings?: boolean
+    //     range?: {"start": number, "end": number}
+    //     options?: string[]
+    //     description?: string
+    //     show_in_type?: ShowInSettings
+    // };
+    // const user_uuid = uuid.default.v4();
+    // const user_uuid_key: PrefOptions = "user_uuid";
+
+    // export async function load_legacy_prefs(legacy_prefs: typeof LegacyPrefs.prefs) {
+    //     await Promise.all([
+    //         save_pref("youtube_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.youtube_cookies)),
+    //         save_pref("youtube_music_cookie_jar", CookieJar.fromString(legacy_prefs.external_services.youtube_music_cookies)),
+    //         save_pref("spotify_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.spotify_cookies)),
+    //         save_pref("amazon_music_cookie_jar",  CookieJar.fromString(legacy_prefs.external_services.amazon_music_cookies)),
+    //         save_pref("legacy_prefs",             JSON.stringify(legacy_prefs))
+    //     ]);
+    //     await LegacyPrefs.clear_prefs();
+    // }
+    // export type PrefOptions = keyof typeof prefs;
+    // export function get_pref<T extends PrefOptions>(pref_key: T): (typeof prefs)[T]['default_value'] { return prefs[pref_key].current_value; }
+
+    // export async function load_prefs() {
+    //     const storage_user_uuid = await AsyncStorage.getItem(user_uuid_key);
+    //     if(storage_user_uuid === null) await AsyncStorage.setItem(user_uuid_key, user_uuid);
+    //     const keys: (keyof typeof prefs)[] = Object.keys(prefs) as (keyof typeof prefs)[];
+    //     const all_keys = await AsyncStorage.getAllKeys();
+    //     for(const key of keys) {
+    //         if(all_keys.includes(key))
+    //             switch(prefs[key].type) {
+    //                 case "STRING":            prefs[key].current_value = (await AsyncStorage.getItem(key))!; break;
+    //                 case "BOOLEAN":           prefs[key].current_value = await AsyncStorage.getItem(key) === "true" ? true : false; break;
+    //                 case "NUMBER":            prefs[key].current_value = parseInt((await AsyncStorage.getItem(key))!); break;
+    //                 case "DATE":              prefs[key].current_value = new Date( await AsyncStorage.getItem(key) as string ); break;
+    //                 case "COOKIE_JAR":        prefs[key].current_value = CookieJar.fromString((await AsyncStorage.getItem(key))!); break;
+    //                 case "STRING_ARRAY":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
+    //                 case "LINKER_LINKS":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
+    //             }
+    //         else prefs[key].current_value = prefs[key].default_value;
+    //     }
+    // }
+    
+    // export async function save_pref<T extends PrefOptions>(pref: T, value: (typeof prefs)[T]['default_value']) {
+    //     switch(prefs[pref].type) {
+    //         case "STRING":            await AsyncStorage.setItem(pref, value as string); break;
+    //         case "BOOLEAN":           await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+    //         case "NUMBER":            await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+    //         case "DATE":              await AsyncStorage.setItem(pref, (value as Date).toISOString()); break;
+    //         case "COOKIE_JAR":        await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
+    //         case "STRING_ARRAY":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+    //         case "LINKER_LINKS":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
+    //     }
+    //     await load_prefs();
+    // }
+    // export async function reset_prefs() {
+    //     const keys = (Object.keys(prefs) as PrefOptions[]).filter(opt => opt !== user_uuid_key);
+    //     await AsyncStorage.multiRemove(keys);
+    //     await load_prefs();
+    // }
+
+    export async function try_remove_from_recent_searches(query: string) {
+        const recent_searches: string[] = get_pref('recent_searches');
+        const recent_search_index = recent_searches.findIndex(search => search === query);
+        if(recent_search_index !== -1) {
+            recent_searches.splice(recent_search_index, 1);
+        }
+        await save_pref('recent_searches', recent_searches);
+        return recent_searches;
+    }
+    export async function add_to_recent_searches(query: string) {
+        let recent_searches = await try_remove_from_recent_searches(query);
+		      recent_searches.unshift(query);
+        recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
+        await save_pref('recent_searches', recent_searches);
+        return recent_searches;
+    }
+
+    export function snake_case_to_plain_text(text: string) {
+        text = text.replace(/_/g,' ')
+        const words = text.split(" ");
+        for (let i = 0; i < words.length; i++) {
+            words[i] = words[i][0].toUpperCase() + words[i].slice(1);
+        }
+        return words.join(" ");
+    }
+    export async function set_settings_number(key: PrefOptions, value: number) {
+        await save_pref(key, value);
+    }
+    export async function set_settings_toggle(key: PrefOptions, value: boolean) {
+        await save_pref(key, value);
+    }
+
     export function pref_set_theme(set_theme: (_: Theme) => void){
         const theme = get_theme(get_pref('theme'));
         set_theme(

@@ -3,7 +3,7 @@ import { generror, generror_catch } from "@common/utils/error_util";
 import type { SayPlatformBase } from "./base";
 import type { ResponseError } from "@common/types";
 import os from "os";
-import path from "path";
+import path from "path-browserify";
 import fs from "fs/promises";
 import { gen_uuid } from "@common/utils/util";
 

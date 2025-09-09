@@ -4,7 +4,7 @@ import { index, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const tracks_config = {
     id: int().primaryKey({ autoIncrement: true }),
-    uid: text().unique().notNull().$defaultFn(() => generate_new_uid("")),
+    uid: text().notNull().$defaultFn(() => generate_new_uid("")),
     title: text().notNull().default(""),
     alt_title: text().notNull().default(""),
     artists: text({mode: 'json'}).notNull().$type<NamedUUID[]>().default([]),
@@ -38,7 +38,7 @@ const tracks_config = {
 
 const playlists_config = {
     id: int().primaryKey({ autoIncrement: true }),
-    uuid: text().unique().notNull().$defaultFn(gen_uuid),
+    uuid: text().notNull().$defaultFn(gen_uuid),
     title: text().notNull().default(""),
     description: text().notNull().default(""),
     pinned: int({mode: 'boolean'}).notNull().default(false),
@@ -61,7 +61,7 @@ const playlists_tracks_config = {
 
 const new_releases_config = {
     id: int().primaryKey({ autoIncrement: true }),
-    title: text({mode: 'json'}).unique().notNull().$type<NamedUUID>().default({name: '', uri: null}),
+    title: text({mode: 'json'}).notNull().$type<NamedUUID>().default({name: '', uri: null}),
     artist: text({mode: 'json'}).notNull().$type<NamedUUID[]>().default([]),
     artwork_url: text().notNull().default(""),
     artwork_thumbnails: text({mode: 'json'}).notNull().$type<IllusiveThumbnail[]>().default([]),
@@ -76,18 +76,23 @@ const new_releases_config = {
 const artists_config = {
     id: int().primaryKey({ autoIncrement: true }),
     name: text().notNull(),
-    uri: text().unique().notNull(),
+    uri: text().notNull(),
     artwork_url: text().notNull()
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
-export const tracks_table                   = sqliteTable("tracks", tracks_config, (table) => ([index("uuid_idx").on(table.uid)]));
+export const tracks_table                   = sqliteTable("tracks", tracks_config, (table) => ([index("tracks_uuid_idx").on(table.uid)]));
+export type SQLTrack = typeof tracks_table.$inferSelect;
 export const tracks_deleted_table           = sqliteTable("tracks_deleted", tracks_config);
-export const recently_played_tracks_table   = sqliteTable("recently_played_tracks", tracks_config, (table) => ([index("uuid_idx").on(table.uid)]));
-export const backpack_table                 = sqliteTable("backpack", tracks_config, (table) => ([index("uuid_idx").on(table.uid)]));
+export const recently_played_tracks_table   = sqliteTable("recently_played_tracks", tracks_config, (table) => ([index("recently_played_tracks_uuid_idx").on(table.uid)]));
+export const backpack_table                 = sqliteTable("backpack", tracks_config, (table) => ([index("backpack_uuid_idx").on(table.uid)]));
 export const backpack_deleted_table         = sqliteTable("backpack_deleted", tracks_config);
-export const playlists_table                = sqliteTable("playlists", playlists_config, (table) => ([index("uuid_idx").on(table.uuid)]));
+export const playlists_table                = sqliteTable("playlists", playlists_config, (table) => ([index("playlists_uuid_idx").on(table.uuid)]));
+export type SQLPlaylist = typeof playlists_table.$inferSelect;
 export const playlists_deleted_table        = sqliteTable("playlists_deleted", playlists_config);
 export const playlists_tracks_table         = sqliteTable("playlists_tracks", playlists_tracks_config);
+export type SQLPlaylistTrack = typeof playlists_tracks_table.$inferSelect;
 export const playlists_tracks_deleted_table = sqliteTable("playlists_tracks_deleted", playlists_tracks_config);
 export const new_releases_table             = sqliteTable("new_releases", new_releases_config);
+export type SQLNewRelease = typeof new_releases_table.$inferSelect;
 export const artists_table                  = sqliteTable("artists", artists_config);
+export type SQLArtist = typeof artists_table.$inferSelect;

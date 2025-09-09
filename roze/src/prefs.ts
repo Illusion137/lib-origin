@@ -1,4 +1,4 @@
-import { base_load_map, base_save_map, create_mmkv, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref } from "@native/mmkv/mmkv";
+import { base_load_map, base_save_map, create_mmkv, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref } from "@native/mmkv/mmkv_utils";
 import { CookieJar } from "@common/utils/cookie_util";
 import { fs } from "@native/fs/fs";
 import { gen_uuid } from "@common/utils/util";
@@ -9,7 +9,8 @@ export namespace RozePrefs {
     export type PossibleThemes = keyof typeof themes;
     const roze_mmkv_path = fs().document_directory(".roz");
     export let mmkv_module: MMKVModule;
-    export async function create_mmkv_module(){
+
+    export async function load_mmkv_module(){
         mmkv_module = create_mmkv({
             id: 'roze.illusion.com',
             path: await roze_mmkv_path

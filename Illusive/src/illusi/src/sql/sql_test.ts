@@ -1,5 +1,5 @@
 import * as SQLite from '@op-engineering/op-sqlite';
-import path from 'path';
+import path from 'path-browserify';
 import { Alert } from 'react-native';
 import type { SQLTrack, Track } from '@illusive/types';
 import { get_legacy_1307_playlist_tracks, get_legacy_1307_playlists, get_legacy_1307_track_data, legacy_1307_track_to_track } from '@illusive/illusi/src/sql/sql_legacy_1307';

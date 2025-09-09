@@ -8,7 +8,7 @@ import { get_temp_file_path, type CleanTempFiles } from "@native/fs/fs_utils";
 import { concact_audio_files, generate_dynamic_video_with_audio, generate_static_video_with_audio } from "@native/ffmpeg/ffmpeg_utils";
 import { is_empty } from "@common/utils/util";
 import type { DurationImage } from "./types/types";
-import path from "path";
+import path from "path-browserify";
 import type { DataCallback, StatisticsCallback } from "@native/ffmpeg/ffmpeg.base";
 import { fs } from "@native/fs/fs";
 import { Constants } from "./constants";
