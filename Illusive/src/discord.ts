@@ -1,7 +1,7 @@
 import { Discord } from "@origin/discord/discord";
 import type { ResponseError } from "@common/types";
 import { generate_new_uid } from "@common/utils/util";
-import { artist_string } from "@illusive/illusive_utilts";
+import { artist_string } from "@illusive/illusive_utils";
 import type { SmallTrackRaw, Track } from "@illusive/types";
 
 export async function play_track_discord_send(webhook_url: string, track: Track, on_error: (e: ResponseError) => void){

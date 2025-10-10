@@ -5,7 +5,7 @@ import { urlid } from "@common/utils/util";
 import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from "@illusive/parsers/apple_music_parser";
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from "@illusive/parsers/soundcloud_parser";
 import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from "@illusive/parsers/youtube_music_parser";
-import { best_thumbnail, create_uri } from "@illusive/illusive_utilts";
+import { best_thumbnail, create_uri } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import type { ArtistOpts, MusicServiceArtist, NamedUUID } from "@illusive/types";
 import { parse_runs } from "@common/utils/parse_util";
@@ -16,7 +16,7 @@ function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
 
 function default_artist(error?: ResponseError): MusicServiceArtist{
     return {
-        ...(error !== undefined ? {error: [error]} : {}),
+        ...(error !== undefined ? {error: error} : {}),
         name: "",
         albums: [],
         singles_eps: [],

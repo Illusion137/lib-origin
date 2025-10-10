@@ -6,7 +6,7 @@ import type { CollectionItem } from '@origin/spotify/types/Collection';
 import type { SpotifySearchTrack } from '@origin/spotify/types/SearchResult';
 import type { ContentItem } from '@origin/spotify/types/UserPlaylist';
 import { extract_string_from_pattern, generate_new_uid, is_empty } from '@common/utils/util'
-import { best_thumbnail, create_uri, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { best_thumbnail, create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import type { Track } from '@illusive/types';
 import { parse_time } from '@common/utils/parse_util';
 

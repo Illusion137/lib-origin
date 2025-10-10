@@ -22,8 +22,8 @@ export namespace SQLfs {
         return !is_empty(item) ? item : "";
     }
 
-    export function cache_directory(path: string) { return cached_temp_directory(path); }
-    export function document_directory(path: string) { return cached_document_directory(path); }
+    export function cache_directory(...paths: string[]) { return cached_temp_directory(...paths); }
+    export function document_directory(...paths: string[]) { return cached_document_directory(...paths); }
     export function sqlite_directory(item: string) { return document_directory(Illusive.sqlite_directory) + forward_item(item); }
     export function custom_thumbnail_directory(item: string) { return document_directory(Illusive.custom_thumbnail_archive_path) + forward_item(item); }
     export function thumbnail_directory(item: string) { return  document_directory(Illusive.thumbnail_archive_path) + forward_item(item); }

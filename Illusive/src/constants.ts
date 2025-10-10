@@ -19,4 +19,7 @@ export namespace Constants {
     export const long_press_delay = 250;
     export const cached_ids_duration_milliseconds = 2000;
     export const use_illusive_cahce = true;
+    export const tint_opacity = 0.18;
+    export const last_version_pre_1700 = "16.2.5";
+    export const illusi_url_base = "https://illusi.dev"
 }

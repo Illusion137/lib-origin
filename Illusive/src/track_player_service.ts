@@ -1,31 +1,31 @@
  
-import type {
-    AddTrack} from 'react-native-track-player';
-import TrackPlayer, {
+import type { AddTrack } from 'react-native-track-player';
+import TrackPlayer, { 
     AppKilledPlaybackBehavior,
     Capability,
     Event,
     PitchAlgorithm,
     RepeatMode,
     TrackType
-} from 'react-native-track-player';
+}
+from 'react-native-track-player';
 import { is_empty } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
 import type { ISOString, Track } from '@illusive/types';
 import { alert_trackplayer_error } from '@illusive/illusi/src/alert';
-import { handle_new_track_data } from '@illusive/illusi/src/downloader';
-import * as GLOBALS from '@illusive/illusi/src/globals';
-import * as SQLBackpack from '@illusive/illusi/src/sql/sql_backpack';
-import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
-import * as SQLRecentlyPlayed from '@illusive/illusi/src/sql/sql_recently_played';
-import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
-import { artist_string } from '@illusive/illusive_utilts';
-import { sample } from '@illusive/illusi/src/sampler';
-import { resolved_artwork } from '@illusive/illusi/src/illusi_utils';
+import { handle_new_track_data } from '@illusive/downloader';
+import { artist_string } from '@illusive/illusive_utils';
+import { sample } from '@illusive/sampler';
+import { GLOBALS } from '@illusive/globals';
+import { SQLfs } from '@illusive/sql/sql_fs';
+import { SQLBackpack } from '@illusive/sql/sql_backpack';
+import { resolved_artwork } from '@illusive/artwork';
+import { SQLRecentlyPlayed } from '@illusive/sql/sql_recently_played';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
 // import { ffcache_yt } from './downloader';
 
-const placeholder_mp3 = require('../../assets/placeholder.mp3');
+const placeholder_mp3 = require('./assets/placeholder.mp3');
 
 export async function setup_track_player(): Promise<boolean> {
     GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks;
@@ -49,12 +49,6 @@ export async function setup_track_player(): Promise<boolean> {
                 Capability.SkipToNext,
                 Capability.SkipToPrevious,
                 Capability.SeekTo,
-                Capability.PlayFromSearch,
-            ],
-            compactCapabilities: [
-                Capability.Play,
-                Capability.Pause,
-                Capability.SkipToNext,
                 Capability.PlayFromSearch,
             ],
             progressUpdateEventInterval: 1,
@@ -123,7 +117,7 @@ export async function track_player_previous() {
         }
         const illusi_track = GLOBALS.global_var.playing_tracks?.[track_index];
         if(is_in_restart_threshold(illusi_track, progress.position)) {
-            await TrackPlayer.seekTo(GLOBALS.global_var.playing_tracks?.[track_index]?.meta?.begdur ?? 0);
+            await TrackPlayer.seekTo(illusi_track?.meta?.begdur ?? 0);
             return;
         }
         await TrackPlayer.skipToPrevious();

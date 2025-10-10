@@ -1,3 +1,4 @@
+import { reinterpret_cast } from '@common/cast';
 import type { ResponseError } from '@common/types';
 import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
@@ -121,9 +122,7 @@ export function shuffle_array<T>(array: T[]) {
 }
 
 export function closest_to(target: number, array: number[]) {
-    return array.reduce(function(prev, curr) {
-        return (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
-    });
+    return array.reduce((prev, curr) => (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev), 0);
 }
 
 export function cycle<T>(value: T, values: T[]): T {
@@ -157,6 +156,10 @@ export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string,
         return accumulator;
     }, {});
 };
+
+export function version_split(version: string): [number, number, number]{
+    return reinterpret_cast<[number, number, number]>(version.split('.').map(item => parseInt(item)));
+}
 
 export function version_greater_than(version: string, other_version: string): boolean{
     try {

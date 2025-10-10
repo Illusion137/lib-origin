@@ -3,9 +3,11 @@ import { CookieJar } from "@common/utils/cookie_util";
 
 export type BasePrefTypes = "NUMBER" | "BOOLEAN" | "STRING" | "STRING_ARRAY" | "NUMBER_ARRAY" | "STRING_OPTIONS" | "COOKIE_JAR" | "DATE";
 export interface BasePref<TValue, TType extends string = ""> {
-    readonly default_value: TValue;
     current_value: TValue;
+    readonly default_value: TValue;
     readonly type: BasePrefTypes | TType;
+    readonly show_type?: string;
+    readonly visible?: boolean;
     readonly section?: string;
     readonly description?: string;
     readonly range?: { start: number; end: number };

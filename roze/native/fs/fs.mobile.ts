@@ -1,7 +1,7 @@
 import { generror_catch } from "@common/utils/error_util";
 import { gen_uuid } from "@common/utils/util";
 import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "@native/fs/fs.base";
-import expo_fs from "expo-file-system";
+import * as expo_fs from "expo-file-system/legacy";
 import path_lib from "path";
 
 export const mobile_fs: FileSystem = {

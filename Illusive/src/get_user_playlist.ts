@@ -1,6 +1,6 @@
 import * as Origin from '@origin/index'
 import { urlid } from '@common/utils/util';
-import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from '@illusive/types';
 

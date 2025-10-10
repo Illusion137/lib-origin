@@ -1,6 +1,6 @@
 import type { Playlist, Track, User } from "@origin/soundcloud/types/Search";
 import { generate_new_uid } from "@common/utils/util";
-import { create_uri } from "@illusive/illusive_utilts";
+import { create_uri } from "@illusive/illusive_utils";
 import type { ISOString } from "@illusive/types";
 import type * as IllusiveTypes from "@illusive/types";
 import { remove_prod } from "@common/utils/clean_util";

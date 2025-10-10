@@ -11,7 +11,7 @@ import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_use
 import { parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { youtube_music_get_playlist } from '@illusive/get_playlist';
-import { best_thumbnail, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { best_thumbnail, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import { parse_amazon_music_search_track, parse_spotify_search_track } from '@illusive/track_parser';
 import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from '@illusive/types';
@@ -20,7 +20,7 @@ import { parse_runs } from '@common/utils/parse_util';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
     return {
-        ...(error !== undefined ? {error: [error]} : {}),
+        ...(error !== undefined ? {error: error} : {}),
         tracks: [],
         playlists: [],
         albums: [],
@@ -130,6 +130,10 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
     if((top_result?.side_contents.length ?? 0) > 0){
         tracks.push(...top_result!.side_contents);
     }
+    // console.log(tracks);
+    // console.log(playlists);
+    // console.log(albums);
+    // console.log(artists);
 
     for(const shelf of results){
         switch(parse_runs(shelf.title.runs)){

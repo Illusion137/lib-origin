@@ -8,7 +8,7 @@ import { MEDIA } from "@illusicord/media";
 import { play_track_discord_recieve } from "@illusive/discord";
 import { Utils } from "@illusicord/player/utils";
 import { Constants } from "@illusicord/constants";
-import { duration_to_string } from "@illusive/illusive_utilts";
+import { duration_to_string } from "@illusive/illusive_utils";
 
 export type DiscordClient = Client & { player: Player };
 export type DiscordMessage = OmitPartialGroupDMChannel<Message>;

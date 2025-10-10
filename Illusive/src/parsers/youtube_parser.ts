@@ -5,35 +5,39 @@ import type { PageHeaderViewModel } from "@origin/youtube/types/PageHeaderViewMo
 import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
 import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "@origin/youtube/types/SearchResultsM";
 import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/youtube/types/SearchResultsW";
-import type { VideoInfo } from "@origin/youtube_dl/types";
-import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utilts";
+import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
 import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
+import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
+import { YTNodes } from "youtubei.js/agnostic";
+import { YouTubeDL } from '@origin/youtube_dl/index';
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;
     try {
-        const engagement_panels = info?.response?.engagementPanels?.map(panel => panel?.engagementPanelSectionListRenderer);
+        const engagement_panels = info?.page[1]?.engagement_panels?.map(panel => panel.as(YTNodes.EngagementPanelSectionList));
         if(engagement_panels !== undefined && Array.isArray(engagement_panels) && engagement_panels.filter(item => item !== undefined).length > 0) {
-            const structured_description_panel = engagement_panels.find(panel => panel.targetId === "engagement-panel-structured-description");
+            const structured_description_panel = engagement_panels.find(panel => panel.target_id === "engagement-panel-structured-description");
             if(structured_description_panel !== undefined) {
-                const music_renderer = structured_description_panel.content.structuredDescriptionContentRenderer.items.find(item => item.horizontalCardListRenderer !== undefined && item.horizontalCardListRenderer.footerButton.buttonViewModel.iconName === "MUSIC")?.horizontalCardListRenderer;
+                const music_renderer = structured_description_panel.content?.as(YTNodes.StructuredDescriptionContent).items.find(item => item.as(YTNodes.HorizontalCardList) !== undefined && item.as(YTNodes.HorizontalCardList).header.as(YTNodes.ButtonView).icon_name === "MUSIC")?.as(YTNodes.HorizontalCardList);
                 if(music_renderer !== undefined) {
                     songs = music_renderer.cards.map(item => {
+                        const attributes = item.as(YTNodes.VideoAttributeView);
                         return {
-                            artwork_url: item.videoAttributeViewModel.image.sources?.[0]?.url,
-                            title: item.videoAttributeViewModel.title,
-                            artist: item.videoAttributeViewModel.subtitle,
-                            album: item.videoAttributeViewModel?.secondarySubtitle?.content as string|undefined,
+                            artwork_url: Array.isArray(attributes.image) ? attributes.image?.[0]?.url : attributes.image?.image?.[0]?.url,
+                            title: attributes.title,
+                            artist: attributes.subtitle,
+                            album: attributes?.secondary_subtitle?.content,
                         };
                     });
                 }
             }
         }
     } catch (error) {}
+
+
     return {
-        artist_id: info.videoDetails.channelId,
-        age_restricted: info.videoDetails.age_restricted,
-        chapters: info.videoDetails.chapters,
+        artist_id: info.basic_info.channel?.id ?? "",
+        chapters: YouTubeDL.get_chapters(info),
         songs,
     };
 }

@@ -4,11 +4,12 @@ import { db_exec } from "@illusive/db/database";
 import { playlists_table, playlists_tracks_table, tracks_table } from "@illusive/db/schema";
 import { default_playlists } from "@illusive/default_playlists";
 import { GLOBALS } from '@illusive/globals';
-import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utilts";
+import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utils";
 import { sort_playlist_tracks } from "@illusive/playlist_utils";
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, Track } from "@illusive/types";
 import { and, eq } from 'drizzle-orm';
 import { SQLTracks } from "./sql_tracks";
+import { reinterpret_cast } from "@common/cast";
 
 export namespace SQLPlaylists {
     // async function update_playlist_table(playlist_uuid: string, new_playlist: SQLiteUpdateSetSource<typeof playlists_table>){
@@ -81,16 +82,15 @@ export namespace SQLPlaylists {
         const playlist = await db_exec(async(db) => await db
             .select()
             .from(tracks_table)
-            .leftJoin(playlists_tracks_table, 
+            .innerJoin(playlists_tracks_table, 
                 and(
                     eq(playlists_tracks_table.track_uid, tracks_table.uid),
                     eq(playlists_tracks_table.uuid, playlist_uuid)
                 )
-            ).orderBy(playlists_table.id));
+            ).orderBy(playlists_tracks_table.id));
         
         // const playlist = await db_get_all_async<SQLTrack>(`${sql_select<Track>("tracks", "*")} AS t JOIN playlists_tracks AS p ON p.track_uid = t.uid AND p.uuid = '${playlist_uuid}' ORDER BY p.id`);
-        let tracks: Track[] = playlist.map(p => p.tracks);
-        //  SQLTracks.sql_tracks_to_tracks(playlist.map(p => p.tracks)); 
+        let tracks: Track[] = playlist.map(p => reinterpret_cast<Track>(SQLTracks.sql_track_to_track(p.tracks))).filter(track => !("error" in track));
         if(skip_inheritance) return tracks;
         seen_playlist_uuids.add(playlist_uuid);
         const cplaylist_data = playlist_no_visual_data ? playlist_no_visual_data : await playlist_data(playlist_uuid, "IGNORE");

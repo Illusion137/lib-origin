@@ -8,6 +8,8 @@ import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query
 import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from "@illusive/types";
 import type { Run3 } from "@origin/youtube/types/PlaylistResults_0";
 import fuzzysort from "fuzzysort";
+import { reinterpret_cast } from '../../common/cast';
+import type { BasePref } from "@native/mmkv/mmkv_utils";
 
 export function duration_to_string(track_duration: number): string {
 	if (track_duration / 3600 >= 1) {
@@ -185,8 +187,16 @@ function filter_with_query_flags<T>(query: string, obj: T[], query_flags: QueryF
 	};
 }
 
+const QUERY_SPLIT_OR = " OR ";
 export function track_query_filter(tracks: Track[], query?: string): Track[] {
 	if (is_empty(query)) return tracks;
+
+	if(query!.includes(QUERY_SPLIT_OR)){
+		return query!.split(QUERY_SPLIT_OR)
+			.map(split_query => track_query_filter(tracks, split_query))
+			.reduce((tracks_a, tracks_b) => tracks_include(tracks_a, tracks_b));
+	}
+
 	const max_plays = Math.max(...tracks.map((t) => t.meta?.plays ?? 0));
 
 	const queried_result = filter_with_query_flags(query!, tracks, TRACK_QUERY_FLAGS);
@@ -269,6 +279,43 @@ export function time_to_timestamp(time_seconds: number): string {
 export function path_to_directory(path: string) {
 	return path.split("/").slice(0, -1).join("/");
 }
+
+export function track_to_illusive_uri(track: Track): IllusiveURI{
+	const primary_key_to_music_service_uri: Record<keyof Track, MusicServiceURI> = {
+		uid: "illusi",
+		title: "illusi",
+		alt_title: "illusi",
+		artists: "illusi",
+		duration: "illusi",
+		prods: "illusi",
+		genre: "illusi",
+		tags: "illusi",
+		explicit: "illusi",
+		unreleased: "illusi",
+		album: "illusi",
+		plays: "illusi",
+		imported_id: "illusi",
+		illusi_id: "illusi",
+		youtube_id: "youtube",
+		youtubemusic_id: "youtubemusic",
+		soundcloud_id: "soundcloud",
+		soundcloud_permalink: "soundcloud",
+		spotify_id: "spotify",
+		amazonmusic_id: "amazonmusic",
+		applemusic_id: "applemusic",
+		artwork_url: "illusi",
+		thumbnail_uri: "illusi",
+		media_uri: "illusi",
+		lyrics_uri: "illusi",
+		meta: "illusi",
+		playback: "illusi",
+		downloading_data: "illusi"
+	};
+	const primary_key = track_primary_key(track);
+	const music_service_uri = primary_key_to_music_service_uri[primary_key];
+	return create_uri(music_service_uri, String(reinterpret_cast<string|number>(track[primary_key])));
+}
+
 export function create_uri(music_service_uri: MusicServiceURI, id: string): IllusiveURI {
 	return `${music_service_uri}:${urlid(id)}`;
 }
@@ -504,8 +551,8 @@ export function track_exists(track: Track, global_tracks: Track[]) {
     return false;
 }
 
-export function prefs_settings_groupby_filter(show_in_type_check: Prefs.Pref<any>["show_in_type"]): GroupSection<PrefEntry>[] {
-	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter((item) => (item[1].show_in_settings ?? false) && item[1].show_in_type === show_in_type_check);
+export function prefs_settings_groupby_filter(show_in_type_check: BasePref<any>["show_type"]): GroupSection<PrefEntry>[] {
+	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter((item) => (item[1].visible ?? false) && item[1].visible === show_in_type_check);
 	const groups = groupby(entries, (item) => item[1].section ?? "Other");
 	return Object.keys(groups).map((key: string) => ({ title: key, data: groups[key] }));
 }

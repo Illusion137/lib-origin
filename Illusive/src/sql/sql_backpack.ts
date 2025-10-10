@@ -1,10 +1,11 @@
 import type { ResponseError } from "@common/types";
 import { backpack_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
-import { track_exists } from "@illusive/illusive_utilts";
+import { track_exists } from "@illusive/illusive_utils";
 import type { Track } from "@illusive/types";
 import { eq } from "drizzle-orm";
 import { SQLTracks } from "./sql_tracks";
+import { db_exec } from "@illusive/db/database";
 
 export namespace SQLBackpack {
     export async function empty_backpack() {

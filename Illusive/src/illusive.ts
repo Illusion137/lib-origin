@@ -10,7 +10,7 @@ import { apple_music_get_latest_releases, soundcloud_get_latest_releases, youtub
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
-import { all_words, artist_string, clean_title, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from "@illusive/illusive_utilts";
+import { all_words, artist_string, clean_title, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
@@ -298,27 +298,27 @@ export namespace Illusive {
         if(!is_empty(track.imported_id))
             return imported_thumbnail_index;
         if(!is_empty(track.thumbnail_uri))
-            return {uri: pathlib.join(document_directory, thumbnail_archive_path, track.thumbnail_uri!), cache: 'force-cache'};
+            return pathlib.join(document_directory, thumbnail_archive_path, track.thumbnail_uri!);
         if(!is_empty(track.artwork_url))
-            return {uri: await get_highest_quality_service_thumbnail_uri(track.artwork_url!), cache: 'force-cache'};
+            return await get_highest_quality_service_thumbnail_uri(track.artwork_url!);
         if(!is_empty(track.youtube_id))
-            return {uri: await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!), cache: 'force-cache'};
+            return await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!);
         return illusi_dark_icon_index;
     }
 
     export function get_track_artwork(document_directory: string, track: Track): Artwork {
         if(!is_empty(track.thumbnail_uri)){
             if(track.thumbnail_uri!.includes(track.uid))
-                return {uri: pathlib.join(document_directory, thumbnail_archive_path, track.thumbnail_uri!), cache: 'force-cache'};
+                return pathlib.join(document_directory, thumbnail_archive_path, track.thumbnail_uri!);
             else
-                return {uri: pathlib.join(document_directory, custom_thumbnail_archive_path, track.thumbnail_uri!), cache: 'force-cache'};
+                return pathlib.join(document_directory, custom_thumbnail_archive_path, track.thumbnail_uri!);
         }
         if(!is_empty(track.imported_id))
             return imported_thumbnail_index;
         if(!is_empty(track.artwork_url))
-            return {uri: track.artwork_url!, cache: 'force-cache'};
+            return track.artwork_url!;
         if(!is_empty(track.youtube_id))
-            return {uri: `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`, cache: 'force-cache'};
+            return `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`;
         return illusi_dark_icon_index;
     }
 

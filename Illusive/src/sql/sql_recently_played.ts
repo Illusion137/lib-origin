@@ -9,13 +9,13 @@ import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLRecentlyPlayed {
     export async function insert_recently_played_track(track: Track) {
-        await db_exec(db => db.transaction(async(tx) => {
+        await db_exec(async(db) => await db.transaction(async(tx) => {
             await tx.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
             await tx.insert(recently_played_tracks_table).values(track);
         }));
     }
     export async function delete_recently_played_track(track: Track) {
-        await db_exec(db =>db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
+        await db_exec(async(db) => await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
     }
     export async function recently_played_tracks(limit?: number): Promise<Track[]> {
         // TODO dont hard code 1000;

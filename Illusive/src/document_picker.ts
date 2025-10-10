@@ -1,13 +1,13 @@
 import * as DocumentPicker from 'react-native-document-picker'
 import { extract_file_extension, generate_new_uid } from '@common/utils/util';
 import type { Playlist, Promises, Track } from '@illusive/types';
-import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
-import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
-import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
-import * as GLOBALS from '@illusive/illusi/src/globals';
 import { alert_error } from '@illusive/illusi/src/alert';
 import ImagePicker from 'react-native-image-crop-picker';
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
+import { SQLPlaylists } from '@illusive/sql/sql_playlists';
+import { SQLfs } from '@illusive/sql/sql_fs';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
+import { GLOBALS } from '@illusive/globals';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else alert_error({error: error as Error});
@@ -75,7 +75,7 @@ export async function upload_track_thumbnail(track: Track, callback: (track: Tra
     }
 }
 
-export async function upload_music_files(callback: () => Promise<void>) {
+export async function upload_music_files(callback?: () => Promise<void>) {
     try {
         const audio_files = await DocumentPicker.pickMultiple({type: [DocumentPicker.types.audio, DocumentPicker.types.video], copyTo: 'documentDirectory'});
 
@@ -96,7 +96,7 @@ export async function upload_music_files(callback: () => Promise<void>) {
                 const new_file_uri = encodeURI(uid + file_extension);
                 const new_file_uri_full_path = await SQLfs.move_to_media_directory(audio_file.fileCopyUri, new_file_uri);
 
-                const audio_duration_seconds = await get_audio_duration.get_audio_duration(new_file_uri_full_path);
+                const audio_duration_seconds = await get_audio_duration().get_audio_duration(new_file_uri_full_path);
 
                 if(audio_duration_seconds === -1) throw new Error("Unable to access audio metadata duration");
 

@@ -12,10 +12,10 @@ import type { ResponseError} from "@common/types";
 import { TimedCacheValue } from "@common/types";
 import { alert_error, alert_info } from "@illusive/illusi/src/alert";
 import { clean_album_title } from "@illusive/parsers/apple_music_parser";
-import { generate_unique_track_tints, track_primary_key } from "@illusive/illusive_utilts";
+import { generate_unique_track_tints, track_primary_key } from "@illusive/illusive_utils";
 import { Constants } from "@illusive/constants";
 import { try_download_track_lyrics } from "@illusive/illusi/src/lyrics";
-import { wait } from "@common/utils/timed_utilt";
+import { wait } from "@common/utils/timed_util";
 
 const bad_artist_names = [',', '&', 'and'];
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {

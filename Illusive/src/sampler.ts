@@ -3,14 +3,15 @@ import { is_empty, random_of, shuffle_array } from "@common/utils/util";
 import { Illusive } from "@illusive/illusive";
 import { Prefs } from "@illusive/prefs";
 import type { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from "@illusive/types";
-import * as GLOBALS from '@illusive/illusi/src/globals';
 import { Logger } from "@illusive/illusi/src/logger";
-import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
-import * as SQLBackpack from '@illusive/illusi/src/sql/sql_backpack';
-import * as SQLfs from '@illusive/illusi/src/sql/sql_fs';
 import { alert_error } from '@illusive/illusi/src/alert';
 import { Wifi } from '@illusive/illusi/src/wifi_utils';
 import { Constants } from '@illusive/constants';
+import { GLOBALS } from '@illusive/globals';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
+import { track_exists } from '@illusive/illusive_utils';
+import { SQLBackpack } from '@illusive/sql/sql_backpack';
+import { SQLfs } from '@illusive/sql/sql_fs';
 
 export async function get_proxies(sample_length: number){
     const proxies: Origin.Proxy.Proxy[] = [];
@@ -80,7 +81,7 @@ export async function sample_tracks_service(sample_tracks: Track[], to: MusicSer
 }
 
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata'], unavailable: boolean) {
-    if(!SQLTracks.track_exists(track)) return;
+    if(!track_exists(track, GLOBALS.global_var.sql_tracks)) return;
     const new_metadata: TrackMetaData = {
         ...(!is_empty(track.meta) ? track.meta! : ({
             plays: 0,
@@ -88,7 +89,6 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             last_played_date: new Date().toISOString() as ISOString
         })),
         ...(is_empty(metadata) ? {} : {
-            age_restricted: metadata!.age_restricted,
             chapters: metadata!.chapters,
             songs: metadata!.songs,
         }),
@@ -99,7 +99,7 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
     await SQLTracks.update_track_meta_data(track.uid, new_metadata);
 }
 export async function handle_incoming_youtube_music_track_data(track: Track, new_track: Track) {
-    if(!SQLTracks.track_exists(track)) return;
+    if(!track_exists(track, GLOBALS.global_var.sql_tracks)) return;
     track.alt_title = track.title;
     track.title = new_track.title;
     track.artists = new_track.artists;

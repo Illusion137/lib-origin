@@ -19,7 +19,7 @@ function artist_string(track_or_compact_playlist: Track|CompactPlaylist): string
 }
 
 export function parse_words(query: string){
-    return query.split(' ');
+    return query?.split(' ');
 }
 export function get_first_word_str(args: string[], i: number): string{
     return (args?.[i] ?? "").trim();
@@ -33,6 +33,7 @@ export function included_in(str1: string, from_str: string): boolean{
 }
 
 export function extract_query_flags<T>(query: string, QUERY_FLAGS: QueryFlag<T>[]){
+    query ??= "";
     const words = parse_words(query);
     const query_flags_flags = QUERY_FLAGS.map(flag => flag.flag).concat(QUERY_FLAGS.map(flag => ANTI_QUERY_FLAG_PREFIX + flag.flag));
     const extracted_query_flags: [QueryFlag<T>, string[], boolean][] = [];

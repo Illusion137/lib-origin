@@ -1,5 +1,6 @@
 import type { RoZFetchRequestInit } from "@common/rozfetch";
 import type { CookieJar } from "@common/utils/cookie_util";
+import { wait_for } from "./utils/timed_util";
 
 export interface ResponseError { "error": Error }
 export interface ResponseSuccess { "success": true }
@@ -134,5 +135,47 @@ export class ItemTimedCache<K, V> {
     }
     remove(key: string) {
         this.store = this.store.filter((_, index) => index !== this.store.findIndex(item => item.key === key));
+    }
+}
+
+export class AsyncFNQueue<T extends Record<string, any>, V = unknown>  {
+    readonly #fn: (obj: T) => Promise<V>;
+    readonly #queue: T[];
+    readonly #queue_max_length: number;
+    readonly #key_extractor: (obj: T) => string;
+    constructor(queue_max_length: number, key_extractor: (obj: T) => string,  fn: (obj: T) => Promise<V>){
+        this.#queue = [];
+        this.#queue_max_length = queue_max_length;
+        this.#key_extractor = key_extractor;
+        this.#fn = fn;
+    }
+    async push_into_queue(initial_obj: T){
+        const id = this.#key_extractor(initial_obj);
+        if(this.#queue.find(item => this.#key_extractor(item) === id)) return "EXISTS";
+        this.#queue.push(initial_obj);
+        await wait_for(() => this.in_pop_range(id));
+        const result = await this.#fn(initial_obj);
+        const item_index = this.#queue.findIndex(item => this.#key_extractor(item) === id);
+        this.#queue.splice(item_index, 1);
+        return result;
+    }
+    update_key(id: string, new_obj: T){
+        const index = this.#queue.findIndex(obj => this.#key_extractor(obj) === id);
+        if(index === -1) return;
+        this.#queue[index] = new_obj;
+    }
+    has_key(id: string){
+        const index = this.#queue.findIndex(obj => this.#key_extractor(obj) === id);
+        return index !== -1;
+    }
+    get(id: string){
+        return this.#queue.find(obj => this.#key_extractor(obj) === id);
+    }
+    in_pop_range(id: string) {
+        const keys = this.#queue.map(this.#key_extractor);
+        for (let i = 0; i < this.#queue_max_length; i++)
+            if (keys[i] === id)
+                return true;
+        return false;
     }
 }

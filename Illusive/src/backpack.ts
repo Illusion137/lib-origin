@@ -1,4 +1,3 @@
-import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
 import * as Origin from '@origin/index';
 import { is_empty } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
@@ -8,6 +7,7 @@ import type { MusicServiceType, Track } from "@illusive/types";
 import { alert_error } from '@illusive/illusi/src/alert';
 import { Logger } from '@illusive/illusi/src/logger';
 import { Wifi } from '@illusive/illusi/src/wifi_utils';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
 
 export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track[]> {
     if(Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()) {

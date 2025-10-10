@@ -3,7 +3,7 @@ import { CookieJar } from "@common/utils/cookie_util";
 import { soundcloud_parse_track, soundcloud_parse_track_to_song } from "@illusive/parsers/soundcloud_parser";
 import { parse_youtube_music_artist_album } from "@illusive/parsers/youtube_music_parser";
 import { apple_music_get_artist } from "@illusive/get_artist";
-import { create_uri } from "@illusive/illusive_utilts";
+import { create_uri } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import type { ArtistOpts, CompactPlaylist, NamedUUID, Track } from "@illusive/types";
 import type * as SoundcloudTypes from '@origin/soundcloud/types/Search';

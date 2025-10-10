@@ -1,6 +1,6 @@
 import { remove } from '@common/utils/clean_util';
 import * as Origin from '@origin/index'
-import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 
 export async function spotify_create_playlist(playlist_name: string) {

@@ -2,18 +2,19 @@ import { is_empty } from "@common/utils/util";
 import { Constants } from "@illusive/constants";
 import type { Track } from "@illusive/types";
 import { alert_error } from "@illusive/illusi/src/alert";
-import * as GLOBALS from "@illusive/illusi/src/globals";
-import * as SQLPlaylists from "@illusive/illusi/src/sql/sql_playlists";
-import * as SQLTracks from "@illusive/illusi/src/sql/sql_tracks";
+import { SQLTracks } from "@illusive/sql/sql_tracks";
+import { GLOBALS } from "@illusive/globals";
+import { SQLPlaylists } from "@illusive/sql/sql_playlists";
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 
-export async function download_track(track_data: Track, redownload: boolean , is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>, set_downloading_progress: SetState<number>) {
+export async function download_track(track_data: Track, redownload: boolean , is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>) {
     const track = await SQLTracks.fetch_track_data_from_uid(track_data.uid);
+    if(!track || "error" in track) return;
     set_is_downloading(true);
     if(!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex((item) => item.uid == track_data.uid) === -1))) {
-        const result = await GLOBALS.global_var.download_track(track_data, redownload, set_downloading_progress, set_is_downloading, set_is_downloaded);
-        if(result === "ERROR") set_is_downloaded(false);
+        const result = await GLOBALS.global_var.download_track(track_data, redownload);
+        if(typeof result === "object") set_is_downloaded(false);
     }
 }
 
@@ -21,10 +22,10 @@ export async function insert_into_write_playlist(track_data: Track, write_playli
     if(write_playlist_uuid === undefined) { alert_error({error: new Error("Track props.write_playlist is undefined")}); return; }
     if(!playlist_saved) {
         if(write_playlist_uuid === Constants.library_write_playlist) await SQLTracks.insert_track(track_data);
-        else await SQLPlaylists.insert_track_playlist(write_playlist_uuid, track_data.uid);
+        else await SQLPlaylists.insert_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
         set_playlist_saved(true);
     } else if(write_playlist_uuid !== Constants.library_write_playlist) {
-        await SQLPlaylists.delete_track_playlist(write_playlist_uuid, track_data.uid);
+        await SQLPlaylists.delete_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
         set_playlist_saved(false);
     }
     if(refresh_data !== undefined) refresh_data();
@@ -39,7 +40,7 @@ export async function delete_track(track_data: Track, write_playlist_uuid: strin
         if(idx !== -1) GLOBALS.global_var.sql_tracks.splice(idx, 1);
         await refresh_data();
     } else {
-        await SQLPlaylists.delete_track_playlist(write_playlist_uuid, track_data.uid);
+        await SQLPlaylists.delete_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
         await refresh_data();
     }
 }

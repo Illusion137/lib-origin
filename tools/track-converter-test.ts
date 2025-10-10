@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { duration_to_string } from "@illusive/illusive_utilts";
+import { duration_to_string } from "@illusive/illusive_utils";
 import type { Track } from "@illusive/types";
 import playlist from '../sample/illusi/zayboy.json';
 import { Prefs } from '@illusive/prefs';

@@ -19,7 +19,7 @@ import { musi_parse_track } from '@illusive/parsers/musi_parser';
 import { soundcloud_parse_track } from '@illusive/parsers/soundcloud_parser';
 import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_playlist_header, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
-import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from '@illusive/illusive_utilts';
+import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from '@illusive/track_parser';
 import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
@@ -29,7 +29,7 @@ import { parse_runs } from '@common/utils/parse_util';
 import { get_main_key } from '@common/utils/fetch_util';
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist {
-    return {...(error !== undefined ? {error: [error]} : {}), title: "", tracks: [], continuation: null}
+    return {...(error !== undefined ? {error: error} : {}), title: "", tracks: [], continuation: null}
 }
 
 export async function musi_get_playlist(url: string): Promise<MusicServicePlaylist> {
@@ -57,7 +57,7 @@ export async function youtube_get_playlist(url: string): Promise<MusicServicePla
 export async function youtube_get_playlist_continuation(opts: YouTubePlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_continuation({cookie_jar}, opts.ytcfg, opts.continuation);
-    if("error" in playlist_response) return {tracks: [], continuation: null, error: [playlist_response]};
+    if("error" in playlist_response) return {tracks: [], continuation: null, error: playlist_response};
     const parsed_playlist = parse_playlist_continuation_contents(playlist_response);
     return {tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: {ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation} as YouTubePlaylistContinuation}
 }
@@ -67,7 +67,7 @@ interface YouTubeMusicPlaylistContinuation {"url": string, "ytcfg": YTMUSIC_YTCF
 export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
     const playlist_response = await Origin.YouTubeMusic.get_playlist({cookie_jar}, url);
-    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
     if(url.includes("OLAK5uy_")) { // Album
         return {
             title: parse_runs(playlist_response.data.playlist_data.title.runs),
@@ -102,7 +102,7 @@ export async function youtube_music_get_playlist(url: string): Promise<MusicServ
 export async function youtube_music_get_playlist_continuation(opts: YouTubeMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
     const playlist_response = await Origin.YouTubeMusic.get_continuation({cookie_jar}, opts.ytcfg, opts.continuation);
-    if("error" in playlist_response) return {tracks: [], continuation: null, error: [playlist_response]};
+    if("error" in playlist_response) return {tracks: [], continuation: null, error: playlist_response};
     const parsed_playlist = playlist_response as unknown as PlaylistResults_1|PlaylistResults_3;
     if("continuationContents" in parsed_playlist){
         if(parsed_playlist?.continuationContents?.musicPlaylistShelfContinuation === undefined) return {tracks: [], continuation: null};
@@ -150,7 +150,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
     const cookie_jar = Prefs.get_pref("spotify_cookie_jar");
     const playlist_limit: number = Constants.spotify_playlist_limit;
     const client = await Origin.Spotify.get_client(url, cookie_jar);
-    if("error" in client) return {title: "", tracks: [], continuation: null, error: [client]};
+    if("error" in client) return {title: "", tracks: [], continuation: null, error: client};
     const playlist_id = urlid(url, "open.spotify.com/", "playlist/", "album/", "collection/");
     const playlist_type = urlid(url, "open.spotify.com/", /\/.+/);
     switch(playlist_type) {
@@ -160,8 +160,8 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
         case "collection": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client, limit: playlist_limit}); break;
         default: return {title: "", tracks: [], continuation: null};
     }
-    if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: [generror("Spotify playlist_response is undefined", {url, playlist_limit, playlist_type})]};
-    if((typeof playlist_response === "object" && "error" in playlist_response)) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+    if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: generror("Spotify playlist_response is undefined", {url, playlist_limit, playlist_type})};
+    if((typeof playlist_response === "object" && "error" in playlist_response)) return {title: "", tracks: [], continuation: null, error: playlist_response};
     if("playlistV2" in playlist_response.data) {
         return {
             title: playlist_response.data.playlistV2.name,
@@ -203,7 +203,7 @@ export async function spotify_get_playlist_continuation(opts: SpotifyPlaylistCon
         case "COLLECTION": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client: opts.client, limit: opts.limit, offset: opts.current}); break;
         default: return {tracks: [], continuation: null};
     }
-    if(playlist_response === undefined || "error" in playlist_response) return {tracks: [], continuation: null, error: [playlist_response]};
+    if(playlist_response === undefined || "error" in playlist_response) return {tracks: [], continuation: null, error: playlist_response};
     if("playlistV2" in playlist_response.data) {
         return {
             tracks: playlist_response.data.playlistV2.content.items.map(parse_spotify_playlist_track),
@@ -230,7 +230,7 @@ export async function spotify_get_playlist_continuation(opts: SpotifyPlaylistCon
 export async function amazon_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("amazon_music_cookie_jar");
     const playlist_response = await Origin.AmazonMusic.get_playlist(url, {cookie_jar});
-    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+    if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
     return {
         title: playlist_response.title,
         tracks: playlist_response.tracks.map(track => parse_amazon_music_playlist_track(track)),
@@ -244,13 +244,13 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
     const playlist_limit: number = Constants.soundcloud_playlist_limit;
 
     const hydration = await Origin.SoundCloud.get_hydration("https://www.soundcloud.com", {cookie_jar});
-    if("error" in hydration) return {title: "", tracks: [], continuation: null, error: [hydration]};
+    if("error" in hydration) return {title: "", tracks: [], continuation: null, error: hydration};
     const client_id = await Origin.SoundCloud.get_client_id(hydration.scripts_urls, {cookie_jar});
-    if(typeof client_id === "object") return {title: "", tracks: [], continuation: null, error: [client_id]};
+    if(typeof client_id === "object") return {title: "", tracks: [], continuation: null, error: client_id};
 
     if(url.includes("you/likes")) {
         const playlist_response = await Origin.SoundCloud.liked_music({cookie_jar})
-        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
         return {
             title: "Liked Music",
             creator: [{name: "You", uri: null}],
@@ -259,7 +259,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
         };
     } else if(url.includes("/sets/")) {
         const playlist_response = await Origin.SoundCloud.get_playlist({cookie_jar, playlist_path: url})
-        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
         return {
             title: playlist_response.hydration.data.title,
             creator: [{name: playlist_response.hydration.data.user.username, uri: create_uri("soundcloud", playlist_response.hydration.data.user.permalink)}],
@@ -271,7 +271,7 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
         };
     }
     const artist_response = await Origin.SoundCloud.get_artist("TRACKS", {cookie_jar, client_id, artist_id: url, limit: playlist_limit});
-    if("error" in artist_response) return {title: "", tracks: [], continuation: null, error: [artist_response]};
+    if("error" in artist_response) return {title: "", tracks: [], continuation: null, error: artist_response};
     return {
         title: artist_response.user.data.username,
         creator: [{name: artist_response.user.data.username, uri: create_uri("soundcloud", artist_response.user.data.permalink)}],
@@ -299,7 +299,7 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
     if(url.includes("/album")){
         const playlist_response = await Origin.AppleMusic.get_album(url, {});
-        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
         const playlist_header = playlist_response.data.sections.find(item => item.id.includes('album-detail-header'))?.items[0];
         const title = clean_album_title(playlist_header?.title ?? "");
         const album_data: NamedUUID = {name: title, uri: create_uri("applemusic", playlist_response.data.canonicalURL)};
@@ -315,7 +315,7 @@ export async function apple_music_get_playlist(url: string): Promise<MusicServic
     }
     else {
         const playlist_response = await Origin.AppleMusic.get_playlist(url, {cookie_jar});
-        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: [playlist_response]};
+        if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
         if("resources" in playlist_response.data) { // User Playlist
             const playlist_data_main_key = get_main_key(playlist_response.data.resources.playlists);
             const playlist_data = playlist_response.data.resources.playlists[playlist_data_main_key];
@@ -353,7 +353,7 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
     if(opts === undefined || opts.offset >= opts.total) return { tracks:[], continuation: null };
     const playlist_response = await Origin.AppleMusic.get_playlist_continuation(opts.playlist_id, opts.offset, opts.authorization, {cookie_jar});
-    if("error" in playlist_response) return { tracks:[], continuation: null, error: [playlist_response] };
+    if("error" in playlist_response) return { tracks:[], continuation: null, error: playlist_response };
     const playlist_songs = playlist_response.resources['library-songs'] ?? playlist_response.resources.songs;
     const song_keys = Object.keys(playlist_songs);
     return {

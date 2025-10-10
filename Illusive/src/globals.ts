@@ -1,7 +1,7 @@
 import { TimedCache } from "@common/types";
 import { Constants } from "@illusive/constants";
 import type { Prefs } from "@illusive/prefs";
-import type { BottomAlertType, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SetState, Track } from "@illusive/types";
+import type { BottomAlertType, CompactPlaylist, Downloading, DownloadTrackResult, HexColor, MusicServiceArtist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from "@illusive/types";
 
 const downloading: Downloading[] = [];
 
@@ -15,8 +15,10 @@ const global_var = {
     playing_queue: [] as string[],
     can_play_again_mutex: false,
     play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => {first_track; tracks; playlist_name;},
-    download_track: async(track: Track, redownload?: boolean, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> => {track;redownload;progress_updater;start_download;set_finished_downloaded; return {} as any;},
+    download_track: async(track: Track, redownload?: boolean): Promise<DownloadTrackResult> => {track; redownload; return "GOOD";},
     playlist_cache: new TimedCache<string, {tracks: Track[], playlist_data: Playlist & {creator?: NamedUUID[]}, continuation?: unknown}>(Constants.playlist_cache_duration_seconds * 1000),
+    compact_playlist_cache: new TimedCache<string, CompactPlaylist>(Constants.playlist_cache_duration_seconds * 1000),
+    serialized_playlist_cache: new TimedCache<string, SerializedCompactPlaylistData>(5 * 1000),
     artist_cache: new TimedCache<string, {artist_data: MusicServiceArtist}>(Constants.playlist_cache_duration_seconds * 1000),
     set_theme: (_: Prefs.Theme) => {return},
     selected_playlists_uuids: new Set<string>(),

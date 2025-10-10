@@ -6,17 +6,18 @@ import { Illusive } from "@illusive/illusive";
 import { Prefs } from "@illusive/prefs";
 import type { Track } from "@illusive/types";
 import { alert_error } from "@illusive/illusi/src/alert";
-import * as GLOBALS from "@illusive/illusi/src/globals";
-import * as SQLTracks from "@illusive/illusi/src/sql/sql_tracks";
-import * as SQLPlaylists from "@illusive/illusi/src/sql/sql_playlists";
-import { check_push_next_track } from '@illusive/illusi/src/track_player_service';
-import { default_playlists } from '@illusive/illusi/src/default_playlists';
+import { check_push_next_track } from '@illusive/track_player_service';
+import { default_playlists } from '@illusive/default_playlists';
+import { GLOBALS } from '@illusive/globals';
+import { SQLPlaylists } from '@illusive/sql/sql_playlists';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
 
-export function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
+export async function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];
     if(!GLOBALS.global_var.can_play_again_mutex || !is_empty(start_track.imported_id) || !is_empty(start_track.media_uri)) {
         GLOBALS.global_var.can_play_again_mutex = true;
-        const known_playlist_names = Prefs.get_pref('only_play_downloaded') ? SQLPlaylists.all_playlists_names_sync()
+        const known_playlist_names = Prefs.get_pref('only_play_downloaded') ? 
+            (await SQLPlaylists.all_playlists_names())
             .map(({title}) => title)
             .concat(default_playlists.map(({name}) => name), ["My Library"]) : [];
         if(Prefs.get_pref('only_play_downloaded') && known_playlist_names.includes(playlist_name)) {

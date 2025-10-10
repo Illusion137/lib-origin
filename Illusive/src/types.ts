@@ -6,6 +6,7 @@ import type { Chapter } from "@origin/youtube_dl/types";
 import { Constants } from "@illusive/constants";
 import type { Prefs } from "@illusive/prefs";
 import { remove } from "@common/utils/clean_util";
+import type { BasePref } from "@native/mmkv/mmkv_utils";
 
 type ArtworkCacheType = 'force-cache';
 
@@ -32,7 +33,7 @@ export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': s
 
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
-export type DownloadTrackResult = "GOOD" | "ERROR";
+export type DownloadTrackResult = "GOOD" | ResponseError;
 export type SetState = any;
 export interface SQLCount {"COUNT(1)": number}
 
@@ -59,8 +60,8 @@ export interface SQLTable {
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
 
-export type PrefEntry = [Prefs.PrefOptions, Prefs.Pref<unknown>];
-export interface GroupSection<T> {title: string, data: T[]}
+export type PrefEntry = [Prefs.PrefOptions, BasePref<unknown>];
+export interface GroupSection<T> {title: string, data: T[]};
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
@@ -121,10 +122,12 @@ export interface IllusiveThumbnail {
 }
 
 export interface Downloading {
+    track: Track;
     uid: string
     progress: number
     execution_id: number
     progress_updater?: SetState
+    redownload: boolean;
     duration: number
 }
 
@@ -210,6 +213,16 @@ export type SQLTrackArray = [ string, string, string, string, number, string, st
 export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
+export interface KeepDeleteTrackStats {
+    last_sampled: ISOString;
+    total_skips: number;
+    skips_in_past_year: number;
+    plays_in_past_year: number;
+}
+export interface KeepDeleteTrack extends Track {
+    stats: KeepDeleteTrackStats;
+}
+
 export interface SmallTrack {
     title: Track['title'],
     artists: string,
@@ -275,7 +288,6 @@ export interface PlaylistsTracks {
     track_uid: string
 }
 
-export type MaybeErrors = ResponseError[] | undefined;
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
 export type CompactPlaylistAlbumType = "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG";
 export interface Basic_CompactPlaylist<T, U, V, W> {
@@ -318,12 +330,12 @@ export interface MusicServicePlaylist {
     artwork_url?: string
     date?: ISOString
     continuation: Record<string, any> | null
-    error?: MaybeErrors
+    error?: ResponseError
 }
 export interface MusicServicePlaylistContinuation {
     tracks: Track[]
     continuation: Record<string, any> | null
-    error?: MaybeErrors
+    error?: ResponseError
 }
 
 export interface MusicSearchResponse {
@@ -331,7 +343,7 @@ export interface MusicSearchResponse {
     artists: CompactArtist[]
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
-    error?: MaybeErrors
+    error?: ResponseError
     continuation: Record<string, any> | null
 }
 
@@ -352,7 +364,7 @@ export interface MusicServiceArtist {
     background_artwork_url?: string
     profile_artwork_url?: string
     similar_artists: CompactArtist[],
-    error?: MaybeErrors
+    error?: ResponseError
 }
 export interface YTDescriptionSong {
     artwork_url: string,
@@ -364,7 +376,6 @@ export interface DownloadFromIdResult {
     url: string;
     metadata?: {
         artist_id: string;
-        age_restricted: boolean;
         chapters: Chapter[];
         songs?: YTDescriptionSong[]
     };

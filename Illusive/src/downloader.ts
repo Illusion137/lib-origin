@@ -1,27 +1,19 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import { is_empty } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
-import { create_uri, number_epsilon_distance, track_exists } from '@illusive/illusive_utilts';
-import type { DownloadFromIdResult, DownloadTrackResult, ISOString, NamedUUID, OnErrorCallback, SetState, Track, TrackMetaData } from "@illusive/types";
+import { create_uri, number_epsilon_distance, track_exists } from '@illusive/illusive_utils';
+import type { DownloadFromIdResult, Downloading, DownloadTrackResult, ISOString, NamedUUID, OnErrorCallback, Track, TrackMetaData } from "@illusive/types";
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 import { GLOBALS } from './globals';
 import { get_playlist_tracks } from './playlist_utils';
 import { SQLPlaylists } from './sql/sql_playlists';
 import { SQLTracks } from './sql/sql_tracks';
-import type { ResponseError } from '@common/types';
+import { AsyncFNQueue } from '@common/types';
 import { SQLBackpack } from './sql/sql_backpack';
 import { SQLfs } from './sql/sql_fs';
 import { ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { generror } from '@common/utils/error_util';
 
-async function wait_for(condition_function: () => boolean) {
-    const poll = (resolve: () => void) => {
-        if (condition_function()) resolve();
-        else setTimeout((_: never) => { poll(resolve) }, 400);
-    }
-    return new Promise(poll as never);
-}
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
 }
@@ -53,13 +45,6 @@ export async function undownload_track(track: Track){
     await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
 }
 
-function download_error_callback(track: Track, error: ResponseError, on_error: OnErrorCallback, start_download?: SetState): "ERROR" {
-    if (start_download !== undefined) start_download(false);
-    on_error?.(error);
-    const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-    GLOBALS.downloading.splice(item_index, 1);
-    return "ERROR";
-}
 export async function handle_track_meta_data(track: Track, metadata: undefined|DownloadFromIdResult['metadata']) {
     if(metadata === undefined) return;
     if(!track_exists(track, GLOBALS.global_var.sql_tracks)) return;
@@ -78,7 +63,6 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             added_date: new Date().toISOString() as ISOString,
             last_played_date: new Date().toISOString() as ISOString
         })),
-        age_restricted: metadata.age_restricted,
         chapters: metadata.chapters,
         songs: metadata.songs,
     }
@@ -102,76 +86,71 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
     }
     return SQLTracks.add_playback_saved_data_to_track(track);
 }
-export async function download_track(track: Track, redownload = false): Promise<DownloadTrackResult> {
-    if(GLOBALS.downloading.find(item => item.uid === track.uid)) return "GOOD";
-    function in_download_range(uid: string, download_queue_max_length: number) {
-        for (let i = 0; i < download_queue_max_length; i++)
-            if (GLOBALS.downloading[i].uid === uid)
-                return true;
-        return false;
+
+async function download_track_base(downloading: Downloading): Promise<DownloadTrackResult> {
+    const is_redownloading = (is_empty(downloading.track.media_uri) && !Illusive.is_youtube(downloading.track)) || (downloading.redownload && !Illusive.is_youtube(downloading.track));
+    if(is_redownloading) {
+        downloading.track = {...downloading.track, youtube_id: ""};
+        if(!is_empty(downloading.track.media_uri)) await SQLTracks.mark_track_undownloaded(downloading.track.uid, downloading.track.media_uri!);
+    } 
+    const download_uri = await Illusive.get_download_url(SQLfs.document_directory(""), downloading.track, "highestaudio", downloading.redownload);
+    if ("error" in download_uri) {
+        if (download_uri.error.message.toLowerCase().includes("unavailable"))
+            await SQLBackpack.add_to_backpack(downloading.track.uid);
+        return generror("Couldn't find the file", downloading);
     }
+    if("url" in download_uri && download_uri.url.includes("file://")) {
+        return generror("File already exists", downloading);
+    }
+    const nt_handle = await handle_new_track_data(downloading.track, download_uri);
+    if(!("error" in nt_handle)) downloading.track = nt_handle;
+    else return nt_handle;
 
-    GLOBALS.downloading.push({ uid: track.uid, progress: -1, execution_id: -1, duration: track.duration });
-    wait_for(() => in_download_range(track.uid, Constants.download_queue_max_length))
-        .then(async () => {
-            const is_redownloading = (is_empty(track.media_uri) && !Illusive.is_youtube(track)) || (redownload && !Illusive.is_youtube(track));
-            if(is_redownloading) {
-                track = {...track, youtube_id: ""};
-                if(!is_empty(track.media_uri)) await SQLTracks.mark_track_undownloaded(track.uid, track.media_uri!);
-            } 
-            const download_uri = await Illusive.get_download_url(await SQLfs.document_directory(""), track, "highestaudio", redownload);
-            if ("error" in download_uri) {
-                if (download_uri.error.message.toLowerCase().includes("unavailable"))
-                    await SQLBackpack.add_to_backpack(track.uid);
-                return download_error_callback("Couldn't find the file", download_uri.error, track, start_download);
-            }
-            if("url" in download_uri && download_uri.url.includes("file://")) {
-                return download_error_callback("", new Error(""), track, start_download);
-            }
-            const nt_handle = await handle_new_track_data(track, download_uri);
-            if(!("error" in nt_handle)) track = nt_handle;
-            else {
-                return download_error_callback("New Track Error", nt_handle.error, track, start_download);
-            }
-            const media_uri = track.uid + '.mp4';
-            const new_uri = await SQLfs.media_directory(media_uri);
-            const ffmpeg_result = await ffmpeg().execute_args([
-                '-y',
-                '-i',
-                download_uri.url,
-                '-vn',
-                '-c:a',
-                'aac',
-                '-b:a',
-                '128k',
-                new_uri,
-            ]);
-            {
-                const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-                if(item_index !== -1)
-                    GLOBALS.downloading[item_index].execution_id = ffmpeg_result.session_id;
-            }
-
-            const retcode = await ffmpeg_result.retcode;
-            if(retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n Execution ID: ${ffmpeg_result.session_id}`);
-            
-            const audio_duration_seconds = await get_audio_duration.get_audio_duration(new_uri);
-            if(audio_duration_seconds === -1) return generror("Unable to access audio metadata duration");
-
-            if (Math.round(audio_duration_seconds) < 3) return generror(`Invalid Duration: ${audio_duration_seconds}`);
-            else if(is_empty(track.duration) || is_empty(track.duration)){
-                await SQLTracks.update_track(track.uid, {...track, duration: audio_duration_seconds})
-            }
-            else if (!number_epsilon_distance(audio_duration_seconds, track.duration, Constants.download_duration_epsilon)){
-                return generror(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(audio_duration_seconds - track.duration)}`);
-            }
-            
-            await SQLTracks.mark_track_downloaded(track.uid, media_uri);
-            {
-                const item_index = GLOBALS.downloading.findIndex((item) => item.uid == track.uid);
-                GLOBALS.downloading.splice(item_index, 1);
-            }
-            return "GOOD";
+    const media_uri = downloading.track.uid + '.mp4';
+    const new_uri = SQLfs.media_directory(media_uri);
+    const ffmpeg_result = await ffmpeg().execute_args([
+        '-y',
+        '-i',
+        download_uri.url,
+        '-vn',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        new_uri,
+    ], (statistics) => {
+        const progress = statistics.time_seconds / downloading.track.duration;
+        track_downloader.update_key(downloading.uid, {...downloading, progress: progress});
     });
+    track_downloader.update_key(downloading.uid, {...downloading, execution_id: ffmpeg_result.session_id});
+
+    const retcode = await ffmpeg_result.retcode;
+    if(retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n Execution ID: ${ffmpeg_result.session_id}`);
+    
+    const audio_duration_seconds = await get_audio_duration().get_audio_duration(new_uri);
+    if(audio_duration_seconds === -1) return generror("Unable to access audio metadata duration");
+
+    if (Math.round(audio_duration_seconds) < 3) return generror(`Invalid Duration: ${audio_duration_seconds}`);
+    else if(is_empty(downloading.track.duration) || is_empty(downloading.track.duration)){
+        await SQLTracks.update_track(downloading.track.uid, {...downloading.track, duration: audio_duration_seconds})
+    }
+    else if (!number_epsilon_distance(audio_duration_seconds, downloading.track.duration, Constants.download_duration_epsilon)){
+        return generror(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(audio_duration_seconds - downloading.track.duration)}`);
+    }
+    
+    await SQLTracks.mark_track_downloaded(downloading.track.uid, media_uri);
+
     return "GOOD";
+}
+
+export const track_downloader = new AsyncFNQueue<Downloading, Awaited<ReturnType<typeof download_track_base>>>(
+    Constants.download_queue_max_length, 
+    o => o.uid, 
+    download_track_base
+);
+
+export async function download_track(track: Track, redownload?: boolean): Promise<DownloadTrackResult>{
+    const result = await track_downloader.push_into_queue({ track, redownload: redownload ?? false, uid: track.uid, progress: -1, execution_id: -1, duration: track.duration });
+    if(result === "EXISTS") return "GOOD";
+    return result;
 }
