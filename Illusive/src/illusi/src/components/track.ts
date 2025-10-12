@@ -5,6 +5,7 @@ import { alert_error } from "@illusive/illusi/src/alert";
 import { SQLTracks } from "@illusive/sql/sql_tracks";
 import { GLOBALS } from "@illusive/globals";
 import { SQLPlaylists } from "@illusive/sql/sql_playlists";
+import * as Haptics from 'expo-haptics';
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 
@@ -14,7 +15,17 @@ export async function download_track(track_data: Track, redownload: boolean , is
     set_is_downloading(true);
     if(!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex((item) => item.uid == track_data.uid) === -1))) {
         const result = await GLOBALS.global_var.download_track(track_data, redownload);
-        if(typeof result === "object") set_is_downloaded(false);
+        if(typeof result === "object") {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            set_is_downloaded(false);
+            alert_error(result);
+        }
+        else if(result === "EXISTS"){
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
+        else {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
     }
 }
 
@@ -31,16 +42,13 @@ export async function insert_into_write_playlist(track_data: Track, write_playli
     if(refresh_data !== undefined) refresh_data();
 }
 
-export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined, refresh_data?: (() => Promise<void>)) {
-    if(refresh_data === undefined) { alert_error({error: new Error("Track props.refresh_data is undefined")}); return; }
+export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined) {
     if(write_playlist_uuid === undefined || write_playlist_uuid === Constants.library_write_playlist) {
         await SQLPlaylists.delete_track_from_all_playlists(track_data.uid);
         await SQLTracks.delete_track(track_data.uid);
         const idx = GLOBALS.global_var.sql_tracks.findIndex(item => item.uid === track_data.uid);
         if(idx !== -1) GLOBALS.global_var.sql_tracks.splice(idx, 1);
-        await refresh_data();
     } else {
         await SQLPlaylists.delete_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
-        await refresh_data();
     }
 }

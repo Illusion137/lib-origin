@@ -2,7 +2,7 @@ import { is_empty } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
 import { create_uri, number_epsilon_distance, track_exists } from '@illusive/illusive_utils';
-import type { DownloadFromIdResult, Downloading, DownloadTrackResult, ISOString, NamedUUID, OnErrorCallback, Track, TrackMetaData } from "@illusive/types";
+import type { DownloadFromIdResult, Downloading, DownloadTrackResult, ISOString, LyricsDownloading, NamedUUID, OnErrorCallback, Track, TrackMetaData } from "@illusive/types";
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 import { GLOBALS } from './globals';
 import { get_playlist_tracks } from './playlist_utils';
@@ -151,6 +151,33 @@ export const track_downloader = new AsyncFNQueue<Downloading, Awaited<ReturnType
 
 export async function download_track(track: Track, redownload?: boolean): Promise<DownloadTrackResult>{
     const result = await track_downloader.push_into_queue({ track, redownload: redownload ?? false, uid: track.uid, progress: -1, execution_id: -1, duration: track.duration });
-    if(result === "EXISTS") return "GOOD";
     return result;
+}
+
+async function download_track_lyrics_base(downloading: LyricsDownloading){
+    const lyrics_maybe = await Illusive.get_track_lryics(downloading.track);
+    return lyrics_maybe;
+}
+
+export const track_lyrics_downloader = new AsyncFNQueue<LyricsDownloading, Awaited<ReturnType<typeof download_track_lyrics_base>>>(
+    Constants.download_lyrics_queue_max_length, 
+    o => o.uid, 
+    download_track_lyrics_base
+);
+
+export async function download_track_lyrics(track: Track){
+    if(!is_empty(track.lyrics_uri)) return "EXISTS";
+    const result = await track_lyrics_downloader.push_into_queue({ track, uid: track.uid });
+    if(typeof result === "object") return result;
+    if(result === "EXISTS") return result;
+    await SQLTracks.save_track_lyrics(track, result);
+    return result;
+}
+
+export async function batch_download_track_lyrics(tracks: Track[]){
+    const results: Awaited<ReturnType<typeof download_track_lyrics>>[] = [];
+    for(const track of tracks){
+        results.push(await download_track_lyrics(track));
+    }
+    return results;
 }

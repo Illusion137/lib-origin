@@ -33,7 +33,7 @@ export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': s
 
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
-export type DownloadTrackResult = "GOOD" | ResponseError;
+export type DownloadTrackResult = "GOOD" | "EXISTS" | ResponseError;
 export type SetState = any;
 export interface SQLCount {"COUNT(1)": number}
 
@@ -130,6 +130,11 @@ export interface Downloading {
     redownload: boolean;
     duration: number
 }
+export interface LyricsDownloading {
+    track: Track; 
+    uid: string;
+}
+export type LyricsDownloadingResult = ResponseError | string;
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = {name: string, uuid: string, uri?: never} | {name: string, uuid?: never, uri: IllusiveURI|null};
@@ -484,16 +489,16 @@ export class MusicService {
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;
         for (const required_cookie_credential of this.required_cookie_credentials) {
-            if (this.cookie_jar_callback().getCookie(required_cookie_credential) === undefined)
+            if (this.cookie_jar_callback?.().getCookie?.(required_cookie_credential) === undefined)
                 return false;
         }
         return true;
     }
-    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}> {
+    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError}> {
         const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
-        if(this.get_user_playlists === undefined) return {error: [{error: new Error("get_user_playlist is undefined")}], map};
+        if(this.get_user_playlists === undefined) return {error: {error: new Error("get_user_playlist is undefined")}, map};
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {error: [account_playlists], map};
+        if("error" in account_playlists) return {error: account_playlists, map};
         const service_domain_map: Record<MusicServiceURI, string> = {
             illusi: "",
             musi: "",
@@ -508,10 +513,10 @@ export class MusicService {
         for(const playlist of account_playlists.playlists) {
             // eslint-disable-next-line prefer-const
             let [service, endpoint] = playlist.title.uri!.split(':') as [MusicServiceURI, string];
-            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: [{error: new Error("Service lacks playlist list")}], map};
+            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: {error: new Error("Service lacks playlist list")}, map};
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify") {
-                if(playlist.type === undefined) return {error: [{error: new Error("Playlist Type is undefined")}], map};
+                if(playlist.type === undefined) return {error: {error: new Error("Playlist Type is undefined")}, map};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
                 map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
             } else

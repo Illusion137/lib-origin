@@ -17,7 +17,7 @@ export function decode_hex(hex: string) {
 
 export function small_string(str: string, length = 50){
     if(str.length < length) return str;
-    return str.slice(0, length) + '...';
+    return str?.slice(0, length) + '...';
 }
 export function extract_string_from_pattern(str: string, pattern: RegExp) {
 	const body_groups = pattern.exec(str);

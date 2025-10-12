@@ -209,18 +209,20 @@ export namespace SQLPlaylists {
         return await db_exec(async(db) => await db.select({title: playlists_table.title}).from(playlists_table));
     }
     const playlist_name_memo: Record<string, string> = {};
-    export async function get_playlist_name(playlist_uuid: Playlist['uuid']) {
+    export function get_playlist_name_sync(playlist_uuid: Playlist['uuid']) {
         const default_playlist_names = default_playlists.map(playlist => playlist.name);
         const try_default_playlist_name_find = default_playlist_names.find(name => name === playlist_uuid);
         if(try_default_playlist_name_find) return try_default_playlist_name_find;
         if(playlist_name_memo[playlist_uuid]) return playlist_name_memo[playlist_uuid];
+        const found_playlist = all_playlist_data_memo.find(playlist => playlist.uuid === playlist_uuid);
+        if(found_playlist) return found_playlist.title;
         
-        const title_result = await db_exec(async(db) => await db.select({title: playlists_table.title}).from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get());
+        db_exec(async(db) => await db.select({title: playlists_table.title}).from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get()).then(result => {
+            if(result) playlist_name_memo[playlist_uuid] = result.title;
+        }).catch(e => e);
         
         // const title = db_get_all_sync<{"title": string}>(`${sql_select<Playlist>("playlists", "title")} ${sql_where<Playlist>(["uuid", playlist_uuid])}`);
-        if(!title_result) return undefined;
-        playlist_name_memo[playlist_uuid] = title_result.title;
-        return title_result.title;
+        return undefined;
     }
     export async function playlist_data(playlist_uuid: Playlist['uuid'], ignore_tracks: IgnoreTracks = "NO_IGNORE") {
         const found = all_playlist_data_memo.find(playlist => playlist.uuid === playlist_uuid);

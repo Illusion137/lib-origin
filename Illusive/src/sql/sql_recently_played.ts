@@ -9,17 +9,20 @@ import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLRecentlyPlayed {
     export async function insert_recently_played_track(track: Track) {
-        await db_exec(async(db) => await db.transaction(async(tx) => {
-            await tx.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
-            await tx.insert(recently_played_tracks_table).values(track);
-        }));
+        await db_exec(async(db) => await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
+        await db_exec(async(db) => await db.insert(recently_played_tracks_table).values(track));
     }
     export async function delete_recently_played_track(track: Track) {
         await db_exec(async(db) => await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
     }
+    export async function clear_recently_played_tracks(){
+        await db_exec(async(db) => await db.delete(recently_played_tracks_table));
+    }
     export async function recently_played_tracks(limit?: number): Promise<Track[]> {
-        // TODO dont hard code 1000;
-        const recently_played_sql_tracks = await db_exec(db =>db.select().from(recently_played_tracks_table).limit(limit ?? 1000).orderBy(desc(recently_played_tracks_table.id)));
+        // TODO fix this whole shit;
+        const recently_played_sql_tracks: Track[] = limit ? 
+            await db_exec(db =>db.select().from(recently_played_tracks_table).limit(limit).orderBy(desc(recently_played_tracks_table.id))) 
+            : await db_exec(db =>db.select().from(recently_played_tracks_table).orderBy(desc(recently_played_tracks_table.id)));
         const mapped_recently_played_tracks = SQLTracks.sql_tracks_to_tracks(recently_played_sql_tracks);
         const global_tracks_uuid_set = new Set<string>(GLOBALS.global_var.sql_tracks.map(({uid}) => uid));
         const global_tracks_uuid_track_map = new Map<string, Track>(GLOBALS.global_var.sql_tracks.map(track => [track.uid, track]));

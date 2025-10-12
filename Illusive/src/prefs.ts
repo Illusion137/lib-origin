@@ -1,5 +1,5 @@
 import { CookieJar } from "@common/utils/cookie_util";
-import type { HexColor, LinkerLink } from '@illusive/types';
+import type { HexColor, LinkerLink, Track } from '@illusive/types';
 import { gen_uuid } from '@common/utils/util';
 import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref, type BasePrefLoadMap, type BasePrefSaveMap, type BasePrefTypes } from '@native/mmkv/mmkv_utils';
 import { fs } from '@native/fs/fs';
@@ -8,7 +8,7 @@ import { Constants } from "./constants";
 import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
 
 export namespace Prefs {
-    export type OtherPrefTypes = "LINKER_LINKS";
+    export type OtherPrefTypes = "LINKER_LINKS"|"PAST_QUEUE";
 
     export type PossibleThemes = keyof typeof themes;
 
@@ -21,6 +21,27 @@ export namespace Prefs {
     }
 
     const user_uuid = gen_uuid();
+
+    export const equalizer_presets = {
+        "Default": [0, 0, 0, 0, 0, 0],
+        "Bass Boost": [6, 4, 2, 0, -2, -4],
+        "Treble Boost": [-2, -1, 0, 2, 4, 6],
+        "Vocal Boost": [-2, -1, 1, 3, 4, 2],
+        "Loudness": [5, 3, 1, 0, 2, 4],
+        "Rock": [4, 2, 1, 1, 3, 5],
+        "Pop": [-1, 1, 3, 4, 2, 1],
+        "Classical": [0, 1, 2, 1, 0, 2],
+        "Jazz": [2, 2, 1, 0, 2, 3],
+        "Electronic": [5, 3, 0, 1, 4, 6],
+        "Hip-Hop": [6, 4, 2, 0, 1, -1],
+        "Acoustic": [-1, 0, 2, 3, 2, 1],
+        "Dance": [5, 3, 0, 2, 4, 5],
+        "Podcast": [-3, -2, 1, 3, 4, 3],
+        "Movie": [4, 2, 0, 2, 3, 4]
+    } as const;
+    export type EqualizerPreset = keyof typeof equalizer_presets;
+
+    interface PastQueue { index: number; tracks: Track[]; }
 
     export const prefs = {
         legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as BasePref<string, OtherPrefTypes>,
@@ -37,6 +58,9 @@ export namespace Prefs {
         discord_webhook_url:                   {default_value: '', current_value: '', type: "STRING"}       as BasePref<string, OtherPrefTypes>,
         latest_version:                        {default_value: "16.2.5", current_value: "16.2.5", type: "STRING"} as BasePref<string, OtherPrefTypes>,
         recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as BasePref<string[], OtherPrefTypes>,
+        equalizer_preset:                      {default_value: "Default", current_value: "Default", type: "STRING"} as BasePref<EqualizerPreset, OtherPrefTypes>,
+        crossfade:                             {default_value: 0, current_value: 0, type: "NUMBER"}         as BasePref<number, OtherPrefTypes>,
+        past_queue:                            {default_value: {index: 0, tracks: []}, current_value: {index: 0, tracks: []}, type: "PAST_QUEUE"} as BasePref<PastQueue, OtherPrefTypes>,
         last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as BasePref<number, OtherPrefTypes>,
         linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as BasePref<LinkerLink[], OtherPrefTypes>,
         primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as BasePref<HexColor, OtherPrefTypes>,
@@ -74,11 +98,13 @@ export namespace Prefs {
 
     export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_load_map,
-        LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? "[]")
+        LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? "[]"),
+        PAST_QUEUE: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
     };
     export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_save_map,
-        LINKER_LINKS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[]))
+        LINKER_LINKS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
+        PAST_QUEUE: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue))
     };
 
     export async function load_prefs() {

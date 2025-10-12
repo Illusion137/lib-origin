@@ -3,7 +3,7 @@ import { generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import type { VideoInfo } from 'youtubei.js/dist/src/parser/youtube';
 import type { FormatOptions } from 'youtubei.js/dist/src/types';
-import Innertube from 'youtubei.js/react-native';
+import Innertube from 'youtubei.js';
 
 export namespace YouTubeDL {
     let innertube_client: Innertube;

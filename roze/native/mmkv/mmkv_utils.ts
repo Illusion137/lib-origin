@@ -54,7 +54,10 @@ export const base_save_map: BasePrefSaveMap<BasePrefTypes, unknown> = {
 };
 export async function generic_save_pref<TType extends string, TKeys extends string>(mmkv_module: MMKVModule, prefs: BasePrefsRecord<TKeys, unknown, TType>, pref_key: TKeys, value: (typeof prefs)[TKeys]["default_value"], save_map: BasePrefSaveMap<TType, unknown>) {
     const save_function = save_map[prefs[pref_key].type];
-    if (save_function) prefs[pref_key].current_value = await save_function(mmkv_module, pref_key, value);
+    if (save_function) {
+        prefs[pref_key].current_value = value;
+        await save_function(mmkv_module, pref_key, value);
+    }
     else console.error(`UNKNOWN SAVE PREF[KEY] TYPE "${prefs[pref_key].type}"`);
 }
 

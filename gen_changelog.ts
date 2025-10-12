@@ -1,4 +1,56 @@
-export const CHANGELOG = `# Illusi 16.2.5
+export const CHANGELOG = `# Illusi 17.2.0
+  - Fixed bug relating to downloading track thumbnails
+  - [ ] Fixed bug relating to being able to share certain tracks that can't be shared as links
+# Illusi 17.1.0
+  - Fixed bug relating to document picker not properly adding playback data to tracks
+  - Fixed bug relating to native module get_audio_duration that prevented music downloading
+  - Fixed bug relating to settings not showing in the settings screen
+  - Fixed bug relating to playlists from \`uri\` would display inproper data
+  - Fixed bug relating to RNSiriShortcuts
+  - Fixed bug relating to Illusi sharing links
+  - Fixed bug relating to failed downloads not showing errors properly
+  - Fixed bug relating to deleted track not updating immediately
+  - Fixed bug relating to Audioplayer never using cached lyrics
+  - Fixed bug relating to Audioplayer IImage not updating when tracks switch
+  - Fixed bug relating to Recently Played Tracks
+  - Fixed bug relating to External Services based on the Prefs system
+  - Fixed bug relating to New Releases based on the Prefs system
+  - Fixed bug relating to get_audio_duration native module
+  - Fixed bug relating to YTDL Innertube
+  - Fixed bug relating to YouTube Music get_library
+  - Fixed bug relating to YouTube Music search
+  - Fixed bug relating to deleting tracks
+  - Migrated to AsyncFNQueue for track_lyrics_downloader
+  - Migrated to {sql}_sync to {sql}_async for Drizzle ORM
+  - Updated UI for Audioplayer Lyrics
+  - Updated UI for Audioplayer Settings
+  - Updated UI for Audioplayer Equalzier-Selector
+  - Added Internal Pref \`equalizer_preset\`
+  - Added Internal Pref \`crossfade\`
+  - Added Internal Pref \`past_queue\`
+  - Added past_queue default playlist to store queue even after app resets
+  - Added truncated mode in Audioplayer-Queue to improve performance
+  - Removed \`Formerly Played\` default playlist
+  - Refactored YTDL again
+  - ...Proly some more stuff not listed
+# Illusi 17.0.0 (New Arch Migration)
+  - Migrated from raw @react-navigation/native to expo-router
+  - Migrated to React Native New-Architecture
+  - Upgraded from Expo SDK 52 to SDK 54
+  - Replaced SlideUpPanel modal and Modal Components with Screen Modals
+  - Migrated to use drizzle-orm from IllusiSQLUtils
+  - Migrated to @roze/native (internal)
+  - Migrated to Illusive (internal) New-Architecture from Illusi (lib-origin)
+  - Migrated to AsyncFNQueue for track_downloader
+  - Migrating to rozfetch from js.fetch
+  - Migrating to YouTube.js(Innertube) from ytdl(internal)
+  - Refactored more than half of Illusi(mobile) codebase
+  - Implemented logging through Sentry
+  - Introduced countless bugs due to update being late
+  - Added ContextMenu to AudioPlayer IImage
+  - Added URL Linking (with expo-router)
+  - Added checks to IImages to see if Image file exists
+# Illusi 16.2.5
   - Fixed misc track related bugs
   - Fixed search related bugs
   - Allows for query flags when in strict mode

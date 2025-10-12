@@ -71,7 +71,7 @@ export namespace PlaylistPage {
             return playlist_data;
         }
         const playlist = reinterpret_cast<MusicServicePlaylist>(playlist_or_error);
-        const id_playlist_data = Object.assign({...ExampleObj.playlist_example0}, {...playlist_data, title: playlist.title, description: playlist.description ?? "", thumbnail_uri: await Illusive.get_highest_quality_service_thumbnail_uri(thumbnail_url ?? playlist.artwork_url ?? ""), creator: playlist.creator, date: playlist.date });
+        const id_playlist_data = {...ExampleObj.playlist_example0, ...playlist, title: playlist.title, description: playlist.description ?? "", thumbnail_uri: await Illusive.get_highest_quality_service_thumbnail_uri(thumbnail_url ?? playlist.artwork_url ?? playlist_data.playlist_data.thumbnail_uri ?? ''), creator: playlist.creator, date: playlist.date };
         const id_tracks = SQLTracks.add_playback_saved_data_to_tracks(playlist.tracks);
         const first_album_uri = id_tracks?.[0]?.album?.uri;
         if(id_tracks.every(track => track.album?.uri && first_album_uri && track.album.name === id_playlist_data.title && track.album.uri === first_album_uri)){
@@ -80,7 +80,9 @@ export namespace PlaylistPage {
                 track.playback.artwork = id_playlist_data.thumbnail_uri;
             }
         }
-        playlist_data = {...playlist_data, ...id_playlist_data};
+        
+        playlist_data = {...playlist_data, playlist_data: {...playlist_data.playlist_data, ...id_playlist_data}};
+
         playlist_data.initial_tracks = id_tracks;
         playlist_data.continuation = playlist.continuation;
         GLOBALS.global_var.playlist_cache.add(uri, {tracks: id_tracks, playlist_data: id_playlist_data, continuation: playlist.continuation});

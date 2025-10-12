@@ -18,6 +18,7 @@ import { sapisid_hash_auth0, sapisid_hash_auth1 } from "@common/utils/auth_utilt
 import { generror, generror_fetch } from "@common/utils/error_util";
 import { parse_runs, try_json_eval } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
+import { get_native_platform } from "@native/native_mode";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -64,7 +65,7 @@ export namespace YouTubeMusic {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /\&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar|undefined, epoch: Date, ytcfg: YTCFG, retry: boolean): Record<string, any> {
+	export function get_post_headers(cookie_jar: CookieJar|undefined, epoch: Date, ytcfg: YTCFG): Record<string, any> {
 		const SAPISID = cookie_jar?.getCookie("SAPISID")?.getData()?.value;
 		return {
 			"User-Agent": user_agent,
@@ -96,10 +97,10 @@ export namespace YouTubeMusic {
 			"x-youtube-client-version": "1.20240717.01.00",
 			"Referer": "https://music.youtube.com/",
 			"Referrer-Policy": "strict-origin-when-cross-origin",
-			...(retry ? {
-				"cookie": cookie_jar?.toString()
+			...(get_native_platform() === "NODE" ? {
+				"cookie": cookie_jar?.toString() as string
 			} : {
-				"Cookies": cookie_jar?.toString()
+				"Cookies": cookie_jar?.toString() as string
 			})
 		}
 	}
@@ -144,7 +145,7 @@ export namespace YouTubeMusic {
 		return `https://music.youtube.com/browse/${id}`;
 	}
 
-	async function get_initial_data_config(opts: Opts, url: string, retry = false): Promise<ICFG | ResponseError> {
+	async function get_initial_data_config(opts: Opts, url: string): Promise<ICFG | ResponseError> {
 		try {
 			const page_response = await fetch(url, {
 				headers: {
@@ -170,7 +171,7 @@ export namespace YouTubeMusic {
 					"service-worker-navigation-preload": "true",
 					"upgrade-insecure-requests": "1",
 					"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==",
-					...(retry ? {
+					...(get_native_platform() === "NODE" ? {
 						"cookie": opts.cookie_jar?.toString() as string
 					} : {
 						"Cookies": opts.cookie_jar?.toString() as string
@@ -187,9 +188,6 @@ export namespace YouTubeMusic {
 				ytcfg
 			};
 		} catch (error) {
-			if(!retry){
-				return get_initial_data_config(opts, url, true);
-			}
 			return { error: error as Error }; 
 		}
 	}
@@ -205,14 +203,13 @@ export namespace YouTubeMusic {
 			data: parser(icfg.initial_data)
 		};
 	}
-    async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, retry = false): PromiseResult<Response> {
+    async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object): PromiseResult<Response> {
         // if (opts.cookie_jar === undefined) return generror("YouTube Music post_check_response CookieJar is empty");
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
-		const headers = get_post_headers(opts.cookie_jar, epoch, ytcfg, retry);
+		const headers = get_post_headers(opts.cookie_jar, epoch, ytcfg);
 		const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
-		if(!response.ok && !retry) return post_check_response(opts, ytcfg, path, payload, true);
 		return response;
 	}
     

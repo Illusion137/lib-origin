@@ -7,7 +7,7 @@ import { get_audio_duration } from '@native/get_audio_duration/get_audio_duratio
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { SQLfs } from '@illusive/sql/sql_fs';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
-import { GLOBALS } from '@illusive/globals';
+import { Constants } from './constants';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else alert_error({error: error as Error});
@@ -75,7 +75,7 @@ export async function upload_track_thumbnail(track: Track, callback: (track: Tra
     }
 }
 
-export async function upload_music_files(callback?: () => Promise<void>) {
+export async function upload_music_files() {
     try {
         const audio_files = await DocumentPicker.pickMultiple({type: [DocumentPicker.types.audio, DocumentPicker.types.video], copyTo: 'documentDirectory'});
 
@@ -103,7 +103,7 @@ export async function upload_music_files(callback?: () => Promise<void>) {
                 const track = {
                     uid: uid,
                     title: file_name,
-                    artists: [{name: "Sudo", uri: null}],
+                    artists: [{name: Constants.import_person_name, uri: null}],
                     duration: audio_duration_seconds,
                     media_uri: new_file_uri,
                     imported_id: uid,
@@ -116,8 +116,6 @@ export async function upload_music_files(callback?: () => Promise<void>) {
             } catch (error) { alert_error({error: error as Error}) ; }
         }
         
-        GLOBALS.global_var.sql_tracks.push(...all_added_tracks);
         await Promise.all(all_promise_tracks);
-        if(callback !== undefined) await callback();
     } catch (error) { handle_document_picker_error(error); }
 }

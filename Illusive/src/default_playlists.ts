@@ -59,21 +59,12 @@ export const default_playlists = [
         })
     },
     {
-        name: "Formerly Played", track_function: (async () => {
-            const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-            const tracks = GLOBALS.global_var.sql_tracks.slice().sort((a, b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, default_playlist_max_size);
-            return tracks;
-        }), four_track_function: (async () => {
-            return GLOBALS.global_var.sql_tracks.slice().sort((a, b) => new Date(a.meta!.last_played_date).getTime() - new Date(b.meta!.last_played_date).getTime()).slice(0, 4);;
-        })
-    },
-    {
         name: "Least Played", track_function: (async () => {
             const default_playlist_max_size = Prefs.get_pref('default_playlist_max_size');
-            const tracks = GLOBALS.global_var.sql_tracks.slice().sort((a, b) => a.meta!.plays - b.meta!.plays).slice(0, default_playlist_max_size);
+            const tracks = GLOBALS.global_var.sql_tracks.slice().sort((a, b) => (a.meta?.plays ?? 0) - (b.meta?.plays ?? 0)).slice(0, default_playlist_max_size);
             return tracks;
         }), four_track_function: (async () => {
-            return GLOBALS.global_var.sql_tracks.slice().sort((a, b) => a.meta!.plays - b.meta!.plays).slice(0, 4);
+            return GLOBALS.global_var.sql_tracks.slice().sort((a, b) => (a.meta?.plays ?? 0) - (b.meta?.plays ?? 0)).slice(0, 4);
         })
     },
 ] satisfies DefaultPlaylist[];

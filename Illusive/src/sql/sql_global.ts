@@ -22,4 +22,13 @@ export namespace SQLGlobal {
         if(idx !== -1) GLOBALS.global_var.sql_tracks[idx] = new_track;
         global_sql_tracks_update_callback?.();
     }
+    export function delete_global_track_item(track_uid: Track['uid']){
+        const idx = GLOBALS.global_var.sql_tracks.findIndex(track => track.uid === track_uid);
+        GLOBALS.global_var.sql_tracks.splice(idx, 1);
+        global_sql_tracks_update_callback?.();
+    }
+    export function add_global_track_item(track: Track){
+        GLOBALS.global_var.sql_tracks.push(track);
+        global_sql_tracks_update_callback?.();
+    }
 }

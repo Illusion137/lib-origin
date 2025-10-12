@@ -1,8 +1,7 @@
 import { reinterpret_cast } from "@common/cast";
 import type { ResponseError } from "@common/types";
 import { generror_catch } from "@common/utils/error_util";
-import { wait } from "@common/utils/timed_util";
-import { error_undefined, extract_file_extension, is_empty, random_of } from "@common/utils/util";
+import { error_undefined, extract_file_extension, is_empty } from "@common/utils/util";
 import { tracks_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
 import { Illusive } from "@illusive/illusive";
@@ -102,6 +101,7 @@ export namespace SQLTracks {
     }
     export function sql_track_to_track(sql_track: Track): Track|ResponseError {
         try {
+            delete (sql_track as any).id;
             return {
                 ...sql_track,
                 artists: sql_track.artists.filter((artist: NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
@@ -225,13 +225,12 @@ export namespace SQLTracks {
     export async function insert_track(track: Track) {
         if( track_exists(track, GLOBALS.global_var.sql_tracks) ) return;
         await db_exec(async(db) => await db.insert(tracks_table).values(track));
-        GLOBALS.global_var.sql_tracks.push(track);
+        const parsed_track = sql_track_to_track(track)
+        if("error" in parsed_track) return;
+        SQLGlobal.add_global_track_item(parsed_track);
         if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
         if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
-        if(Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) {
-            await wait(random_of([500, 1000, 800, 2000, 2500, 1200]));
-            await try_download_track_lyrics(track);
-        }
+        if(Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(e => e);
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
         await db_exec(async(db) => await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track_uid)));
@@ -249,16 +248,15 @@ export namespace SQLTracks {
     }
     export async function delete_track(track_uid: Track['uid']) {
         await db_exec(async(db) => await db.delete(tracks_table).where(eq(tracks_table.uid, track_uid)));
-        const idx = GLOBALS.global_var.sql_tracks.findIndex(track => track.uid === track_uid);
-        GLOBALS.global_var.sql_tracks.splice(idx, 1);
+        SQLGlobal.delete_global_track_item(track_uid);
     }
 
     export async function download_thumbnail(track: Track) {
         const best_artwork = await Illusive.get_best_track_artwork(SQLfs.document_directory(""), track);
-        if(!(typeof best_artwork === "object" && is_empty(track.thumbnail_uri))) return;
-        const ext = extract_file_extension(best_artwork.uri, "photo");
+        if(!(typeof best_artwork === "string" && is_empty(track.thumbnail_uri))) return;
+        const ext = extract_file_extension(best_artwork, "photo");
         const thumbnail_uri = track.uid + ext;
-        const thumbnail_download = await SQLfs.download_to_file(best_artwork.uri, SQLfs.thumbnail_directory(thumbnail_uri));
+        const thumbnail_download = await SQLfs.download_to_file(best_artwork, SQLfs.thumbnail_directory(thumbnail_uri));
         if(error_undefined(thumbnail_download) === undefined) return;
         await db_exec(async(db) => await db.update(tracks_table).set({thumbnail_uri}).where(eq(tracks_table.uid, track.uid)));
         SQLGlobal.update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
@@ -286,10 +284,11 @@ export namespace SQLTracks {
     }
 
     export async function lyrics_exist(track: Track): Promise<{exists: false}|{exists: true, path: string}>{
-        if(!is_empty(track.lyrics_uri)) return {exists: false};
-        const info = await SQLfs.info(SQLfs.lyrics_directory(track.lyrics_uri));
+        if(is_empty(track.lyrics_uri)) return {exists: false};
+        const or_path = "nonexist.txt";
+        const info = await SQLfs.info(SQLfs.lyrics_directory(track.lyrics_uri ?? or_path));
         if(!info.exists || info.is_directory) return {exists: false};
-        return { exists: true, path: track.lyrics_uri };
+        return { exists: true, path: track.lyrics_uri ?? or_path };
     }
 
     export async function save_track_lyrics(track: Track, lyrics: string){
@@ -302,15 +301,6 @@ export namespace SQLTracks {
         await db_exec(async(db) => await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid)));
         SQLGlobal.update_global_track_item(track.uid, new_track);
         return lyrics_file;
-    }
-    export async function try_download_track_lyrics(track: Track){
-        if(!is_empty(track.lyrics_uri)) return;
-        const lyrics_maybe = await Illusive.get_track_lryics(track);
-        if(typeof lyrics_maybe === "object") {
-            return "bad";
-        }
-        await save_track_lyrics(track, lyrics_maybe);
-        return "ok";
     }
     export async function undownload_track_lyrics(track: Track){
         await SQLfs.delete_item(SQLfs.lyrics_directory(`${track.uid}.txt`));
@@ -325,12 +315,5 @@ export namespace SQLTracks {
     export async function read_track_lyrics(track: Track){
         if(is_empty(track.lyrics_uri)) return undefined;
         return await SQLfs.read_file(SQLfs.lyrics_directory(track.lyrics_uri!));
-    }
-
-    export async function batch_download_track_lyrics(tracks: Track[]){
-        for(const track of tracks){
-            await try_download_track_lyrics(track);
-            await wait(random_of([500, 1000, 800, 2000, 2500, 1200]));
-        }
     }
 }

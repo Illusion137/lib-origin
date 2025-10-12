@@ -8,7 +8,7 @@ import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
 import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
 import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_apple_music_search_playlist, parse_apple_music_search_track } from '@illusive/parsers/apple_music_parser';
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from '@illusive/parsers/soundcloud_parser';
-import { parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from '@illusive/parsers/youtube_music_parser';
+import { determine_music_responsive_list_item_renderer, parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { youtube_music_get_playlist } from '@illusive/get_playlist';
 import { best_thumbnail, spotify_uri_to_uri } from '@illusive/illusive_utils';
@@ -16,7 +16,6 @@ import { Prefs } from '@illusive/prefs';
 import { parse_amazon_music_search_track, parse_spotify_search_track } from '@illusive/track_parser';
 import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from '@illusive/types';
 import type * as IllusiveTypes from '@illusive/types';
-import { parse_runs } from '@common/utils/parse_util';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
     return {
@@ -106,7 +105,7 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
     const search_response = await Origin.YouTubeMusic.search({cookie_jar, proxy: opts?.proxy}, query);
     if("error" in search_response) return default_search(search_response);
     const top_result = await parse_youtube_music_search_top_result(search_response.data.contents.find(item => item.musicCardShelfRenderer !== undefined)?.musicCardShelfRenderer, youtube_music_get_playlist);
-    const results = search_response.data.contents.filter(item => item.musicShelfRenderer !== undefined).map(item => item.musicShelfRenderer!);
+    const results = search_response.data.contents.find(item => item.musicShelfRenderer !== undefined)?.musicShelfRenderer!.contents.map(item => item.musicResponsiveListItemRenderer);
     
     const tracks: IllusiveTypes.Track[] = [];
     const playlists: CompactPlaylist[] = [];
@@ -134,28 +133,28 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
     // console.log(playlists);
     // console.log(albums);
     // console.log(artists);
-
-    for(const shelf of results){
-        switch(parse_runs(shelf.title.runs)){
-            case "Songs":
-            case "Videos":
-                tracks.push(...shelf.contents.map(item => parse_youtube_music_search_top_result_contents_track(item.musicResponsiveListItemRenderer)));
-                break;
-            case "Albums":
-                albums.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
-                break;
-            case "Community playlists":
-                playlists.push(...shelf.contents.map(item => parse_youtube_music_search_playlist(item.musicResponsiveListItemRenderer)));
-                break;
-            case "Profiles":
-                artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer, false)));
-                break;
-            case "Artists":
-                artists.push(...shelf.contents.map(item => parse_youtube_music_search_artist(item.musicResponsiveListItemRenderer, true)));
-                break;
-            case "Podcasts": 
-            case "Episodes": 
-            default: break;
+    if(results){
+        for(const content of results){
+            const type = determine_music_responsive_list_item_renderer(content);
+            switch(type){
+                case "Song":
+                case "Video":
+                    tracks.push(parse_youtube_music_search_top_result_contents_track(content));
+                    break;
+                case "EP":
+                case "Single":
+                case "Album":
+                case "Playlist":
+                    playlists.push(parse_youtube_music_search_playlist(content));
+                    break;
+                case "Profile":
+                    artists.push(parse_youtube_music_search_artist(content, false));
+                    break;
+                case "Artist":
+                    artists.push(parse_youtube_music_search_artist(content, true));
+                    break;
+                default: break;
+            }
         }
     }
     return {
