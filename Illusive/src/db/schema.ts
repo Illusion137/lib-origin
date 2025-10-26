@@ -95,4 +95,4 @@ export const playlists_tracks_deleted_table = sqliteTable("playlists_tracks_dele
 export const new_releases_table             = sqliteTable("new_releases", new_releases_config);
 export type SQLNewRelease = typeof new_releases_table.$inferSelect;
 export const artists_table                  = sqliteTable("artists", artists_config);
-export type SQLArtist = typeof artists_table.$inferSelect;
+export type SQLArtist = Omit<typeof artists_table.$inferSelect, "id">;

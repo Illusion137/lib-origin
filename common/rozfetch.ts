@@ -141,7 +141,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			error.message = ABORT_MESSAGE + err.message;
 			error.stack = ABORT_MESSAGE + err.stack;
 			error.cause = err.cause;
-			return generror_catch(error, "rozfetch failed", { input, init });
+			return generror_catch(error, "rozfetch failed", { input, init: {...init, headers: "{VARIOUS HEADERS}"} });
 		}
 		return generror_catch(e, "rozfetch failed", { input, init });
 	}

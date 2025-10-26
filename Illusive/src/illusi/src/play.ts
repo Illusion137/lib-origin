@@ -60,13 +60,15 @@ export async function play_mix(track_data: Track, from: string) {
         return;
     }
     GLOBALS.global_var.play_tracks(track_data, [track_data], from);
-    const track_mix = await Illusive.get_track_mix(track_data);
-    if("error" in track_mix) {
-        alert_error(track_mix);
-        return;
-    }
-    track_mix.tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
-    GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
+    (async() => {
+        const track_mix = await Illusive.get_track_mix(track_data);
+        if("error" in track_mix) {
+            alert_error(track_mix);
+            return;
+        }
+        track_mix.tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
+        GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
+    })().catch(e => e);
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[]) {
     if(from === Constants.illusi_mix_from) await play_mix(track_data, from);

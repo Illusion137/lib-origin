@@ -1,19 +1,43 @@
 import { RCache } from './rcache';
 import { generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
+import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
+import type { ResponseError } from '@common/types';
+import { fs } from '@native/fs/fs';
 import type { VideoInfo } from 'youtubei.js/dist/src/parser/youtube';
-import type { FormatOptions } from 'youtubei.js/dist/src/types';
-import Innertube from 'youtubei.js';
+
+Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
+    const properties: string[] = [];
+
+    if(env.n) {
+      properties.push(`n: exportedVars.nFunction("${env.n}")`)
+    }
+  
+    if (env.sig) {
+      properties.push(`sig: exportedVars.sigFunction("${env.sig}")`)
+    }
+  
+    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
+  
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    return new Function(code)();
+}
 
 export namespace YouTubeDL {
     let innertube_client: Innertube;
-    async function get_innertube_client(): Promise<Innertube>{
+    export async function get_innertube_client(): Promise<Innertube>{
+        Log.setLevel(Log.Level.NONE);
         if(innertube_client) return innertube_client;
         innertube_client = await Innertube.create({
-            cache: new RCache(false),
+            cache: new RCache(true, await fs().temp_directory()),
             generate_session_locally: false,
             enable_session_cache: true,
-            player_id: '0004de42'
+            fail_fast: true,
+            retrieve_player: true,
+            // player_id: '0004de42'
+            // player_id: '27422632' // Found: 10/23/25
+            player_id: '6e4dbefe', // // 10/25/25,
+            client_type: ClientType.MWEB
         });
         return innertube_client;
     }
@@ -40,8 +64,29 @@ export namespace YouTubeDL {
         }
     };
     
-    export async function choose_format(info: VideoInfo, options: FormatOptions){
-        const client = await get_innertube_client();
-        return info.chooseFormat(options).decipher(client.session.player);
+    // https://github.com/lovegaoshi/azusa-player-mobile/blob/1b0a00b77620804c863e78bda888b524b108134b/src/utils/mediafetch/ytbvideo.ytbi.ts#L42
+    export async function resolve_url(link: string, options?: Types.FormatOptions): Promise<string|ResponseError>{
+        try {            
+            const client = await get_innertube_client();
+
+            const iOS = true;
+            const hls_manifest_url = iOS ? (await client.getBasicInfo(link, {client: "IOS"})).streaming_data?.hls_manifest_url : undefined;
+
+            if(hls_manifest_url){
+                return hls_manifest_url;
+            }
+
+            // client.session.po_token = await getPoT(link);
+            const extracted_video_info = await client.getBasicInfo(link, {client: client.session.player?.po_token === undefined ? "WEB_EMBEDDED" : "MWEB"});
+            const max_audio_quality_stream = extracted_video_info.chooseFormat({
+                itag: 18
+                // quality: 'best',
+                // type: 'audio',
+            });
+
+            return max_audio_quality_stream.decipher(client.actions.session.player);
+        } catch (error) {
+            return generror_catch(error, "Failed to choose a YTDL format", {options});
+        }
     }
 }

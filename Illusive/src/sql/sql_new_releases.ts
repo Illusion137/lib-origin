@@ -4,9 +4,10 @@ import { Constants } from '@illusive/constants';
 import { db_exec } from '@illusive/db/database';
 import { new_releases_table } from '@illusive/db/schema';
 import { Prefs } from "@illusive/prefs";
-import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, TimestampedCompactPlaylist } from "@illusive/types";
+import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompactPlaylist, TimestampedCompactPlaylist } from "@illusive/types";
 import { SQLTracks } from './sql_tracks';
 import { reinterpret_cast } from '@common/cast';
+import { GLOBALS } from '@illusive/globals';
 
 export namespace SQLNewReleases {
     export async function new_releases_count(): Promise<number>{
@@ -46,8 +47,39 @@ export namespace SQLNewReleases {
     }
     
     export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
-        const new_releases = await get_all_new_releases();
+        let new_releases = await get_all_new_releases();
         if(new_releases.length === 0) return [];
+        if(Prefs.get_pref('new_releases_hide_unknowns')){
+            const known_artists = GLOBALS.global_var.sql_tracks
+            .map(track => track.artists)
+            .flat();
+
+            const known_names = known_artists.map(artist => artist.name)
+            .filter(uri => !is_empty(uri));
+            const known_uris = known_artists.map(artist => artist.uri)
+                .filter(uri => !is_empty(uri));
+
+            const known_names_set = new Set(known_names);
+            const known_uris_set = new Set(known_uris);
+            new_releases = new_releases.filter(release => {
+                const release_artists_uris = release.artist
+                    .map(artist => artist.uri)
+                    .filter(uri => !is_empty(uri));
+                if(release_artists_uris.length === 0) return false;
+                for(const uri of release_artists_uris){
+                    if(known_uris_set.has(uri)) return true;
+                }
+                
+                const release_artists_names = release.artist
+                    .map(artist => reinterpret_cast<string>(artist.name))
+                    .filter(name => !is_empty(name));
+                if(release_artists_names.length === 0) return false;
+                for(const name of release_artists_names){
+                    if(known_names_set.has(name)) return true;
+                }
+                return false;
+            });
+        }
         const sameday_refreshed_groups = groupby(new_releases, (t) => new Date(t.Timestamp).toDateString());
         const artist_uri_exclusion_set = new Set<string>();
         const sameday_refreshed_days_keys = Object.keys(sameday_refreshed_groups).reverse();
@@ -87,12 +119,12 @@ export namespace SQLNewReleases {
         await db_exec(async(db) => await db.delete(new_releases_table));
     }
     export async function insert_all_into_new_releases(new_releases: CompactPlaylist[]){
-        // const promises: Promises = [];
-        await db_exec(async(db) => await db.insert(new_releases_table).values(new_releases));
-        // for(const new_release of new_releases){
-        //     promises.push(db_run_async(sql_insert_values("new_releases", ExampleObj.new_releases_example0), compact_playlist_to_sqllite_insertion(new_release)));
-        // }
-        // await Promise.all(promises);
+        const promises: Promises = [];
+        for(const new_release of new_releases){
+            const promise = db_exec(async(db) => await db.insert(new_releases_table).values(new_release));
+            promises.push(promise);
+        }
+        await Promise.all(promises);
     }
     
     export async function refresh_new_releases(new_releases: CompactPlaylist[]){

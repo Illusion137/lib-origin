@@ -1,9 +1,11 @@
 import { is_empty } from '@common/utils/util';
-import { Illusive } from '@illusive/illusive';
+import { Constants } from '@illusive/constants';
 import { fs } from '@native/fs/fs';
 import path_lib from 'path-browserify';
 
 export namespace SQLfs {
+
+
     let cached_temp_directory: (...paths: string[]) => string = () => "";
     let cached_document_directory: (...paths: string[]) => string = () => "";
 
@@ -24,11 +26,11 @@ export namespace SQLfs {
 
     export function cache_directory(...paths: string[]) { return cached_temp_directory(...paths); }
     export function document_directory(...paths: string[]) { return cached_document_directory(...paths); }
-    export function sqlite_directory(item: string) { return document_directory(Illusive.sqlite_directory) + forward_item(item); }
-    export function custom_thumbnail_directory(item: string) { return document_directory(Illusive.custom_thumbnail_archive_path) + forward_item(item); }
-    export function thumbnail_directory(item: string) { return  document_directory(Illusive.thumbnail_archive_path) + forward_item(item); }
-    export function media_directory(item: string) { return document_directory(Illusive.media_archive_path) + forward_item(item); }
-    export function lyrics_directory(item: string) { return document_directory(Illusive.lyrics_archive_path) + forward_item(item); }
+    export function sqlite_directory(item: string) { return document_directory(Constants.sqlite_directory) + forward_item(item); }
+    export function custom_thumbnail_directory(item: string) { return document_directory(Constants.custom_thumbnail_archive_path) + forward_item(item); }
+    export function thumbnail_directory(item: string) { return  document_directory(Constants.thumbnail_archive_path) + forward_item(item); }
+    export function media_directory(item: string) { return document_directory(Constants.media_archive_path) + forward_item(item); }
+    export function lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
     
     async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
         const base_name = path_lib.basename(new_name ?? item);
@@ -51,7 +53,7 @@ export namespace SQLfs {
     
     export async function delete_folder_of_file(file_path: string, safe = true) {
         if(safe) {
-            for(const dir of Illusive.default_directories) 
+            for(const dir of Constants.default_directories) 
                 if(file_path.includes(dir)) return false;
         }
         await fs().remove(path_lib.dirname(file_path));

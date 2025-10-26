@@ -9,6 +9,11 @@ import { best_thumbnail, create_uri } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import type { ArtistOpts, MusicServiceArtist, NamedUUID } from "@illusive/types";
 import { parse_runs } from "@common/utils/parse_util";
+import { Constants } from "./constants";
+import { GLOBALS } from "./globals";
+import { is_empty } from '../../common/utils/util';
+import { SQLArtists } from "./sql/sql_artists";
+import { reinterpret_cast } from "@common/cast";
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
@@ -44,8 +49,31 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
     const potential_all_albums = potential_all_albums_singles.filter(item => item.album_type === "ALBUM");
     const potential_all_single_eps = potential_all_albums_singles.filter(item => item.album_type === "SINGLE" || item.album_type === "EP" || item.album_type === "SINGLE/EP");
 
+    const name = parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs);
+    const background_thumbnail = best_thumbnail(artist_response.data.header?.musicImmersiveHeaderRenderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
+
+    const similar_artists = artist_response.data.shelfs
+    .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes("might also like") || parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes("similar"))
+    ?.contents.map(parse_youtube_music_artist_similar_artist) ?? [];
+
+    if(background_thumbnail) {
+        SQLArtists.insert_sql_artists({
+            artwork_url: background_thumbnail,
+            name: name,
+            uri: create_uri('youtubemusic', id)
+        }).catch(e => e);
+    }
+    similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach(artist => {
+        SQLArtists.insert_sql_artists({
+            artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
+            name: artist.name.name,
+            uri: artist.name.uri!
+        }).catch(e => e);
+    })
+
+
     return {
-        name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs),
+        name: name,
         albums: potential_all_albums.length === 0 ? artist_response.data.shelfs
             .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs) === "Albums")
             ?.contents.map(item => parse_youtube_music_artist_album(item, artist_info)) ?? [] : potential_all_albums,
@@ -56,11 +84,9 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
             .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes("playlists"))
             ?.contents.map(item => parse_youtube_music_artist_album(item, artist_info)) ?? [],
         latest_release: !("error" in artist_albums_response) && artist_albums_response.data?.[0] !== undefined ? parse_youtube_music_artist_album({musicTwoRowItemRenderer: artist_albums_response.data?.[0]}, artist_info) : undefined,
-        similar_artists: artist_response.data.shelfs
-            .find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes("might also like") || parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes("similar"))
-            ?.contents.map(parse_youtube_music_artist_similar_artist) ?? [],
+        similar_artists: similar_artists,
         tracks: !("error" in artist_tracks_response) ? (artist_tracks_response.data.tracks).map(parse_youtube_music_artist_tracks_track).filter(item => item !== undefined) : (artist_response.data?.top_shelf?.contents?.map(parse_youtube_music_artist_track) ?? []),
-        background_artwork_url: best_thumbnail(artist_response.data.header?.musicImmersiveHeaderRenderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url,
+        background_artwork_url: background_thumbnail,
         profile_artwork_url: undefined
     };
 }
@@ -79,6 +105,26 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
     const appears_on = artist_response.data.sections.find(section => section.id.includes("appears-on-albums"));
     const similar_artists = artist_response.data.sections.find(section => section.id.includes("similar-artists"));
 
+    const artwork = parse_apple_music_artwork(artist_response.data.sections[0].items[0].artwork?.dictionary.url, artist_response.data.sections[0].items[0].artwork?.dictionary.width);
+
+    if(artwork){
+        SQLArtists.insert_sql_artists({
+            artwork_url: artwork,
+            name: artist_info.name,
+            uri: create_uri('applemusic', id)
+        }).catch(e => e);
+    }
+
+    const parsed_similar_artists = similar_artists?.items.map(parse_apple_music_artist_similar_artist) ?? [];
+
+    parsed_similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach(artist => {
+        SQLArtists.insert_sql_artists({
+            artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
+            name: artist.name.name,
+            uri: artist.name.uri!
+        }).catch(e => e);
+    })
+
     return {
         name: artist_info.name,
         albums: full_albums?.items.map(item => parse_apple_music_artist_album(item, artist_info, "ALBUM")) ?? [],
@@ -86,10 +132,10 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
         appears_on: appears_on?.items.map(item => parse_apple_music_artist_album(item, artist_info)) ?? [],
         playlists: [],
         latest_release: parse_apple_music_artist_latest_album(latest_release_and_top_songs?.pinnedLeadingItem?.item, artist_info),
-        similar_artists: similar_artists?.items.map(parse_apple_music_artist_similar_artist) ?? [],
+        similar_artists: parsed_similar_artists,
         tracks: latest_release_and_top_songs?.items.map(item => parse_apple_music_artist_track(item, artist_info)) ?? [],
         background_artwork_url: undefined,
-        profile_artwork_url: parse_apple_music_artwork(artist_response.data.sections[0].items[0].artwork?.dictionary.url, artist_response.data.sections[0].items[0].artwork?.dictionary.width)
+        profile_artwork_url: artwork
     };
 }
 
@@ -108,6 +154,15 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
     if("error" in artist_playlists_response) return default_artist(artist_playlists_response);
 
     const tracks = artist_tracks_response.artist_data.collection.map(item => soundcloud_parse_track(item));
+
+    if(artist_id.hydration.data.avatar_url){
+        SQLArtists.insert_sql_artists({
+            artwork_url: artist_id.hydration.data.avatar_url,
+            name: artist_id.hydration.data.username,
+            uri: create_uri('soundcloud', id)
+        }).catch(e => e);
+    }
+
     return {
         name: artist_id.hydration.data.username,
         albums: artist_albums_response?.artist_data?.collection?.map(soundcloud_parse_playlist) ?? [],
@@ -119,4 +174,30 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
         background_artwork_url: undefined,
         profile_artwork_url: artist_id.hydration.data.avatar_url
     };
+}
+
+export async function illusi_get_artist(id: string): Promise<MusicServiceArtist>{
+    if(id === Constants.import_uri_id){
+        return {
+            name: Constants.import_uri_id,
+            tracks: GLOBALS.global_var.sql_tracks.filter(track => !is_empty(track.imported_id)),
+            albums: [],
+            singles_eps: [],
+            playlists: [],
+            similar_artists: [],
+            profile_artwork_url: Constants.sudo_profile_picture_index
+        }
+    }
+    if(id === Constants.local_illusi_uri_id){
+        return {
+            name: Constants.local_illusi_uri_id,
+            tracks: [],
+            albums: [],
+            singles_eps: [],
+            playlists: [],
+            similar_artists: [],
+            profile_artwork_url: Constants.sudo_profile_picture_index
+        }
+    }
+    return default_artist();
 }

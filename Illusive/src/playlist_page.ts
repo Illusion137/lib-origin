@@ -4,11 +4,12 @@ import { ExampleObj } from "./illusi/src/example_objs";
 import { SQLPlaylists } from "./sql/sql_playlists";
 import type { ResponseError } from "@common/types";
 import { Illusive } from "./illusive";
-import { best_thumbnail, make_https, music_service_uri_to_music_service, split_uri } from "./illusive_utils";
+import { best_thumbnail, create_uri, make_https, music_service_uri_to_music_service, split_uri } from "./illusive_utils";
 import { GLOBALS } from "./globals";
 import { SQLTracks } from "./sql/sql_tracks";
 import { reinterpret_cast } from '../../common/cast';
 import { default_playlists } from "./default_playlists";
+import { Constants } from "./constants";
 
 export namespace PlaylistPage {
     export interface PlaylistInitialData
@@ -22,8 +23,8 @@ export namespace PlaylistPage {
             initial_tracks: [],
             continuation: null,
             playlist_data: Object.assign({
-                ...ExampleObj.playlist_example0, 
-            }, {title: default_playlist_title}) 
+                ...ExampleObj.playlist_example0,
+            }, {title: default_playlist_title, creator: [{name: Constants.import_uri_id, uri: create_uri("illusi", Constants.import_uri_id)}]}) 
         };
     }
     
@@ -31,7 +32,7 @@ export namespace PlaylistPage {
         const playlist_data = await SQLPlaylists.playlist_data(uuid, "IGNORE");
         if(playlist_data){
             return {
-                playlist_data, 
+                playlist_data: {...playlist_data, creator: [{name: Constants.import_uri_id, uri: create_uri("illusi", Constants.import_uri_id)}]},
                 initial_tracks: [],
                 continuation: null
             };

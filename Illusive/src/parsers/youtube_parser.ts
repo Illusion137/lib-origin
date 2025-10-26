@@ -7,9 +7,9 @@ import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextR
 import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/youtube/types/SearchResultsW";
 import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
 import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
-import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
 import { YTNodes } from "youtubei.js/agnostic";
 import { YouTubeDL } from '@origin/youtube_dl/index';
+import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;

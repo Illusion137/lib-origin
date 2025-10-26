@@ -8,7 +8,7 @@ import { Constants } from "./constants";
 import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
 
 export namespace Prefs {
-    export type OtherPrefTypes = "LINKER_LINKS"|"PAST_QUEUE";
+    export type OtherPrefTypes = "BIAS"|"LINKER_LINKS"|"PAST_QUEUE";
 
     export type PossibleThemes = keyof typeof themes;
 
@@ -40,8 +40,23 @@ export namespace Prefs {
         "Movie": [4, 2, 0, 2, 3, 4]
     } as const;
     export type EqualizerPreset = keyof typeof equalizer_presets;
-
     interface PastQueue { index: number; tracks: Track[]; }
+
+    export const default_track_shuffle_bias = {
+        total_plays: 0,
+        duration: 0,
+        last_played: 0,
+        recent_add_date: 0,
+        is_downloaded: 0,
+        has_thumbnail_dl: 0,
+        has_lyrics_dl: 0,
+        plays_from_artist: 0,
+        plays_from_album: 0,
+        plays_in_past_month: 0,
+        skips_in_past_month: 0,
+        explicit: 0
+    };
+    type Bias = typeof default_track_shuffle_bias;
 
     export const prefs = {
         legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as BasePref<string, OtherPrefTypes>,
@@ -65,11 +80,13 @@ export namespace Prefs {
         linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as BasePref<LinkerLink[], OtherPrefTypes>,
         primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as BasePref<HexColor, OtherPrefTypes>,
         theme:                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as BasePref<PossibleThemes, OtherPrefTypes>,
+        track_shuffle_bias:                    {default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS"}       as BasePref<Bias, OtherPrefTypes>,
         
         default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist"}       as BasePref<number, OtherPrefTypes>,
         recently_played_max_size:              {default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist"}       as BasePref<number, OtherPrefTypes>,
         fuzzy_search_threshold:                {default_value: 50, current_value: 100, type: "NUMBER", range: {start: 0, end: 100}, visible: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)"}       as BasePref<number, OtherPrefTypes>,
         default_to_strict_search:              {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Your searches will default to the strict-search over fuzzy-search"} as BasePref<boolean, OtherPrefTypes>,
+        new_releases_hide_unknowns:            {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Hide all artists you've never seen in New-Releases"} as BasePref<boolean, OtherPrefTypes>,
         compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller"} as BasePref<boolean, OtherPrefTypes>,
         album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as BasePref<boolean, OtherPrefTypes>,
         only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)"}  as BasePref<boolean, OtherPrefTypes>,
@@ -79,13 +96,14 @@ export namespace Prefs {
         auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track thumbnail whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
         auto_cache_lyrics:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track lyrics whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
         expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi"}    as BasePref<boolean, OtherPrefTypes>,
+        warmup_youtube:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load YouTube Client on startup"}    as BasePref<boolean, OtherPrefTypes>,
+        warmup_soundcloud:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup"}    as BasePref<boolean, OtherPrefTypes>,
         
         // Settings that have a chance of breaking things; use with caution; all disabled by default
         enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
         enable_sampler:                        {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
         fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
         quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as BasePref<boolean, OtherPrefTypes>,
-        force_youtube_18_quality:              {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
@@ -100,11 +118,13 @@ export namespace Prefs {
         ...base_load_map,
         LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? "[]"),
         PAST_QUEUE: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
+        BIAS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias)),
     };
     export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_save_map,
         LINKER_LINKS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
-        PAST_QUEUE: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue))
+        PAST_QUEUE: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue)),
+        BIAS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as Bias))
     };
 
     export async function load_prefs() {

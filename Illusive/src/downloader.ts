@@ -13,6 +13,7 @@ import { SQLBackpack } from './sql/sql_backpack';
 import { SQLfs } from './sql/sql_fs';
 import { ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { generror } from '@common/utils/error_util';
+import { wait } from '@common/utils/timed_util';
 
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
@@ -108,24 +109,30 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 
     const media_uri = downloading.track.uid + '.mp4';
     const new_uri = SQLfs.media_directory(media_uri);
-    const ffmpeg_result = await ffmpeg().execute_args([
-        '-y',
-        '-i',
-        download_uri.url,
-        '-vn',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        new_uri,
-    ], (statistics) => {
-        const progress = statistics.time_seconds / downloading.track.duration;
-        track_downloader.update_key(downloading.uid, {...downloading, progress: progress});
-    });
-    track_downloader.update_key(downloading.uid, {...downloading, execution_id: ffmpeg_result.session_id});
 
-    const retcode = await ffmpeg_result.retcode;
-    if(retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n Execution ID: ${ffmpeg_result.session_id}`);
+    let retcode = 1;
+    for(let i = 0; i < 2 && retcode !== 0; i++){
+        const ffmpeg_result = await ffmpeg().execute_args([
+            '-y',
+            '-i',
+            download_uri.url,
+            '-vn',
+            '-c:a',
+            'aac',
+            '-b:a',
+            '128k',
+            new_uri,
+        ], (statistics) => {
+            const progress = statistics.time_seconds / downloading.track.duration;
+            track_downloader.update_key(downloading.uid, {...downloading, progress: progress});
+        });
+        track_downloader.update_key(downloading.uid, {...downloading, execution_id: ffmpeg_result.session_id});
+
+        retcode = await ffmpeg_result.retcode;
+        await wait(1000);
+    }
+
+    if(retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n UID: ${downloading.track.uid}`);
     
     const audio_duration_seconds = await get_audio_duration().get_audio_duration(new_uri);
     if(audio_duration_seconds === -1) return generror("Unable to access audio metadata duration");
@@ -150,7 +157,7 @@ export const track_downloader = new AsyncFNQueue<Downloading, Awaited<ReturnType
 );
 
 export async function download_track(track: Track, redownload?: boolean): Promise<DownloadTrackResult>{
-    const result = await track_downloader.push_into_queue({ track, redownload: redownload ?? false, uid: track.uid, progress: -1, execution_id: -1, duration: track.duration });
+    const result = await track_downloader.push_into_queue({ track, redownload: redownload ?? false, uid: track.uid, progress: 0, execution_id: -1, duration: track.duration });
     return result;
 }
 

@@ -316,7 +316,7 @@ export interface TimestampedCompactPlaylist extends CompactPlaylist {
 }
 export interface CompactArtist {
     name: NamedUUID
-    profile_artwork_url?: string
+    profile_artwork_url?: Artwork
     is_official_artist_channel: boolean
 }
 export type SearchSuggestion = string|Track;
@@ -367,7 +367,7 @@ export interface MusicServiceArtist {
     singles_eps: CompactPlaylist[]
     appears_on?: CompactPlaylist[]
     background_artwork_url?: string
-    profile_artwork_url?: string
+    profile_artwork_url?: Artwork
     similar_artists: CompactArtist[],
     error?: ResponseError
 }

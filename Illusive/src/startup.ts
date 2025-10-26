@@ -16,6 +16,21 @@ import { addShortcutListener, getInitialShortcut } from "react-native-siri-short
 import { reinterpret_cast } from '../../common/cast';
 import { Constants } from './constants';
 import { get_native_platform, type NativePlatform } from '@native/native_mode';
+import { YouTubeDL } from '@origin/youtube_dl';
+import { SoundCloud } from '@origin/index';
+import { ffmpeg } from '@native/ffmpeg/ffmpeg';
+import { SQLUpdate } from './sql/sql_update';
+import { SQLArtists } from './sql/sql_artists';
+
+export async function warmup_client(){
+    await ffmpeg().execute_args(['-L']);
+    if(Prefs.get_pref('warmup_youtube')){
+        await YouTubeDL.get_innertube_client();
+    }
+    if(Prefs.get_pref('warmup_soundcloud')){
+        await SoundCloud.get_client_id({cookie_jar: Prefs.get_pref('soundcloud_cookie_jar')});
+    }
+}
 
 export async function illusi_startup(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: typeof GLOBALS.global_var.set_theme, bottom_alert: typeof GLOBALS.global_var.bottom_alert, on_finish_essentials: () => {
 
@@ -43,11 +58,13 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         GLOBALS.global_var.set_theme = set_theme;
         GLOBALS.global_var.bottom_alert = bottom_alert;
 
+        await SQLUpdate.fix_to_new_update(version);
+
         on_finish_essentials();
         
         await Prefs.load_prefs();
         if(version === Prefs.get_pref('latest_version')){
-            GLOBALS.global_var.past_playing_tracks = Prefs.get_pref('past_queue').tracks;
+            GLOBALS.global_var.past_playing_tracks = SQLTracks.add_playback_saved_data_to_tracks(Prefs.get_pref('past_queue').tracks);
             GLOBALS.global_var.past_track_index = Prefs.get_pref('past_queue').index;
         }
         else {
@@ -56,6 +73,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         await Prefs.save_pref('latest_version', version);
 
         await SQLTracks.fetch_track_data();
+        await SQLArtists.get_all_sql_artists();
         
         Promise.all([
             SQLRecentlyPlayed.cleanup_recently_played(),
@@ -63,6 +81,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             miscnative().keep_mobile_awake()
         ]).catch(e => e);
         Prefs.pref_set_theme(set_theme);
+        await warmup_client();
     }, (error) => GLOBALS.global_var.bottom_alert((error as Error).message, "WARN"))
 }
 

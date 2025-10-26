@@ -8,6 +8,7 @@ import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { SQLfs } from '@illusive/sql/sql_fs';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Constants } from './constants';
+import { create_uri } from './illusive_utils';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else alert_error({error: error as Error});
@@ -103,7 +104,7 @@ export async function upload_music_files() {
                 const track = {
                     uid: uid,
                     title: file_name,
-                    artists: [{name: Constants.import_person_name, uri: null}],
+                    artists: [{name: Constants.import_uri_id, uri: create_uri("illusi", Constants.import_uri_id)}],
                     duration: audio_duration_seconds,
                     media_uri: new_file_uri,
                     imported_id: uid,

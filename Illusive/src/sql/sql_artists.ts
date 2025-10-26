@@ -1,15 +1,28 @@
+import { remove_topic } from "@common/utils/clean_util";
+import { Constants } from "@illusive/constants";
 import { db_exec } from "@illusive/db/database";
 import { artists_table, type SQLArtist } from "@illusive/db/schema";
+import { create_uri } from "@illusive/illusive_utils";
+import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from "@illusive/types";
 import { eq } from "drizzle-orm";
 
 export namespace SQLArtists {
-    export const artists_artwork_memo: Record<SQLArtist['uri'], SQLArtist['artwork_url']|undefined> = {};
+    export const artists_artwork_memo: Record<SQLArtist['uri'], SQLArtist['artwork_url']|number|undefined> = {};
+    export const artists_memo: Record<SQLArtist['uri'], SQLArtist> = {};
     
     export async function get_all_sql_artists(): Promise<SQLArtist[]>{
-        return await db_exec(async(db) => await db.select().from(artists_table));
+        artists_artwork_memo[create_uri("illusi", Constants.import_uri_id)] = Constants.sudo_profile_picture_index;
+        artists_artwork_memo[create_uri("illusi", Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
+
+        const artists = await db_exec(async(db) => await db.select().from(artists_table));
+        for(const artist of artists){
+            artists_artwork_memo[artist.uri] = artist.artwork_url;
+            artists_memo[artist.uri] = artist;
+        }
+        return artists;
     }
-    
-    export async function get_sql_artist_artwork_url(uri: string): Promise<string|undefined> {
+
+    export async function get_sql_artist_artwork_uri(uri: string): Promise<string|number|undefined> {
         const result = artists_artwork_memo[uri] ?? 
             (await db_exec(async(db) => 
                 db.select({artwork_url: artists_table.artwork_url})
@@ -21,11 +34,52 @@ export namespace SQLArtists {
         return result;
     }
     
+    export async function insert_sql_artists(sql_artist: SQLArtist){
+        artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
+        artists_memo[sql_artist.uri] = sql_artist;
+        await db_exec(async(db) => await db.insert(artists_table).values(sql_artist));
+    }
+
     export async function insert_all_into_sql_artists(sql_artists: SQLArtist[]){
+        for(const sql_artist of sql_artists){
+            artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
+            artists_memo[sql_artist.uri] = sql_artist;
+        }
         await db_exec(async(db) => await db.insert(artists_table).values(sql_artists));
     }
     
     export async function clear_all_sql_artists(){
         await db_exec(async(db) => await db.delete(artists_table));
+    }
+
+    export function sort_compact_artists(mode: ArtistSortMode, artists: NamedUUID[], global_tracks: Track[]): CompactArtist[] {
+        switch (mode) {
+            case "NEWEST":
+                return artists.slice().reverse().map(nammed_uuid_to_compact_artist);
+            case "OLDEST":
+                return artists.map(nammed_uuid_to_compact_artist);
+            case "MOST_PLAYED":
+                return sort_compact_artists_by_most_played(artists, global_tracks);
+            case "LEAST_PLAYED":
+                return sort_compact_artists_by_most_played(artists, global_tracks).reverse();
+            default:
+                return artists.map(nammed_uuid_to_compact_artist);
+        }
+    }
+
+    export function sort_compact_artists_by_most_played(artists: NamedUUID[], global_tracks: Track[]): CompactArtist[] {
+        const name_plays: [string, number][] = global_tracks.map((track) => [remove_topic(track.artists[0].name), track.meta?.plays ?? 0]);
+        const name_plays_map = new Map<string, number>();
+        for (const name_play of name_plays) {
+            name_plays_map.set(name_play[0], (name_plays_map.get(name_play[0]) ?? 0) + name_play[1]);
+        }
+        return artists
+            .slice()
+            .sort((a, b) => (name_plays_map.get(remove_topic(b?.name ?? "")) ?? 0) - (name_plays_map.get(remove_topic(a?.name ?? "")) ?? 0))
+            .map(nammed_uuid_to_compact_artist);
+    }
+
+    export function nammed_uuid_to_compact_artist(artist: NamedUUID): CompactArtist {
+        return { name: artist, is_official_artist_channel: true, profile_artwork_url: artists_artwork_memo[artist.uri ?? ""] ?? "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg" };
     }
 }

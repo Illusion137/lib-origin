@@ -5,7 +5,7 @@ import { groupby, is_empty, milliseconds_of, seeded_random_of, urlid } from "@co
 import { Constants } from "@illusive/constants";
 import { Prefs } from "@illusive/prefs";
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "@illusive/query_flags";
-import type { AlbumSortMode, ArtistSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from "@illusive/types";
+import type { AlbumSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from "@illusive/types";
 import type { Run3 } from "@origin/youtube/types/PlaylistResults_0";
 import fuzzysort from "fuzzysort";
 import { reinterpret_cast } from '../../common/cast';
@@ -82,17 +82,7 @@ export function get_most_played_artists(global_tracks: Track[]) {
 		.sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0))
 		.map((track) => track.artists[0]);
 }
-export function sort_compact_artists_by_most_played(artists: NamedUUID[], global_tracks: Track[]): CompactArtist[] {
-	const name_plays: [string, number][] = global_tracks.map((track) => [remove_topic(track.artists[0].name), track.meta?.plays ?? 0]);
-	const name_plays_map = new Map<string, number>();
-	for (const name_play of name_plays) {
-		name_plays_map.set(name_play[0], (name_plays_map.get(name_play[0]) ?? 0) + name_play[1]);
-	}
-	return artists
-		.slice()
-		.sort((a, b) => (name_plays_map.get(remove_topic(b?.name ?? "")) ?? 0) - (name_plays_map.get(remove_topic(a?.name ?? "")) ?? 0))
-		.map(nammed_uuid_to_compact_artist);
-}
+
 export function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[] {
 	const name_plays: [string, number][] = global_tracks.map((track) => [remove_topic(track.artists[0].name), track.meta?.plays ?? 0]);
 	const name_plays_map = new Map<string, number>();
@@ -101,9 +91,7 @@ export function sort_compact_playlist_by_most_played_artists(albums: CompactPlay
 	}
 	return albums.slice().sort((a, b) => (name_plays_map.get(remove_topic(b.artist?.[0]?.name ?? "")) ?? 0) - (name_plays_map.get(remove_topic(a.artist?.[0]?.name ?? "")) ?? 0));
 }
-export function nammed_uuid_to_compact_artist(artist: NamedUUID): CompactArtist {
-	return { name: artist, is_official_artist_channel: true, profile_artwork_url: "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg" };
-}
+
 export function compact_artist_to_nammed_uuid(artist: CompactArtist): NamedUUID {
 	return { name: artist.name.name, uri: artist.name.uri ?? null };
 }
@@ -119,20 +107,6 @@ export function sort_compact_playlists(mode: AlbumSortMode, albums: CompactPlayl
 			return sort_compact_playlist_by_most_played_artists(albums, global_tracks).reverse();
 		default:
 			return albums;
-	}
-}
-export function sort_compact_artists(mode: ArtistSortMode, artists: NamedUUID[], global_tracks: Track[]): CompactArtist[] {
-	switch (mode) {
-		case "NEWEST":
-			return artists.slice().reverse().map(nammed_uuid_to_compact_artist);
-		case "OLDEST":
-			return artists.map(nammed_uuid_to_compact_artist);
-		case "MOST_PLAYED":
-			return sort_compact_artists_by_most_played(artists, global_tracks);
-		case "LEAST_PLAYED":
-			return sort_compact_artists_by_most_played(artists, global_tracks).reverse();
-		default:
-			return artists.map(nammed_uuid_to_compact_artist);
 	}
 }
 export function track_section_map(tracks: Track[], queried: boolean): { char_data: string[]; section_map: Track[][] } {
@@ -557,9 +531,11 @@ export function prefs_settings_groupby_filter(show_in_type_check: BasePref<any>[
 	return Object.keys(groups).map((key: string) => ({ title: key, data: groups[key] }));
 }
 
-export function artist_string(track_or_compact_playlist: Track | CompactPlaylist): string {
-	if (is_empty(track_or_compact_playlist)) return "";
-	const artists = "artist" in track_or_compact_playlist ? track_or_compact_playlist.artist : track_or_compact_playlist.artists;
+export function artist_string(track_or_compact_playlist_or_artist: NamedUUID | Track | CompactPlaylist): string {
+	if (is_empty(track_or_compact_playlist_or_artist)) return "";
+	if("name" in track_or_compact_playlist_or_artist) return remove_topic(track_or_compact_playlist_or_artist.name).trim();
+
+	const artists = "artist" in track_or_compact_playlist_or_artist ? track_or_compact_playlist_or_artist.artist : track_or_compact_playlist_or_artist.artists;
 	if (artists.length === 0) return "";
 	if (artists.length <= 1) return remove_topic(artists?.[0].name ?? "").trim();
 	const names = artists.map((artist) => remove_topic(artist?.name ?? "").trim());
@@ -569,7 +545,16 @@ export function artist_string(track_or_compact_playlist: Track | CompactPlaylist
 
 export function tracks_with_artist(tracks: Track[], artist_name: string) {
 	if (is_empty(artist_name)) return [];
-	return tracks.filter((track) => artist_string(track).toLowerCase().includes(artist_name.toLowerCase()));
+	return tracks.filter(
+		(track) => {
+			for(const artist of track.artists){
+				if(artist_string(artist).toLowerCase() == remove_topic(artist_name).toLowerCase().trim()){
+					return true;
+				}
+			}
+			return false;
+		}
+	);
 }
 
 // https://mokole.com/palette.html
@@ -595,12 +580,22 @@ export function is_topic(str: string) {
 	return str.endsWith(" - Topic");
 }
 
-export function clean_title(title: string) {
-	const cleaned = remove(title, /\(.+?\)/gi, /\[.+?\]/gi).trim();
+export function clean_track_info(info: string) {
+	const cleaned = remove_topic(remove(info, /\(.+?\)/gi, /\[.+?\]/gi)).trim();
 	return cleaned;
 }
 
 export function should_automatic_refresh(last_refreshed: Date): boolean {
 	const cdate = new Date();
 	return cdate.getTime() - last_refreshed.getTime() >= milliseconds_of({ days: 1 }) || (cdate.getFullYear() >= last_refreshed.getFullYear() && cdate.getMonth() >= last_refreshed.getMonth() && cdate.getDay() >= last_refreshed.getDay() && cdate.getHours() - last_refreshed.getHours() >= 1);
+}
+
+export function small_track(track: Track): Track{
+	return {
+		uid: "...",
+		title: track.title,
+		artists: track.artists,
+		duration: track.duration,
+		album: track.album
+	}
 }

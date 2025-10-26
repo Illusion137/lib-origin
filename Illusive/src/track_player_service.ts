@@ -65,7 +65,7 @@ export async function setup_track_player(): Promise<boolean> {
 export async function save_past_queue(){
     const index = await TrackPlayer.getActiveTrackIndex();
     if(index === undefined) return;
-    await Prefs.save_pref('past_queue', {index, tracks: GLOBALS.global_var.playing_tracks});
+    await Prefs.save_pref('past_queue', {index, tracks: GLOBALS.global_var.playing_tracks.map(track => ({...track, playback: undefined, downloading_data: undefined}))});
 }
 
 export async function on_modify_track_player_queue(){
@@ -127,7 +127,6 @@ export async function delete_track_from_player_queue(track_data: Track){
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
-    // const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, Prefs.get_pref('force_youtube_18_quality') ? "18" : "140");
     if ("error" in url_data) {
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
@@ -147,7 +146,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         duration: track.duration,
         artwork: typeof artwork === "number" ? artwork : artwork.uri,
         pitchAlgorithm: PitchAlgorithm.Linear,
-        type: is_empty(track.soundcloud_id) ? TrackType.Default : TrackType.HLS,
+        type: is_empty(track.soundcloud_id) ? TrackType.HLS : TrackType.HLS,
         headers: {},
         contentType: 'audio/mp4',
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
@@ -156,21 +155,29 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 
 let updated_metadata_mutex = false;
 
-export function get_restart_threshold(playing_track: Track){
+export function get_x_threshold(playing_track: Track, threshold_percent: number){
     const begdur = playing_track.meta?.begdur ?? 0;
     const enddur = playing_track.meta?.enddur ?? playing_track.duration;
-    return ((begdur + ((enddur - begdur)) * Constants.previous_restart_threshold) / playing_track.duration);
+    return ((begdur + ((enddur - begdur)) * threshold_percent) / playing_track.duration);
+}
+export function get_restart_threshold(playing_track: Track){
+    return get_x_threshold(playing_track, Constants.previous_restart_threshold);
 }
 export function is_in_restart_threshold(playing_track: Track, position: number){
     return position / playing_track.duration >= get_restart_threshold(playing_track);
 }
 export function get_metadata_update_threshold(playing_track: Track){
-    const begdur = playing_track.meta?.begdur ?? 0;
-    const enddur = playing_track.meta?.enddur ?? playing_track.duration;
-    return ((begdur + ((enddur - begdur)) * Constants.update_track_threshold) / playing_track.duration);
+    return get_x_threshold(playing_track, Constants.update_track_threshold);
 }
 export function is_in_metadata_update_threshold(playing_track: Track, position: number){
     return position / playing_track.duration >= get_metadata_update_threshold(playing_track);
+}
+
+export function get_reset_mutex_threshold(playing_track: Track){
+    return get_x_threshold(playing_track, Constants.reset_track_mutex_threshold);
+}
+export function is_in_reset_mutex_threshold(playing_track: Track, position: number){
+    return position / playing_track.duration <= get_reset_mutex_threshold(playing_track);
 }
 
 export async function track_player_previous() {
@@ -185,6 +192,7 @@ export async function track_player_previous() {
         const illusi_track = GLOBALS.global_var.playing_tracks?.[track_index];
         if(is_in_restart_threshold(illusi_track, progress.position)) {
             await TrackPlayer.seekTo(illusi_track?.meta?.begdur ?? 0);
+            updated_metadata_mutex = false;
             return;
         }
         await TrackPlayer.skipToPrevious();
@@ -233,8 +241,28 @@ export async function track_player_next() {
     } catch (error) { alert_trackplayer_error({error: error as Error}); }
 }
 
+export async function track_player_on_error(data: {code: string, message: string}){
+    const error_msg = `C:${data.code}; ${data.message}`;
+    GLOBALS.global_var.bottom_alert(error_msg, "WARN");
+    for(let i = 0; i < Constants.trackplayer_max_retries; i++){
+        try {
+            await TrackPlayer.retry();
+        } catch (error) {
+            continue;
+        }
+        break;
+    }
+    const index = await TrackPlayer.getActiveTrackIndex();
+    if(index === undefined) return;
+    const illusi_track = GLOBALS.global_var.playing_tracks[index];
+    await delete_track_from_player_queue(illusi_track);
+}
+
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => {return});
+    TrackPlayer.addEventListener(Event.PlaybackError, async (data) => {
+        await track_player_on_error(data);
+    });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             if(data.index === undefined) return;
@@ -263,8 +291,11 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async (data) => {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
-
-            if (is_in_metadata_update_threshold(illusi_track, data.position) && !updated_metadata_mutex) {
+            
+            if(is_in_reset_mutex_threshold(illusi_track, data.position)){
+                updated_metadata_mutex = false;
+            }
+            else if (is_in_metadata_update_threshold(illusi_track, data.position) && !updated_metadata_mutex) {
                 updated_metadata_mutex = true;
                 const current_track = await SQLTracks.track_from_uid(GLOBALS.global_var.playing_tracks[data.track].uid) as Track;
                 if(is_empty(current_track.meta!.plays)) current_track.meta!.plays = 0;
@@ -274,7 +305,7 @@ export async function playback_service() {
             }
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) await track_player_next();
 
-            await check_push_next_track(data.track);
+            check_push_next_track(data.track).catch(e => e);
         } catch (error) { }
     });
     TrackPlayer.addEventListener(Event.RemotePrevious, async () => { await track_player_previous(); });

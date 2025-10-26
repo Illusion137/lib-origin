@@ -45,6 +45,7 @@ export function round_decimal_place(num: number, decimal_places: number){
 export function error_undefined<T>(value: T|ResponseError): T|undefined { return typeof value === "object" && value !== null && "error" in value ? undefined : value; }
 export function empty_undefined(str: string) { return is_empty(str) ? undefined : str; }
 export function urlid(url: string, ...remove_links: (string|RegExp)[]) { 
+    if(!url) return "";
     let id = url.replace("https://", "").replace("www.", "").replace("http://", '').replace('https:','');
     for(const link of remove_links) { id = id.replace(link, ""); }
     return id;
@@ -78,12 +79,25 @@ export function chunkify<T>(array: T[], size: number): T[][]{
 	}
 	return chunk_map;
 }
+export function chunkify_back<T>(array: T[], size: number): T[][]{
+    const chunk_map: T[][] = [];
+	for(let i = 0; i < array.length; i += size){
+		chunk_map.push(array.slice(-(i + size), -i == 0 ? undefined : -i));
+	}
+	return chunk_map.reverse();
+}
 export function is_number(numish: unknown): numish is number{
 	return typeof numish === 'number' && !isNaN(numish);
 }
 
 export function json_catch(result: any){
     return result instanceof Error ? {error: result} : result;
+}
+
+export function large_number_string(num: number): string{
+    const strnum = String(num);
+    const strnum_chunks = chunkify_back(strnum.split(''), 3);
+    return strnum_chunks.map(chunk => chunk.join('')).join(',');
 }
 
 export function safe_date_iso(date: Date): string{

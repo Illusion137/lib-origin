@@ -47,9 +47,49 @@ export namespace RozePrefs {
         await generic_reset_prefs(mmkv(), [user_uuid_key], load_prefs);
     }
 
-    const themes = {
-        light: {},
-        dark: {},
-        oled: {}
+    export type RTheme = ReactNavigation.Theme;
+    const fonts: ReactNavigation.Theme['fonts'] = {
+        regular: { fontFamily: "", fontWeight: "400" },
+        medium: { fontFamily: "", fontWeight: "600" },
+        heavy: { fontFamily: "", fontWeight: "bold" },
+        bold: { fontFamily: "", fontWeight: "bold" }
+    };
+    const themes: Record<string, ReactNavigation.Theme> = {
+        light: {
+            dark: false,
+            colors: {
+                primary: "",
+                background: "",
+                card: "",
+                text: "",
+                border: "",
+                notification: ""
+            },
+            fonts: fonts
+        },
+        dark: {
+            dark: true,
+            colors: {
+                primary: "",
+                background: "",
+                card: "",
+                text: "",
+                border: "",
+                notification: ""
+            },
+            fonts: fonts
+        },
+        oled: {
+            dark: true,
+            colors: {
+                primary: "",
+                background: "",
+                card: "",
+                text: "",
+                border: "",
+                notification: ""
+            },
+            fonts: fonts
+        }
     }
 };

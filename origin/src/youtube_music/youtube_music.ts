@@ -300,7 +300,7 @@ export namespace YouTubeMusic {
 		if(!search_suggestions_response.ok) return [];
 		const search_suggestions_data: SearchSuggestions = await search_suggestions_response.json().catch(json_catch);
 		if("error" in search_suggestions_data) return [];
-		return search_suggestions_data.contents.map(top_content => {
+		return search_suggestions_data?.contents?.map(top_content => {
 			return top_content.searchSuggestionsSectionRenderer.contents.filter(content => !("historySuggestionRenderer" in content)).map(content => {
 				if("searchSuggestionRenderer" in content){
 					return parse_runs(content.searchSuggestionRenderer.suggestion.runs, '');
@@ -314,7 +314,7 @@ export namespace YouTubeMusic {
 				else 
 				return undefined;
 			}).filter(content => content !== undefined);
-		}).flat();
+		}).flat() ?? [];
 	}
 
 	export async function get_library(opts: Opts): PromiseICFGData<typeof Parser.parse_library_contents> {

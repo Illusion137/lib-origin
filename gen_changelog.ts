@@ -1,6 +1,47 @@
 export const CHANGELOG = `# Illusi 17.2.0
+  - Fixed bug relating to Audioplayer not handling NaN durations
   - Fixed bug relating to downloading track thumbnails
-  - [ ] Fixed bug relating to being able to share certain tracks that can't be shared as links
+  - Fixed bug relating to being able to share certain tracks that can't be shared as links
+  - Fixed bug relating to downloading YouTube videos
+  - Fixed bug relating to SoundCloud related tracks
+  - Fixed bug relating to SoundCloud tracks not having artworks
+  - Fixed bug relating to navigation in the Explore Page
+  - Fixed bug relating to new releases refresh
+  - Fixed bug relating to search suggestions
+  - (DEV) Fixed bug relating to no fast refresh in Expo
+  - UI redesign for Artist
+  - Improved load times for YouTube playback
+  - Improved load times for SoundCloud playback
+  - Improved YouTube Music parsing
+  - Improved Performance for Artist
+  - Improved Lyrics fetching
+  - Improved UI for Playlist
+  - Improved Past Queue
+  - Improved Trackplayer
+  - Improved SQLGlobal event listener system
+  - Improved YTDL caching
+  - Improved performance of AlbumList
+  - Improved performance of HorizontalRowArtists
+  - Improved performance of TrackHorizontalScrolls
+  - Added Trackplayer retries
+  - Added warmup script to Startup with Pref-Toggles
+  - Added serialization for FS_CACHE for YTDL
+  - Added Track-BottomLine plays for Artist-Popular-Tracks
+  - Added automated dev device check to Sentry
+  - Added custom URI to imported tracks
+  - Added Illusive.get_artist for Illusi
+  - Added FFMPEG retrying
+  - Added stash for artists and their artworks
+  - Added Artist NavLink to Playlist
+  - Added Pref: \`new_releases_hide_unknowns\`
+  - Added QueryFlags for prods
+  - Added fully selectable text in the Lyrics Modal
+  - Added service icon to RowArtist
+  - Added artwork to RowArtist
+  - Removed metadata from YTDL for sanity
+  - Working on UI redesign for Explore
+  - Working on Futal Shuffle (Illusive Custom Shuffling Algorithm)
+  - SO MUCH DAMN REFACTORING
 # Illusi 17.1.0
   - Fixed bug relating to document picker not properly adding playback data to tracks
   - Fixed bug relating to native module get_audio_duration that prevented music downloading

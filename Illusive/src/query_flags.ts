@@ -281,6 +281,16 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         condition: (track) => track.artists.length > 1,
         description: "Multiple Artists",
     },
+    {
+        flag: '@prod',
+        condition: (track) => !is_empty(track.prods),
+        description: "Has a known prod",
+    },
+    {
+        flag: '@prodby',
+        condition: (track, args) => (track.prods ?? "").toLowerCase().includes(args?.[0]),
+        description: "Search for [x] prod",
+    },
 ];
 
 export const PLAYLIST_QUERY_FLAGS: QueryFlag<Playlist>[] = [
