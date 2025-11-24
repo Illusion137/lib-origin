@@ -11,7 +11,7 @@ export async function load_native_fs(): Promise<FileSystem>{
 			break;
 		case "ELECTRON_RENDERER":
 			try {
-				fs_instance = (await import("../gen/electron/modules/fs.electron_renderer")).electron_renderer_fs;
+				// fs_instance = (await import("../gen/electron/modules/fs.electron_renderer")).electron_renderer_fs;
 			} catch (e) {}
 			break;
 		case "NODE":

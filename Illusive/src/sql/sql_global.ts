@@ -1,10 +1,20 @@
 import { GLOBALS } from "@illusive/globals";
-import type { Track } from "@illusive/types";
+import { Illusive } from "@illusive/illusive";
+import type { Track, TrackPlaybackData } from "@illusive/types";
+import { SQLfs } from "./sql_fs";
+import { reinterpret_cast } from "@common/cast";
 
 export namespace SQLGlobal {
     const global_sql_tracks_update_callbacks = new Map<string, () => any>();
 
     function run_global_sql_tracks_callbacks(){
+        GLOBALS.global_var.sql_tracks = GLOBALS.global_var.sql_tracks.map(track => ({
+            ...track, 
+            playback: {
+                ...reinterpret_cast<TrackPlaybackData>(track.playback), 
+                artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track),
+            }
+        }));
         for(const callback of global_sql_tracks_update_callbacks.values()){
             callback();
         }

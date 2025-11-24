@@ -25,6 +25,7 @@ Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Ty
 
 export namespace YouTubeDL {
     let innertube_client: Innertube;
+
     export async function get_innertube_client(): Promise<Innertube>{
         Log.setLevel(Log.Level.NONE);
         if(innertube_client) return innertube_client;
@@ -34,9 +35,6 @@ export namespace YouTubeDL {
             enable_session_cache: true,
             fail_fast: true,
             retrieve_player: true,
-            // player_id: '0004de42'
-            // player_id: '27422632' // Found: 10/23/25
-            player_id: '6e4dbefe', // // 10/25/25,
             client_type: ClientType.MWEB
         });
         return innertube_client;

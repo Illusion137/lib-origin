@@ -11,11 +11,12 @@ import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_use
 import { determine_music_responsive_list_item_renderer, parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { youtube_music_get_playlist } from '@illusive/get_playlist';
-import { best_thumbnail, spotify_uri_to_uri } from '@illusive/illusive_utils';
+import { spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import { parse_amazon_music_search_track, parse_spotify_search_track } from '@illusive/track_parser';
+import { parse_amazon_music_search_track } from '@illusive/track_parser';
 import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from '@illusive/types';
 import type * as IllusiveTypes from '@illusive/types';
+import { parse_spotify_search_album, parse_spotify_search_track, parse_spotify_similar_artist } from './parsers/spotify_parser';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
     return {
@@ -33,7 +34,7 @@ function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
 
 export async function spotify_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('spotify_cookie_jar');
-    const search_response = await Origin.Spotify.search(query, {cookie_jar, limit: opts?.limit, proxy: opts?.proxy});
+    const search_response = await Origin.Spotify.search({cookie_jar, var: {searchTerm: query, limit: opts?.limit}, proxy: opts?.proxy});
     if("error" in search_response) return default_search(search_response);
     return {
         tracks: search_response.data.searchV2.tracksV2.items.map(parse_spotify_search_track),
@@ -42,24 +43,11 @@ export async function spotify_search(query: string, opts?: SearchOpts): Promise<
             return {
                 title: {name: playlist.data.name, uri: spotify_uri_to_uri(playlist.data.uri)},
                 artist: [{name: playlist.data.ownerV2.data.name, uri: spotify_uri_to_uri(playlist.data.ownerV2.data.uri)}],
-                artwork_thumbnails: playlist.data.images.items[0].sources
+                artwork_thumbnails: playlist.data.images.items[0].sources.map(source => ({...source, height: source.height ?? 0, width: source.width ?? 0}))
             }
         }).filter(item => item !== null),
-        albums: search_response.data.searchV2.albumsV2.items.map(album => {
-            return {
-                title: {name: album.data.name, uri: spotify_uri_to_uri(album.data.uri)},
-                artist: [{name: album.data.artists.items[0].profile.name, uri: spotify_uri_to_uri(album.data.artists.items[0].uri)}],
-                artwork_thumbnails: album.data.coverArt.sources,
-                year: album.data.date.year
-            }
-        }),
-        artists: search_response.data.searchV2.artists.items.map(artist => {
-            return {
-                name: {name: artist.data.profile.name, uri: spotify_uri_to_uri(artist.data.uri)},
-                profile_artwork_url: best_thumbnail(artist.data.visuals.avatarImage?.sources)?.url,
-                is_official_artist_channel: true
-            }
-        }),
+        albums: search_response.data.searchV2.albumsV2.items.map(parse_spotify_search_album),
+        artists: search_response.data.searchV2.artists.items.map(item => parse_spotify_similar_artist(item.data)),
         continuation: null
     }
 }

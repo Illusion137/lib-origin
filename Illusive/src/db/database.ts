@@ -1,6 +1,7 @@
 import { SQLfs } from '@illusive/sql/sql_fs';
 import { sqlite } from '@native/sqlite/sqlite';
 import type { GenericSQLiteDatabase } from '@native/sqlite/sqlite.base';
+import { is_empty } from '../../../common/utils/util';
 
 export const db_path = "illusi-db-1400.sqlite3";
 export const sqlite_location = async() => (SQLfs.document_directory('SQLite')).replace('file://', '');
@@ -19,4 +20,13 @@ export async function load_database(path?: string, location?: string){
     db_exec = async<V>(runnable: (db: GenericSQLiteDatabase) => Promise<V>): Promise<V> => {
         return await sqlite().exec<V>(db_database_handle, runnable);
     }
+}
+export function has_db_connection_handle(){
+    return !is_empty(db_connection_handle);
+}
+export function get_connection_handle(){
+    return db_connection_handle;
+}
+export function get_database_handle(){
+    return db_database_handle;
 }

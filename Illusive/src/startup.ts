@@ -9,7 +9,7 @@ import { SQLPlaylists } from './sql/sql_playlists';
 import { load_native_modules } from '@native/gen/load_native_modules';
 import { miscnative } from '@native/miscnative/miscnative';
 import { SQLfs } from './sql/sql_fs';
-import { load_database } from './db/database';
+import { has_db_connection_handle, load_database } from './db/database';
 import { Illusive } from './illusive';
 import { default_playlists } from './default_playlists';
 import { addShortcutListener, getInitialShortcut } from "react-native-siri-shortcut";
@@ -32,6 +32,22 @@ export async function warmup_client(){
     }
 }
 
+export async function load_sqlite_database(){
+    //TODO CHANGE location based on platform
+    const sqlite_name = 'illusi-db-1400.sqlite3';
+    const sqlite_location_mobile = SQLfs.document_directory('SQLite')
+        .replace('file://', '')
+        .replace('file:', '');
+    const sqlite_location_desktop = SQLfs.document_directory(".illusi/sumi.sqlite");
+    const sqlite_location_map: Record<NativePlatform, string> = {
+        NODE: sqlite_location_desktop,
+        REACT_NATIVE: sqlite_location_mobile,
+        ELECTRON_RENDERER: sqlite_location_desktop,
+        WEB: sqlite_location_desktop
+    };
+    await load_database(sqlite_name, sqlite_location_map[get_native_platform()]);
+}
+
 export async function illusi_startup(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: typeof GLOBALS.global_var.set_theme, bottom_alert: typeof GLOBALS.global_var.bottom_alert, on_finish_essentials: () => {
 
 }) {
@@ -39,19 +55,10 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         await load_native_modules();
         await SQLfs.cache_load_directories();
         await Prefs.load_mmkv_module();
-        //TODO CHANGE location based on platform
-        const sqlite_name = 'illusi-db-1400.sqlite3';
-        const sqlite_location_mobile = SQLfs.document_directory('SQLite')
-            .replace('file://', '')
-            .replace('file:', '');
-        const sqlite_location_desktop = SQLfs.document_directory(".illusi/sumi.sqlite");
-        const sqlite_location_map: Record<NativePlatform, string> = {
-            NODE: sqlite_location_desktop,
-            REACT_NATIVE: sqlite_location_mobile,
-            ELECTRON_RENDERER: sqlite_location_desktop,
-            WEB: sqlite_location_desktop
-        };
-        await load_database(sqlite_name, sqlite_location_map[get_native_platform()], );
+
+        if(!has_db_connection_handle())
+            await load_sqlite_database();
+
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.download_track_lyrics = download_track_lyrics;
@@ -68,6 +75,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             GLOBALS.global_var.past_track_index = Prefs.get_pref('past_queue').index;
         }
         else {
+            // TODO maybe I want to evicerate any cached files :3
             await Prefs.save_pref('past_queue', {index: 0, tracks: []});
         }
         await Prefs.save_pref('latest_version', version);
@@ -82,7 +90,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         ]).catch(e => e);
         Prefs.pref_set_theme(set_theme);
         await warmup_client();
-    }, (error) => GLOBALS.global_var.bottom_alert((error as Error).message, "WARN"))
+    }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 
 async function run_shortcut(play_tracks: typeof GLOBALS.global_var.play_tracks, userInfo: { uuid: string }, activityType: string) {

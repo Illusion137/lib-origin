@@ -11,7 +11,7 @@ export async function load_native_ffmpeg(): Promise<FFMPEG>{
 			break;
 		case "ELECTRON_RENDERER":
 			try {
-				ffmpeg_instance = (await import("../gen/electron/modules/ffmpeg.electron_renderer")).electron_renderer_ffmpeg;
+				// ffmpeg_instance = (await import("../gen/electron/modules/ffmpeg.electron_renderer")).electron_renderer_ffmpeg;
 			} catch (e) {}
 			break;
 		case "NODE":

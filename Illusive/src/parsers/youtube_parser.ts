@@ -133,10 +133,11 @@ export function parse_youtube_title_artist(track: Track): Track {
 export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_panel_video_renderer: PlaylistPanelVideoRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[] {
     if("video_renderer" in videos) {
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
+            const artist_id = track?.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl;
             return parse_youtube_title_artist({
                 uid: generate_new_uid(parse_runs(track.title.runs)),
                 title: parse_runs(track.title.runs),
-                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
+                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null}],
                 duration: parse_time(track.lengthText.simpleText),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(track?.shortViewCountText?.simpleText)
@@ -144,10 +145,11 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
         })
     } else if("compact_video_renderer" in videos) {
         return videos.compact_video_renderer.filter(track => !is_empty(track?.lengthText?.runs)).map(track => {
+            const artist_id = track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl;
             return parse_youtube_title_artist({
                 uid: generate_new_uid(parse_runs(track?.headline.runs)),
                 title: parse_runs(track?.headline.runs),
-                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
+                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null}],
                 duration: parse_time(parse_runs(track.lengthText.runs)),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(parse_runs(track?.shortViewCountText?.runs ?? []))

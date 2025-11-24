@@ -32,7 +32,7 @@ export function create_thumbnails(url: string, width = NaN, height = NaN): Illus
 	return [{ url: url, width: width, height: height }];
 }
 export function best_thumbnail(thumbnails: IllusiveThumbnail[] | undefined) {
-	if (thumbnails === undefined) return undefined;
+	if (thumbnails === undefined || thumbnails === null) return undefined;
 	interface Max {
 		index: number;
 		value: number;
@@ -141,7 +141,7 @@ function times_played_multiplier(plays: number, max_plays: number): number {
 	return Math.max(plays / max_plays + 1, 1);
 }
 function time_since_last_played_multiplier(date: Date): number {
-	const time_difference = new Date().getTime() - date.getTime();
+	const time_difference = Date.now() - date.getTime();
 	const days_difference = time_difference / (1000 * 60 * 60 * 24);
 	return Math.max((7 - days_difference) / 2, 1);
 }
@@ -277,6 +277,7 @@ export function track_to_illusive_uri(track: Track): IllusiveURI{
 		spotify_id: "spotify",
 		amazonmusic_id: "amazonmusic",
 		applemusic_id: "applemusic",
+		bandlab_id: "bandlab",
 		artwork_url: "illusi",
 		thumbnail_uri: "illusi",
 		media_uri: "illusi",
@@ -336,6 +337,8 @@ export function music_service_uri_to_music_service(music_service_uri: MusicServi
 			return "Apple Music";
 		case "soundcloud":
 			return "SoundCloud";
+		case "bandlab":
+			return "BandLab";
 		case "api":
 			return "API";
 	}
@@ -358,6 +361,8 @@ export function music_service_to_music_service_uri(music_service_uri: MusicServi
 			return "applemusic";
 		case "SoundCloud":
 			return "soundcloud";
+		case "BandLab":
+			return "bandlab";
 		case "API":
 			return "api";
 	}
@@ -495,6 +500,8 @@ export function music_service_track_primary_key(type: MusicServiceType): keyof T
 			return "amazonmusic_id";
 		case "Illusi":
 			return "illusi_id";
+		case "BandLab":
+			return "bandlab_id"
 		case "API":
 			return "uid";
 		default:

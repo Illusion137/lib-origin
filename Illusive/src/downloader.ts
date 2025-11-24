@@ -64,7 +64,7 @@ export async function handle_track_meta_data(track: Track, metadata: undefined|D
             added_date: new Date().toISOString() as ISOString,
             last_played_date: new Date().toISOString() as ISOString
         })),
-        chapters: metadata.chapters,
+        // chapters: metadata.chapters,
         songs: metadata.songs,
     }
     track.meta = new_metadata;
@@ -107,7 +107,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
     if(!("error" in nt_handle)) downloading.track = nt_handle;
     else return nt_handle;
 
-    const media_uri = downloading.track.uid + '.mp4';
+    const media_uri = downloading.track.uid + '.m4a';
     const new_uri = SQLfs.media_directory(media_uri);
 
     let retcode = 1;
@@ -153,7 +153,8 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 export const track_downloader = new AsyncFNQueue<Downloading, Awaited<ReturnType<typeof download_track_base>>>(
     Constants.download_queue_max_length, 
     o => o.uid, 
-    download_track_base
+    download_track_base,
+    () => GLOBALS.global_var.bottom_alert("Download Queue Finished", "INFO")
 );
 
 export async function download_track(track: Track, redownload?: boolean): Promise<DownloadTrackResult>{
@@ -169,7 +170,8 @@ async function download_track_lyrics_base(downloading: LyricsDownloading){
 export const track_lyrics_downloader = new AsyncFNQueue<LyricsDownloading, Awaited<ReturnType<typeof download_track_lyrics_base>>>(
     Constants.download_lyrics_queue_max_length, 
     o => o.uid, 
-    download_track_lyrics_base
+    download_track_lyrics_base,
+    () => GLOBALS.global_var.bottom_alert("Lyrics Queue Finished", "INFO")
 );
 
 export async function download_track_lyrics(track: Track){

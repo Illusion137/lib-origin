@@ -235,7 +235,7 @@ export async function track_uid_exists(track: Track) {
 }
 let time_since_last_fetched_track_data = new Date(0);
 export async function fetch_track_data() {
-    if(new Date().getTime() - time_since_last_fetched_track_data.getTime() < 5000) return;
+    if(Date.now() - time_since_last_fetched_track_data.getTime() < 5000) return;
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
     time_since_last_fetched_track_data = new Date();

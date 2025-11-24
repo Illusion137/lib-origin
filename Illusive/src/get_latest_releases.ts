@@ -2,7 +2,7 @@ import { SoundCloud, YouTubeMusic } from "@origin/index";
 import { CookieJar } from "@common/utils/cookie_util";
 import { soundcloud_parse_track, soundcloud_parse_track_to_song } from "@illusive/parsers/soundcloud_parser";
 import { parse_youtube_music_artist_album } from "@illusive/parsers/youtube_music_parser";
-import { apple_music_get_artist } from "@illusive/get_artist";
+import { apple_music_get_artist, spotify_get_artist } from "@illusive/get_artist";
 import { create_uri } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import type { ArtistOpts, CompactPlaylist, NamedUUID, Track } from "@illusive/types";
@@ -13,6 +13,7 @@ function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
 }
 
+// TODO add into SQLArtists
 export async function youtube_music_get_latest_releases(id: string, opts?: ArtistOpts): Promise<CompactPlaylist[]|undefined>{
     const artist_response = await YouTubeMusic.get_artist({cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy}, id);
 
@@ -28,6 +29,11 @@ export async function youtube_music_get_latest_releases(id: string, opts?: Artis
 
 export async function apple_music_get_latest_releases(id: string, opts?: ArtistOpts): Promise<CompactPlaylist[]|undefined>{
     const latest_release = (await apple_music_get_artist(id, opts)).latest_release;
+    return latest_release ? [latest_release] : undefined;
+}
+
+export async function spotify_get_latest_releases(id: string): Promise<CompactPlaylist[]|undefined>{
+    const latest_release = (await spotify_get_artist(id)).latest_release;
     return latest_release ? [latest_release] : undefined;
 }
 

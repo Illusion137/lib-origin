@@ -1,4 +1,74 @@
-export const CHANGELOG = `# Illusi 17.2.0
+export const CHANGELOG = `# Illusi 19.0.0
+  - [ ] Illusi-CLI
+  - [ ] Illusi desktop based on React-Native
+# Illusi 18.0.0
+  - [ ] Added Illusi server (Supabase)
+  - [ ] Fixed remaining bugs
+  - [ ] Added Unit Tests
+# Illusi 17.3.0
+  - Fixed bug relating to YouTube Music playlist parsing
+  - [ ] Fixed bug relating to ContextMenu and Track-refreshing
+  - [ ] Fixed bug related to SoundCloud related tracks fr
+  - [ ] Fixed CompactArtistComponent
+  - [ ] Fixed YouTube Music Search album being put into playlists tab
+  - [ ] Fixed latest release SQLArtist integration
+  - [ ] Fixed search SQLArtist integration
+  - [ ] Fixed SQLArtist integration re-chaching
+  - Fixed Spotify client integration
+  - Fixed Queryflag \`prod\`
+  - Fixed Queryflag \`prodby\`
+  - [ ] Fixed YouTube (Music) artwork not being square for lock-screen // https://docs.expo.dev/versions/latest/sdk/imagemanipulator/
+  - [ ] FourTrackArtwork Album tinting
+  - Added Caching to Album-Playlists as they are mostly static
+  - [ ] Added Edit-Track
+  - [ ] Added specialized playlists to explore
+  - [ ] Added Illusi custom shuffle algorithm
+  - [ ] Added Extra-Linker
+  - [ ] Added Keep-Delete
+  - [ ] Added Playlist-Converter
+  - [ ] Added Extras-Help
+  - [ ] Added Watch Artist
+  - [ ] Added SQLTrackSkips
+  - [ ] Added SQLTrackPlays
+  - [ ] Added Equalizer
+  - [ ] Added Crossafade
+  - [ ] Added Bandlab integration
+  - Added Sharing intents // https://www.devas.life/supporting-ios-share-extensions-android-intents-on-react-native/
+  - [ ] Added Explore Soundcloud new tracks integration
+  - [ ] Added ExtraDevScreen
+  - [ ] Added Trim-Silence
+  - [ ] Added Audio Normalizer
+  - [ ] Added Synced Lyrics
+  - [ ] Added Lyrics uploading
+  - [ ] Added Lyrics editing
+  - [ ] Added loading screens
+  - [ ] Added custom secondary color to themes
+  - [ ] Added custom AudioPlayer backgrounds
+  - [ ] Added ContextMenu to RowArtist and CompactArtistComponents
+  - [ ] Added Illusi-Rewind context
+  - [ ] Slightly modify PlaylistBase by moving artist-data to center of artwork and searchbar
+  - [ ] Refactored Illusive.Illusi to support get-playlist
+  - [ ] Refactored Illusive.Illusi to support create-playlist
+  - [ ] Refactored Illusive.Illusi to support add-tracks-to-playlist
+  - [ ] Refactored Illusive.Illusi to support delete-tracks-to-playlist
+  - [ ] Refactored Extras-Settings UI
+  - Redesigned TrackTagIcons
+  - [ ] Redesigned Explore UI
+  - [ ] Redesigned Search Screen UI
+  - [ ] Redesigned Trim-Track UI
+  - [ ] Redesigned Trim-Info UI
+  - [ ] Redesigned Batch-Downloader UI
+  - [ ] Redesigned Backpack UI
+  - [ ] Redesigned Themes UI
+  - Redesigned **Sudo** Artist
+  - [ ] Redesigned Statistics UI
+  - [ ] Redesigned Changlog UI
+  - [ ] Redesigned CompactArtistComponent
+  - Redesigned BottomAlert
+  - [ ] Update Audioplayer UI
+  - [ ] Update Lyrics UI
+  - Improved Spotify integration (get_artist, latest_release, etc)
+# Illusi 17.2.0
   - Fixed bug relating to Audioplayer not handling NaN durations
   - Fixed bug relating to downloading track thumbnails
   - Fixed bug relating to being able to share certain tracks that can't be shared as links

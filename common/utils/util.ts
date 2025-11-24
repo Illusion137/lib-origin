@@ -4,7 +4,7 @@ import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
 
 export function generate_new_uid(prefix_name: string) {
-	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + new Date().getTime().toString(36).substring(2, 15) +
+	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + Date.now().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
@@ -57,7 +57,8 @@ type NonEmpty = string & { [opaqueSym]: "NonEmptyString" } | number | NonEmptyAr
 
 export function is_empty(value: unknown): value is NonEmpty { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 
-export function milliseconds_of(time: {years?: number, months?: number, weeks?: number, days?: number, hours?: number, minutes?: number, seconds?: number}): number {
+interface MillOfTime {years?: number, months?: number, weeks?: number, days?: number, hours?: number, minutes?: number, seconds?: number, milliseconds?: number};
+export function milliseconds_of(time: MillOfTime): number {
 	return ((time.years ?? 0) * 1000 * 60 * 60 * 24 * 365) +
 		((time.months ?? 0) * 1000 * 60 * 60 * 24 * 30) 
 		+ ((time.weeks ?? 0) * 1000 * 60 * 60 * 24 * 7) 
@@ -65,6 +66,19 @@ export function milliseconds_of(time: {years?: number, months?: number, weeks?: 
 		+ ((time.hours ?? 0) * 1000 * 60 * 60)
 		+ ((time.minutes ?? 0) * 1000 * 60)
 		+ ((time.seconds ?? 0) * 1000)
+		+ ((time.milliseconds ?? 0))
+}
+export function seconds_of(time: MillOfTime): number{
+    return milliseconds_of(time) / 1000;
+}
+export function minutes_of(time: MillOfTime): number{
+    return seconds_of(time) / 60;
+}
+export function hours_of(time: MillOfTime): number{
+    return minutes_of(time) / 60;
+}
+export function days_of(time: MillOfTime): number{
+    return hours_of(time) / 24;
 }
 export function empty_join(vals: any[], join_with: string) {
     return vals.filter(val => !is_empty(val)).join(join_with);
@@ -217,6 +231,6 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
 export function catch_function_sync(func: () => any, on_error: (error: unknown) => any) {
     try { return func(); } catch (error) { on_error(error); }
 }
-export async function catch_function_async(func: () => Promise<any>, on_error: (error: unknown) => any) {
-    try { return await func(); } catch (error) { on_error(error); }
+export async function catch_function_async(func: () => Promise<any>, on_error: (error: Error) => any) {
+    try { return await func(); } catch (error) { on_error(error as Error); }
 }

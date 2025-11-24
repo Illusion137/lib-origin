@@ -1,4 +1,4 @@
-import { TimedCache } from "@common/types";
+import { TimedCache, type ResponseError } from "@common/types";
 import { Constants } from "@illusive/constants";
 import type { Prefs } from "@illusive/prefs";
 import type { BottomAlertType, CompactPlaylist, Downloading, DownloadTrackResult, HexColor, LyricsDownloadingResult, MusicServiceArtist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from "@illusive/types";
@@ -14,6 +14,7 @@ const global_var = {
     past_track_index: 0,
     playing_queue: [] as string[],
     can_play_again_mutex: false,
+    kill_audioplayer: () => {return},
     play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => {first_track; tracks; playlist_name;},
     download_track: async(track: Track, redownload?: boolean): Promise<DownloadTrackResult> => {track; redownload; return "GOOD";},
     download_track_lyrics: async(track: Track): Promise<LyricsDownloadingResult> => {track; return "GOOD";},
@@ -23,7 +24,7 @@ const global_var = {
     artist_cache: new TimedCache<string, {artist_data: MusicServiceArtist}>(Constants.playlist_cache_duration_seconds * 1000),
     set_theme: (_: Prefs.Theme) => {return},
     selected_playlists_uuids: new Set<string>(),
-    bottom_alert: (text: string, type: BottomAlertType) => {text; type;},
+    bottom_alert: (text: string, type: BottomAlertType, _?: string|ResponseError) => {text; type; },
     tint_table: new Map<Track['uid'], HexColor>()
 };
 

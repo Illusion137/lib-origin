@@ -9,6 +9,7 @@ import { SQLfs } from '@illusive/sql/sql_fs';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Constants } from './constants';
 import { create_uri } from './illusive_utils';
+import { ensure_photo_access } from './permissions';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)) {} else if (DocumentPicker.isInProgress(error)) {} else alert_error({error: error as Error});
@@ -25,6 +26,7 @@ export async function upload_sqlite_db() {
 
 export async function upload_playlist_thumbnail(playlist: Playlist, callback: (playlist: Playlist) => Promise<void>) {
     try {
+        await ensure_photo_access();
         const img = await ImagePicker.openPicker({mediaType: 'photo', forceJpg: true});
         if(img.sourceURL === undefined) throw new Error("sourceURL is null");
         if(img.filename === undefined) throw new Error("filename is undefined");
@@ -61,12 +63,20 @@ export async function upload_playlist_thumbnail_document(playlist: Playlist, cal
 
 export async function upload_track_thumbnail(track: Track, callback: (track: Track) => Promise<void>) {
     try {
-        const img = await ImagePicker.openPicker({mediaType: 'photo', forceJpg: true});
+        await ensure_photo_access();
+        const img = await ImagePicker.openPicker({
+            mediaType: 'photo', 
+            forceJpg: true, 
+            smartAlbums: ['UserLibrary', 'PhotoStream', 'RecentlyAdded', 'Favorites'],
+            loadingLabelText: "Importing Track Thumbnail",
+            waitAnimationEnd: false,
+            includeBase64: false,
+            includeExif: false,
+        });
         if(img.sourceURL === undefined) throw new Error("sourceURL is null");
         if(img.filename === undefined) throw new Error("filename is undefined");
         await SQLfs.copy_to_custom_thumbnail_directory(img.sourceURL, img.filename);
-        track.thumbnail_uri = img.filename!
-        await SQLTracks.update_track(track.uid, track);
+        await SQLTracks.update_track(track.uid, {...track, thumbnail_uri: img.filename});
         
         if(callback !== undefined) await callback(track);
         await ImagePicker.clean();

@@ -3,6 +3,7 @@ import type { ResponseError } from '@common/types';
 import { Prefs } from '@illusive/prefs';
 import type { DownloadFromIdResult } from '@illusive/types';
 import { generror_catch } from '@common/utils/error_util';
+import { milliseconds_of } from '@common/utils/util';
 // import type { Types } from 'youtubei.js';
 
 export async function soundcloud_download_from_id(permalink: string, _: string): Promise<DownloadFromIdResult|ResponseError> {
@@ -35,4 +36,20 @@ export async function youtube_download_from_id(video_id: string, quality: string
             return {url: '', metadata: {} as never};
         }
     } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", {video_id, quality}); }
+}
+
+export async function bandlab_download_from_id(song_id: string, _: string): Promise<DownloadFromIdResult|ResponseError> {
+    const cookie_jar = Prefs.get_pref('bandlab_cookie_jar');
+    const url_response = await Origin.BandLab.get_download_url(song_id, {cookie_jar: cookie_jar, fetch_opts: {
+        cache_opts: {
+            cache_ms: milliseconds_of({hours: 6}),
+            cache_mode: "file",
+            cache_ms_fail: 0,
+            cache_on: "url"
+        }
+    }});
+    if(typeof url_response === "object") return url_response;
+    return {
+        url: url_response,
+    };
 }

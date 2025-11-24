@@ -4,18 +4,18 @@ import { TimedCache, type PromiseResult, type ResponseError } from "@common/type
 import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_array } from "@common/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "@illusive/add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "@illusive/create_delete_playlist";
-import { soundcloud_download_from_id, youtube_download_from_id } from "@illusive/download_from_id";
-import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist } from '@illusive/get_artist';
-import { apple_music_get_latest_releases, soundcloud_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
-import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
+import { bandlab_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from "@illusive/download_from_id";
+import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
+import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
+import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
-import { amazon_music_get_user_playlists, apple_music_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
+import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
 import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, small_track, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
 import { MusicService } from "@illusive/types";
-import { youtube_music_get_new_releases } from '@illusive/new_releases';
+import { soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
 import { parse_youtube_music_track } from '@illusive/parsers/youtube_music_parser';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
@@ -120,7 +120,9 @@ export namespace Illusive {
             create_playlist: spotify_create_playlist,
             delete_playlist: spotify_delete_playlist,
             add_tracks_to_playlist: spotify_add_tracks_to_playlist,
-            delete_tracks_from_playlist: spotify_delete_tracks_from_playlist
+            delete_tracks_from_playlist: spotify_delete_tracks_from_playlist,
+            get_artist: spotify_get_artist,
+            get_latest_releases: spotify_get_latest_releases
         });
     const amazon_music = new MusicService(
         {
@@ -183,7 +185,21 @@ export namespace Illusive {
             get_track_mix: get_soundcloud_track_mix,
             download_from_id: soundcloud_download_from_id,
             get_artist: soundcloud_get_artist,
-            get_latest_releases: soundcloud_get_latest_releases
+            get_latest_releases: soundcloud_get_latest_releases,
+            get_new_releases: soundcloud_get_new_releases
+        });
+    const bandlab = new MusicService(
+        {
+            app_icon: 'https://play-lh.googleusercontent.com/wfWpJxIMDymGBN2IxIrHjFqS1HD-JZbaLYO5d1Vly2yCtKLUiiDz38LxB3dMh8L1WTA=s128-rw',
+            web_view_url: 'https://www.bandlab.com/',
+            link_text: 'https://www.bandlab.com/',
+            valid_playlist_url_regex: /(https?:\/\/)?(www\.)?bandlab\.com\//i,
+            required_cookie_credentials: ["sessionKey"],
+            cookie_jar_callback: () => Prefs.get_pref('bandlab_cookie_jar'),
+            pref_cookie_jar: 'bandlab_cookie_jar',
+            get_playlist: bandlab_get_playlist,
+            get_user_playlists: bandlab_get_user_playlists,
+            download_from_id: bandlab_download_from_id,
         });
     const api = new MusicService(
         {
@@ -203,6 +219,7 @@ export namespace Illusive {
         ["Amazon Music", amazon_music],
         ["Illusi", illusi],
         ["Musi", musi],
+        ["BandLab", bandlab],
         ["API", api],
     ]);
     export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "Spotify", "SoundCloud", "Apple Music"];
@@ -218,6 +235,8 @@ export namespace Illusive {
             return download_url_timed_cache.update(key, await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio")) ;
         else if(!is_empty(track.soundcloud_permalink))
             return download_url_timed_cache.update(key, await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!));
+        else if(!is_empty(track.bandlab_id))
+            return download_url_timed_cache.update(key, await music_service.get("BandLab")!.download_from_id!(track.bandlab_id!, quality!));
         const new_track_data = await convert_track(track, {});
         if("error" in new_track_data) return new_track_data;
         if(is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting download_url", {track, quality, redownload_mode});
@@ -231,8 +250,8 @@ export namespace Illusive {
     export async function get_track_mix(track: Track): Promise<ExportMix|ResponseError> {
         if(!is_empty(track.youtube_id))
             return await music_service.get("YouTube")!.get_track_mix!(track.youtube_id!);
-        else if(!is_empty(track.soundcloud_permalink))
-            return await music_service.get("SoundCloud")!.get_track_mix!(track.soundcloud_permalink!);
+        else if(!is_empty(track.soundcloud_id))
+            return await music_service.get("SoundCloud")!.get_track_mix!(String(track.soundcloud_id));
         const to_service: MusicServiceType = "YouTube Music";
         const new_track_data = await convert_track(track, {to_music_service: to_service});
         if("error" in new_track_data) return new_track_data;
@@ -347,12 +366,15 @@ export namespace Illusive {
     export async function get_track_lryics(track: Track): PromiseResult<string> {
         const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
 
+        const base_query = `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`;
+        const base_query_clean = `${remove_topic(artist_name)} ${clean_track_info(track.title.replace(`${artist_name} - `, ''))}`;
+
         const track_title_split = track.title.split(' - ');
         const best_result = await lyrics_get_first_good_result(track, [
             track_title_split.length === 2 ? `${clean_track_info(track_title_split[0])} ${clean_track_info(track_title_split[1])}` : undefined,
             track_title_split.length === 2 ? `${clean_track_info(track_title_split[1])} ${remove_topic(artist_name)}` : undefined,
-            `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`,
-            `${remove_topic(artist_name)} ${clean_track_info(track.title.replace(`${artist_name} - `, ''))}`
+            base_query,
+            base_query_clean !== base_query ? base_query_clean : undefined
         ].filter(s => s !== undefined));
         if("error" in best_result) return best_result;
 

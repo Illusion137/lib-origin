@@ -9,3 +9,7 @@ export async function youtube_music_get_new_releases(): Promise<CompactPlaylist[
     if("error" in new_releases_albums_response) return [];
     return parse_youtube_music_albums(new_releases_albums_response.data, "ALBUM");
 }
+
+export async function soundcloud_get_new_releases(): Promise<CompactPlaylist[]> {
+    return [];
+}

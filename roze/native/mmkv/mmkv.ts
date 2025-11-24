@@ -11,7 +11,7 @@ export async function load_native_mmkv(): Promise<MMKVModule>{
 			break;
 		case "ELECTRON_RENDERER":
 			try {
-				mmkv_instance = (await import("../gen/electron/modules/mmkv.electron_renderer")).electron_renderer_mmkv;
+				// mmkv_instance = (await import("../gen/electron/modules/mmkv.electron_renderer")).electron_renderer_mmkv;
 			} catch (e) {}
 			break;
 		case "NODE":

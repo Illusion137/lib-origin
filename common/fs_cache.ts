@@ -62,7 +62,7 @@ export namespace FSCache {
         const file_path = await generate_cache_file_path({...opts, cache_key: cache_key(payload)});
         const stats_result = await fs().get_info(file_path);
         if(!stats_result.exists) return undefined;
-        if(stats_result.file_modified_ms + expire_ms < new Date().getTime()) {
+        if(stats_result.file_modified_ms + expire_ms < Date.now()) {
             await fs().remove(file_path);
             return undefined;
         }

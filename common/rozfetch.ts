@@ -1,5 +1,5 @@
 import { json_catch } from "@common/utils/util";
-import { ItemTimedCache, type PromiseResult, type ResponseError } from "@common/types";
+import { ItemTimedCache, type FetchMethod, type PromiseResult, type ResponseError } from "@common/types";
 import MD5 from "crypto-js/md5";
 
 import { fs } from "@native/fs/fs";
@@ -10,6 +10,7 @@ import pathlib from "path-browserify";
 interface RozFetchCacheOptsBase {
 	cache_ms: number;
 	cache_ms_fail?: number;
+	cache_on?: "url"|"request"
 }
 interface RozFetchCacheOptsMemory {
 	cache_mode?: "memory" | "none";
@@ -28,6 +29,7 @@ export interface RoZFetchRequestInit extends RequestInit {
 	cache_opts?: RozFetchCacheOpts;
 	abort_ms?: number;
 	proxy?: RozProxy;
+	method?: FetchMethod | (string & {});
 }
 type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
@@ -43,7 +45,10 @@ const cache_file_extension = ".che";
 const rozfetch_cache = new ItemTimedCache<string, ResponseError | RoZFetchResponse<unknown>>();
 
 export function rozfetch_cache_key(input: string, init?: RoZFetchRequestInit): string {
-	return MD5(input + JSON.stringify(init)).toString();
+	if(init?.cache_opts?.cache_on ?? "url" === "url"){
+		return MD5(input).toString();
+	}
+	else return MD5(input + JSON.stringify(init)).toString();
 }
 
 async function generate_cache_file_path(opts: { directory?: string; cache_key: string }) {

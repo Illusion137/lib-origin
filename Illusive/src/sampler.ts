@@ -44,7 +44,7 @@ export function unsampled_tracks_service(service: MusicServiceType, tracks: Trac
 }
 export function unsampled_tracks_meta(tracks: Track[]) {
     return tracks.filter(track => (
-        new Date(new Date().getTime() - (is_empty(track.meta?.last_sampled_date) ? 
+        new Date(Date.now() - (is_empty(track.meta?.last_sampled_date) ? 
             new Date(0)
                 : new Date(track.meta!.last_sampled_date!)).getTime()).getTime() > (30 * 24 * 60 * 60 * 1000)
     ));

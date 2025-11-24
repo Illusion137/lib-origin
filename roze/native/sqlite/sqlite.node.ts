@@ -1,5 +1,5 @@
 import { generate_new_uid } from "@common/utils/util";
-import { sqlite_connection_map, sqlite_database_map, type GenericSQLiteDatabase, type SQLite, type SQLiteConnectionOpts, type SQLiteDatabaseHandle } from "@native/sqlite/sqlite.base";
+import { sqlite_connection_map, sqlite_database_map, type GenericSQLiteDatabase, type SQLite, type SQLiteConnectionHandle, type SQLiteConnectionOpts, type SQLiteDatabaseHandle } from "@native/sqlite/sqlite.base";
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 
@@ -10,7 +10,7 @@ export const node_sqlite: SQLite = {
         sqlite_connection_map[connection_id] = connection;
         return connection_id;
     },
-    create_database_handle: async(connection_id: string) => {
+    create_database_handle: async(connection_id: SQLiteConnectionHandle) => {
         const connection = sqlite_connection_map[connection_id];
         const database = drizzle({client: connection as any});
         const database_id = generate_new_uid("sqlite-database-id-");
@@ -20,5 +20,9 @@ export const node_sqlite: SQLite = {
     exec: async<T>(database_handle: SQLiteDatabaseHandle, fn: (db: GenericSQLiteDatabase) => Promise<T>) => {
         const database = sqlite_database_map[database_handle];
         return await fn(database);
+    },
+    get_db: (database_handle: SQLiteDatabaseHandle) => {
+        const database = sqlite_database_map[database_handle];
+        return database;
     }
 };

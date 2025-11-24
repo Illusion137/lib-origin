@@ -302,7 +302,7 @@ export function parse_youtube_music_artist_track(item: ArtistTopTrack): Track{
     }
 }
 
-export function parse_youtube_music_artist_album(item: ArtistCarouselContent, artist_info: NamedUUID): CompactPlaylist{
+export function parse_youtube_music_artist_album(item: ArtistCarouselContent, artist_info: NamedUUID, type: CompactPlaylist['type']): CompactPlaylist{
     const endpoint = item.musicTwoRowItemRenderer.navigationEndpoint.browseEndpoint?.browseId ?? item.musicTwoRowItemRenderer?.title?.runs?.[0]?.navigationEndpoint?.browseEndpoint.browseId;
     const date = new Date();
     date.setFullYear(find_album_year(item));
@@ -313,7 +313,7 @@ export function parse_youtube_music_artist_album(item: ArtistCarouselContent, ar
         artwork_thumbnails: item.musicTwoRowItemRenderer.thumbnailRenderer.musicThumbnailRenderer.thumbnail.thumbnails,
         artwork_url: best_thumbnail(item.musicTwoRowItemRenderer.thumbnailRenderer.musicThumbnailRenderer.thumbnail.thumbnails)?.url,
         explicit: item.musicTwoRowItemRenderer?.subtitleBadges?.[0]?.musicInlineBadgeRenderer?.icon?.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
-        type: "ALBUM",
+        type: type,
         date: date.toISOString() as ISOString,
         album_type: subtitle.includes("Album") ? "ALBUM" : subtitle.includes("Single") ? "SINGLE" : subtitle.includes("EP") ? "EP" : undefined
     }

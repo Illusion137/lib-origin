@@ -29,12 +29,13 @@ export async function artist_watch(artists: NamedUUID[]): Promise<(CompactPlayli
         const [service, id] = split_uri(artist.uri!);
         const music_service = Illusive.music_service.get(music_service_uri_to_music_service(service))!;
         if(music_service?.get_latest_releases !== undefined){
-            if(proxies.length > 3){
-                promises.push(music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch))
-            }
-            else {
+            // TODO reimplement proxies
+            // if(proxies.length > 3){
+                // promises.push(music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch))
+            // }
+            // else {
                 releases.push(await music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch));
-            }
+            // }
         }
     }
     if(promises.length > 0) return await add_playback_data_to_releases(

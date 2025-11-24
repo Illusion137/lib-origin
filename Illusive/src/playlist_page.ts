@@ -10,6 +10,7 @@ import { SQLTracks } from "./sql/sql_tracks";
 import { reinterpret_cast } from '../../common/cast';
 import { default_playlists } from "./default_playlists";
 import { Constants } from "./constants";
+import { album_fetch_opts } from "./get_playlist";
 
 export namespace PlaylistPage {
     export interface PlaylistInitialData
@@ -40,7 +41,7 @@ export namespace PlaylistPage {
         return undefined;
     }
     
-    export async function playlist_initial_data_uri(uri: string): Promise<PlaylistInitialData>{
+    export async function playlist_initial_data_uri(uri: string, cache_as_album: boolean): Promise<PlaylistInitialData>{
         let playlist_data: PlaylistInitialData = await playlist_initial_data_default_playlist("Unknown");
         
         const full_cache_result = GLOBALS.global_var.playlist_cache.get(uri);
@@ -65,7 +66,7 @@ export namespace PlaylistPage {
         else thumbnail_url = undefined;
         const split = split_uri(uri);
         const playlist_or_error: MusicServicePlaylist|ResponseError = await Illusive.music_service.get( 
-            music_service_uri_to_music_service(split[0]) )!.get_playlist(make_https(split[1])).catch(json_catch);
+            music_service_uri_to_music_service(split[0]) )!.get_playlist(make_https(split[1]), cache_as_album ? album_fetch_opts : undefined).catch(json_catch);
     
         if("error" in playlist_or_error && playlist_or_error.error !== undefined) {
             playlist_data.error = reinterpret_cast<ResponseError>(playlist_or_error);
@@ -100,6 +101,14 @@ export namespace PlaylistPage {
             initial_tracks: [],
             continuation: null
         };
+    }
+
+    export async function playlist_initial_data_tracks_list(title: string, tracks: Track[]): Promise<PlaylistInitialData> {
+        const base_playlist_data: PlaylistInitialData = await playlist_initial_data_default_playlist(title);
+        return {
+            ...base_playlist_data,
+            initial_tracks: SQLTracks.add_playback_saved_data_to_tracks(tracks ?? []),
+        }
     }
     
     export interface PlaylistRefresh {

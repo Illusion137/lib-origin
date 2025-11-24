@@ -4,7 +4,7 @@ import type { Album } from '@origin/spotify/types/Album';
 import type { Collection } from '@origin/spotify/types/Collection';
 import type { UserPlaylist } from '@origin/spotify/types/UserPlaylist';
 import type { ResponseError } from '@common/types';
-import { is_empty, urlid } from '@common/utils/util';
+import { is_empty, milliseconds_of, urlid } from '@common/utils/util';
 import { parse_playlist_continuation_contents } from '@origin/youtube/parser';
 import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
 import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
@@ -21,12 +21,27 @@ import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } f
 import { youtube_parse_playlist_header, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import { parse_amazon_music_playlist_track, parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from '@illusive/track_parser';
-import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
+import { parse_amazon_music_playlist_track } from '@illusive/track_parser';
+import type { Track, ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import { get_main_key } from '@common/utils/fetch_util';
+import { parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './parsers/spotify_parser';
+import type { RoZFetchRequestInit } from '@common/rozfetch';
+import { bandlab_parse_track } from './parsers/bandlab_parser';
+import { ExploreLocalData } from './explore_local_data';
+import { reinterpret_cast } from '@common/cast';
+import christmas_tracks_v1730 from '@illusive/data/christmas_tracks_v1730.json';
+
+export const album_fetch_opts: RoZFetchRequestInit = {
+    cache_opts: {
+        cache_ms: milliseconds_of({days: 30}),
+        cache_mode: "file",
+        cache_ms_fail: 0,
+        cache_on: "url"
+    }
+};
 
 function default_playlist(error?: ResponseError): MusicServicePlaylist {
     return {...(error !== undefined ? {error: error} : {}), title: "", tracks: [], continuation: null}
@@ -43,9 +58,12 @@ export async function musi_get_playlist(url: string): Promise<MusicServicePlayli
 }
 
 interface YouTubePlaylistContinuation {"ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation}
-export async function youtube_get_playlist(url: string): Promise<MusicServicePlaylist> {
+export async function youtube_get_playlist(url: string, fetch_opts?: RoZFetchRequestInit): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
-    const playlist_response = await Origin.YouTube.get_playlist({cookie_jar}, url);
+    const playlist_response = await Origin.YouTube.get_playlist({
+        cookie_jar,
+        fetch_opts: fetch_opts ?? (Origin.YouTubeMusic.playlist_type(url) === "ALBUM" ? album_fetch_opts : undefined)
+    }, url);
     if("error" in playlist_response) return default_playlist(playlist_response);
     if(playlist_response.data.playlist_data === undefined) return default_playlist(generror("YouTube playlist_data is undefined", {url}));
     return {
@@ -63,11 +81,15 @@ export async function youtube_get_playlist_continuation(opts: YouTubePlaylistCon
 }
 
 interface YouTubeMusicPlaylistContinuation {"url": string, "ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation|YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs, "artwork_url"?: string}
-export async function youtube_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
-    const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar"); 
-    const playlist_response = await Origin.YouTubeMusic.get_playlist({cookie_jar}, url);
+export async function youtube_music_get_playlist(url: string, fetch_opts?: RoZFetchRequestInit): Promise<MusicServicePlaylist> {
+    const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
+    const playlist_type = Origin.YouTubeMusic.playlist_type(url);
+    const playlist_response = await Origin.YouTubeMusic.get_playlist({
+        cookie_jar, 
+        fetch_opts: fetch_opts ?? (playlist_type === "ALBUM" ? album_fetch_opts : undefined)
+    }, url);
     if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
-    if(url.includes("OLAK5uy_")) { // Album
+    if(playlist_type === "ALBUM") { // Album
         const artwork_url = best_thumbnail(playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
         return {
             title: parse_runs(playlist_response.data.playlist_data.title.runs),
@@ -156,10 +178,10 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
     const playlist_id = urlid(url, "open.spotify.com/", "playlist/", "album/", "collection/");
     const playlist_type = urlid(url, "open.spotify.com/", /\/.+/);
     switch(playlist_type) {
-        case "playlist":   playlist_response = await Origin.Spotify.get_playlist(playlist_id, {cookie_jar, client, limit: playlist_limit}); break;
-        case "album":      playlist_response = await Origin.Spotify.get_album(playlist_id, {cookie_jar, client, limit: playlist_limit}); break;
+        case "playlist":   playlist_response = await Origin.Spotify.get_playlist({cookie_jar, client, var: {limit: playlist_limit, uri: playlist_id}}); break;
+        case "album":      playlist_response = await Origin.Spotify.get_album({cookie_jar, client, var: {limit: playlist_limit, uri: playlist_id}, fetch_opts: album_fetch_opts}); break;
         case "tracks":
-        case "collection": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client, limit: playlist_limit}); break;
+        case "collection": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client, var: {limit: playlist_limit}}); break;
         default: return {title: "", tracks: [], continuation: null};
     }
     if(playlist_response === undefined) return {title: "", tracks: [], continuation: null, error: generror("Spotify playlist_response is undefined", {url, playlist_limit, playlist_type})};
@@ -189,7 +211,7 @@ export async function spotify_get_playlist(url: string): Promise<MusicServicePla
         }
     } else {
         return {
-            title: "spotify-lib",
+            title: "Spotify Library",
             tracks: playlist_response.data.me.library.tracks.items.map(parse_spotify_collection_track),
             continuation: playlist_limit >= playlist_response.data.me.library.tracks.totalCount ? null : 
                 {client, id: playlist_id, current: playlist_limit, total: playlist_response.data.me.library.tracks.totalCount, limit: playlist_limit, type: "COLLECTION" } as SpotifyPlaylistContinuation
@@ -200,9 +222,9 @@ export async function spotify_get_playlist_continuation(opts: SpotifyPlaylistCon
     let playlist_response;
     const cookie_jar = Prefs.get_pref("spotify_cookie_jar");
     switch(opts.type) {
-        case "PLAYLIST":   playlist_response = await Origin.Spotify.get_playlist(opts.id, {cookie_jar, client: opts.client, limit: opts.limit, offset: opts.current}); break;
-        case "ALBUM":      playlist_response = await Origin.Spotify.get_album(opts.id, {cookie_jar, client: opts.client, limit: opts.limit, offset: opts.current}); break;
-        case "COLLECTION": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client: opts.client, limit: opts.limit, offset: opts.current}); break;
+        case "PLAYLIST":   playlist_response = await Origin.Spotify.get_playlist({cookie_jar, client: opts.client, var: {limit: opts.limit, offset: opts.current, uri: opts.id}}); break;
+        case "ALBUM":      playlist_response = await Origin.Spotify.get_album({cookie_jar, client: opts.client, var: {limit: opts.limit, offset: opts.current, uri: opts.id}}); break;
+        case "COLLECTION": playlist_response = await Origin.Spotify.get_collection({cookie_jar, client: opts.client, var: {limit: opts.limit, offset: opts.current}}); break;
         default: return {tracks: [], continuation: null};
     }
     if(playlist_response === undefined || "error" in playlist_response) return {tracks: [], continuation: null, error: playlist_response};
@@ -300,7 +322,7 @@ interface AppleMusicPlaylistContinuation {"playlist_id": string, "offset": numbe
 export async function apple_music_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("apple_music_cookie_jar");
     if(url.includes("/album")){
-        const playlist_response = await Origin.AppleMusic.get_album(url, {});
+        const playlist_response = await Origin.AppleMusic.get_album(url, {fetch_opts: album_fetch_opts});
         if("error" in playlist_response) return {title: "", tracks: [], continuation: null, error: playlist_response};
         const playlist_header = playlist_response.data.sections.find(item => item.id.includes('album-detail-header'))?.items[0];
         const title = clean_album_title(playlist_header?.title ?? "");
@@ -365,6 +387,16 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
 }
 
 export async function illusi_get_playlist(url: string): Promise<MusicServicePlaylist> {
+    const cleaned_url = urlid(url, ".json");
+    if(cleaned_url === "christmas_tracks_v1730"){
+        return {
+            title: ExploreLocalData.illusi_recommend_playlists_map.christmas_tracks_v1730.title.name,
+            creator: [{name: Constants.local_illusi_uri_id, uri: create_uri('illusi', Constants.local_illusi_uri_id)}],
+            tracks: reinterpret_cast<Track[]>(christmas_tracks_v1730),
+            continuation: null
+        };
+    }
+
     const playlist_response = await fetch(url);
     if(!playlist_response.ok) return {title: "", tracks: [], continuation: null};
     return await playlist_response.json().catch((result) => { return result instanceof Error ? {error: result} : result});
@@ -374,4 +406,16 @@ export async function api_get_playlist(url: string): Promise<MusicServicePlaylis
     const playlist_response = await fetch(url);
     if(!playlist_response.ok) return {title: "", tracks: [], continuation: null};
     return await playlist_response.json().catch((result) => { return result instanceof Error ? {error: result} : result});
+}
+
+// TODO come back to improve this and also insert continuation
+export async function bandlab_get_playlist(url: string): Promise<MusicServicePlaylist> {
+    const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
+    const playlist_response = await Origin.BandLab.projects_list(url, {cookie_jar});
+    if("error" in playlist_response) return default_playlist(playlist_response);
+    return {
+        title: "Projects List",
+        tracks: playlist_response.data.map(bandlab_parse_track),
+        continuation: null
+    }
 }

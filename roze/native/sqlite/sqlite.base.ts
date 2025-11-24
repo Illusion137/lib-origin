@@ -27,8 +27,10 @@ export interface SQLiteRunResult {
 
 export interface SQLite {
     create_database_connection: (opts: SQLiteConnectionOpts) => Promise<SQLiteConnectionHandle>;
-    create_database_handle: (connection_id: string) => Promise<SQLiteDatabaseHandle>;
+    create_database_handle: (connection_id: SQLiteConnectionHandle) => Promise<SQLiteDatabaseHandle>;
     exec: <T>(database_handle: SQLiteDatabaseHandle, fn: (db: GenericSQLiteDatabase) => Promise<T>) => Promise<T>;
+    // get_db_connection: (connection_id: SQLiteConnectionHandle) => unknown;
+    get_db: (database_handle: SQLiteDatabaseHandle) => GenericSQLiteDatabase;
 };
 
 export const sqlite_connection_map: Record<SQLiteConnectionHandle, unknown> = {};

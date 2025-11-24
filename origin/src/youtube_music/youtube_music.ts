@@ -1,7 +1,7 @@
 import * as Parser from "@origin/youtube_music/parser";
 import type { CookieJar } from "@common/utils/cookie_util";
 import type { PromiseResult, ResponseError } from '@common/types';
-import { extract_string_from_pattern, is_empty, json_catch, urlid } from "@common/utils/util";
+import { extract_string_from_pattern, is_empty, urlid } from "@common/utils/util";
 import type { CreatePlaylist } from "@origin/youtube/types/CreatePlaylist";
 import type { MusicCarouselShelfRenderer } from '@origin/youtube_music/types/ArtistResults_0';
 import type { ArtistResults_1 } from '@origin/youtube_music/types/ArtistResults_1';
@@ -10,7 +10,6 @@ import type { ContinuedResults_0 } from '@origin/youtube_music/types/ContinuedRe
 import type { InitialData } from '@origin/youtube_music/types/types';
 import type { YTCFG } from '@origin/youtube_music/types/YTCFG';
 import type { YTError } from "@origin/youtube_music/types/Error";
-import fetch from "@origin/utils/orifetch";
 import type { Proxy } from "@origin/proxy/proxy";
 import type { ContinuationItemRenderer } from "@origin/youtube_music/types/PlaylistResults_0";
 import type { SearchSuggestions } from "@origin/youtube_music/types/SearchSuggestions";
@@ -19,13 +18,15 @@ import { generror, generror_fetch } from "@common/utils/error_util";
 import { parse_runs, try_json_eval } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import { get_native_platform } from "@native/native_mode";
+import type { RoZFetchRequestInit } from "@common/rozfetch";
+import rozfetch from "@common/rozfetch";
 
 export namespace YouTubeMusic {
 	// const user_agent = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
 	let ytcfg_cache: YTCFG;
 
-	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy }
+	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy; fetch_opts?: RoZFetchRequestInit }
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
 		initial_data: InitialData[],
@@ -137,9 +138,21 @@ export namespace YouTubeMusic {
 		return ytcfg;
 	}
 
+	export type PlaylistType = "DEFAULT_PLAYLIST"|"PLAYLIST"|"ALBUM"|"MOODS"|"YTMUSIC_PLAYLIST"|"BROWSE_ID";
+	export function playlist_type(id: string): PlaylistType {
+		id = playlist_urlid(id);
+		if(id.includes('OLAK5uy')) return "ALBUM";
+		if(id === "LM" || id === "WL" || id === "LL") return "DEFAULT_PLAYLIST";
+		if(id.includes('PLnIB0XeUqT')) return "PLAYLIST";
+		if(id.includes('RDCLAK5uy')) return "MOODS";
+		if(id.includes('PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq')) return "YTMUSIC_PLAYLIST";
+		return "BROWSE_ID";
+	}
+
 	function playlist_url_or_browse_url(id: string): string{
 		id = playlist_urlid(id);
-		if(id.includes('OLAK5uy') || id === "LM" || id === "WL" || id === "LL" || id.includes('PLnIB0XeUqT')){
+		const type = playlist_type(id);
+		if(type !== "BROWSE_ID"){
 			return `https://music.youtube.com/playlist?list=${id}`;
 		}
 		return `https://music.youtube.com/browse/${id}`;
@@ -147,7 +160,8 @@ export namespace YouTubeMusic {
 
 	async function get_initial_data_config(opts: Opts, url: string): Promise<ICFG | ResponseError> {
 		try {
-			const page_response = await fetch(url, {
+			const page_response = await rozfetch(url, {
+				...opts.fetch_opts,
 				headers: {
 					"User-Agent": user_agent,
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -180,6 +194,7 @@ export namespace YouTubeMusic {
 				method: "GET",
 				proxy: opts.proxy
 			});
+			if("error" in page_response) return page_response;
 			const page_html = await page_response.text();
             const ytcfg = extract_ytcfg(page_html);
             if("error" in ytcfg) return ytcfg;
@@ -203,13 +218,13 @@ export namespace YouTubeMusic {
 			data: parser(icfg.initial_data)
 		};
 	}
-    async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object): PromiseResult<Response> {
+    async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
         // if (opts.cookie_jar === undefined) return generror("YouTube Music post_check_response CookieJar is empty");
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
 		const headers = get_post_headers(opts.cookie_jar, epoch, ytcfg);
-		const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
+		const response = await rozfetch<T>(url, { ...opts.fetch_opts, method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
 		return response;
 	}
     
@@ -252,17 +267,19 @@ export namespace YouTubeMusic {
 		if (albums_shelf_has_endpoint) browse_endpoint = albums_shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs[0]?.navigationEndpoint?.browseEndpoint.browseId as string;
 		else browse_endpoint = singles_shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs[0]?.navigationEndpoint?.browseEndpoint.browseId as string;
 		const payload = { browseId: browse_endpoint };
-		const browse_response = await post_check_response(opts, artist_response.icfg.ytcfg, "browse?prettyPrint=false", payload);
+		const browse_response = await post_check_response<ArtistResults_1>(opts, artist_response.icfg.ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
-		const browse_data: ArtistResults_1 = await browse_response.json();
+		const browse_data = await browse_response.json();
+		if("error" in browse_data) return browse_data;
 		return browse_data.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].gridRenderer.items.map(item => item.musicTwoRowItemRenderer);
 	}
 	export async function get_only_artist_albums(opts: Opts, ytcfg: YTCFG, artist_id: string) {
 		const browse_endpoint: string = "MPAD" + artist_id.replace('/channel/', '');
 		const payload = { browseId: browse_endpoint };
-		const browse_response = await post_check_response(opts, ytcfg, "browse?prettyPrint=false", payload);
+		const browse_response = await post_check_response<ArtistResults_1>(opts, ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
-		const browse_data: ArtistResults_1 = await browse_response.json();
+		const browse_data = await browse_response.json();
+		if("error" in browse_data) return browse_data;
 		if(browse_data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items === undefined) {
 			return generror("YouTube Music Only Artist Albums: couldn't find albums", {opts, artist_id});
 		}
@@ -295,10 +312,10 @@ export namespace YouTubeMusic {
 		if(is_empty(search_query)) return [];
 		if(ytcfg === undefined) ytcfg = (await fetch_initial_data(opts)).ytcfg;
 		if(ytcfg === undefined) return [];
-		const search_suggestions_response = await post_check_response(opts, ytcfg, 'music/get_search_suggestions', {input: search_query});
+		const search_suggestions_response = await post_check_response<SearchSuggestions>(opts, ytcfg, 'music/get_search_suggestions', {input: search_query});
 		if("error" in search_suggestions_response) return [];
 		if(!search_suggestions_response.ok) return [];
-		const search_suggestions_data: SearchSuggestions = await search_suggestions_response.json().catch(json_catch);
+		const search_suggestions_data = await search_suggestions_response.json();
 		if("error" in search_suggestions_data) return [];
 		return search_suggestions_data?.contents?.map(top_content => {
 			return top_content.searchSuggestionsSectionRenderer.contents.filter(content => !("historySuggestionRenderer" in content)).map(content => {

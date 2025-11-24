@@ -11,7 +11,7 @@ export async function load_native_miscnative(): Promise<MiscNative>{
 			break;
 		case "ELECTRON_RENDERER":
 			try {
-				miscnative_instance = (await import("../gen/electron/modules/miscnative.electron_renderer")).electron_renderer_miscnative;
+				// miscnative_instance = (await import("../gen/electron/modules/miscnative.electron_renderer")).electron_renderer_miscnative;
 			} catch (e) {}
 			break;
 		case "NODE":

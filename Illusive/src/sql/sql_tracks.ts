@@ -194,7 +194,7 @@ export namespace SQLTracks {
     }
     let time_since_last_fetched_track_data = new Date(0);
     export async function fetch_track_data() {
-        if(new Date().getTime() - time_since_last_fetched_track_data.getTime() < 5000) return;
+        if(Date.now() - time_since_last_fetched_track_data.getTime() < 5000) return;
         const tracks = await db_exec(async(db) => await db.select().from(tracks_table));
         GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
         time_since_last_fetched_track_data = new Date();
@@ -224,7 +224,15 @@ export namespace SQLTracks {
     }
     export async function insert_track(track: Track) {
         if( track_exists(track, GLOBALS.global_var.sql_tracks) ) return;
-        await db_exec(async(db) => await db.insert(tracks_table).values(track));
+        await db_exec(async(db) => await db.insert(tracks_table).values({
+            ...track, 
+            meta: {
+                ...reinterpret_cast<TrackMetaData>(track.meta),
+                added_date: reinterpret_cast<ISOString>(new Date().toISOString()),
+                last_played_date: reinterpret_cast<ISOString>(new Date(0).toISOString()),
+                plays: 0
+            }
+        }));
         const parsed_track = sql_track_to_track(track)
         if("error" in parsed_track) return;
         SQLGlobal.add_global_track_item(parsed_track);

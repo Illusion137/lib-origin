@@ -230,49 +230,49 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
     },
     {
         flag: '@lsdg',
-        condition: (track, args) => (new Date(track.meta?.last_sampled_date ?? 0)).getTime() >= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.last_sampled_date ?? 0)).getTime() >= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Sampled after [x] days ago",
         args: 1
     },
     {
         flag: '@lsdl',
-        condition: (track, args) => (new Date(track.meta?.last_sampled_date ?? 0)).getTime() <= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.last_sampled_date ?? 0)).getTime() <= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Sampled before [x] days ago",
         args: 1
     },
     {
         flag: '@addg',
-        condition: (track, args) => (new Date(track.meta?.added_date ?? 0)).getTime() >= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.added_date ?? 0)).getTime() >= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Added after [x] days ago",
         args: 1
     },
     {
         flag: '@addl',
-        condition: (track, args) => (new Date(track.meta?.added_date ?? 0)).getTime() <= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.added_date ?? 0)).getTime() <= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Added before [x] days ago",
         args: 1
     },
     {
         flag: '@lpdg',
-        condition: (track, args) => (new Date(track.meta?.last_played_date ?? 0)).getTime() >= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.last_played_date ?? 0)).getTime() >= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Played after [x] days ago",
         args: 1
     },
     {
         flag: '@lpdl',
-        condition: (track, args) => (new Date(track.meta?.last_played_date ?? 0)).getTime() <= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.last_played_date ?? 0)).getTime() <= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Played before [x] days ago",
         args: 1
     },
     {
         flag: '@ddg',
-        condition: (track, args) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() >= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() >= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Downloaded after [x] days ago",
         args: 1
     },
     {
         flag: '@ddl',
-        condition: (track, args) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() <= new Date().getTime() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
+        condition: (track, args) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() <= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Downloaded before [x] days ago",
         args: 1
     },

@@ -1,7 +1,6 @@
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
-import noRelativeImportPaths from 'eslint-plugin-no-relative-import-paths';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [

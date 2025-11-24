@@ -44,7 +44,8 @@ export namespace Prefs {
 
     export const default_track_shuffle_bias = {
         total_plays: 0,
-        duration: 0,
+        too_long_duration: 0,
+        too_short_duration: 0,
         last_played: 0,
         recent_add_date: 0,
         is_downloaded: 0,
@@ -53,8 +54,8 @@ export namespace Prefs {
         plays_from_artist: 0,
         plays_from_album: 0,
         plays_in_past_month: 0,
-        skips_in_past_month: 0,
-        explicit: 0
+        explicit: 0,
+        no_explicit: 0
     };
     type Bias = typeof default_track_shuffle_bias;
 
@@ -66,6 +67,7 @@ export namespace Prefs {
         spotify_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        bandlab_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as BasePref<string, OtherPrefTypes>,
         last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
         automatic_new_releases_last_refreshed: {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
@@ -174,8 +176,8 @@ export namespace Prefs {
         dark: false,
         colors: {
             primary: get_pref('primary_color'),
-            secondary: '#4c4b00',
-            background: '#f7f2f7',
+            secondary: '#c957c9',
+            background: '#ffffff',
             primary_dark: '#1a184f',
             card: '#fefcff',
             title: '#0c0522',
@@ -185,18 +187,18 @@ export namespace Prefs {
             border: '#222222',
             notification: '#1313ff',
             shelf: '#ffffff',
-            tabInactive: '#5b5b78',
+            tabInactive: '#b5b2e9',
             line: '#303040',
             searchInput: '#e4e4e4',
             searchPlaceholder: '#8080a0',
-            inactive: '#474266',
-            red: '#82564f',
-            green: '#436e57',
-            orange: '#6b643b',
+            inactive: '#b5b2e9',
+            red: '#FF0000',
+            green: '#00FF00',
+            orange: '#FF7F50',
             playingSong: '#f1efff',
             playScreen: '#f1efff',
             track: '#fefcff',
-            highlightPressColor: '#bbaaff',
+            highlightPressColor: '#aa99ee',
             black: "#000000"
         },
     }
@@ -227,7 +229,7 @@ export namespace Prefs {
             playingSong: '#141722',
             playScreen: '#141722',
             track: '#141722',
-            highlightPressColor: '#bbaaff',
+            highlightPressColor: '#aa99ee',
             black: "#000000"
         },
     }
@@ -258,7 +260,7 @@ export namespace Prefs {
             playingSong: '#000000',
             playScreen: '#000000',
             track: '#000000',
-            highlightPressColor: '#bbaaff',
+            highlightPressColor: '#aa99ee',
             black: "#000000"
         },
     }
