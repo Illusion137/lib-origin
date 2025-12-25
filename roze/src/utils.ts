@@ -1,12 +1,12 @@
 import type { TranslationMap } from "@roze/types/types";
 import type { RozChapterContents, RozContent, RozContentType, RozTextStructures, RozTextStructureType } from "@roze/types/roz";
-import { gen_uuid, is_number } from "@common/utils/util";
+import { gen_uuid, is_empty, is_number } from "@common/utils/util";
 import type Roz from "@roze/types/roz";
 import { fs } from "@native/fs/fs";
 import { get_temp_file_path, type RegisterAsTemp } from "@native/fs/fs_utils";
 import { reinterpret_cast } from "@common/cast";
 import type { FileExtension, PromiseResult } from "@common/types";
-import { jsdom_document, map_html_collection } from "@common/jsdom";
+import { jsdom_document } from "@common/jsdom";
 import rozfetch from "@common/rozfetch";
 
 export function html_inner_text_content(html_line: string) {
@@ -44,42 +44,82 @@ export function fix_punctuation(text: string){
                 .replace(/''/g, '"');
 }
 
-type ElementTagName = "IMG"|"P"|"H1"|"H2"|"BR"|"HR"|"A";
-function html_tag_to_roz_content(el: Element): RozContent|undefined{ // TODO Account for paragraph inline br/ and hr/ and other balony
-    const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
-    switch(element_tag_name){
-        case "IMG": return { type: "IMAGE", content: reinterpret_cast<HTMLImageElement>(el).src, uuid: gen_uuid(), duration: 0};
-        case "P": return { type: "PARAGRAPH", content: reinterpret_cast<HTMLParagraphElement>(el).innerHTML, uuid: gen_uuid(), duration: 0};
-        case "H1": return { type: "CHAPTER_TITLE", content: reinterpret_cast<HTMLHeadingElement>(el).innerHTML, uuid: gen_uuid(), duration: 0};
-        case "H2": return { type: "CHAPTER_SUBTITLE", content: reinterpret_cast<HTMLHeadingElement>(el).innerHTML, uuid: gen_uuid(), duration: 0};
-        case "BR": return { type: "LINE_BREAK", content: '-', uuid: gen_uuid(), duration: 0};
-        case "HR": return { type: "THEME_BREAK", content: '-', uuid: gen_uuid(), duration: 0};
-        case "A": return undefined;
-        default: console.error("Unaccounted Tag: ", element_tag_name); break;
+type ElementTagName = "IMAGE"|"IMG"|"SPAN"|"P"|"H1"|"H2"|"BR"|"HR"|"A"|"BLOCKQUOTE";
+const tag_name_content_type_map: Record<ElementTagName, RozContentType> = {
+    IMAGE: "IMAGE",
+    IMG: "IMAGE",
+    SPAN: "PARAGRAPH",
+    P: "PARAGRAPH",
+    H1: "CHAPTER_TITLE",
+    H2: "CHAPTER_SUBTITLE",
+    BR: "LINE_BREAK",
+    HR: "THEME_BREAK",
+    A: "PARAGRAPH",
+    BLOCKQUOTE: "PARAGRAPH"
+};
+function html_extract_text(node: Element | ChildNode): string{
+    if("innerText" in node) return node.innerText as string;
+    let out = "";
+
+    for (const child of Array.from(node.childNodes)) {
+        if (child.nodeType === child.TEXT_NODE) {
+            out += child.textContent ?? "";
+        } else if (child.nodeType === child.ELEMENT_NODE) {
+            out += html_extract_text(child);
+        }
     }
-    return undefined;
+    return out;
 }
-export function html_to_roz_contents(html_content: string|Document, container?: Element ){
-    const contents: RozContent[] = [];
-    const document: Document = typeof html_content === "string" ? jsdom_document(html_content) : html_content;
-    
-    const body = container ?? document.querySelector("body") ?? document.children[0];
-    if(body === null || body === undefined) return contents;
-
-    const ignore_tag_names: ElementTagName[] = ['P','H1','H2'];
-    const extracted_contents = map_html_collection(body.children, (el) => {
-        const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
-        if(el.children.length > 0 && !ignore_tag_names.includes(element_tag_name)) return html_to_roz_contents(document, el);
-        return html_tag_to_roz_content(el);
-    });
-
-    for(const extracted_content of extracted_contents){
-        if(extracted_content === undefined) continue;
-        if(Array.isArray(extracted_content)) contents.push(...extracted_content);
-        else contents.push(extracted_content);
+function element_to_roz_content(el: Element): RozContent|undefined{ // TODO Account for paragraph inline br/ and hr/ and other balony
+    const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
+    if(tag_name_content_type_map[element_tag_name] === undefined) return undefined;
+    if(tag_name_content_type_map[element_tag_name] === "IMAGE")
+    {
+        const image_src = reinterpret_cast<HTMLImageElement>(el).src ?? reinterpret_cast<HTMLImageElement>(el).getAttribute('xlink:href');
+        if(image_src){
+            return {
+                type: tag_name_content_type_map[element_tag_name],
+                content: image_src,
+                duration: 0,
+                uuid: gen_uuid()
+            };
+        }
+        console.error("Unable to extract image src from the element: ", el);
+        return undefined;
     }
+    const text = html_extract_text(el).trim();
+    if(is_empty(text)) return undefined;
+    return {
+        type: tag_name_content_type_map[element_tag_name],
+        content: text,
+        duration: 0,
+        uuid: gen_uuid()
+    };
+}
+export function html_to_roz_contents(html_content: string|Document, root_element?: Element){
+    try {
+        const contents: RozContent[] = [];
+        const document: Document|undefined = root_element ? undefined : typeof html_content === "string" ? jsdom_document(html_content) : html_content;
 
-    return contents.filter(c => c.content);
+        const root = root_element ?? document!.body ?? document;
+
+        for (const child of Array.from(root.children)) {
+            const child_tag = child.tagName as ElementTagName;
+            if (child_tag in tag_name_content_type_map) {
+                const roz_content = element_to_roz_content(child);
+                if (roz_content) contents.push(roz_content);
+            }
+            else {
+                // console.log(`Unknown Tag ${child_tag}`);
+                contents.push(...html_to_roz_contents(html_content, child));
+            }
+        }
+        return contents.filter(c => c.content);
+    }
+    catch(e) {
+        console.log(e);
+        return [];
+    }
 }
 
 export function roz_contents_to_roz_chapters_contents(contents: RozContent[]): RozChapterContents[]{
@@ -216,8 +256,9 @@ export async function save_base64_image_to_file(base64: string, file_path: strin
 export function generate_youtube_chapters(chapters: RozChapterContents[]): string{
     let total_duration = 0;
     return chapters.map(({chapter}) => {
+        const line = `${timestamp_to_timecode(total_duration)} ${chapter.title}`;
         total_duration += chapter.duration ?? 0;
-        return `${timestamp_to_timecode(total_duration)} ${chapter.title}`;
+        return line;
     }).join('\n');
 }
 export function generate_srt_subtitles_contents(chapters: RozChapterContents[]): string{

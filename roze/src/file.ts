@@ -15,6 +15,7 @@ import sharp, { type Channels } from 'sharp';
 import { reinterpret_cast } from '@common/cast';
 import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from './utils';
 import mammoth from "mammoth";
+import { imageSize } from 'image-size';
 
 export namespace FileParser {
     interface ParseFileOpts {
@@ -70,14 +71,34 @@ export namespace FileParser {
         return sections;
     }
     async function parse_epub_sections_to_roz_content(epub: EPub, sections: Awaited<ReturnType<typeof parse_epub_flow>>){
+        const IMAGE_HEIGHT_MIN = 100;
+        const IMAGE_WIDTH_MIN = 100;
+        const IMAGE_RATIO_MIN = 0.7;
+        const IMAGE_RATIO_MAX = 1.6;
+        const IMAGE_RATIO_SQUARE_MIN = 0.95;
+        const IMAGE_RATIO_SQUARE_MAX = 1.05;
+        
         const roz_sections: RozChapterContents[] = [];
         for(const section of sections){
-            const roz_contents = html_to_roz_contents(section.contents);
+            let roz_contents = html_to_roz_contents(section.contents);
             for(let i = 0; i < roz_contents.length; i++){
                 if(roz_contents[i].type !== "IMAGE") continue;
                 roz_contents[i] = {...roz_contents[i], content: await epub_get_image_base64(epub, roz_contents[i].content)}
             }
-            if(section.chapter.title || section.chapter.id?.toLowerCase() === "cover"){
+            roz_contents = roz_contents.filter(content => {
+                if(content.type !== "IMAGE") return true;
+                const base64_data = content.content.split(';base64,').pop() ?? "";
+                const buffer = Buffer.from(base64_data, 'base64');
+                const size = imageSize(buffer);
+                const ratio = size.height / size.width;
+                if(size.height < IMAGE_HEIGHT_MIN) return false;
+                if(size.width < IMAGE_WIDTH_MIN) return false;
+                if(ratio > IMAGE_RATIO_MAX) return false;
+                if(ratio < IMAGE_RATIO_MIN) return false;
+                if(ratio >= IMAGE_RATIO_SQUARE_MIN && ratio <= IMAGE_RATIO_SQUARE_MAX) return false;
+                return true;
+            });
+            if(section.chapter.title || section.chapter.id?.toLowerCase() === "cover" || section.chapter.id?.toLowerCase() === "titlepage"){
                 roz_sections.push({
                     ...section,
                     chapter: {
@@ -85,6 +106,16 @@ export namespace FileParser {
                         title: section.chapter.title ?? ""
                     },
                     contents: roz_contents 
+                });
+            }
+            else if(roz_sections.length == 0) {
+                roz_sections.push({
+                    ...section,
+                    chapter: {
+                        ...section.chapter,
+                        title: section.chapter.title ?? ""
+                    },
+                    contents: roz_contents
                 });
             }
             else {

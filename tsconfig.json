@@ -27,6 +27,7 @@
             "@native/*": ["roze/native/*"],
             "@lib/*": ["roze/lib/*"],
             "@roze/*": ["roze/src/*", "roze/*"],
+            "@arneb/*": ["arneb/*"],
             "@origin/*": ["origin/src/*"],
             "@lutz/*": ["lutz/src/*"],
             "@sosu/*": ["sosu/src/*"],
