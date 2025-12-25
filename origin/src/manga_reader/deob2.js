@@ -296,7 +296,7 @@ module.exports = function imgReverser(canvas, src, box_size = 0xc8, seed = 'stay
                     _0xe02232 = '' + _0xe02232 + (_0xe02232.includes('?') ? '&' : '?') + _0x19b364[0x0] + '=' + _0x19b364[0x1];
                 }
             }
-            _0x3aed57 = Math.round(new Date().getTime() / 0x3e8);
+            _0x3aed57 = Math.round(Date.now() / 0x3e8);
             img.src = '' + _0xe02232 + (_0xe02232.includes('?') ? '&' : '?') + 'v=' + _0x3aed57;
             _0x36a3f1++;
         };
@@ -345,7 +345,7 @@ function saveSettings() {
 //     if (!Cookies.get("mr_viewed_" + mangaId)) {
 //         $.post("/ajax/manga/count-view/" + mangaId, function (_0x3341d4) {
 //             Cookies.set("mr_viewed_" + mangaId, true, {
-//                 'expires': new Date(new Date().getTime() + 0x36ee80)
+//                 'expires': new Date(Date.now() + 0x36ee80)
 //             });
 //         });
 //     }

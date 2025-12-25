@@ -4,7 +4,7 @@ import type { SearchAlbum, SearchArtist, SearchPlaylist, SearchSong } from "@ori
 import type { AppleTrack } from "@origin/apple_music/types/TrackListSection";
 import type { AppleUserPlaylistTrack } from "@origin/apple_music/types/UserPlaylist";
 import { generate_new_uid, is_empty, safe_date_iso, urlid } from "@common/utils/util";
-import { create_uri } from '@illusive/illusive_utilts';
+import { create_uri } from '@illusive/illusive_utils';
 import type { CompactArtist, CompactPlaylist, ISOString, NamedUUID, Track } from "@illusive/types";
 import { remove } from "@common/utils/clean_util";
 

@@ -8,7 +8,7 @@ import type { PlaylistResults_0 } from "@origin/youtube_music/types/PlaylistResu
 import type { SearchResults_0 } from "@origin/youtube_music/types/SearchResults_0";
 import type { SuggestionMusicResponsiveListItemRenderer } from "@origin/youtube_music/types/SearchSuggestions";
 import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "@origin/youtube_music/types/types";
-import { youtube_views_number } from "@illusive/illusive_utilts";
+import { youtube_views_number } from "@illusive/illusive_utils";
 
 const separator = '•';
 export function parse_subtitle_text(runs: Run[]){

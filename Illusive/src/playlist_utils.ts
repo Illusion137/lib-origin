@@ -2,7 +2,7 @@ import type { PromiseResult } from "@common/types";
 import { generror } from "@common/utils/error_util";
 import { Constants } from "./constants";
 import { Illusive } from "./illusive";
-import { music_service_uri_to_music_service, split_uri } from "./illusive_utilts";
+import { music_service_uri_to_music_service, split_uri } from "./illusive_utils";
 import type { CompactPlaylistData, ConvertTo, MusicServiceType, Playlist, SortType, Track } from "./types";
 
 export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track[], sql_playlist_tracks: (uuid: string) => Promise<Track[]>) {
@@ -71,6 +71,27 @@ function date_time(date?: string): number{
     if(date) return new Date(date).getTime();
     return 0;
 }
+
+export const playlist_sort_modes: Record<SortType, 0> = {
+    "OLDEST": 0,
+    "NEWEST": 0,
+    "ALPHABETICAL": 0,
+    "ALPHABETICAL_REVERSE": 0,
+    "DURATION_HILOW": 0,
+    "DURATION_LOWHI": 0,
+    "PLAYS_HILOW": 0,
+    "PLAYS_LOWHI": 0,
+    "VIEWS_HILOW": 0,
+    "VIEWS_LOWHI": 0,
+    "ADDED_DATE_HILOW": 0,
+    "ADDED_DATE_LOWHI": 0,
+    "DOWNLOAD_DATE_HILOW": 0,
+    "DOWNLOAD_DATE_LOWHI": 0,
+    "LAST_PLAYED_DATE_HILOW": 0,
+    "LAST_PLAYED_DATE_LOWHI": 0,
+    "LAST_SAMPLED_DATE_HILOW": 0,
+    "LAST_SAMPLED_DATE_LOWHI": 0
+};
 
 export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Track[] {
     switch(sort_mode) {

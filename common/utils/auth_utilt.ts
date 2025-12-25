@@ -15,7 +15,7 @@ export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string)
     sha1([DATASYNC_ID, TIMESTAMP, SAPISID, ORIGIN].join(" "))
     WITH:
     DATASYNC_ID = ytcfg.data_.DATASYNC_ID.split('||')[0]
-    TIMESTAMP = Math.floor(new Date().getTime() / 1E3)
+    TIMESTAMP = Math.floor(Date.now() / 1E3)
     SAPISID = cookies['SAPISID']
     ORIGIN = "https://www.youtube.com"
     The authorization header seems to be a repeat of {TIMESTAMP}_{sha1_hash}_u for each of SAPISIDHASH, SAPISID1PHASH and SAPISID3PHASH:

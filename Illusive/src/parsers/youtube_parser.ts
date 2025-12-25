@@ -5,35 +5,39 @@ import type { PageHeaderViewModel } from "@origin/youtube/types/PageHeaderViewMo
 import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
 import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "@origin/youtube/types/SearchResultsM";
 import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/youtube/types/SearchResultsW";
-import type { VideoInfo } from "@origin/youtube_dl/types";
-import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utilts";
+import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
 import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
+import { YTNodes } from "youtubei.js/agnostic";
+import { YouTubeDL } from '@origin/youtube_dl/index';
+import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;
     try {
-        const engagement_panels = info?.response?.engagementPanels?.map(panel => panel?.engagementPanelSectionListRenderer);
+        const engagement_panels = info?.page[1]?.engagement_panels?.map(panel => panel.as(YTNodes.EngagementPanelSectionList));
         if(engagement_panels !== undefined && Array.isArray(engagement_panels) && engagement_panels.filter(item => item !== undefined).length > 0) {
-            const structured_description_panel = engagement_panels.find(panel => panel.targetId === "engagement-panel-structured-description");
+            const structured_description_panel = engagement_panels.find(panel => panel.target_id === "engagement-panel-structured-description");
             if(structured_description_panel !== undefined) {
-                const music_renderer = structured_description_panel.content.structuredDescriptionContentRenderer.items.find(item => item.horizontalCardListRenderer !== undefined && item.horizontalCardListRenderer.footerButton.buttonViewModel.iconName === "MUSIC")?.horizontalCardListRenderer;
+                const music_renderer = structured_description_panel.content?.as(YTNodes.StructuredDescriptionContent).items.find(item => item.as(YTNodes.HorizontalCardList) !== undefined && item.as(YTNodes.HorizontalCardList).header.as(YTNodes.ButtonView).icon_name === "MUSIC")?.as(YTNodes.HorizontalCardList);
                 if(music_renderer !== undefined) {
                     songs = music_renderer.cards.map(item => {
+                        const attributes = item.as(YTNodes.VideoAttributeView);
                         return {
-                            artwork_url: item.videoAttributeViewModel.image.sources?.[0]?.url,
-                            title: item.videoAttributeViewModel.title,
-                            artist: item.videoAttributeViewModel.subtitle,
-                            album: item.videoAttributeViewModel?.secondarySubtitle?.content as string|undefined,
+                            artwork_url: Array.isArray(attributes.image) ? attributes.image?.[0]?.url : attributes.image?.image?.[0]?.url,
+                            title: attributes.title,
+                            artist: attributes.subtitle,
+                            album: attributes?.secondary_subtitle?.content,
                         };
                     });
                 }
             }
         }
     } catch (error) {}
+
+
     return {
-        artist_id: info.videoDetails.channelId,
-        age_restricted: info.videoDetails.age_restricted,
-        chapters: info.videoDetails.chapters,
+        artist_id: info.basic_info.channel?.id ?? "",
+        chapters: YouTubeDL.get_chapters(info),
         songs,
     };
 }
@@ -129,10 +133,11 @@ export function parse_youtube_title_artist(track: Track): Track {
 export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{compact_video_renderer: VideoWithContextRenderer[]}|{playlist_panel_video_renderer: PlaylistPanelVideoRenderer[]}|{playlist_video_renderer: PlaylistVideoRenderer[]} ): Track[] {
     if("video_renderer" in videos) {
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
+            const artist_id = track?.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl;
             return parse_youtube_title_artist({
                 uid: generate_new_uid(parse_runs(track.title.runs)),
                 title: parse_runs(track.title.runs),
-                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
+                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null}],
                 duration: parse_time(track.lengthText.simpleText),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(track?.shortViewCountText?.simpleText)
@@ -140,10 +145,11 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
         })
     } else if("compact_video_renderer" in videos) {
         return videos.compact_video_renderer.filter(track => !is_empty(track?.lengthText?.runs)).map(track => {
+            const artist_id = track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl;
             return parse_youtube_title_artist({
                 uid: generate_new_uid(parse_runs(track?.headline.runs)),
                 title: parse_runs(track?.headline.runs),
-                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl)}],
+                artists: [{name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null}],
                 duration: parse_time(parse_runs(track.lengthText.runs)),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(parse_runs(track?.shortViewCountText?.runs ?? []))

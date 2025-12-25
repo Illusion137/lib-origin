@@ -1,11 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import type { GestureResponderEvent } from "react-native";
-import { Alert } from "react-native";
+import { Alert, Share } from "react-native";
 import type BigList from 'react-native-big-list';
-import type { AlphabetScroll, Artwork, ImageArtwork } from '@illusive/types';
-import { alert_error } from '@illusive/illusi/src/alert';
-import { IllusiIcons } from '@illusive/illusi_icons';
+import type { AlphabetScroll } from '@illusive/types';
 import { closest_to } from '@common/utils/util';
 
 export async function if_confirm(title: string, msg: string, on_press: () => Promise<void>|void) {
@@ -37,7 +35,7 @@ export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_
 export async function share_item(item: {link: string}|{uri: string}) {
     const UTI = 'public.item';
     if("link" in item)
-        await Sharing.shareAsync(item.link);
+        await Share.share({url: item.link});
     else await Sharing.shareAsync(item.uri, { UTI });
 }
 

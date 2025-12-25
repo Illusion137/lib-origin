@@ -1,7 +1,7 @@
 import type { ConvertTo, MusicServiceType, Track } from "./types";
-import { music_service_track_primary_key } from "./illusive_utilts";
+import { music_service_track_primary_key } from "./illusive_utils";
 import { Illusive } from "./illusive";
-import * as SQLPlaylists from '@illusive/illusi/src/sql/sql_playlists';
+import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { mutilate_to_service_playlist, playlist_tracks_differences_actions, type MutilatePlaylistMode, type MutilatePlaylistResponse } from "./playlist_utils";
 
 export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse{
@@ -10,16 +10,16 @@ export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incom
         const found_playlist = all_playlists.find(playlist => playlist.title === convert_opts.title);
         if(found_playlist !== undefined){
             //TODO check if tracks exist in library first
-            if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
-            if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
+            // if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
+            // if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
             return {ok: true};
         }
-        const playlist_uuid = await SQLPlaylists.create_playlist(convert_opts.title);
-        await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, incoming_tracks.map(({uid}) => uid));
+        // const playlist_uuid = await SQLPlaylists.create_playlist(convert_opts.title);
+        // await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, incoming_tracks.map(({uid}) => uid));
         return {ok: true};
     } else {
-        if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
-        if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
+        // if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
+        // if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
         return {ok: true};
     }
 }

@@ -130,6 +130,7 @@ export function roz_contents_to_roz_chapters_contents(contents: RozContent[]): R
         if(content.type === "CHAPTER_TITLE" || content.type === "CHAPTER_SUBTITLE"){
             roz_chapter_contents.push({
                 chapter: {
+                    uuid: gen_uuid(),
                     title: prev_chapter_title
                 },
                 contents: chapter_contents

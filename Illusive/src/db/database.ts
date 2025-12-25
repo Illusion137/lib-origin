@@ -1,36 +1,32 @@
 import { SQLfs } from '@illusive/sql/sql_fs';
 import { sqlite } from '@native/sqlite/sqlite';
-import type { GenericSQLiteDatabase, SQLiteRunResult, SQLiteToSQL } from '@native/sqlite/sqlite.base';
-import { drizzle } from 'drizzle-orm/libsql/web';
-import * as schema from "./schema"
-import { reinterpret_cast } from '@common/cast';
+import type { GenericSQLiteDatabase } from '@native/sqlite/sqlite.base';
+import { is_empty } from '../../../common/utils/util';
 
 export const db_path = "illusi-db-1400.sqlite3";
 export const sqlite_location = async() => (SQLfs.document_directory('SQLite')).replace('file://', '');
 
 let db_connection_handle: Awaited<ReturnType<ReturnType<typeof sqlite>['create_database_connection']>>;
 let db_database_handle: Awaited<ReturnType<ReturnType<typeof sqlite>['create_database_handle']>>;
-export let db_get: <V>(runnable: (db: GenericSQLiteDatabase) => SQLiteToSQL) => Promise<V|undefined>;
-export let db_all: <V>(runnable: (db: GenericSQLiteDatabase) => SQLiteToSQL) => Promise<V[]>;
-export let db_run: (runnable: (db: GenericSQLiteDatabase) => SQLiteToSQL) => Promise<SQLiteRunResult>;
+export let db_exec: <V>(fn: (db: GenericSQLiteDatabase) => Promise<V>) => Promise<V>;
 
-const mocking_bird = reinterpret_cast<GenericSQLiteDatabase>(drizzle.mock({ schema }));
-
-export async function load_database(path?: string){
+export async function load_database(path?: string, location?: string){
     db_connection_handle = await sqlite().create_database_connection({
-        name: path ?? db_path
+        name: path ?? db_path,
+        location: location
     });
     db_database_handle = await sqlite().create_database_handle(db_connection_handle);
-    db_get = async<V>(runnable: (db: GenericSQLiteDatabase) => SQLiteToSQL): Promise<V|undefined> => {
-        const sql = runnable(mocking_bird).toSQL();
-        return await sqlite().db_get<V>(db_connection_handle, sql.sql, sql.params);
+    db_database_handle;
+    db_exec = async<V>(runnable: (db: GenericSQLiteDatabase) => Promise<V>): Promise<V> => {
+        return await sqlite().exec<V>(db_database_handle, runnable);
     }
-    db_all = async<V>(runnable: (db: GenericSQLiteDatabase) => SQLiteToSQL): Promise<V[]> => {
-        const sql = runnable(mocking_bird).toSQL();
-        return await sqlite().db_all<V>(db_connection_handle, sql.sql, sql.params);
-    }
-    db_run = async(runnable: (db: GenericSQLiteDatabase) => SQLiteToSQL): Promise<SQLiteRunResult> => {
-        const sql = runnable(mocking_bird).toSQL();
-        return await sqlite().db_run(db_connection_handle, sql.sql, sql.params);
-    }
+}
+export function has_db_connection_handle(){
+    return !is_empty(db_connection_handle);
+}
+export function get_connection_handle(){
+    return db_connection_handle;
+}
+export function get_database_handle(){
+    return db_database_handle;
 }

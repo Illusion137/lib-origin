@@ -67,7 +67,7 @@ export class Cookie {
         });
     }
     hasExpired(): boolean { 
-        if(this.#data.expires !== undefined) return new Date().getTime() > this.#data.expires?.getTime();
+        if(this.#data.expires !== undefined) return Date.now() > this.#data.expires?.getTime();
         else return false;
     }
     toString(): string { return `${this.#data.name}=${this.#data.value}`; }
@@ -99,6 +99,7 @@ export class CookieJar {
         return new CookieJar(cookie_data);
     }
     hasCookie(other_cookie: Cookie): boolean { return this.getCookies().findIndex(cookie => cookie.getData().name === other_cookie.getData().name) !== -1; }
+    hasCookieName(cookie_name: string): boolean { return this.getCookies().findIndex(cookie => cookie.getData().name === cookie_name) !== -1; }
     getCookies(): Cookie[] { 
         const non_expired_cookies = this.#jar.filter(cookie => !cookie.hasExpired());
         this.#jar = non_expired_cookies;

@@ -1,20 +1,20 @@
 export namespace TimeLog {
-    let time = new Date().getTime();
+    let time = Date.now();
     export function start(){
-        time = new Date().getTime();
+        time = Date.now();
     }
     export function log(msg?: string){
-        const duration_ms = new Date().getTime() - time;
+        const duration_ms = Date.now() - time;
 
         const hours = Math.floor(duration_ms / 3600000);
         const minutes = Math.floor((duration_ms % 3600000) / 60000);
         const seconds = Math.floor(((duration_ms % 3600000) % 60000) / 1000);
         const milliseconds = duration_ms % 1000;
 
-        const str = `${hours > 0 ? `${hours}h ` : "" }${minutes > 0 ? `${minutes}m ` : "" }${seconds > 0 ? `${seconds}s ` : "" }${milliseconds > 0 ? `${milliseconds}ms` : "" }`;
+        const str = `${hours > 0 ? `${hours}h ` : "" }${minutes > 0 ? `${minutes}m ` : "" }${seconds > 0 ? `${seconds}s ` : "" }${milliseconds >= 0 ? `${milliseconds}ms` : "" }`;
 
         console.log((msg ?? "") + " : " + str);
-        time = new Date().getTime();
+        time = Date.now();
     }
     export function log_fn<T>(msg: string, fn: () => T): T{
         start();

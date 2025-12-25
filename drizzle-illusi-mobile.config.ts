@@ -4,4 +4,5 @@ export default defineConfig({
     driver: 'expo',
     schema: './illusive/src/db/schema.ts',
     out: './illusive/src/drizzle-mobile',
+    casing: "snake_case",
 });

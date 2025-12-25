@@ -2,10 +2,12 @@ import type * as Origin from "@origin/index";
 import type { CookieJar } from "@common/utils/cookie_util"
 import type { ResponseError} from "@common/types";
 import { TimedCache } from "@common/types"
-import type { Chapter } from "@origin/youtube_dl/types";
+// import type { Chapter } from "@origin/youtube_dl/types";
 import { Constants } from "@illusive/constants";
 import type { Prefs } from "@illusive/prefs";
 import { remove } from "@common/utils/clean_util";
+import type { BasePref } from "@native/mmkv/mmkv_utils";
+import type { RoZFetchRequestInit } from "@common/rozfetch";
 
 type ArtworkCacheType = 'force-cache';
 
@@ -32,7 +34,7 @@ export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': s
 
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
-export type DownloadTrackResult = "GOOD" | "ERROR";
+export type DownloadTrackResult = "GOOD" | "EXISTS" | ResponseError;
 export type SetState = any;
 export interface SQLCount {"COUNT(1)": number}
 
@@ -48,7 +50,7 @@ export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE"
 
 export type OnErrorCallback = (err: ResponseError) => void
 
-export type BottomAlertType = "GOOD"|"INFO"|"WARN";
+export type BottomAlertType = "GOOD"|"INFO"|"WARN"|"ERROR";
 
 export interface SQLTable {
     name: string
@@ -59,8 +61,8 @@ export interface SQLTable {
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
 
-export type PrefEntry = [Prefs.PrefOptions, Prefs.Pref<unknown>];
-export interface GroupSection<T> {title: string, data: T[]}
+export type PrefEntry = [Prefs.PrefOptions, BasePref<unknown>];
+export interface GroupSection<T> {title: string, data: T[]};
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
@@ -121,12 +123,19 @@ export interface IllusiveThumbnail {
 }
 
 export interface Downloading {
+    track: Track;
     uid: string
     progress: number
     execution_id: number
     progress_updater?: SetState
+    redownload: boolean;
     duration: number
 }
+export interface LyricsDownloading {
+    track: Track; 
+    uid: string;
+}
+export type LyricsDownloadingResult = ResponseError | string;
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = {name: string, uuid: string, uri?: never} | {name: string, uuid?: never, uri: IllusiveURI|null};
@@ -154,7 +163,7 @@ interface TrackDownloadingData {
     saved: boolean
     playlist_saved: boolean
 }
-interface TrackPlaybackData {
+export interface TrackPlaybackData {
     added: boolean
     successful: boolean
     artwork: Artwork
@@ -169,7 +178,7 @@ export interface TrackMetaData {
     enddur?: number;
     nsplit?: number;
     age_restricted?: boolean;
-    chapters?: Chapter[];
+    // chapters?: Chapter[];
     songs?: YTDescriptionSong[];
     unavailable?: boolean;
 }
@@ -197,6 +206,7 @@ interface Basic_Track<T, U, V, X> {
     spotify_id?: string
     amazonmusic_id?: string
     applemusic_id?: string
+    bandlab_id?: string
     artwork_url?: string
     thumbnail_uri?: string
     media_uri?: string
@@ -275,7 +285,6 @@ export interface PlaylistsTracks {
     track_uid: string
 }
 
-export type MaybeErrors = ResponseError[] | undefined;
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
 export type CompactPlaylistAlbumType = "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG";
 export interface Basic_CompactPlaylist<T, U, V, W> {
@@ -299,7 +308,7 @@ export interface TimestampedCompactPlaylist extends CompactPlaylist {
 }
 export interface CompactArtist {
     name: NamedUUID
-    profile_artwork_url?: string
+    profile_artwork_url?: Artwork
     is_official_artist_channel: boolean
 }
 export type SearchSuggestion = string|Track;
@@ -318,12 +327,12 @@ export interface MusicServicePlaylist {
     artwork_url?: string
     date?: ISOString
     continuation: Record<string, any> | null
-    error?: MaybeErrors
+    error?: ResponseError
 }
 export interface MusicServicePlaylistContinuation {
     tracks: Track[]
     continuation: Record<string, any> | null
-    error?: MaybeErrors
+    error?: ResponseError
 }
 
 export interface MusicSearchResponse {
@@ -331,7 +340,7 @@ export interface MusicSearchResponse {
     artists: CompactArtist[]
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
-    error?: MaybeErrors
+    error?: ResponseError
     continuation: Record<string, any> | null
 }
 
@@ -350,9 +359,9 @@ export interface MusicServiceArtist {
     singles_eps: CompactPlaylist[]
     appears_on?: CompactPlaylist[]
     background_artwork_url?: string
-    profile_artwork_url?: string
+    profile_artwork_url?: Artwork
     similar_artists: CompactArtist[],
-    error?: MaybeErrors
+    error?: ResponseError
 }
 export interface YTDescriptionSong {
     artwork_url: string,
@@ -364,8 +373,7 @@ export interface DownloadFromIdResult {
     url: string;
     metadata?: {
         artist_id: string;
-        age_restricted: boolean;
-        chapters: Chapter[];
+        // chapters: Chapter[];
         songs?: YTDescriptionSong[]
     };
 }
@@ -376,8 +384,8 @@ export interface IllusiveExplore {
 
 export type ParsedUri = [MusicServiceURI, string]
 
-export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "API";
-export type MusicServiceURI = "illusi" | "musi" | "youtube" | "youtubemusic" | "spotify" | "amazonmusic" | "applemusic" | "soundcloud" | "api";
+export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "BandLab" | "API";
+export type MusicServiceURI = "illusi" | "musi" | "youtube" | "youtubemusic" | "spotify" | "amazonmusic" | "applemusic" | "soundcloud" | "bandlab" | "api";
 export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
@@ -406,7 +414,7 @@ export class MusicService {
     add_tracks_to_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
     delete_tracks_from_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
     get_user_playlists?: () => Promise<CompactPlaylistsResult>
-    get_playlist: (url: string) => Promise<MusicServicePlaylist>
+    get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
@@ -429,7 +437,7 @@ export class MusicService {
         add_tracks_to_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
         delete_tracks_from_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
-        get_playlist: (url: string) => Promise<MusicServicePlaylist>,
+        get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
         download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
@@ -473,16 +481,16 @@ export class MusicService {
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;
         for (const required_cookie_credential of this.required_cookie_credentials) {
-            if (this.cookie_jar_callback().getCookie(required_cookie_credential) === undefined)
+            if (this.cookie_jar_callback?.().getCookie?.(required_cookie_credential) === undefined)
                 return false;
         }
         return true;
     }
-    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}> {
+    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError}> {
         const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
-        if(this.get_user_playlists === undefined) return {error: [{error: new Error("get_user_playlist is undefined")}], map};
+        if(this.get_user_playlists === undefined) return {error: {error: new Error("get_user_playlist is undefined")}, map};
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {error: [account_playlists], map};
+        if("error" in account_playlists) return {error: account_playlists, map};
         const service_domain_map: Record<MusicServiceURI, string> = {
             illusi: "",
             musi: "",
@@ -492,15 +500,16 @@ export class MusicService {
             amazonmusic: "https://music.amazon.com",
             applemusic: "https://music.apple.com/library/playlist/",
             soundcloud: "https://soundcloud.com/",
+            bandlab: "https://www.bandlab.com/",
             api: "",
         };
         for(const playlist of account_playlists.playlists) {
             // eslint-disable-next-line prefer-const
             let [service, endpoint] = playlist.title.uri!.split(':') as [MusicServiceURI, string];
-            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: [{error: new Error("Service lacks playlist list")}], map};
+            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: {error: new Error("Service lacks playlist list")}, map};
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify") {
-                if(playlist.type === undefined) return {error: [{error: new Error("Playlist Type is undefined")}], map};
+                if(playlist.type === undefined) return {error: {error: new Error("Playlist Type is undefined")}, map};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
                 map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
             } else

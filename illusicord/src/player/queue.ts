@@ -5,6 +5,7 @@ import { entersState, joinVoiceChannel, StreamType, VoiceConnectionStatus } from
 import { Illusive } from "@illusive/illusive";
 import { RepeatMode, type DiscordTrack, type PlayerOptions } from "@illusicord/types";
 import { Constants } from "@illusicord/constants";
+import { Constants as IllusiveConstants } from "@illusive/constants";
 import { Utils } from "@illusicord/player/utils";
 import type { Player } from "@illusicord/player/player";
 
@@ -162,7 +163,7 @@ export class Queue<T = unknown> {
             const resource = "error" in download_url ? this.connection.create_audio_stream("C:/dev/Illusi/lib-origin/illusicord/media/5-seconds-of-silence.mp3", {
                 metadata: play_track,
                 inputType: StreamType.Arbitrary
-            }) : this.connection.create_audio_stream(download_url.url.replace(Illusive.media_archive_path, ''), {
+            }) : this.connection.create_audio_stream(download_url.url.replace(IllusiveConstants.media_archive_path, ''), {
                 metadata: play_track,
                 inputType: StreamType.Arbitrary
             });

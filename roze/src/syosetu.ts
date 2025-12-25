@@ -126,12 +126,12 @@ export namespace Syosetu {
         opts.translate_contents ??= false;
 
         const chapters: (WebnovelContents|ResponseError)[] = [];
-        let time = new Date().getTime();
+        let time = Date.now();
     	for (let i = opts.range_start; i <= opts.range_end; i++) {
 	        const chapter_contents = await webnovel_chapter_contents(webnovel_id, i, opts);
             chapters.push(chapter_contents);
-	        opts.on_chapter_parse?.(i, (opts.range_start-1)/(opts.range_end-1), new Date().getTime() - time);
-            time = new Date().getTime();
+	        opts.on_chapter_parse?.(i, (opts.range_start-1)/(opts.range_end-1), Date.now() - time);
+            time = Date.now();
 	    }
         return chapters;
     }
@@ -179,7 +179,7 @@ export namespace Syosetu {
 
     export function webnovel_chapter_contents_to_roz_chapter_contents(webnovel_contents: WebnovelContents): RozChapterContents{
         return {
-            chapter: { title: webnovel_contents.chapter_title },
+            chapter: { uuid: gen_uuid(), title: webnovel_contents.chapter_title },
             contents: webnovel_contents.contents.map(line => ({
                 content: line,
                 type: "PARAGRAPH",

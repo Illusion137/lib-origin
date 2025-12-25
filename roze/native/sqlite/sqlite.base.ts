@@ -9,6 +9,7 @@ export declare class GenericSQLiteDatabase<TSchema extends Record<string, unknow
 
 export interface SQLiteConnectionOpts {
     name: string;
+    location?: string;
 }
 
 export type SQLiteConnectionHandle = string;
@@ -25,12 +26,12 @@ export interface SQLiteRunResult {
 }
 
 export interface SQLite {
-    create_database_connection: (opts: SQLiteConnectionOpts) => Promise<SQLiteConnectionHandle>
-    create_database_handle: (connection: unknown) => Promise<SQLiteDatabaseHandle>
-    db_get: <T>(database_handle: SQLiteDatabaseHandle, sql_query: string, sql_params: unknown[]) => Promise<T|undefined>
-    db_all: <T>(database_handle: SQLiteDatabaseHandle, sql_query: string, sql_params: unknown[]) => Promise<T[]>
-    db_run: (database_handle: SQLiteDatabaseHandle, sql_query: string, sql_params: unknown[]) => Promise<SQLiteRunResult>
+    create_database_connection: (opts: SQLiteConnectionOpts) => Promise<SQLiteConnectionHandle>;
+    create_database_handle: (connection_id: SQLiteConnectionHandle) => Promise<SQLiteDatabaseHandle>;
+    exec: <T>(database_handle: SQLiteDatabaseHandle, fn: (db: GenericSQLiteDatabase) => Promise<T>) => Promise<T>;
+    // get_db_connection: (connection_id: SQLiteConnectionHandle) => unknown;
+    get_db: (database_handle: SQLiteDatabaseHandle) => GenericSQLiteDatabase;
 };
 
-export const sqlite_connection_map = new Map<SQLiteConnectionHandle, unknown>();
-export const sqlite_database_map = new Map<SQLiteDatabaseHandle, GenericSQLiteDatabase>();
+export const sqlite_connection_map: Record<SQLiteConnectionHandle, unknown> = {};
+export const sqlite_database_map: Record<SQLiteDatabaseHandle, GenericSQLiteDatabase> = {};;

@@ -1,42 +1,90 @@
-import { urlid } from '@common/utils/util';
-import * as formatUtils from '@origin/youtube_dl/format-utils';
-import * as getInfo from '@origin/youtube_dl/info';
-import * as urlUtils from '@origin/youtube_dl/url-utils';
-import type { DownloadOptions, VideoInfo } from '@origin/youtube_dl/types';
+import { RCache } from './rcache';
 import { generror_catch } from '@common/utils/error_util';
+import { parse_runs } from '@common/utils/parse_util';
+import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
+import type { ResponseError } from '@common/types';
+import { fs } from '@native/fs/fs';
+import type { VideoInfo } from 'youtubei.js/dist/src/parser/youtube';
+
+Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
+    const properties: string[] = [];
+
+    if(env.n) {
+      properties.push(`n: exportedVars.nFunction("${env.n}")`)
+    }
+  
+    if (env.sig) {
+      properties.push(`sig: exportedVars.sigFunction("${env.sig}")`)
+    }
+  
+    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
+  
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    return new Function(code)();
+}
 
 export namespace YouTubeDL {
-    export async function ytdl(link: string, options: DownloadOptions) {
-        try {            
-            const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=", /&.+/);
-            const info: VideoInfo = await ytdl.getInfo(video_id, options);
-            const format = ytdl.chooseFormat(info.formats, options);
-            return {av: format, info, formats: info.formats};
+    let innertube_client: Innertube;
+
+    export async function get_innertube_client(): Promise<Innertube>{
+        Log.setLevel(Log.Level.NONE);
+        if(innertube_client) return innertube_client;
+        innertube_client = await Innertube.create({
+            cache: new RCache(true, await fs().temp_directory()),
+            generate_session_locally: false,
+            enable_session_cache: true,
+            fail_fast: true,
+            retrieve_player: true,
+            client_type: ClientType.MWEB
+        });
+        return innertube_client;
+    }
+
+    export function get_chapters(info: VideoInfo){
+        const markers_map = info?.player_overlays?.decorated_player_bar?.player_bar?.markers_map;
+        const marker = Array.isArray(markers_map) && markers_map.find(mark => mark.value && Array.isArray(mark.value.chapters));
+        if (!marker) return [];
+        const chapters = marker.value.chapters;
+    
+        return chapters?.map((chapter: any) => ({
+            title: parse_runs(chapter.chapterRenderer.title),
+            start_time: chapter.chapterRenderer.timeRangeStartMillis / 1000,
+        })) ?? [];
+    }
+
+    export async function get_info(link: string) {
+        try {
+            const client = await get_innertube_client();
+            const info = await client.getInfo(link);
+            return info;
         } catch (error) {
-            return generror_catch(error, "YTDL Failed", {link, options});
+            return generror_catch(error, "YTDL Failed", {link});
         }
     };
     
-    export async function get_info(link: string, options: DownloadOptions){
-        const video_id = urlid(link, "m.youtube.com/", "youtube.com/", "watch?v=", /&.+/);
-        const info: VideoInfo = await ytdl.getInfo(video_id, options);
-        return {info};
-    }
+    // https://github.com/lovegaoshi/azusa-player-mobile/blob/1b0a00b77620804c863e78bda888b524b108134b/src/utils/mediafetch/ytbvideo.ytbi.ts#L42
+    export async function resolve_url(link: string, options?: Types.FormatOptions): Promise<string|ResponseError>{
+        try {            
+            const client = await get_innertube_client();
 
-    export function choose_format(info: VideoInfo, options: DownloadOptions){
-        return ytdl.chooseFormat(info.formats, options);
-    }
+            const iOS = true;
+            const hls_manifest_url = iOS ? (await client.getBasicInfo(link, {client: "IOS"})).streaming_data?.hls_manifest_url : undefined;
 
-    ytdl.getBasicInfo = getInfo.getBasicInfo;
-    ytdl.getInfo = getInfo.getInfo;
-    ytdl.chooseFormat = formatUtils.chooseFormat;
-    ytdl.filterFormats = formatUtils.filterFormats;
-    ytdl.validateID = urlUtils.validateID;
-    ytdl.validateURL = urlUtils.validateURL;
-    ytdl.getURLVideoID = urlUtils.getURLVideoID;
-    ytdl.getVideoID = urlUtils.getVideoID;
-    ytdl.cache = {
-        info: getInfo.cache,
-        watch: getInfo.watchPageCache,
-    };
+            if(hls_manifest_url){
+                return hls_manifest_url;
+            }
+
+            // client.session.po_token = await getPoT(link);
+            const extracted_video_info = await client.getBasicInfo(link, {client: client.session.player?.po_token === undefined ? "WEB_EMBEDDED" : "MWEB"});
+            const max_audio_quality_stream = extracted_video_info.chooseFormat({
+                itag: 18
+                // quality: 'best',
+                // type: 'audio',
+            });
+
+            return max_audio_quality_stream.decipher(client.actions.session.player);
+        } catch (error) {
+            return generror_catch(error, "Failed to choose a YTDL format", {options});
+        }
+    }
 }

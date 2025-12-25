@@ -1,0 +1,1 @@
+illusion@Illusion137 lib-origin % npx drizzle-kit generate --config drizzle-illusi-mobile.config.ts

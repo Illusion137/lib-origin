@@ -1074,12 +1074,13 @@ export interface EndIcon {
 }
 
 export interface MusicShelfRenderer {
-    title: Title3
-    contents: Content5[]
-    trackingParams: string
-    bottomText: BottomText
-    bottomEndpoint: BottomEndpoint
-    shelfDivider: ShelfDivider
+    contents: {musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer2}[]
+    // title: Title3
+    // contents: Content5[]
+    // trackingParams: string
+    // bottomText: BottomText
+    // bottomEndpoint: BottomEndpoint
+    // shelfDivider: ShelfDivider
 }
 
 export interface Title3 {

@@ -1,7 +1,6 @@
-import { split_uri } from "@illusive/illusive_utilts";
+import { split_uri } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import type { CompactPlaylist, ConvertTo, LinkerLink, MusicServiceType } from "@illusive/types";
-import { convert_playlist, playlist_tracks } from "@illusive/illusi/src/playlist_converter";
 import { Wifi } from "@illusive/illusi/src/wifi_utils";
 import * as uuid from "react-native-uuid";
 
@@ -54,6 +53,9 @@ export async function delete_link(link: LinkerLink){
 export async function fetch_linked_playlists(links: LinkerLink[]) {
     if(!Prefs.get_pref("enable_linker")) return;
     if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return;
-    for(const link of links)
-        await convert_playlist(await playlist_tracks(link.uuid_uri), link.to_service, {to: link.to, full_sample: link.full_sample, divide_and_conquer: false});
+    for(const link of links){
+        // TODO implement this
+        link;
+    }
+        // await convert_playlist(await playlist_tracks(link.uuid_uri), link.to_service, {to: link.to, full_sample: link.full_sample, divide_and_conquer: false});
 }

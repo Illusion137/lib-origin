@@ -9,13 +9,10 @@ import * as uuid from 'react-native-uuid';
 import { document_directory, lyrics_directory, media_directory, thumbnail_directory } from '@illusive/illusi/src/sql/sql_fs';
 import { db_exec_async, db_get_all_async, db_run_async, download_thumbnail, obj_to_update_sql, sql_delete_from, sql_insert_values, sql_select, sql_set, sql_update_table, sql_where, update_global_track_all_property, update_global_track_item, update_global_track_property } from "@illusive/illusi/src/sql/sql_utils";
 import type { ResponseError} from "@common/types";
-import { TimedCacheValue } from "@common/types";
 import { alert_error, alert_info } from "@illusive/illusi/src/alert";
 import { clean_album_title } from "@illusive/parsers/apple_music_parser";
-import { generate_unique_track_tints, track_primary_key } from "@illusive/illusive_utilts";
-import { Constants } from "@illusive/constants";
-import { try_download_track_lyrics } from "@illusive/illusi/src/lyrics";
-import { wait } from "@common/utils/timed_utilt";
+import { generate_unique_track_tints, track_primary_key } from "@illusive/illusive_utils";
+import { wait } from "@common/utils/timed_util";
 
 const bad_artist_names = [',', '&', 'and'];
 export function track_to_sqllite_insertion(track: Track): SQLTrackArray {
@@ -238,7 +235,7 @@ export async function track_uid_exists(track: Track) {
 }
 let time_since_last_fetched_track_data = new Date(0);
 export async function fetch_track_data() {
-    if(new Date().getTime() - time_since_last_fetched_track_data.getTime() < 5000) return;
+    if(Date.now() - time_since_last_fetched_track_data.getTime() < 5000) return;
     const tracks: SQLTrack[] = await db_get_all_async(sql_select("tracks", "*"));
     GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
     time_since_last_fetched_track_data = new Date();

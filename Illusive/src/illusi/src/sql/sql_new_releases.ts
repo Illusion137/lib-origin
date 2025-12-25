@@ -48,7 +48,7 @@ export async function get_all_new_releases(){
 
 function add_playback_saved_data_to_new_releases(releases: CompactPlaylist[]): CompactPlaylist[]{
     for(const release of releases){
-        if(release.song_track !== undefined){
+        if(release.song_track){
             release.song_track = SQLTracks.add_playback_saved_data_to_track(release.song_track);
         }
     }
@@ -86,7 +86,7 @@ export async function get_not_seen_new_releases(): Promise<CompactPlaylist[]>{
     }
 
     for(const not_seen_playlist of not_seen){
-        if(not_seen_playlist.song_track!== undefined){
+        if(not_seen_playlist.song_track){
             not_seen_playlist.song_track= SQLTracks.add_playback_saved_data_to_track(not_seen_playlist.song_track);
         }
     }

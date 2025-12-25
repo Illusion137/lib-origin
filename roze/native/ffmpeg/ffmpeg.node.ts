@@ -5,7 +5,7 @@ import { default_ffmpeg_stats, type DataCallback, type FFMPEG, type FFMPEGBitrat
 
 export const node_ffmpeg: FFMPEG = {
     execute_args: async(args: string[], statistics_callback?: StatisticsCallback, data_callback?: DataCallback) => {
-        const start_time = new Date().getTime();
+        const start_time = Date.now();
         const stats: FFMPEGStatistics = {...default_ffmpeg_stats};
         
         const ffmpeg_spawn = spawn("ffmpeg", args);
@@ -13,7 +13,7 @@ export const node_ffmpeg: FFMPEG = {
             ffmpeg_spawn.stderr?.on('data', (data) => {
                 const output: string = data.toString();
                 data_callback?.(output);
-                stats.command_elapsed_ms = new Date().getTime() - start_time;
+                stats.command_elapsed_ms = Date.now() - start_time;
                 stats.frame = Number(extract_string_undef(output, /frame=\s*([\d.]+)/) ?? stats.frame);
                 stats.fps = Number(extract_string_undef(output, /fps=\s*([\d.]+)/) ?? stats.fps);
                 stats.q = Number(extract_string_undef(output, /q=\s*([\d.]+)/) ?? stats.q);

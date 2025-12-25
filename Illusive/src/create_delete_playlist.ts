@@ -1,6 +1,6 @@
 import { remove } from '@common/utils/clean_util';
 import * as Origin from '@origin/index'
-import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 
 export async function spotify_create_playlist(playlist_name: string) {
@@ -13,9 +13,9 @@ export async function spotify_create_playlist(playlist_name: string) {
 }
 export async function spotify_delete_playlist(playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
-    const deletion_response = await Origin.Spotify.delete_playlist({cookie_jar: cookie_jar,playlist_uri: playlist_uri});
+    const deletion_response = await Origin.Spotify.delete_playlist({cookie_jar: cookie_jar, playlist_uri: playlist_uri});
     if("error" in deletion_response) return false;
-    return deletion_response.ok;
+    return true;
 }
 
 export async function amazon_music_create_playlist(playlist_name: string) {

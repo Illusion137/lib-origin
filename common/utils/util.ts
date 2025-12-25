@@ -1,9 +1,10 @@
+import { reinterpret_cast } from '@common/cast';
 import type { ResponseError } from '@common/types';
 import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
 
 export function generate_new_uid(prefix_name: string) {
-	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + new Date().getTime().toString(36).substring(2, 15) +
+	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + Date.now().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
 }
@@ -16,7 +17,7 @@ export function decode_hex(hex: string) {
 
 export function small_string(str: string, length = 50){
     if(str.length < length) return str;
-    return str.slice(0, length) + '...';
+    return str?.slice(0, length) + '...';
 }
 export function extract_string_from_pattern(str: string, pattern: RegExp) {
 	const body_groups = pattern.exec(str);
@@ -44,6 +45,7 @@ export function round_decimal_place(num: number, decimal_places: number){
 export function error_undefined<T>(value: T|ResponseError): T|undefined { return typeof value === "object" && value !== null && "error" in value ? undefined : value; }
 export function empty_undefined(str: string) { return is_empty(str) ? undefined : str; }
 export function urlid(url: string, ...remove_links: (string|RegExp)[]) { 
+    if(!url) return "";
     let id = url.replace("https://", "").replace("www.", "").replace("http://", '').replace('https:','');
     for(const link of remove_links) { id = id.replace(link, ""); }
     return id;
@@ -55,7 +57,8 @@ type NonEmpty = string & { [opaqueSym]: "NonEmptyString" } | number | NonEmptyAr
 
 export function is_empty(value: unknown): value is NonEmpty { return value === undefined || value === null || value === 0 || value === "" || (typeof value === "string" && (value.trim() === "" || value === "0")) || (typeof value === "object" && Object.keys(value).length === 0) || (typeof value === "number" && isNaN(value)); }
 
-export function milliseconds_of(time: {years?: number, months?: number, weeks?: number, days?: number, hours?: number, minutes?: number, seconds?: number}): number {
+interface MillOfTime {years?: number, months?: number, weeks?: number, days?: number, hours?: number, minutes?: number, seconds?: number, milliseconds?: number};
+export function milliseconds_of(time: MillOfTime): number {
 	return ((time.years ?? 0) * 1000 * 60 * 60 * 24 * 365) +
 		((time.months ?? 0) * 1000 * 60 * 60 * 24 * 30) 
 		+ ((time.weeks ?? 0) * 1000 * 60 * 60 * 24 * 7) 
@@ -63,6 +66,19 @@ export function milliseconds_of(time: {years?: number, months?: number, weeks?: 
 		+ ((time.hours ?? 0) * 1000 * 60 * 60)
 		+ ((time.minutes ?? 0) * 1000 * 60)
 		+ ((time.seconds ?? 0) * 1000)
+		+ ((time.milliseconds ?? 0))
+}
+export function seconds_of(time: MillOfTime): number{
+    return milliseconds_of(time) / 1000;
+}
+export function minutes_of(time: MillOfTime): number{
+    return seconds_of(time) / 60;
+}
+export function hours_of(time: MillOfTime): number{
+    return minutes_of(time) / 60;
+}
+export function days_of(time: MillOfTime): number{
+    return hours_of(time) / 24;
 }
 export function empty_join(vals: any[], join_with: string) {
     return vals.filter(val => !is_empty(val)).join(join_with);
@@ -77,12 +93,25 @@ export function chunkify<T>(array: T[], size: number): T[][]{
 	}
 	return chunk_map;
 }
+export function chunkify_back<T>(array: T[], size: number): T[][]{
+    const chunk_map: T[][] = [];
+	for(let i = 0; i < array.length; i += size){
+		chunk_map.push(array.slice(-(i + size), -i == 0 ? undefined : -i));
+	}
+	return chunk_map.reverse();
+}
 export function is_number(numish: unknown): numish is number{
 	return typeof numish === 'number' && !isNaN(numish);
 }
 
 export function json_catch(result: any){
     return result instanceof Error ? {error: result} : result;
+}
+
+export function large_number_string(num: number): string{
+    const strnum = String(num);
+    const strnum_chunks = chunkify_back(strnum.split(''), 3);
+    return strnum_chunks.map(chunk => chunk.join('')).join(',');
 }
 
 export function safe_date_iso(date: Date): string{
@@ -121,9 +150,7 @@ export function shuffle_array<T>(array: T[]) {
 }
 
 export function closest_to(target: number, array: number[]) {
-    return array.reduce(function(prev, curr) {
-        return (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
-    });
+    return array.reduce((prev, curr) => (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev), 0);
 }
 
 export function cycle<T>(value: T, values: T[]): T {
@@ -157,6 +184,10 @@ export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string,
         return accumulator;
     }, {});
 };
+
+export function version_split(version: string): [number, number, number]{
+    return reinterpret_cast<[number, number, number]>(version.split('.').map(item => parseInt(item)));
+}
 
 export function version_greater_than(version: string, other_version: string): boolean{
     try {
@@ -200,6 +231,6 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
 export function catch_function_sync(func: () => any, on_error: (error: unknown) => any) {
     try { return func(); } catch (error) { on_error(error); }
 }
-export async function catch_function_async(func: () => Promise<any>, on_error: (error: unknown) => any) {
-    try { return await func(); } catch (error) { on_error(error); }
+export async function catch_function_async(func: () => Promise<any>, on_error: (error: Error) => any) {
+    try { return await func(); } catch (error) { on_error(error as Error); }
 }

@@ -1,6 +1,5 @@
 import { TimeLog } from "@common/time_log";
 import { ffmpeg, load_native_ffmpeg } from "@native/ffmpeg/ffmpeg";
-import * as Origin from "@origin/index";
 import { green, red } from "colors";
 import cli_progress from 'cli-progress';
 import path from 'path';
@@ -8,6 +7,8 @@ import path from 'path';
 const is_win = process.platform === "win32";
 const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/ytdl_out/";
 const url = process.argv[2];
+import { Innertube, UniversalCache } from 'youtubei.js';
+import { gen_uuid } from "@common/utils/util";
 
 async function ytdl_main__(){
     if(url === undefined){
@@ -15,21 +16,30 @@ async function ytdl_main__(){
         return;
     }
     await load_native_ffmpeg();
-    const av_result = await TimeLog.log_fn_async(
-        green("FOUND MEDIA"),
-        async() => await Origin.YouTubeDL.ytdl(url, {quality: '18', playerClients: ["WEB", "IOS", "ANDROID", "TV"]})
-    );
-    if("error" in av_result) {
-        console.error(red("FAILED TO FIND MEDIA"))
-        return;
-    }
-    const duration_seconds = (Number(av_result.av.approxDurationMs ?? 0)) / 1000;
 
+    const innertube_client = await Innertube.create({
+        cache: new UniversalCache(false),
+        generate_session_locally: false,
+        enable_session_cache: true,
+        player_id: '0004de42'
+    });
+    const video_info = await innertube_client.getInfo(url, { client: 'ANDROID' });
+    const av_result_url = video_info.chooseFormat({}).decipher(innertube_client.session.player);
+
+    // const av_result = await TimeLog.log_fn_async(
+    //     green("FOUND MEDIA"),
+    //     async() => await Origin.YouTubeDL.ytdl(url, {quality: '18', playerClients: ["WEB", "IOS", "ANDROID", "TV"]})
+    // );
+    // if("error" in av_result) {
+    //     console.error(red("FAILED TO FIND MEDIA"))
+    //     return;
+    // }
+    const duration_seconds = video_info.basic_info.duration ?? 0;
     const args = [
         '-y',
         '-i',
-        av_result.av.url,
-        path.join(output_folder, `${av_result.info.videoDetails.title}.mp3`.replace(/\s/g, '_'))
+        av_result_url,
+        path.join(output_folder, `${video_info.basic_info.title ?? gen_uuid()}.mp3`.replace(/\s/g, '_'))
     ];
     const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_classic);
     progress_bar.start(Math.floor(duration_seconds), 0);

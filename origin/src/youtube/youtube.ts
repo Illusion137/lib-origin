@@ -7,16 +7,17 @@ import type { ContinuedResults_0 } from '@origin/youtube/types/ContinuedResults_
 import type { CreatePlaylist } from "@origin/youtube/types/CreatePlaylist";
 import type { InitialData } from '@origin/youtube/types/types';
 import type { YTCFG } from "@origin/youtube/types/YTCFG";
-import fetch from "@origin/utils/orifetch";
 import type { Proxy } from "@origin/proxy/proxy";
 import { sapisid_hash_auth1 } from "@common/utils/auth_utilt";
 import { try_json_eval } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
+import type { RoZFetchRequestInit } from "@common/rozfetch";
+import rozfetch from "@common/rozfetch";
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent_windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
-	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy };
+	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy, fetch_opts?: RoZFetchRequestInit };
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
 		initial_data: InitialData,
@@ -120,7 +121,8 @@ export namespace YouTube {
 		try {
 			tuser_agent;
 			const cookies = opts.cookie_jar?.toString();
-			const page_response = await fetch(url, {
+			const page_response = await rozfetch(url, {
+				...opts.fetch_opts,
 				headers: {
 					...(cookies ? {"Cookies": cookies} : {}),
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -156,6 +158,7 @@ export namespace YouTube {
 				proxy: opts.proxy,
 				method: "GET"
 			});
+			if("error" in page_response) return page_response;
 			const page_html = await page_response.text();
             const initial_data = extract_initial_data(page_html);
             if("error" in initial_data) return initial_data;
@@ -179,13 +182,13 @@ export namespace YouTube {
 			};
 		} catch (error) { return { error: error as Error }; }
 	}
-    async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
+    async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		try {
 			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
+			const response = await rozfetch<T>(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}
@@ -203,9 +206,9 @@ export namespace YouTube {
 			const payload = {
 				continuation: next_con.continuationEndpoint.continuationCommand.token,
 			};
-			const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
+			const response = await post_check_response<ContinuedResults_0>(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
 			if ("error" in response) throw response.error;
-			return (await response.json()) as ContinuedResults_0;
+			return await response.json();
 		} catch (error) { return { error: error as Error } }
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
@@ -235,10 +238,10 @@ export namespace YouTube {
 			privacyStatus: privacy,
 			videoIds: []
 		}
-		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload, true);
+		const response = await post_check_response<CreatePlaylist>(opts, ytcfg, "playlist/create?prettyPrint=false", payload, true);
 		if ("error" in response) return response;
 		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
-		return await response.json() as CreatePlaylist;
+		return await response.json();
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {
 		const payload = {

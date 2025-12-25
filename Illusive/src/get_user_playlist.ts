@@ -1,15 +1,26 @@
 import * as Origin from '@origin/index'
-import { urlid } from '@common/utils/util';
-import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { milliseconds_of, urlid } from '@common/utils/util';
+import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from '@illusive/types';
+import type { RoZFetchRequestInit } from '@common/rozfetch';
+import { generror } from '@common/utils/error_util';
+
+const fetch_opts: RoZFetchRequestInit = {
+    cache_opts: {
+        cache_ms: milliseconds_of({minutes: 10}),
+        cache_mode: "memory",
+        cache_ms_fail: 1
+    }
+};
 
 export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
-    const user_playlists_response = await Origin.Spotify.account_playlists({cookie_jar: cookie_jar});
+    const user_playlists_response = await Origin.Spotify.account_playlists({cookie_jar: cookie_jar, var: {}, fetch_opts});
     if("error" in user_playlists_response) return {playlists: [], error: user_playlists_response.error};
+    console.log(user_playlists_response);
     return {
-        playlists: user_playlists_response.map(playlist => {
+        playlists: user_playlists_response.data.me.libraryV3.items.map(playlist => {
             return {
                 title: {name: playlist.item.data.name!, uri: spotify_uri_to_uri(playlist.item.data.uri)}, 
                 artist: [{
@@ -26,7 +37,7 @@ export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResu
 
 export async function amazon_music_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('amazon_music_cookie_jar');
-    const user_playlists_response = await Origin.AmazonMusic.account_playlists({cookie_jar: cookie_jar});
+    const user_playlists_response = await Origin.AmazonMusic.account_playlists({cookie_jar: cookie_jar, fetch_opts});
     if("error" in user_playlists_response) return {playlists: [], error: user_playlists_response.error};
     return {
         playlists: user_playlists_response.map(playlist => {
@@ -56,7 +67,7 @@ export async function youtube_get_user_playlists(): Promise<CompactPlaylistsResu
 
 export async function youtube_music_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-    const user_playlists_response = await Origin.YouTubeMusic.get_library({cookie_jar: cookie_jar});
+    const user_playlists_response = await Origin.YouTubeMusic.get_library({cookie_jar: cookie_jar, fetch_opts});
     if("error" in user_playlists_response) return {playlists: [], error: user_playlists_response.error};
     return {
         playlists: user_playlists_response.data.map(playlist => {
@@ -71,7 +82,7 @@ export async function youtube_music_get_user_playlists(): Promise<CompactPlaylis
 
 export async function apple_music_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
-    const user_playlists_response = await Origin.AppleMusic.account_playlists({cookie_jar: cookie_jar});
+    const user_playlists_response = await Origin.AppleMusic.account_playlists({cookie_jar: cookie_jar, fetch_opts});
     if("error" in user_playlists_response) return {playlists: [], error: user_playlists_response.error};
     return {
         playlists: Object.values(user_playlists_response.resources['library-playlists']).map(playlist => {
@@ -86,7 +97,7 @@ export async function apple_music_get_user_playlists(): Promise<CompactPlaylists
 
 export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
-    const user_playlists_response = await Origin.SoundCloud.get_all_user_playlists({cookie_jar: cookie_jar});
+    const user_playlists_response = await Origin.SoundCloud.get_all_user_playlists({cookie_jar: cookie_jar, fetch_opts});
     if("error" in user_playlists_response) return {playlists: [], error: user_playlists_response.error};
     const liked_music_playlist: CompactPlaylist[] = [{
         title: {name: "Liked Music", uri: create_uri("soundcloud", "soundcloud.com/you/likes")}, 
@@ -106,5 +117,19 @@ export async function soundcloud_get_user_playlists(): Promise<CompactPlaylistsR
                 date: playlist.created_at as ISOString,
             }
         }))
+    };
+}
+
+export async function bandlab_get_user_playlists(): Promise<CompactPlaylistsResult> {
+    const cookie_jar = Prefs.get_pref('bandlab_cookie_jar');
+    const user_uuid = Origin.BandLab.get_user_uuid(cookie_jar);
+    if(!user_uuid) return {playlists: [], ...generror("BandLab ")};
+    return {
+        playlists: [
+            {
+                title: {name: "Projects", uri: create_uri("bandlab", user_uuid)}, 
+                artist: [{name: "You", uri: create_uri("bandlab", user_uuid)}]
+            }
+        ]
     };
 }

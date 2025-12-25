@@ -11,7 +11,7 @@ export async function load_native_sqlite(): Promise<SQLite>{
 			break;
 		case "ELECTRON_RENDERER":
 			try {
-				sqlite_instance = (await import("../gen/electron/modules/sqlite.electron_renderer")).electron_renderer_sqlite;
+				// sqlite_instance = (await import("../gen/electron/modules/sqlite.electron_renderer")).electron_renderer_sqlite;
 			} catch (e) {}
 			break;
 		case "NODE":

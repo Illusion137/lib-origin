@@ -29,7 +29,7 @@ export const default_ffmpeg_stats: FFMPEGStatistics = {
     q: -1,
     size: -1,
     size_type: "unknown",
-    time_seconds: -1,
+    time_seconds: 0,
     bitrate: -1,
     bitrate_type: "unknown",
     speed: -1

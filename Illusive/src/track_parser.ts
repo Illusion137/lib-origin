@@ -1,73 +1,10 @@
 import type { AmazonSearchTrack } from '@origin/amazon_music/types/SearchResult';
 import type { AmazonTrack } from '@origin/amazon_music/types/ShowHomeCreateAndBindMethod';
 import * as Origin from '@origin/index'
-import type { Item4 } from '@origin/spotify/types/Album';
-import type { CollectionItem } from '@origin/spotify/types/Collection';
-import type { SpotifySearchTrack } from '@origin/spotify/types/SearchResult';
-import type { ContentItem } from '@origin/spotify/types/UserPlaylist';
 import { extract_string_from_pattern, generate_new_uid, is_empty } from '@common/utils/util'
-import { best_thumbnail, create_uri, spotify_uri_to_uri } from '@illusive/illusive_utilts';
+import { create_uri } from '@illusive/illusive_utils';
 import type { Track } from '@illusive/types';
 import { parse_time } from '@common/utils/parse_util';
-
-export function parse_spotify_playlist_track(track: ContentItem): Track {
-    return {
-        uid: generate_new_uid(track.itemV2.data.name),
-        title: track.itemV2.data.name,
-        artists: track.itemV2.data.artists.items.map(artist => {
-            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
-        }),
-        plays: parseInt(track.itemV2.data.playcount),
-        album: {name: track.itemV2.data.albumOfTrack.name, uri: spotify_uri_to_uri(track.itemV2.data.albumOfTrack.uri)},
-        duration: Math.floor(track.itemV2.data.trackDuration.totalMilliseconds/1000),
-        explicit: track.itemV2.data.contentRating.label === "EXPLICIT" ? "EXPLICIT" : "NONE",
-        spotify_id: track.itemV2.data.uri,
-        artwork_url: best_thumbnail(track.itemV2.data.albumOfTrack.coverArt.sources)?.url
-    }
-}
-export function parse_spotify_album_track(track: Item4, album: {name: string, uri: string}, service_thumbnail?: string): Track {
-    return {
-        uid: generate_new_uid(track.track.name),
-        title: track.track.name,
-        artists: track.track.artists.items.map(artist => {
-            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
-        }),
-        plays: parseInt(track.track.playcount),
-        album: {name: album.name, uri: spotify_uri_to_uri(album.uri)},
-        duration: Math.floor(track.track.duration.totalMilliseconds/1000),
-        explicit: track.track.contentRating.label === "EXPLICIT" ? "EXPLICIT" : "NONE",
-        spotify_id: track.track.uri,
-        artwork_url: service_thumbnail
-    }
-}
-export function parse_spotify_collection_track(track: CollectionItem): Track {
-    return {
-        uid: generate_new_uid(track.track.data.name),
-        title: track.track.data.name,
-        artists: track.track.data.artists.items.map(artist => {
-            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
-        }),
-        album: {name: track.track.data.albumOfTrack.name, uri: spotify_uri_to_uri(track.track.data.albumOfTrack.uri)},
-        duration: Math.floor(track.track.data.duration.totalMilliseconds/1000),
-        explicit: track.track.data.contentRating.label === "EXPLICIT" ? "EXPLICIT" : 'NONE',
-        spotify_id: track.track._uri,
-        artwork_url: best_thumbnail(track.track.data.albumOfTrack.coverArt.sources)?.url
-    }
-}
-export function parse_spotify_search_track(track: SpotifySearchTrack): Track {
-    return {
-        uid: generate_new_uid(track.item.data.name),
-        title: track.item.data.name,
-        artists: track.item.data.artists.items.map(artist => {
-            return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
-        }),
-        album: {name: track.item.data.albumOfTrack.name, uri: spotify_uri_to_uri(track.item.data.albumOfTrack.uri)},
-        duration: Math.floor(track.item.data.duration.totalMilliseconds/1000),
-        explicit: track.item.data.contentRating.label === "EXPLICIT" ? "EXPLICIT" : "NONE",
-        artwork_url: best_thumbnail(track.item.data.albumOfTrack.coverArt.sources)?.url,
-        spotify_id: track.item.data.uri
-    }
-}
 
 export function parse_amazon_music_playlist_track(track: AmazonTrack): Track {
     const album_regex = /([a-zA-Z?><{}|!@#$%^&*]+\s?[a-zA-Z?><{}|!@#$%^&*])+/;

@@ -13,5 +13,6 @@ import { YouTube } from "@origin/youtube/youtube"
 import { YouTubeDL } from '@origin/youtube_dl/index'
 import { YouTubeMusic } from "@origin/youtube_music/youtube_music"
 // import { Illusi } from "./illusi/illusi"
+import { BandLab } from '@origin/bandlab/bandlab';
 
-export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, Google };
+export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, Google, BandLab };

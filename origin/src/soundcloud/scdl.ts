@@ -18,8 +18,8 @@ export namespace SoundCloudDL {
         if(!(/(https:\/\/)?soundcloud\.com\/.+?\/.+/.exec(permalink))) return generror("Permalink-url doesn't match regex", {permalink, cookie_jar});
         const hydration = await SoundCloud.get_hydration(permalink, {cookie_jar: cookie_jar});
         if ("error" in hydration) return hydration;
-        const client_id = await SoundCloud.get_client_id(hydration.scripts_urls, {cookie_jar});
-        if (typeof client_id === "object") return client_id;
+        const client_id = await SoundCloud.get_client_id({cookie_jar, scripts: hydration.scripts_urls});
+        if ("error" in client_id) return client_id;
         const sound_hyrdration: HydratableSound = hydration.hydration.find((hydratable) => hydratable.hydratable === "sound") as HydratableSound;
         if (sound_hyrdration?.data?.media?.transcodings === undefined || sound_hyrdration.data.media.transcodings.length === 0) return generror("No transcodings available", {permalink, cookie_jar});
         const filtered_transcodings = sound_hyrdration.data.media.transcodings.filter(transcoding => transcoding.format.protocol === "hls");
@@ -27,7 +27,7 @@ export namespace SoundCloudDL {
         for(const transcoding of filtered_transcodings){
             const potential_dl_url = await get_download_url(transcoding.url, {
                 track_authorization: sound_hyrdration.data.track_authorization,
-                client_id: client_id
+                client_id: client_id.client_id
             });
             if(typeof potential_dl_url === "object") continue;
             dl_url = potential_dl_url;

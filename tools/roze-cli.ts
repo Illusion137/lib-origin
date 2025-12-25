@@ -22,6 +22,7 @@ import { registered_session_temp_file_paths } from "@native/fs/fs_utils";
 import { rmSync } from "fs";
 import { JNovel } from "@roze/jnovel";
 import { Constants } from "@roze/constants";
+import { WitchcultTranslations } from "@roze/witchcult_translations";
 
 const help_contents: string = green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}
 
@@ -245,7 +246,9 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 		case "WITCHCULT": {
 			const witchcult_progress_bar = new cliprogress.SingleBar({ stopOnComplete: true }, cliprogress.Presets.shades_classic);
 			witchcult_progress_bar.start(2, 0);
-			return generror("WITCHCULT is currently not supported");
+			return await WitchcultTranslations.arcno_to_roz(0, {
+				on_chapter_fetch: () => {return}
+			});
 		}
 		case "FILEBASE": {
 			return FileParser.parse_roz(input_options[0], { download_to_directory: process.cwd() });
@@ -274,7 +277,7 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 	}
 	log_info(`Source File: ${roz.source_file}`);
 	console.log(cyan("Roz Info: "), { ...roz, chapters: `{JSON_ENCODED ${roz.chapters.length} CHAPTERS}`, cover: roz.cover ? "{ BASE64_ENCODED_DATA }" : roz.cover });
-	await fs().write_file_as_string("./example.roz", JSON.stringify(roz), {});
+	// await fs().write_file_as_string("./example.roz.json", JSON.stringify(roz), {});
 
 	if (options.cache && cache_result === undefined) {
 		log_info(`Writing data to cache...`);

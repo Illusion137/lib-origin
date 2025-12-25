@@ -9,8 +9,8 @@ export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_u
     tracks = tracks.filter(track => !is_empty(track.spotify_id));
     const uris = tracks.map(track => track.spotify_id) as string[];
     let add_response;
-    if(playlist_uri === Constants.library_write_playlist) add_response = await Origin.Spotify.add_tracks_to_library({cookie_jar: cookie_jar, uris: uris});
-    else                          add_response = await Origin.Spotify.add_tracks_to_playlist({cookie_jar: cookie_jar,playlist_uri: playlist_uri, uris: uris});
+    if(playlist_uri === Constants.library_write_playlist) add_response = await Origin.Spotify.add_tracks_to_library({cookie_jar: cookie_jar, var: {uris: uris}});
+    else add_response = await Origin.Spotify.add_tracks_to_playlist({cookie_jar: cookie_jar, var: {playlistUri: playlist_uri, uris}});
     if("error" in add_response) return false;
     return add_response.ok;
 }
@@ -19,8 +19,8 @@ export async function spotify_delete_tracks_from_playlist(tracks: Track[], playl
     tracks = tracks.filter(track => !is_empty(track.spotify_id));
     const uris = tracks.map(track => track.spotify_id) as string[];
     let deletion_response;
-    if(playlist_uri === Constants.library_write_playlist) deletion_response = await Origin.Spotify.delete_tracks_from_library({cookie_jar: cookie_jar, uris: uris});
-    else                          deletion_response = await Origin.Spotify.delete_tracks_from_playlist({cookie_jar: cookie_jar, playlist_uri: playlist_uri, uids: uris});
+    if(playlist_uri === Constants.library_write_playlist) deletion_response = await Origin.Spotify.delete_tracks_from_library({cookie_jar: cookie_jar, var: {uris}});
+    else                          deletion_response = await Origin.Spotify.delete_tracks_from_playlist({cookie_jar: cookie_jar, var: {playlistUri: playlist_uri, uids: uris}});
     if("error" in deletion_response) return false;
     return deletion_response.ok;
 }
