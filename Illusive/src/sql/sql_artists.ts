@@ -7,6 +7,7 @@ import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from "@illusive/
 import { eq } from "drizzle-orm";
 
 export namespace SQLArtists {
+    export const default_profile_picture_url = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
     export const artists_artwork_memo: Record<SQLArtist['uri'], SQLArtist['artwork_url']|number|undefined> = {};
     export const artists_memo: Record<SQLArtist['uri'], SQLArtist> = {};
     
@@ -80,6 +81,6 @@ export namespace SQLArtists {
     }
 
     export function nammed_uuid_to_compact_artist(artist: NamedUUID): CompactArtist {
-        return { name: artist, is_official_artist_channel: true, profile_artwork_url: artists_artwork_memo[artist.uri ?? ""] ?? "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg" };
+        return { name: artist, is_official_artist_channel: true, profile_artwork_url: artists_artwork_memo[artist.uri ?? ""] ?? default_profile_picture_url};
     }
 }

@@ -12,7 +12,7 @@ export namespace FSCache {
         return MD5(JSON.stringify(payload)).toString();
     }
 
-    function serialze_data(data: unknown, serial_type: SerialType): string{
+    function serialize_data(data: unknown, serial_type: SerialType): string{
         switch(serial_type){
             case "stringable": {
                 return JSON.stringify(data);
@@ -74,7 +74,7 @@ export namespace FSCache {
     }
 
     export async function insert_cache(payload: any, data: any, opts: { directory?: string; serial_type?: SerialType }){
-        const write_result = await fs().write_file_as_string(await generate_cache_file_path({...opts, cache_key: cache_key(payload)}), serialze_data(data, opts.serial_type ?? "stringable"), {encoding: "utf8"});
+        const write_result = await fs().write_file_as_string(await generate_cache_file_path({...opts, cache_key: cache_key(payload)}), serialize_data(data, opts.serial_type ?? "stringable"), {encoding: "utf8"});
         return {result: write_result, data};
     }
 }
