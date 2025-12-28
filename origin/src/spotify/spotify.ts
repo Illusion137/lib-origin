@@ -11,7 +11,6 @@ import type { Library } from "@origin/spotify/types/Library";
 import type { ProfileData } from "@origin/spotify/types/ProfileData";
 import type { SearchResult } from "@origin/spotify/types/SearchResult";
 import type { UserPlaylist } from "@origin/spotify/types/UserPlaylist";
-import fetch from "@origin/utils/orifetch";
 import type { Proxy } from "@origin/proxy/proxy";
 import type { AppServerConfig, FeatureFlags, RemoteConfig } from "@origin/spotify/types/Initial";
 import { Secret, TOTP } from "otpauth";
@@ -187,6 +186,7 @@ export namespace Spotify {
         url ??= "https://open.spotify.com/";
         if (client_cache_full()) return client_cache.client!;
 
+        // TODO migrate to rozfetch
         const page_response = await fetch(url, {
             headers: get_headers(undefined, cookie_jar),
             referrerPolicy: "strict-origin-when-cross-origin",
