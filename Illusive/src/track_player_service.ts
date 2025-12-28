@@ -29,6 +29,8 @@ import { Prefs } from './prefs';
 
 const placeholder_mp3 = require('./assets/placeholder.mp3');
 
+export let trackplayer_has_been_setup = false;
+
 export async function setup_track_player(): Promise<boolean> {
     GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks.length === 0 ? 
         GLOBALS.global_var.past_playing_tracks : GLOBALS.global_var.playing_tracks;
@@ -41,6 +43,7 @@ export async function setup_track_player(): Promise<boolean> {
         await TrackPlayer.getActiveTrackIndex();
     } catch (error) {         
         await TrackPlayer.setupPlayer();
+        trackplayer_has_been_setup = true;
         await TrackPlayer.updateOptions({
             android: {
                 appKilledPlaybackBehavior:

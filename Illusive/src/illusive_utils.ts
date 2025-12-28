@@ -83,6 +83,18 @@ export function get_most_played_artists(global_tracks: Track[]) {
 		.map((track) => track.artists[0]);
 }
 
+export function get_unique_album_names_with_uris(global_tracks: Track[]): string[]{
+	const seen_uris: Set<string> = new Set<string>();
+	const album_names: string[] = [];
+	for(const track of global_tracks){
+		if(!track.album?.uri) continue;
+		if(seen_uris.has(track.album.uri)) continue;
+		seen_uris.add(track.album.uri);
+		album_names.push(track.album.name);
+	}
+	return album_names
+}
+
 export function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[] {
 	const name_plays: [string, number][] = global_tracks.map((track) => [remove_topic(track.artists[0].name), track.meta?.plays ?? 0]);
 	const name_plays_map = new Map<string, number>();

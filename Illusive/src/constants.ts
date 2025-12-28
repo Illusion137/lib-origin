@@ -30,7 +30,7 @@ export namespace Constants {
     export const long_press_delay = 250;
     export const cached_ids_duration_milliseconds = 2000;
     export const use_illusive_cahce = true;
-    export const tint_opacity = 0.18;
+    export const tint_opacity = 0.10;
     export const last_version_pre_1700 = "16.2.5";
     export const illusi_url_base = "illusi://";
     export const import_uri_id = "Sudo";
@@ -38,4 +38,5 @@ export namespace Constants {
     export const trackplayer_max_retries = 3;
     export const sudo_profile_picture_index = 3;
     export const sumi_profile_picture_index = 4;
+    export const icon_transparent_index = 5;
 }

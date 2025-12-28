@@ -33,6 +33,7 @@ export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': s
                        {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
                        {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
 
+export type LoadingState = "NONE" | "LOADING" | "COMPLETE";
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "EXISTS" | ResponseError;
@@ -48,6 +49,7 @@ export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE"
     | "DOWNLOAD_DATE_HILOW" | "DOWNLOAD_DATE_LOWHI"
     | "LAST_PLAYED_DATE_HILOW" | "LAST_PLAYED_DATE_LOWHI"
     | "LAST_SAMPLED_DATE_HILOW" | "LAST_SAMPLED_DATE_LOWHI"
+    | "LONGEST_PLAYED_HILOW" | "LONGEST_PLAYED_LOWHI"
 
 export type OnErrorCallback = (err: ResponseError) => void
 
