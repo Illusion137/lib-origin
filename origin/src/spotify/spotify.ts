@@ -56,7 +56,7 @@ export namespace Spotify {
     export const valid_collection_regex = /(https?:\/\/)open\.spotify\.com\/(collection)\/.+/i
     export const valid_artist_regex = /(https?:\/\/)open\.spotify\.com\/artist\/.+/i
 
-    export function get_headers(client: (Client | undefined) = undefined, cookie_jar: (CookieJar | undefined) = undefined) {
+    export function get_headers(client: (Client | undefined), cookie_jar: (CookieJar | undefined)) {
         const default_headers: any = {
             "cache-control": "max-age=0",
             "sec-ch-ua": "\"Google Chrome\";v=\"117\", \"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"117\"",
@@ -183,7 +183,7 @@ export namespace Spotify {
     //https://github.com/hmes98318/LavaShark/blob/0125cf31ba8f9f9f6ce6dec9e2003519a7a6b55e/src/lib/sources/Spotify.ts#L294
     //https://github.com/iTsMaaT/discord-player-spotify/blob/master/src/internal/spotify.ts
     //https://github.com/misiektoja/spotify_monitor/blob/15273d2c75486798ad092e6c8bab29324ef61922/spotify_monitor.py#L1250
-    export async function get_client(url?: string, cookie_jar: (CookieJar | undefined) = undefined): Promise<Client | ResponseError> {
+    export async function get_client(url?: string, cookie_jar?: CookieJar): Promise<Client | ResponseError> {
         url ??= "https://open.spotify.com/";
         if (client_cache_full()) return client_cache.client!;
 
@@ -461,7 +461,7 @@ export namespace Spotify {
     export async function get_home(opts: SPVar<SpotifyHome> & Opts): Promise<Home | ResponseError> {
         opts.var = {
             timeZone: opts.var.timeZone ?? "America/Los_Angeles",
-            sp_t: opts.var.sp_t.toString(),
+            sp_t: opts.var.sp_t,
             country: opts.var.country ?? "US",
             facet: null,
             sectionItemsLimit: opts.var.sectionItemsLimit ?? 10 

@@ -8,6 +8,7 @@ import type { Prefs } from "@illusive/prefs";
 import { remove } from "@common/utils/clean_util";
 import type { BasePref } from "@native/mmkv/mmkv_utils";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
+import type { YouTubeDL } from '@origin/youtube_dl/index';
 
 type ArtworkCacheType = 'force-cache';
 
@@ -373,7 +374,7 @@ export interface DownloadFromIdResult {
     url: string;
     metadata?: {
         artist_id: string;
-        // chapters: Chapter[];
+        chapters: YouTubeDL.Chapter[];
         songs?: YTDescriptionSong[]
     };
 }

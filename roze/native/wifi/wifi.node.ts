@@ -1,16 +1,16 @@
 import type { WiFi } from "@native/wifi/wifi.base";
 
 export const node_wifi: WiFi = {
-    ip_address: () => {
-        
+    ip_address: async() => {
+        return "";
     },
-    network_state: () => {
-        
+    network_state: async() => {
+        return "";
     },
-    wifi_connected: () => {
-        
+    wifi_connected: async() => {
+        return true;
     },
-    has_internet: () => {
-        
+    has_internet: async() => {
+        return true;
     }
 };

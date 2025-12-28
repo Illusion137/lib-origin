@@ -37,6 +37,7 @@ export function unsampled_tracks_service(service: MusicServiceType, tracks: Trac
         case "SoundCloud":   return tracks.filter(track => is_empty(track.soundcloud_id));
         case "Spotify":      return tracks.filter(track => is_empty(track.spotify_id));
         case "Illusi":       return tracks.filter(track => is_empty(track.illusi_id));
+        case "BandLab":      return tracks.filter(track => is_empty(track.bandlab_id));
         case "Musi":
         case "API":
         default: return [];

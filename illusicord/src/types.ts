@@ -1,4 +1,3 @@
-import type { YTDLQuality } from "@origin/youtube_dl/types";
 import type { Track } from "@illusive/types";
 
 export interface PlayerOptions {
@@ -8,7 +7,7 @@ export interface PlayerOptions {
     deafenOnJoin?: boolean;
     timeout?: number;
     volume?: number;
-    yt_quality?: YTDLQuality;
+    yt_quality?: any;
     localAddress?: string;
 }
 export enum RepeatMode {

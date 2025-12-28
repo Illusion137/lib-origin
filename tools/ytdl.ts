@@ -24,7 +24,7 @@ async function ytdl_main__(){
         player_id: '0004de42'
     });
     const video_info = await innertube_client.getInfo(url, { client: 'ANDROID' });
-    const av_result_url = video_info.chooseFormat({}).decipher(innertube_client.session.player);
+    const av_result_url = await video_info.chooseFormat({}).decipher(innertube_client.session.player);
 
     // const av_result = await TimeLog.log_fn_async(
     //     green("FOUND MEDIA"),
@@ -35,7 +35,7 @@ async function ytdl_main__(){
     //     return;
     // }
     const duration_seconds = video_info.basic_info.duration ?? 0;
-    const args = [
+    const args: string[] = [
         '-y',
         '-i',
         av_result_url,

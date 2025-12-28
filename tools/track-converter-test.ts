@@ -13,7 +13,7 @@ function small_track(track: Track){
         title: track.title, 
         alt_title: track.alt_title,
         artist: track.artists.map(item => remove_topic(item.name).trim()).join(', '),
-        duration: duration_to_string(track.duration).duration,
+        duration: duration_to_string(track.duration),
         id: track.youtube_id,
         explicit: track.explicit
     }

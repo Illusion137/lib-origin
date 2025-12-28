@@ -16,12 +16,12 @@ export async function load_native_miscnative(): Promise<MiscNative>{
 			break;
 		case "NODE":
 			try {
-				miscnative_instance = (await import("./miscnative.node")).node_miscnative;
+				miscnative_instance = (await import("./miscnative.node.js")).node_miscnative;
 			} catch (e) {}
 			break;
 		case "REACT_NATIVE":
 			try {
-				miscnative_instance = (await import("./miscnative.mobile")).mobile_miscnative;
+				miscnative_instance = (await import("./miscnative.mobile.js")).mobile_miscnative;
 			} catch (e) {}
 			break;
 	}

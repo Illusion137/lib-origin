@@ -100,7 +100,7 @@ export namespace WitchcultTranslations {
         const cat_links_words = entry_cat_link?.textContent.split(' ');
 
         return {
-            chapter: {chapter: {title: ""}, contents: []},
+            chapter: {chapter: {title: "", uuid: gen_uuid()}, contents: []},
             metadata: {
                 chapter: 0,
                 chapter_title: "",

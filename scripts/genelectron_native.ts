@@ -82,6 +82,7 @@ async function generate_load_native_modules_from_template(template_file_path: st
 async function load_native_modules(): Promise<NativeModuleInfoWithKeys[]>{
     return await Promise.all(
         native_scripts.map(
+            // eslint-disable-next-line @typescript-eslint/await-thenable
             async(script) => await Promise.all([...script, Object.keys(await (script[3]()))])
         )
     );

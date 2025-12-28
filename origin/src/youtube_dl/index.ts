@@ -4,7 +4,8 @@ import { parse_runs } from '@common/utils/parse_util';
 import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
 import type { ResponseError } from '@common/types';
 import { fs } from '@native/fs/fs';
-import type { VideoInfo } from 'youtubei.js/dist/src/parser/youtube';
+
+export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
 Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
     const properties: string[] = [];
@@ -24,6 +25,7 @@ Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Ty
 }
 
 export namespace YouTubeDL {
+    export interface Chapter {title: string, start_time: number};
     let innertube_client: Innertube;
 
     export async function get_innertube_client(): Promise<Innertube>{
@@ -46,10 +48,10 @@ export namespace YouTubeDL {
         if (!marker) return [];
         const chapters = marker.value.chapters;
     
-        return chapters?.map((chapter: any) => ({
+        return (chapters?.map((chapter: any) => ({
             title: parse_runs(chapter.chapterRenderer.title),
             start_time: chapter.chapterRenderer.timeRangeStartMillis / 1000,
-        })) ?? [];
+        })) ?? []) as Chapter[];
     }
 
     export async function get_info(link: string) {

@@ -161,7 +161,7 @@ export function parse_youtube_music_search_playlist(playlist: SearchMusicRespons
         title: {name: parse_runs(title_runs), uri: album_endpoint === undefined ? null : create_uri("youtubemusic", album_endpoint)},
         artist: artists.map(artist => ({name: artist.text, uri: artist.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtubemusic", artist.navigationEndpoint?.browseEndpoint?.browseId)})),
         artwork_thumbnails: playlist.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails,
-        explicit: playlist.badges !== undefined && playlist.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
+        explicit: playlist.badges?.[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
         type: 'PLAYLIST'
     };
 }

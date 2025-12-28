@@ -1,11 +1,15 @@
 import globals from "globals";
-import pluginJs from "@eslint/js";
+import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+import unusedImports from "eslint-plugin-unused-imports";
+import prettier from "eslint-config-prettier";
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
     { files: ["**/*.{ts}"] },
     { languageOptions: { globals: globals.node } },
+    js.configs.recommended,
+    ...tseslint.configs.all,
     { ignores: [
         "babel.config.js", 
         "eslint.config.mjs", 
@@ -14,17 +18,13 @@ export default [
         "./origin/src/manga_reader/deob.js",
         "./origin/src/manga_reader/deob2.js",
     ]},
-    pluginJs.configs.recommended,
-    ...tseslint.configs.all,
     {
         languageOptions: {
             parserOptions: {
-                projectService: true,
+                project: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
-    },
-    {
         rules: {
             "@typescript-eslint/only-throw-error": "error",
             "@typescript-eslint/no-namespace": "off",
@@ -99,5 +99,6 @@ export default [
             "@typescript-eslint/class-methods-use-this": "off",
             "@typescript-eslint/no-misused-promises": "off",
         }
-    }
+    },
+    prettier
 ];

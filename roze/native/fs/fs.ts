@@ -16,12 +16,12 @@ export async function load_native_fs(): Promise<FileSystem>{
 			break;
 		case "NODE":
 			try {
-				fs_instance = (await import("./fs.node")).node_fs;
+				fs_instance = (await import("./fs.node.js")).node_fs;
 			} catch (e) {}
 			break;
 		case "REACT_NATIVE":
 			try {
-				fs_instance = (await import("./fs.mobile")).mobile_fs;
+				fs_instance = (await import("./fs.mobile.js")).mobile_fs;
 			} catch (e) {}
 			break;
 	}

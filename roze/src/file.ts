@@ -114,7 +114,8 @@ export namespace FileParser {
                     ...section,
                     chapter: {
                         ...section.chapter,
-                        title: section.chapter.title ?? ""
+                        title: section.chapter.title ?? "",
+                        uuid: gen_uuid()
                     },
                     contents: roz_contents
                 });

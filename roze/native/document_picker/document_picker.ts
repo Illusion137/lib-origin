@@ -16,12 +16,12 @@ export async function load_native_document_picker(): Promise<DocumentPicker>{
             break;
         case "NODE":
             try {
-                document_picker_instance = (await import("./document_picker.node")).node_document_picker;
+                // document_picker_instance = (await import("./document_picker.node")).node_document_picker;
             } catch (e) {}
             break;
         case "REACT_NATIVE":
             try {
-                document_picker_instance = (await import("./document_picker.mobile")).mobile_document_picker;
+                document_picker_instance = (await import("./document_picker.mobile.js")).mobile_document_picker;
             } catch (e) {}
             break;
     }

@@ -1,5 +1,5 @@
+import { SQLTracks } from '@illusive/sql/sql_tracks';
 import type { Track } from '@illusive/types';
-import * as SQLTracks from '@illusive/illusi/src/sql/sql_tracks';
 
 export namespace Mutilator {
     export async function trim(track: Track, trimdur: {begdur?: number, enddur?: number}) {

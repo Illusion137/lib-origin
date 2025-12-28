@@ -26,7 +26,7 @@ export namespace MangaReader {
     }
     function parse_search_manga(manga_el: Element): SearchManga {
         const parse_latest_item = (el: Element) => {
-            const inner_text = el.querySelector('a')!.textContent!;
+            const inner_text = el.querySelector('a')!.textContent;
             return {
                 no: parseInt(inner_text.replace(/\D/gs, '')),
                 href: el.querySelector('a')!.href,
@@ -35,16 +35,16 @@ export namespace MangaReader {
         };
         return {
             title: {
-                name: manga_el.querySelector(".manga-name")!.querySelector("a")!.textContent!,
+                name: manga_el.querySelector(".manga-name")!.querySelector("a")!.textContent,
                 href: manga_el.querySelector(".manga-poster")!.getAttribute("href")!
             },
             genres: map_html_collection(manga_el.querySelector(".fdi-item.fdi-cate")?.children, (_: Element) => {
                 return {
-                    content: manga_el.textContent!,
+                    content: manga_el.textContent,
                     href: manga_el.getAttribute("href")!
                 }
             }),
-            available_languages: manga_el.querySelector(".tick.tick-item.tick-lang")!.textContent!.split("/"),
+            available_languages: manga_el.querySelector(".tick.tick-item.tick-lang")!.textContent.split("/"),
             artwork_url: manga_el.querySelector(".manga-poster-img")!.getAttribute("src")!,
             latest_chapters: map_html_collection(manga_el.querySelectorAll('.fd-list')?.[0]?.children, parse_latest_item),
             latest_volumes: map_html_collection(manga_el.querySelectorAll('.fd-list')?.[1]?.children, parse_latest_item)
@@ -71,7 +71,7 @@ export namespace MangaReader {
         const manga_elements = document.querySelectorAll(".item.item-spc");
         const mangas = map_html_collection(manga_elements, parse_search_manga);
         return {
-            title: document.querySelectorAll(".cat-heading")[0].textContent!,
+            title: document.querySelectorAll(".cat-heading")[0].textContent,
             mangas: mangas
         }
     }

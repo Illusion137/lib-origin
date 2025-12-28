@@ -174,9 +174,9 @@ export class SmallTrack {
         video_duration: number
     }) {
         this.uid = t.uid ?? "";
-        this.video_id = String(t.video_id);
-        this.video_name = String(t.video_name);
-        this.video_creator = String(t.video_creator);
+        this.video_id = t.video_id;
+        this.video_name = t.video_name;
+        this.video_creator = t.video_creator;
         this.video_duration = t.video_duration ?? 0;
     }
     toSQLInsert() {

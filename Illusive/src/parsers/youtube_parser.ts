@@ -8,8 +8,8 @@ import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/y
 import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
 import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
 import { YTNodes } from "youtubei.js/agnostic";
-import { YouTubeDL } from '@origin/youtube_dl/index';
-import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
+import { YouTubeDL, type VideoInfo } from '@origin/youtube_dl/index';
+// import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;
@@ -18,7 +18,7 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
         if(engagement_panels !== undefined && Array.isArray(engagement_panels) && engagement_panels.filter(item => item !== undefined).length > 0) {
             const structured_description_panel = engagement_panels.find(panel => panel.target_id === "engagement-panel-structured-description");
             if(structured_description_panel !== undefined) {
-                const music_renderer = structured_description_panel.content?.as(YTNodes.StructuredDescriptionContent).items.find(item => item.as(YTNodes.HorizontalCardList) !== undefined && item.as(YTNodes.HorizontalCardList).header.as(YTNodes.ButtonView).icon_name === "MUSIC")?.as(YTNodes.HorizontalCardList);
+                const music_renderer = structured_description_panel.content?.as(YTNodes.StructuredDescriptionContent).items.find(item => item.as(YTNodes.HorizontalCardList)?.header.as(YTNodes.ButtonView).icon_name === "MUSIC")?.as(YTNodes.HorizontalCardList);
                 if(music_renderer !== undefined) {
                     songs = music_renderer.cards.map(item => {
                         const attributes = item.as(YTNodes.VideoAttributeView);
@@ -61,7 +61,7 @@ export function extract_youtube_title_info(track: Track) {
     }   
 }
 export function clean_youtube_title(title: string){
-    return String(title)
+    return title
     .replace(/ ?full song ?/ig, '')
     .replace(/ ?[\(\[] ?prod\.?.+?[\)\]]/ig, '')
     .replace(/ ?[\(\[] ?dir\.?.+?[\)\]]/ig, '')
