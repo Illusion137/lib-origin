@@ -1,3 +1,4 @@
+import type { StaticAssert } from './types';
 // Roz standard format
 export type RozContentType = 'TITLE'|'CHAPTER_TITLE'|'SECTION_TITLE'|'CHAPTER_SUBTITLE'|'HEADING'|'PARAGRAPH'|'IMAGE'|"LINE_BREAK"|"THEME_BREAK"|"TABLE_OF_CONTENTS_CHAPTER";
 export interface RozContent {
@@ -20,7 +21,10 @@ export interface RozChapterContents {
 
 export type RozSourceFileType = 'TXT'|'PDF'|'JNOVEL'|'WITCHCULT'|'SYOSETU'|'EPUB'|'DOCX'|'FILEBASE'|"FOLDER";
 export const RozSourceFileTypeArray = ['TXT','PDF','JNOVEL','WITCHCULT','SYOSETU','EPUB','DOCX','FILEBASE'] as const;
-export default interface Roz { // TODO add versions to format
+export type RozFileVersions = 1;
+
+export interface RozHeader {
+    version: 1;
     uuid: string;
     source_file: string;
     source_file_type: RozSourceFileType;
@@ -31,6 +35,13 @@ export default interface Roz { // TODO add versions to format
     date: string|null;
     series_name: string|null;
     series_no: number|null;
+};
+
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type HeaderVersionAssertion = StaticAssert<RozHeader['version'] extends RozFileVersions ? true : false>;
+
+export default interface Roz extends RozHeader { // TODO add versions to format
     chapters: RozChapterContents[];
 };
 export type RozTextStructureType = "NONE"|"em"|"b";

@@ -40,6 +40,7 @@
     "@react-native-async-storage/async-storage": "^2.0.0",
     "@react-native-community/cookies": "^5.0.1",
     "@react-native-documents/picker": "^10.1.5",
+    "@react-navigation/native": "^7.1.26",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cli-progress": "^3.11.6",
     "@types/crypto-js": "^4.2.2",
@@ -128,10 +129,10 @@
     "tty-browserify": "^0.0.0",
     "url": "^0.10.3",
     "util": "^0.10.4",
-    "uuid": "^10.0.0",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^4.2.0",
-    "youtubei.js": "^16.0.1"
+    "youtubei.js": "^16.0.1",
+    "zustand": "^5.0.9"
   },
   "react-native": {
     "zlib": "browserify-zlib",
