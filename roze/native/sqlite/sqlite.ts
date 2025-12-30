@@ -11,12 +11,12 @@ export async function load_native_sqlite(): Promise<SQLite>{
 			break;
 		case "NODE":
 			try {
-				sqlite_instance = (await import("./sqlite.node.js")).node_sqlite;
+				sqlite_instance = (await import("./sqlite.node.ts")).node_sqlite;
 			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
-				sqlite_instance = (await import("./sqlite.mobile.js")).mobile_sqlite;
+				sqlite_instance = (await import("./sqlite.mobile.ts")).mobile_sqlite;
 			} catch (e) { console.error(e); }
 			break;
 	}

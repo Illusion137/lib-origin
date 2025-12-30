@@ -11,12 +11,12 @@ export async function load_native_ffmpeg(): Promise<FFMPEG>{
 			break;
 		case "NODE":
 			try {
-				ffmpeg_instance = (await import("./ffmpeg.node.js")).node_ffmpeg;
+				ffmpeg_instance = (await import("./ffmpeg.node.ts")).node_ffmpeg;
 			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
-				ffmpeg_instance = (await import("./ffmpeg.mobile.js")).mobile_ffmpeg;
+				ffmpeg_instance = (await import("./ffmpeg.mobile.ts")).mobile_ffmpeg;
 			} catch (e) { console.error(e); }
 			break;
 	}

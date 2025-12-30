@@ -1,7 +1,6 @@
 import type { drizzle } from "drizzle-orm/op-sqlite";
-import type { Scalar } from "@op-engineering/op-sqlite";
+import type { Scalar, _InternalDB } from "@op-engineering/op-sqlite";
 import { generror_catch } from "./error_util";
-import * as Supabase from "drizzle-orm/supabase";
 import { reinterpret_cast } from "@common/cast";
 
 type DrizzleDB = ReturnType<typeof drizzle>;

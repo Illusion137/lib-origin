@@ -14,7 +14,7 @@ export async function load_native_document_picker(): Promise<DocumentPicker>{
             break;
         case "REACT_NATIVE":
             try {
-                document_picker_instance = (await import("./document_picker.mobile.js")).mobile_document_picker;
+                document_picker_instance = (await import("./document_picker.mobile.ts")).mobile_document_picker;
             } catch (e) { console.error(e); }
             break;
     }

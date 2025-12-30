@@ -12,12 +12,12 @@ export async function load_native_voice_synth(): Promise<VoiceSynth>{
             break;
         case "NODE":
             try {
-                voice_synth_instance = (await import("./voice_synth.node.js")).node_voice_synth;
+                voice_synth_instance = (await import("./voice_synth.node.ts")).node_voice_synth;
             } catch (e) { console.error(e); }
             break;
         case "REACT_NATIVE":
             try {
-                voice_synth_instance = (await import("./voice_synth.mobile.js")).mobile_voice_synth;
+                voice_synth_instance = (await import("./voice_synth.mobile.ts")).mobile_voice_synth;
             } catch (e) { console.error(e); }
             break;
     }

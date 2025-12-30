@@ -11,12 +11,12 @@ export async function load_native_get_audio_duration(): Promise<GetAudioDuration
             break;
         case "NODE":
             try {
-                get_audio_duration_instance = (await import("./get_audio_duration.node.js")).node_get_audio_duration;
+                get_audio_duration_instance = (await import("./get_audio_duration.node.ts")).node_get_audio_duration;
             } catch (e) { console.error(e); }
             break;
         case "REACT_NATIVE":
             try {
-                get_audio_duration_instance = (await import("./get_audio_duration.mobile.js")).mobile_get_audio_duration;
+                get_audio_duration_instance = (await import("./get_audio_duration.mobile.ts")).mobile_get_audio_duration;
             } catch (e) { console.error(e); }
             break;
     }

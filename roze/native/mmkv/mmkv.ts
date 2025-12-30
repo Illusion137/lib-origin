@@ -11,12 +11,12 @@ export async function load_native_mmkv(): Promise<MMKVModule>{
 			break;
 		case "NODE":
 			try {
-				mmkv_instance = (await import("./mmkv.node.js")).node_mmkv;
+				mmkv_instance = (await import("./mmkv.node.ts")).node_mmkv;
 			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
-				mmkv_instance = (await import("./mmkv.mobile.js")).mobile_mmkv;
+				mmkv_instance = (await import("./mmkv.mobile.ts")).mobile_mmkv;
 			} catch (e) { console.error(e); }
 			break;
 	}
