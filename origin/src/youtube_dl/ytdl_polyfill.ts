@@ -17,16 +17,16 @@ import { MMKV } from 'react-native-mmkv';
 
 // See https://github.com/nodejs/node/issues/40678#issuecomment-1126944677
 class CustomEvent extends Event {
-  readonly #detail;
+    readonly #detail;
 
-  constructor(type: string, options?: CustomEventInit<any[]>) {
-    super(type, options);
-    this.#detail = options?.detail ?? null;
-  }
+    constructor(type: string, options?: CustomEventInit<any[]>) {
+        super(type, options);
+        this.#detail = options?.detail ?? null;
+    }
 
-  get detail() {
-    return this.#detail;
-  }
+    get detail() {
+        return this.#detail as unknown[];
+    }
 }
 
 global.CustomEvent = CustomEvent as any;

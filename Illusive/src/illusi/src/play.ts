@@ -10,6 +10,7 @@ import { default_playlists } from '@illusive/default_playlists';
 import { GLOBALS } from '@illusive/globals';
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
+import { catch_ignore } from '@common/utils/error_util';
 
 export async function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
     if(tracks.length === 0) return [];
@@ -27,7 +28,7 @@ export async function filter_play_tracks(start_track: Track, tracks: Track[], pl
         GLOBALS.global_var.can_play_again_mutex = false;
         return tracks;
     } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(e => e);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(catch_ignore);
         return [];
     }
 }
@@ -68,7 +69,7 @@ export async function play_mix(track_data: Track, from: string) {
         }
         track_mix.tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
         GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
-    })().catch(e => e);
+    })().catch(catch_ignore);
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[]) {
     if(from === Constants.illusi_mix_from) await play_mix(track_data, from);

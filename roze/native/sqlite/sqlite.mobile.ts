@@ -3,21 +3,6 @@ import { sqlite_connection_map, sqlite_database_map, type GenericSQLiteDatabase,
 import { drizzle } from 'drizzle-orm/op-sqlite';
 import { openSync, type DB } from '@op-engineering/op-sqlite';
 
-declare module '@op-engineering/op-sqlite' {
-  export function openSync(
-    params?: {
-        url: string;
-        authToken: string;
-        name: string;
-        location?: string;
-        libsqlSyncInterval?: number;
-        libsqlOffline?: boolean;
-        encryptionKey?: string;
-        remoteEncryptionKey?: string;
-    }
-  ): DB;
-}
-
 export const mobile_sqlite: SQLite = {
     create_database_connection: async(opts: SQLiteConnectionOpts) => {
         const connection = open(opts);

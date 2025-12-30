@@ -33,6 +33,7 @@ import { bandlab_parse_track } from './parsers/bandlab_parser';
 import { ExploreLocalData } from './explore_local_data';
 import { reinterpret_cast } from '@common/cast';
 import christmas_tracks_v1730 from '@illusive/data/christmas_tracks_v1730.json';
+import rozfetch from '@common/rozfetch';
 
 export const album_fetch_opts: RoZFetchRequestInit = {
     cache_opts: {
@@ -111,7 +112,7 @@ export async function youtube_music_get_playlist(url: string, fetch_opts?: RoZFe
             continuation: playlist_response.data.continuation === null ? null : {url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: "PLAYLIST"} as YouTubeMusicPlaylistContinuation
         };
     }
-    catch(e) {
+    catch(_) {
         const artwork_url = best_thumbnail(playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
         return {
             title: parse_runs(playlist_response.data.playlist_data.title.runs),
@@ -388,6 +389,7 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
 
 export async function illusi_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cleaned_url = urlid(url, ".json");
+    // TODO auto generate this with yet another build script
     if(cleaned_url === "christmas_tracks_v1730"){
         return {
             title: ExploreLocalData.illusi_recommend_playlists_map.christmas_tracks_v1730.title.name,
@@ -397,15 +399,19 @@ export async function illusi_get_playlist(url: string): Promise<MusicServicePlay
         };
     }
 
-    const playlist_response = await fetch(url);
-    if(!playlist_response.ok) return {title: "", tracks: [], continuation: null};
-    return await playlist_response.json().catch((result) => { return result instanceof Error ? {error: result} : result});
+    const playlist_response = await rozfetch<MusicServicePlaylist>(url);
+    if("error" in playlist_response) return default_playlist(playlist_response);
+    const playlist = await playlist_response.json();
+    if("error" in playlist && playlist.error !== undefined) return default_playlist(playlist as ResponseError);
+    return playlist as MusicServicePlaylist;
 }
 
 export async function api_get_playlist(url: string): Promise<MusicServicePlaylist> {
-    const playlist_response = await fetch(url);
-    if(!playlist_response.ok) return {title: "", tracks: [], continuation: null};
-    return await playlist_response.json().catch((result) => { return result instanceof Error ? {error: result} : result});
+    const playlist_response = await rozfetch<MusicServicePlaylist>(url);
+    if("error" in playlist_response) return default_playlist(playlist_response);
+    const playlist = await playlist_response.json();
+    if("error" in playlist && playlist.error !== undefined) return default_playlist(playlist as ResponseError);
+    return playlist as MusicServicePlaylist;
 }
 
 // TODO come back to improve this and also insert continuation

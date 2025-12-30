@@ -35,7 +35,7 @@ export namespace SQLUpdate {
                     await Promise.allSettled(promises);
                 }
             }
-            catch(e) {
+            catch(_) {
                 GLOBALS.global_var.bottom_alert("Failed to Update to 17.2.0", "WARN");
             }
             finally {

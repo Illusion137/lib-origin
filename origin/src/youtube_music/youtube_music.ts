@@ -64,7 +64,7 @@ export namespace YouTubeMusic {
 		};
 	}
 	export function playlist_urlid(playlist_url: string) {
-		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /\&.+/);
+		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /&.+/);
 	}
 	export function get_post_headers(cookie_jar: CookieJar|undefined, epoch: Date, ytcfg: YTCFG): Record<string, any> {
 		const SAPISID = cookie_jar?.getCookie("SAPISID")?.getData()?.value;

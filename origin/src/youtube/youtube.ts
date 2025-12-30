@@ -52,7 +52,7 @@ export namespace YouTube {
 		};
 	}
 	export function playlist_urlid(playlist_url: string) {
-		return urlid(playlist_url, "youtube.com/", "playlist?list=", /\&.+/);
+		return urlid(playlist_url, "youtube.com/", "playlist?list=", /&.+/);
 	}
 	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;

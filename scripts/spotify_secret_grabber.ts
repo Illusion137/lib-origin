@@ -11,6 +11,7 @@
 import { chromium } from "playwright";
 import { Command } from "commander";
 import fs from "fs/promises";
+import { catch_ignore } from "@common/utils/error_util";
 
 const BUNDLE_RE = /(?:vendor~web-player|encore~web-player|web-player)\.[0-9a-f]{4,}\.(?:js|mjs)/;
 const TIMEOUT = 45000;
@@ -35,21 +36,21 @@ function log(msg: string) {
     }
 }
 
-function inlineIntArray(nums: number[]): string {
+function inline_int_array(nums: number[]): string {
     return `[ ${nums.join(", ")} ]`;
 }
 
-async function writeSecretBytesCompact(path: string, items: { version: number; secret: number[] }[]) {
+async function write_secret_bytes_compact(path: string, items: { version: number; secret: number[] }[]) {
     const lines = items.map(
-        (itm) => `  { "version": ${itm.version}, "secret": ${inlineIntArray(itm.secret)} }`
+        (itm) => `  { "version": ${itm.version}, "secret": ${inline_int_array(itm.secret)} }`
     );
     const out = `[\n${lines.join(",\n")}\n]\n`;
     await fs.writeFile(path, out);
 }
 
-async function writeSecretDictCompact(path: string, mapping: Record<string, number[]>) {
+async function write_secret_dict_compact(path: string, mapping: Record<string, number[]>) {
     const keys = Object.keys(mapping).sort((a, b) => parseInt(a) - parseInt(b));
-    const lines = keys.map((k) => `  "${k}": ${inlineIntArray(mapping[k])}`);
+    const lines = keys.map((k) => `  "${k}": ${inline_int_array(mapping[k])}`);
     const out = `{\n${lines.join(",\n")}\n}\n`;
     await fs.writeFile(path, out);
 }
@@ -116,22 +117,22 @@ function summarise(caps: Capture[], mode?: string) {
             (async () => {
                 try {
                     await fs.writeFile(OUTPUT_FILES.plain_json, JSON.stringify(formatted, null, 2) + "\n");
-                    await writeSecretBytesCompact(OUTPUT_FILES.bytes_json_array, secretBytes);
-                    await writeSecretDictCompact(OUTPUT_FILES.bytes_json_dict, secretDict);
+                    await write_secret_bytes_compact(OUTPUT_FILES.bytes_json_array, secretBytes);
+                    await write_secret_dict_compact(OUTPUT_FILES.bytes_json_dict, secretDict);
                     if (VERBOSE) {
                         console.log(`[+] Wrote ${OUTPUT_FILES.plain_json}`);
                         console.log(`[+] Wrote ${OUTPUT_FILES.bytes_json_array}`);
                         console.log(`[+] Wrote ${OUTPUT_FILES.bytes_json_dict}`);
                     }
                 } catch (err) {
-                    console.error(`Error writing output files: ${err}`);
+                    console.error("Error writing output files: ", err);
                 }
-            })().catch(e => e);
+            })().catch(catch_ignore);
             break;
     }
 }
 
-async function grabLive(): Promise<Capture[]> {
+async function grab_live(): Promise<Capture[]> {
     const hook = `
     (() => {
       if (globalThis.__secretHookInstalled) return;
@@ -196,12 +197,12 @@ async function main() {
     else if (mode === "all") VERBOSE = true;
 
     try {
-        const caps = await grabLive();
+        const caps = await grab_live();
         summarise(caps, mode);
     } catch (err) {
-        console.error(`Error: ${err}`);
+        console.error("Error: ", err);
         process.exit(1);
     }
 }
 
-main().catch( e => e);
+main().catch(catch_ignore);

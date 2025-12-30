@@ -4,16 +4,18 @@ import { Constants } from "./constants";
 import { Illusive } from "./illusive";
 import { music_service_uri_to_music_service, split_uri } from "./illusive_utils";
 import type { CompactPlaylistData, ConvertTo, MusicServiceType, Playlist, SortType, Track } from "./types";
+import { SQLPlaylists } from "./sql/sql_playlists";
 
-export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track[], sql_playlist_tracks: (uuid: string) => Promise<Track[]>) {
+export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track[], full_service_playlist: boolean) {
     if(uuid_uri === Constants.library_write_playlist) {
         return global_tracks.slice();
     }
     const uuidv4_regex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
     const is_uuid = uuidv4_regex.test(uuid_uri);
-    if(is_uuid) return await sql_playlist_tracks(uuid_uri);
+    if(is_uuid) return await SQLPlaylists.playlist_tracks(uuid_uri);
     const [service, id] = split_uri(uuid_uri);
-    const tracks = await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id);
+    const tracks = full_service_playlist ? await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id) :
+        await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_playlist(id);
     if("error" in tracks) return [];
     return tracks.tracks;
 }
@@ -116,8 +118,8 @@ export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Trac
         case "LAST_PLAYED_DATE_LOWHI":  return tracks.sort((a, b) => date_time(a.meta?.last_played_date) - date_time(b.meta?.last_played_date));
         case "LAST_SAMPLED_DATE_HILOW": return tracks.sort((a, b) => date_time(b.meta?.last_sampled_date) - date_time(a.meta?.last_sampled_date));
         case "LAST_SAMPLED_DATE_LOWHI": return tracks.sort((a, b) => date_time(a.meta?.last_sampled_date) - date_time(b.meta?.last_sampled_date));
-        case "LONGEST_PLAYED_HILOW":             return tracks.sort((a, b) => (b.duration * (b.meta?.plays ?? 0)) - (a.duration * (a.meta?.plays ?? 0)));
-        case "LONGEST_PLAYED_LOWHI":             return tracks.sort((a, b) => (a.duration * (a.meta?.plays ?? 0)) - (b.duration * (b.meta?.plays ?? 0)));
+        case "LONGEST_PLAYED_HILOW":    return tracks.sort((a, b) => (b.duration * (b.meta?.plays ?? 0)) - (a.duration * (a.meta?.plays ?? 0)));
+        case "LONGEST_PLAYED_LOWHI":    return tracks.sort((a, b) => (a.duration * (a.meta?.plays ?? 0)) - (b.duration * (b.meta?.plays ?? 0)));
         default: return tracks;
     }
 }

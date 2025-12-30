@@ -21,7 +21,7 @@ Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Ty
     const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
   
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    return new Function(code)();
+    return new Function(code)() as typeof Platform.shim.eval;
 }
 
 export namespace YouTubeDL {

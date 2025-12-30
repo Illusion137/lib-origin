@@ -17,10 +17,11 @@ import { Secret, TOTP } from "otpauth";
 import { encode_params } from "@common/utils/fetch_util";
 import BufferRN from "buffer/";
 import { generror } from "@common/utils/error_util";
-import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
+import rozfetch, { type RoZFetchRequestInit,type RoZFetchResponse } from "@common/rozfetch";
 import spotify_secrets_bytes from "./data/secret_bytes.json";
 import type { SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLibrary, SpotifyAPI, SpotifyAPIOperationNames, SpotifyArtistOverview, SpotifyGetAlbum, SpotifyGetCollection, SpotifyGetPlaylist, SpotifyHome, SpotifyProfileAccountAttributes, SpotifyRemoveFromLibrary, SpotifyRemoveFromPlaylist, SpotifyRequiresCredentials, SpotifySearch, SpotifyTracksInLibrary, SPVar } from "./types/api";
 import { reinterpret_cast } from '../../../common/cast';
+import { try_json_parse } from "@common/utils/parse_util";
 
 const Buffer = BufferRN.Buffer;
 export namespace Spotify {
@@ -55,8 +56,8 @@ export namespace Spotify {
     export const valid_collection_regex = /(https?:\/\/)open\.spotify\.com\/(collection)\/.+/i
     export const valid_artist_regex = /(https?:\/\/)open\.spotify\.com\/artist\/.+/i
 
-    export function get_headers(client: (Client | undefined), cookie_jar: (CookieJar | undefined)) {
-        const default_headers: any = {
+    export function get_headers(client: (Client | undefined), cookie_jar: (CookieJar | undefined)): Record<string, string> {
+        const default_headers = {
             "cache-control": "max-age=0",
             "sec-ch-ua": "\"Google Chrome\";v=\"117\", \"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"117\"",
             "sec-fetch-user": "?1",
@@ -75,6 +76,8 @@ export namespace Spotify {
             'User-Agent': USER_AGENT,
             "upgrade-insecure-requests": "1",
             'Access-Control-Allow-Origin': '*',
+            'Cookies': undefined as undefined|string,
+            'authorization': undefined as undefined|string,
         }
         if (cookie_jar !== undefined)
             default_headers.Cookies = cookie_jar.toString();
@@ -82,7 +85,7 @@ export namespace Spotify {
             default_headers.authorization = `Bearer ${client?.session.accessToken}`;
             default_headers['client-token'] = client?.client_token.granted_token.token;
         }
-        return default_headers;
+        return reinterpret_cast<Record<string, string>>(default_headers);
     }
 
     export function post_headers(cookie_jar?: CookieJar){
@@ -103,12 +106,13 @@ export namespace Spotify {
     }
 
     function extract_encoded_bullshit_from_id(id: string, page_html: string){
-        const regex = new RegExp(`<script ?id="${id}".+?>(.+?)<\/script>`, "gis");
+        const regex = new RegExp(`<script ?id="${id}".+?>(.+?)</script>`, "gis");
         return regex.exec(page_html)?.[1] ?? "";
     }
-    function decode_spotify_bullshit<T>(inner_html: string): T {
+    function decode_spotify_bullshit<T>(inner_html: string): ResponseError|T {
         if(is_empty(inner_html)) return {} as T;
-        return JSON.parse(decodeURIComponent(atob(inner_html).split('').map(e => `%${`00${e.charCodeAt(0).toString(16)}`.slice(-2)}`).join('')));
+        const uri_component = atob(inner_html).split('').map(e => `%${`00${e.charCodeAt(0).toString(16)}`.slice(-2)}`).join('');
+        return try_json_parse<T>(decodeURIComponent(uri_component));
     }
     // TODO add retries
     export function get_random_secret(){
@@ -201,9 +205,10 @@ export namespace Spotify {
         const seo_experiments = decode_spotify_bullshit<{}>(extract_encoded_bullshit_from_id("seoExperiments", page_html));
         const remote_config = decode_spotify_bullshit<RemoteConfig>(extract_encoded_bullshit_from_id("remoteConfig", page_html));
 
-        feature_flags;
-        seo_experiments;
-        remote_config;
+        if("error" in app_server_config) { console.error(app_server_config); return app_server_config; }
+        if("error" in feature_flags) { console.error(feature_flags); return feature_flags; }
+        if("error" in seo_experiments) { console.error(seo_experiments); return seo_experiments; }
+        if("error" in remote_config) { console.error(remote_config); return remote_config; }
 
         const access_token_url = await get_access_token_url(app_server_config.serverTime);
         if(typeof access_token_url === "object" && "error" in access_token_url) return access_token_url;
@@ -374,7 +379,7 @@ export namespace Spotify {
             extensions: extensions
         };
         const method = api_methods[operation_name];
-        let response;
+        let response: ResponseError|RoZFetchResponse<R>;
         if(method === "GET"){
             response = await rozfetch<R>(`${query_base_url}?${encode_params(params)}`, {headers, ...opts.fetch_opts, method});
         }

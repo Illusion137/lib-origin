@@ -2,17 +2,22 @@ import type { ResponseError } from "@common/types";
 import { generror_catch } from "@common/utils/error_util";
 import { is_empty, small_string } from "@common/utils/util";
 import { remove } from "@common/utils/clean_util";
+import { reinterpret_cast } from '../cast';
 
 function json_eval<T>(json: string): T {
     const result = eval("let evaluated = " + json + "; evaluated;");
-    return result;
+    return reinterpret_cast<T>(result);
 }
 export function force_json_parse<T>(json_string: string): T {
-	try { return JSON.parse(json_string) as T; } catch (error) { return {} as never; }
+	try { return JSON.parse(json_string) as T; } catch (_) { return {} as never; }
+}
+export function force_json_parse_array<T>(json_string: string): T {
+	try { return JSON.parse(json_string) as T; } catch (_) { return [] as never; }
 }
 export function try_json_parse<T>(json_string: string): T|ResponseError {
 	try { return JSON.parse(json_string) as T; } catch (error) { return generror_catch(error, "Failed to parse JSON", {json_string: small_string(json_string)}); }
 }
+
 export function try_json_eval<T>(json_string: string): T|ResponseError {
 	try { return json_eval<T>(json_string); } catch (error) { return generror_catch(error, "Failed to eval JSON", {json_string: small_string(json_string)}); }
 }

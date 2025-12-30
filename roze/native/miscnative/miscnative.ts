@@ -9,20 +9,15 @@ export async function load_native_miscnative(): Promise<MiscNative>{
 		case "WEB":
 			console.error("Web Native MiscNative is NOT implemented");
 			break;
-		case "ELECTRON_RENDERER":
-			try {
-				// miscnative_instance = (await import("../gen/electron/modules/miscnative.electron_renderer")).electron_renderer_miscnative;
-			} catch (e) {}
-			break;
 		case "NODE":
 			try {
 				miscnative_instance = (await import("./miscnative.node.js")).node_miscnative;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
 				miscnative_instance = (await import("./miscnative.mobile.js")).mobile_miscnative;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 	}
 	return miscnative_instance;

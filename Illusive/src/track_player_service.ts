@@ -24,6 +24,7 @@ import { resolved_artwork } from '@illusive/artwork';
 import { SQLRecentlyPlayed } from '@illusive/sql/sql_recently_played';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
+import { catch_log } from '@common/utils/error_util';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
@@ -37,11 +38,11 @@ export async function setup_track_player(): Promise<boolean> {
     let index = 0;
     try {
         index = await TrackPlayer.getActiveTrackIndex() ?? 0;
-    } catch (error) {}
+    } catch (_) {}
     GLOBALS.global_var.past_track_index = GLOBALS.global_var.playing_tracks.length === 0 ? GLOBALS.global_var.past_track_index : index;
     try {
         await TrackPlayer.getActiveTrackIndex();
-    } catch (error) {         
+    } catch (_) {         
         await TrackPlayer.setupPlayer();
         trackplayer_has_been_setup = true;
         await TrackPlayer.updateOptions({
@@ -138,8 +139,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     const nt_response = await handle_new_track_data(track, url_data);
     if(!("error" in nt_response)) track = nt_response;
     // TODO if file doesn't exist might as well just remove it from the queue and skip
-    // if(url_data.url.includes("googlevideo.com")){}
-        // url_data.url = await ffcache_yt(url_data.url, track);
     const artwork = resolved_artwork(track.playback!.artwork);
     return {
         url: url_data.url,
@@ -250,7 +249,7 @@ export async function track_player_on_error(data: {code: string, message: string
     for(let i = 0; i < Constants.trackplayer_max_retries; i++){
         try {
             await TrackPlayer.retry();
-        } catch (error) {
+        } catch (_) {
             continue;
         }
         break;
@@ -308,8 +307,8 @@ export async function playback_service() {
             }
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) await track_player_next();
 
-            check_push_next_track(data.track).catch(e => e);
-        } catch (error) { }
+            check_push_next_track(data.track).catch(catch_log);
+        } catch (_) { }
     });
     TrackPlayer.addEventListener(Event.RemotePrevious, async () => { await track_player_previous(); });
     TrackPlayer.addEventListener(Event.RemoteNext,     async () => { await track_player_next(); });

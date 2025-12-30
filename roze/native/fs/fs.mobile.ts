@@ -38,7 +38,7 @@ export const mobile_fs: FileSystem = {
 				is_directory: false,
 				uri: stats.uri
 			};
-		} catch (error) {
+		} catch (_) {
 			return {
 				exists: false,
 				file_modified_ms: 0,

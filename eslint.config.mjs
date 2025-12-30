@@ -24,28 +24,27 @@ export default [
                 project: true,
                 tsconfigRootDir: import.meta.dirname,
             },
-        },
+        }
+    },
+    {
         rules: {
             "@typescript-eslint/only-throw-error": "error",
             "@typescript-eslint/no-namespace": "off",
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-unused-expressions": "off",
-            "@typescript-eslint/no-unused-vars": "warn",
-            "@typescript-eslint/no-empty-object-type": "off",
-            "@typescript-eslint/no-require-imports": "off",
-            "no-useless-escape": "off",
+            "@typescript-eslint/no-unused-vars": [
+                "warn",
+                {
+                    "argsIgnorePattern": "^_",
+                    "varsIgnorePattern": "^_",
+                    "caughtErrorsIgnorePattern": "^_"
+                }
+            ],
+            "@typescript-eslint/no-empty-object-type": "warn",
             "no-empty": "off",
             "no-prototype-builtins": "off",
             "no-setter-return": "off",
-            "@typescript-eslint/no-this-alias": "off",
             "no-misleading-character-class": "off",
-            "@typescript-eslint/no-unsafe-return": "off",
-            "@typescript-eslint/no-unsafe-member-access": "off",
-            "@typescript-eslint/no-unsafe-call": "off",
-            "@typescript-eslint/no-unsafe-assignment": "off",
-            "@typescript-eslint/no-unsafe-argument": "off", // TURN THIS ON
-            "@typescript-eslint/require-await": "off",
-            "@typescript-eslint/restrict-template-expressions": "off",
             "@typescript-eslint/no-magic-numbers": "off",
             "@typescript-eslint/explicit-module-boundary-types": "off",
             "@typescript-eslint/naming-convention": ["off", 
@@ -98,7 +97,15 @@ export default [
             "@typescript-eslint/require-array-sort-compare": "off",
             "@typescript-eslint/class-methods-use-this": "off",
             "@typescript-eslint/no-misused-promises": "off",
+            "no-empty-function": "warn",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-empty-object-type": "off",
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            "@typescript-eslint/no-unsafe-argument": "off",
+            "@typescript-eslint/require-await": "off",
         }
     },
-    prettier
+    prettier,
+    // unusedImports
 ];

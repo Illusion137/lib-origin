@@ -2,6 +2,7 @@ import { reinterpret_cast } from '@common/cast';
 import type { ResponseError } from '@common/types';
 import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
+import { force_json_parse } from './parse_util';
 
 export function generate_new_uid(prefix_name: string) {
 	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + Date.now().toString(36).substring(2, 15) +
@@ -104,7 +105,7 @@ export function is_number(numish: unknown): numish is number{
 	return typeof numish === 'number' && !isNaN(numish);
 }
 
-export function json_catch(result: any){
+export function json_catch(result: unknown){
     return result instanceof Error ? {error: result} : result;
 }
 
@@ -116,7 +117,7 @@ export function large_number_string(num: number): string{
 
 export function safe_date_iso(date: Date): string{
 	try { return date.toISOString(); }
-	catch(e) { return new Date(0).toISOString(); }
+	catch(_) { return new Date(0).toISOString(); }
 }
 
 export function has_file_extension(path: string){
@@ -178,11 +179,11 @@ export function seeded_random_of<T>(gen: () => number, arr: T[]): T {
 }
 
 export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string, T[]> {
-    return items.reduce((accumulator: any, item) => {
+    return items.reduce((accumulator: Record<string, unknown[]>, item) => {
         const key = keyGetter(item);
         (accumulator[key] = accumulator[key] || []).push(item);
         return accumulator;
-    }, {});
+    }, {}) as Record<string, T[]>;
 };
 
 export function version_split(version: string): [number, number, number]{
@@ -199,7 +200,7 @@ export function version_greater_than(version: string, other_version: string): bo
         if(major === other_major && minor === other_minor && patch > other_patch) return true;
         return false;
     }
-    catch(e) {
+    catch(_) {
         return false;
     }
 }
@@ -212,7 +213,7 @@ export function single_case(str: string): string {
 }
 
 export function recreate<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    return force_json_parse(JSON.stringify(obj));
 }
 
 export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: number): Promise<T[]>{
@@ -228,9 +229,11 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
     return results.flat();
 }
 
-export function catch_function_sync(func: () => any, on_error: (error: unknown) => any) {
+export function catch_function_sync<T>(func: () => T, on_error: (error: unknown) => any) {
     try { return func(); } catch (error) { on_error(error); }
+    return reinterpret_cast<T>({});
 }
-export async function catch_function_async(func: () => Promise<any>, on_error: (error: Error) => any) {
+export async function catch_function_async<T>(func: () => Promise<T>, on_error: (error: Error) => any) {
     try { return await func(); } catch (error) { on_error(error as Error); }
+    return reinterpret_cast<T>({});
 }

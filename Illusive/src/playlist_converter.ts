@@ -54,6 +54,7 @@ interface ConvertPlaylistOpts {
 }
 
 export async function convert_playlist(playlist_tracks: Track[], incoming_tracks: Track[], to_service: MusicServiceType, opts: ConvertPlaylistOpts) {
+    // TODO checking connection n shit
     // if(opts.check_connection && Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
     const service = Illusive.music_service.get(to_service)!;
     const to_ok = service.create_playlist !== undefined && service.add_tracks_to_playlist !== undefined;

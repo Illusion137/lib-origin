@@ -8,6 +8,7 @@ import { Constants } from "@illusicord/constants";
 import { Constants as IllusiveConstants } from "@illusive/constants";
 import { Utils } from "@illusicord/player/utils";
 import type { Player } from "@illusicord/player/player";
+import { catch_ignore } from "@common/utils/error_util";
 
 export class Queue<T = unknown> {
     player: Player;
@@ -69,7 +70,7 @@ export class Queue<T = unknown> {
             connection = await entersState(connection, VoiceConnectionStatus.Ready, 15 * 1000);
             _connection = new StreamConnection(connection, channel as VoiceChannel);
         }
-        catch (err) {
+        catch (_) {
             connection.destroy();
             throw new DMPError(DMPErrors.VOICE_CONNECTION_ERROR);
         }
@@ -170,7 +171,7 @@ export class Queue<T = unknown> {
             this.connection
                 .play_audio_stream(resource)
                 .then(__ => this.set_volume(this.options.volume ?? 100))
-                .catch(e => e);
+                .catch(catch_ignore);
             return play_track;
         }
         return play_track;

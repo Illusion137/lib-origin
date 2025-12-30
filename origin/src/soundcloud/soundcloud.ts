@@ -218,7 +218,7 @@ export namespace SoundCloud {
             if(depth === 1) return next_data;
             const combined_data = combine_continuation<T>(next_data, await continuation(next_data.next_href, opts, depth - 1));
             return combined_data;
-        } catch (error) { 
+        } catch (_) { 
             return {
                 collection: [],
                 next_href: "",
@@ -496,7 +496,7 @@ export namespace SoundCloud {
             opts.cookie_jar?.updateWithFetch(response);
             return {ok: true};
         }
-        catch(e) {
+        catch(_) {
             clearTimeout(abort);
             return {ok: false};
         }

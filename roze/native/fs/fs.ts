@@ -9,20 +9,15 @@ export async function load_native_fs(): Promise<FileSystem>{
 		case "WEB":
 			console.error("Web Native FileSystem is NOT implemented");
 			break;
-		case "ELECTRON_RENDERER":
-			try {
-				// fs_instance = (await import("../gen/electron/modules/fs.electron_renderer")).electron_renderer_fs;
-			} catch (e) {}
-			break;
 		case "NODE":
 			try {
 				fs_instance = (await import("./fs.node.js")).node_fs;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
 				fs_instance = (await import("./fs.mobile.js")).mobile_fs;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 	}
 	return fs_instance;

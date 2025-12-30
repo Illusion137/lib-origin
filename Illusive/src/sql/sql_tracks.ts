@@ -1,6 +1,8 @@
 import { reinterpret_cast } from "@common/cast";
 import type { ResponseError } from "@common/types";
-import { generror_catch } from "@common/utils/error_util";
+import { catch_ignore,
+catch_log,
+generror_catch } from "@common/utils/error_util";
 import { error_undefined, extract_file_extension, is_empty } from "@common/utils/util";
 import { tracks_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
@@ -65,7 +67,7 @@ export namespace SQLTracks {
             track.lyrics_uri = found_track?.lyrics_uri;
             track.meta = found_track?.meta;
         }
-        check_fixerupper_track(track).catch(e => e);
+        check_fixerupper_track(track).catch(catch_ignore);
         return track;
     }
     
@@ -224,7 +226,7 @@ export namespace SQLTracks {
     }
     export async function insert_track(track: Track) {
         if( track_exists(track, GLOBALS.global_var.sql_tracks) ) return;
-        await db_exec(async(db) => await db.insert(tracks_table).values({
+        await await db.insert(tracks_table).values({
             ...track, 
             meta: {
                 ...reinterpret_cast<TrackMetaData>(track.meta),
@@ -232,13 +234,13 @@ export namespace SQLTracks {
                 last_played_date: reinterpret_cast<ISOString>(new Date(0).toISOString()),
                 plays: 0
             }
-        }));
+        });
         const parsed_track = sql_track_to_track(track)
         if("error" in parsed_track) return;
         SQLGlobal.add_global_track_item(parsed_track);
-        if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(e => e);
-        if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(e => e);
-        if(Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(e => e);
+        if(Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
+        if(Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
+        if(Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
         await db_exec(async(db) => await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track_uid)));
@@ -288,7 +290,7 @@ export namespace SQLTracks {
         const to_restore = tracks ?? GLOBALS.global_var.sql_tracks;
         for(const track of to_restore)
             if(is_empty(track.imported_id) && is_empty(track.thumbnail_uri))
-                download_thumbnail(track).catch(e => e);
+                download_thumbnail(track).catch(catch_ignore);
     }
 
     export async function lyrics_exist(track: Track): Promise<{exists: false}|{exists: true, path: string}>{

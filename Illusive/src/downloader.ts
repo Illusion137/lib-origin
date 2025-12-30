@@ -6,7 +6,6 @@ import type { DownloadFromIdResult, Downloading, DownloadTrackResult, ISOString,
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 import { GLOBALS } from './globals';
 import { get_playlist_tracks } from './playlist_utils';
-import { SQLPlaylists } from './sql/sql_playlists';
 import { SQLTracks } from './sql/sql_tracks';
 import { AsyncFNQueue } from '@common/types';
 import { SQLBackpack } from './sql/sql_backpack';
@@ -27,10 +26,10 @@ export async function download_track_list(tracks: Track[], on_error?: OnErrorCal
 }
 
 export async function batch_download(playlist_key: string, slice?: [number, number]) {
-    await download_track_list((await get_playlist_tracks(playlist_key, GLOBALS.global_var.sql_tracks, SQLPlaylists.playlist_tracks)).slice(slice?.[0], slice?.[1]));
+    await download_track_list((await get_playlist_tracks(playlist_key, GLOBALS.global_var.sql_tracks, true)).slice(slice?.[0], slice?.[1]));
 }
 export async function batch_undownload(playlist_key: string, slice?: [number, number], callback?: (progress:number) => void){
-    const tracks = (await get_playlist_tracks(playlist_key, GLOBALS.global_var.sql_tracks, SQLPlaylists.playlist_tracks)).slice(slice?.[0], slice?.[1]);
+    const tracks = (await get_playlist_tracks(playlist_key, GLOBALS.global_var.sql_tracks, true)).slice(slice?.[0], slice?.[1]);
     for(let i = 0; i < tracks.length; i++){
         if(!Illusive.is_youtube(tracks[i])){
             await SQLTracks.clear_track_youtube(tracks[i].uid);

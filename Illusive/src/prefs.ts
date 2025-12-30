@@ -6,6 +6,7 @@ import { fs } from '@native/fs/fs';
 import type { MMKVModule } from '@native/mmkv/mmkv.base';
 import { Constants } from "./constants";
 import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
+import { force_json_parse_array } from "@common/utils/parse_util";
 
 export namespace Prefs {
     export type OtherPrefTypes = "BIAS"|"LINKER_LINKS"|"PAST_QUEUE";
@@ -118,9 +119,9 @@ export namespace Prefs {
 
     export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_load_map,
-        LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? "[]"),
-        PAST_QUEUE: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
-        BIAS: async(mod: MMKVModule, pref_key: string) => JSON.parse(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias)),
+        LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? "[]"),
+        PAST_QUEUE: async(mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
+        BIAS: async(mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias)),
     };
     export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_save_map,

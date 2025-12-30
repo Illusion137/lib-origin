@@ -1,41 +1,11 @@
-import { split_uri } from "@illusive/illusive_utils";
+import { music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
-import type { CompactPlaylist, ConvertTo, LinkerLink, MusicServiceType } from "@illusive/types";
+import type { LinkerLink } from "@illusive/types";
 import { Wifi } from "@illusive/illusi/src/wifi_utils";
-import * as uuid from "react-native-uuid";
+import { convert_playlist } from "@illusive/playlist_converter";
+import { get_playlist_tracks } from "@illusive/playlist_utils";
+import { GLOBALS } from "@illusive/globals";
 
-export function isdefault_playlist(compact_playlist: CompactPlaylist) {
-    if(compact_playlist.title.uri === undefined) return false;
-    const [service, id] = split_uri(compact_playlist.title.uri!);
-    switch(service) {
-        case "amazonmusic": return false;
-        case "applemusic": return false;
-        case "soundcloud": return id.includes("likes");
-        case "spotify": return compact_playlist.type !== "PLAYLIST";
-        case "youtube": return ["LL", "WL"].includes(id);
-        case "youtubemusic": return ["LM", "WL"].includes(id);
-        case "bandlab": return false;
-        case "illusi": return false;
-        case "musi": return false;
-        case "api": return false;
-        default: return false;
-    }
-}
-
-export function create_link(link: {
-    uuid_uri: string;
-    full_sample: boolean;
-    to: ConvertTo;
-    to_service: MusicServiceType
-}): LinkerLink {
-    return {
-        link_uuid: uuid.default.v4(),
-        full_sample: link.full_sample,
-        to: link.to,
-        to_service: link.to_service,
-        uuid_uri: link.uuid_uri
-    }
-}
 export async function save_link(link: LinkerLink) {
     const new_links = Prefs.get_pref('linker_links').concat(link);
     await Prefs.save_pref('linker_links', new_links);
@@ -54,9 +24,36 @@ export async function delete_link(link: LinkerLink){
 export async function fetch_linked_playlists(links: LinkerLink[]) {
     if(!Prefs.get_pref("enable_linker")) return;
     if(Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return;
+
     for(const link of links){
-        // TODO implement this
-        link;
+        switch(link.type){
+            case "INCOMING": {
+                const playlist_tracks = await get_playlist_tracks(link.illusi_uuid, GLOBALS.global_var.sql_tracks, true);
+                const incoming_playlist_tracks = await get_playlist_tracks(link.service_uri, GLOBALS.global_var.sql_tracks, link.full_service_playlist);
+                await convert_playlist(playlist_tracks, incoming_playlist_tracks, "Illusi", {
+                    check_connection: true, 
+                    divide_and_conquer: false,
+                    full_sample: "NONE", 
+                    convert_opts: {
+                        uuid_uri: link.illusi_uuid
+                    }
+                });
+                break;
+            }
+            case "OUTGOING": {
+                const playlist_tracks = await get_playlist_tracks(link.service_uri, GLOBALS.global_var.sql_tracks, link.full_service_playlist);
+                const incoming_playlist_tracks = await get_playlist_tracks(link.illusi_uuid, GLOBALS.global_var.sql_tracks, true);
+                const [music_service] = split_uri(link.service_uri);
+                await convert_playlist(playlist_tracks, incoming_playlist_tracks, music_service_uri_to_music_service(music_service), {
+                    check_connection: true, 
+                    divide_and_conquer: false,
+                    full_sample: "NONE", 
+                    convert_opts: {
+                        uuid_uri: link.illusi_uuid
+                    }
+                });
+                break;
+            }
+        }
     }
-        // await convert_playlist(await playlist_tracks(link.uuid_uri), link.to_service, {to: link.to, full_sample: link.full_sample, divide_and_conquer: false});
 }

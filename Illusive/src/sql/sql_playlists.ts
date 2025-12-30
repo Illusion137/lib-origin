@@ -10,6 +10,7 @@ import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist,
 import { and, eq } from 'drizzle-orm';
 import { SQLTracks } from "./sql_tracks";
 import { reinterpret_cast } from "@common/cast";
+import { catch_ignore } from "@common/utils/error_util";
 
 export namespace SQLPlaylists {
     // async function update_playlist_table(playlist_uuid: string, new_playlist: SQLiteUpdateSetSource<typeof playlists_table>){
@@ -147,7 +148,7 @@ export namespace SQLPlaylists {
     export async function all_playlists_data(ignore_tracks?: IgnoreTracks) {
         const playlists = await db_exec(async(db) => await db.select().from(playlists_table));
         all_playlist_data_memo = await Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, ignore_tracks ?? "PROMISE", playlist.archived ?? false)));
-        resolve_all_playlist_data_memo().catch(e => e);
+        resolve_all_playlist_data_memo().catch(catch_ignore);
         return all_playlist_data_memo;
     }
     

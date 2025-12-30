@@ -1,1 +1,0 @@
-	ipcMain.handle("__KEY__", async (_: IpcMainInvokeEvent, ...args: Parameters<ReturnType<(typeof __NATIVE_MODULE__)>["__KEY__"]>) => await __NATIVE_MODULE__().__KEY__(...args));

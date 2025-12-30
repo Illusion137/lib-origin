@@ -1,5 +1,4 @@
 {
-    "exclude": ["node_modules/**"],
     "lib": ["ESNext"],
     "compilerOptions": {
         "strict": true,
@@ -8,13 +7,13 @@
         "noEmit": true,
         "esModuleInterop": true,
         "target": "esnext",
-        "moduleResolution": "nodenext",
-        "module": "nodenext",
+        "moduleResolution": "bundler",
+        "module": "commonjs",
         "resolveJsonModule": true,
         "sourceMap": true,
         "outDir": "dist",
         "noUnusedLocals": false,
-        "noUnusedParameters": false,
+        "noUnusedParameters": true,
         "allowUnreachableCode": false,
         "alwaysStrict": true,
         "noFallthroughCasesInSwitch": true,

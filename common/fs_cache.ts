@@ -34,8 +34,8 @@ export namespace FSCache {
         switch(serial_type){
             case "stringable": {
                 const data = try_json_parse<unknown>(serialized_data);
-                if(typeof data === "object" && data !== null && "error" in data) return reinterpret_cast<any>(0);
-                return reinterpret_cast<any>(data);
+                if(typeof data === "object" && data !== null && "error" in data) return reinterpret_cast<never>(0);
+                return reinterpret_cast<never>(data);
             }
             case "arraybuffer": {
                 const decoded_binary_string = atob(serialized_data); // 'atob' decodes Base64 to binary string

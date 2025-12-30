@@ -12,10 +12,10 @@ async function add_playback_data_to_releases(releases: (CompactPlaylist[]|Respon
     return await Promise.all(releases
         .filter(release => release !== undefined)
         .map(async(release) => "error" in release ? release : 
-            await Promise.all(release.map(
-                async(item) => item.song_track 
+            release.map(
+                (item) => item.song_track 
                     ? {...item, song_track: (SQLTracks.add_playback_saved_data_to_track(item.song_track)) }
-                    : item))))
+                    : item)))
 }
 
 // export async function artist_watch(artists: NamedUUID[], on_update: (progress: number) => void): Promise<(CompactPlaylist[]|ResponseError)[]>{

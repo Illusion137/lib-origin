@@ -54,7 +54,7 @@ export namespace RozePrefs {
         heavy: { fontFamily: "", fontWeight: "bold" },
         bold: { fontFamily: "", fontWeight: "bold" }
     };
-    const themes: Record<string, ReactNavigation.Theme> = {
+    export const themes: Record<string, ReactNavigation.Theme> = {
         light: {
             dark: false,
             colors: {

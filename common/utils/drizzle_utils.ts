@@ -1,6 +1,8 @@
 import type { drizzle } from "drizzle-orm/op-sqlite";
 import type { Scalar } from "@op-engineering/op-sqlite";
 import { generror_catch } from "./error_util";
+import * as Supabase from "drizzle-orm/supabase";
+import { reinterpret_cast } from "@common/cast";
 
 type DrizzleDB = ReturnType<typeof drizzle>;
 
@@ -13,7 +15,6 @@ function log_error_if_not_unique_constraint_failed(error: unknown, source: strin
         console.error(`SQL: ${source}`);
     }
 }
-
 export class DrizzleUtils<SQLTables extends string> {
     db: DrizzleDB;
     constructor(db: DrizzleDB) {
@@ -99,5 +100,9 @@ export class DrizzleUtils<SQLTables extends string> {
                 INSERT INTO ${copy_table} (${keys.join(', ')}) VALUES (${keys.map(key => `OLD.${key}`).join(', ')});
             END;
         `);
+    }
+
+    async get_all_changes(last_synced_at: number): Promise<Record<SQLTables, string[]>>{
+        return reinterpret_cast<Record<SQLTables, string[]>>({});
     }
 }

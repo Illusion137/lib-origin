@@ -21,7 +21,7 @@ Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, T
     const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
 
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    return new Function(code)();
+    return new Function(code)() as typeof Platform.shim.eval;
 }
 
 export namespace RozeYouTube {
@@ -67,8 +67,8 @@ export namespace RozeYouTube {
 		const account_info = await youtube_client.account.getInfo(true);
         const account = account_info[index ?? 0];
         if(account === undefined) return generror("No accounts found");
-        const resolved = await youtube_client.resolveURL(`https://www.youtube.com/${account.channel_handle}`);
-        const channel_id = resolved.payload.browseId;
+        const resolved = await youtube_client.resolveURL(`https://www.youtube.com/${account.channel_handle.text}`);
+        const channel_id = resolved.payload.browseId as string;
         return channel_id;
 	}
 

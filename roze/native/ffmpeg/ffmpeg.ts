@@ -9,20 +9,15 @@ export async function load_native_ffmpeg(): Promise<FFMPEG>{
 		case "WEB":
 			console.error("Web Native FFMPEG is NOT implemented");
 			break;
-		case "ELECTRON_RENDERER":
-			try {
-				// ffmpeg_instance = (await import("../gen/electron/modules/ffmpeg.electron_renderer")).electron_renderer_ffmpeg;
-			} catch (e) {}
-			break;
 		case "NODE":
 			try {
 				ffmpeg_instance = (await import("./ffmpeg.node.js")).node_ffmpeg;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
 				ffmpeg_instance = (await import("./ffmpeg.mobile.js")).mobile_ffmpeg;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 	}
 	return ffmpeg_instance;

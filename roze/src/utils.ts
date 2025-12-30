@@ -164,7 +164,7 @@ export function generate_text_structure(text: string): RozTextStructures{
 }
 
 export function generate_translation_map(file_buffer: string): TranslationMap {
-    const punctuation_regex_presufix = "((\.|\s|,|-|&|!|\(|\)|\?|~|`|\[|\]|\{|\}|\"|\'|:|;|<|>|^|“|”|‛|’|‘|«|»||$|「|」|『|』)+)";
+    const punctuation_regex_presufix = "((\\.|\\s|,|-|&|!|\\(|\\)|\\?|~|`|\\[|\\]|\\{|\\}|\"|\\'|:|;|<|>|^|“|”|‛|’|‘|«|»||$|「|」|『|』)+)";
     file_buffer = file_buffer.replace(/\r\n/g, '\n');
     const lines = file_buffer.split('\n');
     const translation_map: TranslationMap = [];

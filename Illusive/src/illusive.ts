@@ -278,7 +278,7 @@ export namespace Illusive {
             try {
                 const result = await fetch(uri, {});
                 if(result.status === 200) return uri;
-            } catch (error) {}
+            } catch (_) {}
         }
         return `https://img.youtube.com/vi/${video_id}/0.jpg`;
     }
@@ -300,7 +300,7 @@ export namespace Illusive {
             try {
                 const result = await fetch(duri, {});
                 if(result.status === 200) return duri;
-            } catch (error) {}
+            } catch (_) {}
         }
         return uri;
     }

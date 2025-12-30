@@ -4,7 +4,7 @@ export async function wait(milliseconds: number) {
     });
 }
 export async function call_wtimeout(promise: () => Promise<any>, timeout_milliseconds: number){
-    return await Promise.race([
+    await Promise.race([
         promise(),
         wait(timeout_milliseconds)
     ])

@@ -138,6 +138,7 @@ export namespace WitchcultTranslations {
         if(cover !== null && typeof cover === "object") return cover;
 
         return {
+            version: 1,
             uuid: gen_uuid(),
             source_file: String(no),
             source_file_type: "WITCHCULT",

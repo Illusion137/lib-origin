@@ -90,13 +90,19 @@ export interface AlphabetScroll {
 export interface ConvertToUUIDURI { uuid_uri: string };
 export interface ConvertToTitle { title: string };
 export type ConvertTo = ConvertToUUIDURI | ConvertToTitle;
-export interface LinkerLink {
+export interface BaseLinkerLink {
     link_uuid: string;
-    uuid_uri: string;
-    full_sample: boolean;
-    to_service: MusicServiceType;
-    to: ConvertTo;
+    illusi_uuid: string;
+    service_uri: MusicServiceURI;
+    full_service_playlist: boolean;
 }
+export interface IncomingLinkerLink extends BaseLinkerLink{
+    type: "INCOMING";
+}
+export interface OutgoingLinkerLink extends BaseLinkerLink{
+    type: "OUTGOING";
+}
+export type LinkerLink = IncomingLinkerLink | OutgoingLinkerLink;
 
 export interface DefaultPlaylist {
     name: string;

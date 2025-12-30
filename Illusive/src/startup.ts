@@ -21,6 +21,7 @@ import { SoundCloud } from '@origin/index';
 import { ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { SQLUpdate } from './sql/sql_update';
 import { SQLArtists } from './sql/sql_artists';
+import { catch_log } from '@common/utils/error_util';
 
 export async function warmup_client(){
     await ffmpeg().execute_args(['-L']);
@@ -42,7 +43,6 @@ export async function load_sqlite_database(){
     const sqlite_location_map: Record<NativePlatform, string> = {
         NODE: sqlite_location_desktop,
         REACT_NATIVE: sqlite_location_mobile,
-        ELECTRON_RENDERER: sqlite_location_desktop,
         WEB: sqlite_location_desktop
     };
     await load_database(sqlite_name, sqlite_location_map[get_native_platform()]);
@@ -87,7 +87,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             SQLRecentlyPlayed.cleanup_recently_played(),
             SQLPlaylists.all_playlists_data("PROMISE"),
             miscnative().keep_mobile_awake()
-        ]).catch(e => e);
+        ]).catch(catch_log);
         Prefs.pref_set_theme(set_theme);
         await warmup_client();
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))

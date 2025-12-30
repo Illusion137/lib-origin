@@ -26,7 +26,7 @@ function SayGeneric(platform?: Platform) {
 		return SayPlatformWin32;
 	}
 
-	throw new Error(`new Say(): unsupported platorm! ${platform}`);
+	throw new Error(`new Say(): unsupported platorm! ${String(platform)}`);
 }
 
 export default SayGeneric(); // Create a singleton automatically for backwards compatability

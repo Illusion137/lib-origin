@@ -9,20 +9,15 @@ export async function load_native_sqlite(): Promise<SQLite>{
 		case "WEB":
 			console.error("Web Native SQLite is NOT implemented");
 			break;
-		case "ELECTRON_RENDERER":
-			try {
-				// sqlite_instance = (await import("../gen/electron/modules/sqlite.electron_renderer")).electron_renderer_sqlite;
-			} catch (e) {}
-			break;
 		case "NODE":
 			try {
 				sqlite_instance = (await import("./sqlite.node.js")).node_sqlite;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
 				sqlite_instance = (await import("./sqlite.mobile.js")).mobile_sqlite;
-			} catch (e) {}
+			} catch (e) { console.error(e); }
 			break;
 	}
 	return sqlite_instance;

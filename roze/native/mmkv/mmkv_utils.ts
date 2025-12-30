@@ -1,5 +1,7 @@
 import type { MMKVModule } from "@native/mmkv/mmkv.base";
 import { CookieJar } from "@common/utils/cookie_util";
+import { try_json_parse } from "@common/utils/parse_util";
+import { reinterpret_cast } from "@common/cast";
 
 export type BasePrefTypes = "NUMBER" | "BOOLEAN" | "STRING" | "STRING_ARRAY" | "NUMBER_ARRAY" | "STRING_OPTIONS" | "COOKIE_JAR" | "DATE";
 export interface BasePref<TValue, TType extends string = ""> {
@@ -25,8 +27,8 @@ export const base_load_map: BasePrefLoadMap<BasePrefTypes, unknown> = {
     NUMBER: async(mmkv_module: MMKVModule, pref_key: string) => await mmkv_module.get_number(pref_key),
     BOOLEAN: async(mmkv_module: MMKVModule, pref_key: string) => await mmkv_module.get_boolean(pref_key),
     STRING: async(mmkv_module: MMKVModule, pref_key: string) => await mmkv_module.get_string(pref_key),
-    STRING_ARRAY: async(mmkv_module: MMKVModule, pref_key: string) => JSON.parse(await mmkv_module.get_string(pref_key) ?? "[]"),
-    NUMBER_ARRAY: async(mmkv_module: MMKVModule, pref_key: string) => JSON.parse(await mmkv_module.get_string(pref_key) ?? "[]"),
+    STRING_ARRAY: async(mmkv_module: MMKVModule, pref_key: string) => reinterpret_cast<string[]>(try_json_parse<string[]>(await mmkv_module.get_string(pref_key) ?? "[]")),
+    NUMBER_ARRAY: async(mmkv_module: MMKVModule, pref_key: string) => reinterpret_cast<string[]>(try_json_parse<number[]>(await mmkv_module.get_string(pref_key) ?? "[]")),
     STRING_OPTIONS: async(mmkv_module: MMKVModule, pref_key: string) => await mmkv_module.get_string(pref_key),
     COOKIE_JAR: async(mmkv_module: MMKVModule, pref_key: string) => CookieJar.fromString(await mmkv_module.get_string(pref_key) ?? ""),
     DATE: async(mmkv_module: MMKVModule, pref_key: string) => new Date(await mmkv_module.get_string(pref_key) ?? 0)

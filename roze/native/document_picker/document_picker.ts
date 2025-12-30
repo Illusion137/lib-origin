@@ -9,20 +9,13 @@ export async function load_native_document_picker(): Promise<DocumentPicker>{
         case "WEB":
             console.error("Web Native document_picker is NOT implemented");
             break;
-        case "ELECTRON_RENDERER":
-            try {
-                // document_picker_instance = (await import("../gen/electron/modules/document_picker.electron_renderer")).electron_renderer_document_picker;
-            } catch (e) {}
-            break;
         case "NODE":
-            try {
-                // document_picker_instance = (await import("./document_picker.node")).node_document_picker;
-            } catch (e) {}
+            console.error("Node Native document_picker is NOT implemented");
             break;
         case "REACT_NATIVE":
             try {
                 document_picker_instance = (await import("./document_picker.mobile.js")).mobile_document_picker;
-            } catch (e) {}
+            } catch (e) { console.error(e); }
             break;
     }
     return document_picker_instance;

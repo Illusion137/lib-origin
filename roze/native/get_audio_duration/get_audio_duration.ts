@@ -9,20 +9,15 @@ export async function load_native_get_audio_duration(): Promise<GetAudioDuration
         case "WEB":
             console.error("Web Native get_audio_duration is NOT implemented");
             break;
-        case "ELECTRON_RENDERER":
-            try {
-                // get_audio_duration_instance = (await import("../gen/electron/modules/get_audio_duration.electron_renderer")).electron_renderer_get_audio_duration;
-            } catch (e) {}
-            break;
         case "NODE":
             try {
                 get_audio_duration_instance = (await import("./get_audio_duration.node.js")).node_get_audio_duration;
-            } catch (e) {}
+            } catch (e) { console.error(e); }
             break;
         case "REACT_NATIVE":
             try {
                 get_audio_duration_instance = (await import("./get_audio_duration.mobile.js")).mobile_get_audio_duration;
-            } catch (e) {}
+            } catch (e) { console.error(e); }
             break;
     }
     return get_audio_duration_instance;

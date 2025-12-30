@@ -75,7 +75,7 @@ export const SayPlatformDarwin: SayPlatformBase = {
 				const cmd = spawn("say", ['-v', "'?'"], { windowsHide: true });
 				cmd.stdout.on("data", (d) => resolve(d.toString()));
 				cmd.on('exit', () => resolve(all_data));
-			} catch (e) {
+			} catch (_) {
 				resolve("");
 			}
 		});
