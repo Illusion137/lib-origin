@@ -2,17 +2,17 @@ import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, 
 import { CookieJar } from "@common/utils/cookie_util";
 import { fs } from "@native/fs/fs";
 import { gen_uuid } from "@common/utils/util";
-import { mmkv } from "@native/mmkv/mmkv";
+import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
 
 export namespace RozePrefs {
     export type OtherPrefTypes = string & {};
     export type PossibleThemes = keyof typeof themes;
-    const roze_mmkv_path = fs().document_directory(".roz");
 
-    export async function load_mmkv(){
+    export async function load_mmkv_module(){
+        await load_native_mmkv();
         await mmkv().load_mmkv({
             id: 'roze.illusion.com',
-            path: await roze_mmkv_path
+            path: await fs().document_directory(".roz", "ipref.mmkv")
         });
     }
 
@@ -54,42 +54,42 @@ export namespace RozePrefs {
         heavy: { fontFamily: "", fontWeight: "bold" },
         bold: { fontFamily: "", fontWeight: "bold" }
     };
-    const themes: Record<string, ReactNavigation.Theme> = {
+    export const themes = {
         light: {
             dark: false,
             colors: {
-                primary: "",
-                background: "",
-                card: "",
-                text: "",
-                border: "",
-                notification: ""
+                primary: "#191970",
+                background: "#ffffff",
+                card: "#ffffff",
+                text: "#000000",
+                border: "#000000",
+                notification: "#ffffff"
             },
             fonts: fonts
         },
         dark: {
             dark: true,
             colors: {
-                primary: "",
-                background: "",
-                card: "",
-                text: "",
-                border: "",
-                notification: ""
+                primary: "#191970",
+                background: "#000000",
+                card: "#000000",
+                text: "#ffffff",
+                border: "#100936",
+                notification: "#000000"
             },
             fonts: fonts
         },
         oled: {
             dark: true,
             colors: {
-                primary: "",
-                background: "",
-                card: "",
-                text: "",
-                border: "",
-                notification: ""
+                primary: "#191970",
+                background: "#000000",
+                card: "#000000",
+                text: "#ffffff",
+                border: "#100936",
+                notification: "#000000"
             },
             fonts: fonts
         }
-    }
+    } as const satisfies Record<string, ReactNavigation.Theme>;
 };
