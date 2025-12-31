@@ -44,7 +44,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 
         if(!is_database_connected()) load_database();
 
-        await migrate(db, migrations);
+        await migrate(db, migrations).catch(catch_log);
         
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;

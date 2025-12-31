@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "63a1baa8-795f-4126-a724-0f7e02de035d",
+  "id": "51ca1123-cf11-4a4e-8655-785ebd7c6755",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {
@@ -271,7 +271,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T07:42:30.851Z\",\"last_played_date\":\"2025-12-31T07:42:30.852Z\",\"plays\":0}'"
         },
         "created_at": {
           "name": "created_at",
@@ -516,7 +516,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T07:42:30.851Z\",\"last_played_date\":\"2025-12-31T07:42:30.852Z\",\"plays\":0}'"
         },
         "created_at": {
           "name": "created_at",
@@ -655,7 +655,7 @@
         "uuid": {
           "name": "uuid",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -787,7 +787,7 @@
         "uuid": {
           "name": "uuid",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -1212,7 +1212,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T07:42:30.851Z\",\"last_played_date\":\"2025-12-31T07:42:30.852Z\",\"plays\":0}'"
         },
         "created_at": {
           "name": "created_at",
@@ -1503,7 +1503,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T07:42:30.851Z\",\"last_played_date\":\"2025-12-31T07:42:30.852Z\",\"plays\":0}'"
         },
         "created_at": {
           "name": "created_at",
@@ -1748,7 +1748,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T07:42:30.851Z\",\"last_played_date\":\"2025-12-31T07:42:30.852Z\",\"plays\":0}'"
         },
         "created_at": {
           "name": "created_at",

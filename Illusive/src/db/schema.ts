@@ -41,7 +41,7 @@ const tracks_config = {
 
 const playlists_config = {
     id: int().primaryKey({autoIncrement: true}),
-    uuid: text().primaryKey().notNull().$defaultFn(gen_uuid),
+    uuid: text().notNull().$defaultFn(gen_uuid),
     title: text().notNull().default(""),
     description: text().notNull().default(""),
     pinned: int({mode: 'boolean'}).notNull().default(false),

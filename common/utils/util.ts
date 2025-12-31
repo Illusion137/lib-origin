@@ -2,7 +2,6 @@ import { reinterpret_cast } from '@common/cast';
 import type { ResponseError } from '@common/types';
 import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
-import { force_json_parse } from './parse_util';
 
 export function generate_new_uid(prefix_name: string) {
     const suffix = Date.now().toString(36).substring(2, 15) +
@@ -215,7 +214,7 @@ export function single_case(str: string): string {
 }
 
 export function recreate<T>(obj: T): T {
-    return force_json_parse(JSON.stringify(obj));
+    return JSON.parse(JSON.stringify(obj));
 }
 
 export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: number): Promise<T[]>{
