@@ -194,6 +194,7 @@ export interface TrackMetaData {
 // Regex
 // \s+.+?: (.+?)\n
 interface Basic_Track<T, U, V, X> {
+    id?: number;
     uid: string
     title: string
     alt_title?: string

@@ -101,6 +101,7 @@ export namespace SQLTracks {
     }
     export function sql_track_to_track(sql_track: Track): Track|ResponseError {
         try {
+            delete sql_track.id;
             return {
                 ...sql_track,
                 artists: sql_track.artists.filter((artist: NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
