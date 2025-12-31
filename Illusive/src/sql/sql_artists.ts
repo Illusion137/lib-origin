@@ -1,6 +1,6 @@
 import { remove_topic } from "@common/utils/clean_util";
 import { Constants } from "@illusive/constants";
-import { artists_table, type SQLArtist } from "@illusive/db/schema";
+import { artists_table, type SQLArtist,type SQLArtistInsert } from "@illusive/db/schema";
 import { create_uri } from "@illusive/illusive_utils";
 import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from "@illusive/types";
 import { eq } from "drizzle-orm";
@@ -33,16 +33,16 @@ export namespace SQLArtists {
         return result;
     }
     
-    export async function insert_sql_artists(sql_artist: SQLArtist){
+    export async function insert_sql_artists(sql_artist: SQLArtistInsert){
         artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
-        artists_memo[sql_artist.uri] = sql_artist;
+        artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
         await db.insert(artists_table).values(sql_artist);
     }
 
-    export async function insert_all_into_sql_artists(sql_artists: SQLArtist[]){
+    export async function insert_all_into_sql_artists(sql_artists: SQLArtistInsert[]){
         for(const sql_artist of sql_artists){
             artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
-            artists_memo[sql_artist.uri] = sql_artist;
+            artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
         }
         await db.insert(artists_table).values(sql_artists);
     }

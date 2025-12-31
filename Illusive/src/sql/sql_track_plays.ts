@@ -12,11 +12,11 @@ export namespace SQLTrackPlays {
         date_end?: Date,
     }){
         // TODO unfuck this
-        const timestamps_objs = await db.select({Timestamp: track_plays_table.timestamp})
+        const timestamps_objs = await db.select({created_at: track_plays_table.created_at})
             .from(track_plays_table)
             .where(eq(track_plays_table.track_uid, track_uid));
         if(date_range.date_start === undefined && date_range.date_end === undefined) return timestamps_objs.length;
-        const timestamps = timestamps_objs.map(item => item.Timestamp);
+        const timestamps = timestamps_objs.map(item => item.created_at);
         let count = 0;
         for(const timestamp of timestamps) {
             const satisfies_date_start = date_range.date_start === undefined ? true 

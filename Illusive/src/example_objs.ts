@@ -2,6 +2,7 @@ import type { CompactPlaylist, ISOString, Playlist, PlaylistsTracks, SQLArtist, 
 
 export namespace ExampleObj {
     export const track_example0: Track = {
+        id: 0,
         uid: "",
         title: "",
         alt_title: "",

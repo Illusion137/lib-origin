@@ -28,6 +28,7 @@ import { catch_log } from '@common/utils/error_util';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const placeholder_mp3 = require('./assets/placeholder.mp3');
 
 export let trackplayer_has_been_setup = false;

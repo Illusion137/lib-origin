@@ -561,7 +561,7 @@ export namespace Illusive {
                 continue;
             }
             const query = remove_topic(track.artists[0].name) + " " + guess_title;
-            const searched: MusicSearchResponse|ResponseError = await youtube_music_search(query).catch(json_catch);
+            const searched = await youtube_music_search(query).catch<MusicSearchResponse|ResponseError>(json_catch);
             if("error" in searched){
                 continue;
             }

@@ -268,6 +268,7 @@ export function path_to_directory(path: string) {
 
 export function track_to_illusive_uri(track: Track): IllusiveURI{
 	const primary_key_to_music_service_uri: Record<keyof Track, MusicServiceURI> = {
+		id: "illusi",
 		uid: "illusi",
 		title: "illusi",
 		alt_title: "illusi",

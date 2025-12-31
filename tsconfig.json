@@ -1,5 +1,6 @@
 {
     "lib": ["ESNext"],
+    "exclude": ["node_modules"],
     "compilerOptions": {
         "strict": true,
         "noImplicitAny": false,

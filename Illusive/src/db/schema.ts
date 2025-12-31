@@ -110,5 +110,6 @@ export const new_releases_table             = sqliteTable("new_releases", new_re
 export type SQLNewRelease = typeof new_releases_table.$inferSelect;
 export const artists_table                  = sqliteTable("artists", artists_config);
 export type SQLArtist = Omit<typeof artists_table.$inferSelect, "id">;
+export type SQLArtistInsert = Omit<typeof artists_table.$inferInsert, "id">;
 export const track_plays_table              = sqliteTable("track_plays", track_plays_config);
 export type SQLTrackPlays = Omit<typeof track_plays_table.$inferSelect, "id">;

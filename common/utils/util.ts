@@ -107,7 +107,7 @@ export function is_number(numish: unknown): numish is number{
 	return typeof numish === 'number' && !isNaN(numish);
 }
 
-export function json_catch(result: unknown){
+export function json_catch(result: unknown): any{
     return result instanceof Error ? {error: result} : result;
 }
 

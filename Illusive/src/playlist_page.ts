@@ -1,6 +1,6 @@
 import { gen_uuid, is_empty, json_catch } from "@common/utils/util";
 import type { MusicServicePlaylist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from "./types";
-import { ExampleObj } from "./illusi/src/example_objs";
+import { ExampleObj } from "./example_objs";
 import { SQLPlaylists } from "./sql/sql_playlists";
 import type { ResponseError } from "@common/types";
 import { Illusive } from "./illusive";

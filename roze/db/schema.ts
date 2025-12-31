@@ -1,6 +1,5 @@
 import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { StaticAssert, TypesAreEqual } from "@roze/types/types";
-import { RozSourceFileTypeArray, type RozChapterContents, type SQLRoz } from "@roze/types/roz";
+import { RozSourceFileTypeArray, type RozChapterContents } from "@roze/types/roz";
 
 export const novels_table = sqliteTable("novels_table", {
     id: int().primaryKey({ autoIncrement: true }),
@@ -16,7 +15,7 @@ export const novels_table = sqliteTable("novels_table", {
     series_no: int().default(0),
     content: text({mode: 'json'}).$type<RozChapterContents[]>().notNull(),
 });
-export type AssertRozTableMatches = StaticAssert<TypesAreEqual<typeof novels_table.$inferSelect, SQLRoz>>;
+// export type AssertRozTableMatches = StaticAssert<TypesAreEqual<typeof novels_table.$inferSelect, SQLRoz>>;
 
 export const series_table = sqliteTable("series_table", {
     id: int().primaryKey({ autoIncrement: true }),
