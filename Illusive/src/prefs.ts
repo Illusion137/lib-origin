@@ -62,13 +62,14 @@ export namespace Prefs {
 
     export const prefs = {
         legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as BasePref<string, OtherPrefTypes>,
+        updated_to_1800:                       {default_value: false, current_value: false, type: "BOOLEAN"} as BasePref<boolean, OtherPrefTypes>,
         youtube_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         youtube_music_cookie_jar:              {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         soundcloud_cookie_jar:                 {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         spotify_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        bandlab_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
+        bandlab_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as BasePref<string, OtherPrefTypes>,
         last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
         automatic_new_releases_last_refreshed: {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
@@ -271,73 +272,6 @@ export namespace Prefs {
         dark: dark_theme,
         oled: oled_theme
     }
-
-
-    // type ShowInSettings = "MISC"|"EXPERIMENTAL";
-    // export interface Pref<T> {
-    //     default_value: T
-    //     current_value: T
-    //     type: PrefType
-    //     section?: "Audioplayer"|"Playlist"|"Search"|"Interactions"|"Visual"|"Automation"|"Data"|"Other"
-    //     visible?: boolean
-    //     range?: {"start": number, "end": number}
-    //     options?: string[]
-    //     description?: string
-    //     show_type?: ShowInSettings
-    // };
-    // const user_uuid = uuid.default.v4();
-    // const user_uuid_key: PrefOptions = "user_uuid";
-
-    // export async function load_legacy_prefs(legacy_prefs: typeof LegacyPrefs.prefs) {
-    //     await Promise.all([
-    //         save_pref("youtube_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.youtube_cookies)),
-    //         save_pref("youtube_music_cookie_jar", CookieJar.fromString(legacy_prefs.external_services.youtube_music_cookies)),
-    //         save_pref("spotify_cookie_jar",       CookieJar.fromString(legacy_prefs.external_services.spotify_cookies)),
-    //         save_pref("amazon_music_cookie_jar",  CookieJar.fromString(legacy_prefs.external_services.amazon_music_cookies)),
-    //         save_pref("legacy_prefs",             JSON.stringify(legacy_prefs))
-    //     ]);
-    //     await LegacyPrefs.clear_prefs();
-    // }
-    // export type PrefOptions = keyof typeof prefs;
-    // export function get_pref<T extends PrefOptions>(pref_key: T): (typeof prefs)[T]['default_value'] { return prefs[pref_key].current_value; }
-
-    // export async function load_prefs() {
-    //     const storage_user_uuid = await AsyncStorage.getItem(user_uuid_key);
-    //     if(storage_user_uuid === null) await AsyncStorage.setItem(user_uuid_key, user_uuid);
-    //     const keys: (keyof typeof prefs)[] = Object.keys(prefs) as (keyof typeof prefs)[];
-    //     const all_keys = await AsyncStorage.getAllKeys();
-    //     for(const key of keys) {
-    //         if(all_keys.includes(key))
-    //             switch(prefs[key].type) {
-    //                 case "STRING":            prefs[key].current_value = (await AsyncStorage.getItem(key))!; break;
-    //                 case "BOOLEAN":           prefs[key].current_value = await AsyncStorage.getItem(key) === "true" ? true : false; break;
-    //                 case "NUMBER":            prefs[key].current_value = parseInt((await AsyncStorage.getItem(key))!); break;
-    //                 case "DATE":              prefs[key].current_value = new Date( await AsyncStorage.getItem(key) as string ); break;
-    //                 case "COOKIE_JAR":        prefs[key].current_value = CookieJar.fromString((await AsyncStorage.getItem(key))!); break;
-    //                 case "STRING_ARRAY":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
-    //                 case "LINKER_LINKS":      prefs[key].current_value = JSON.parse((await AsyncStorage.getItem(key))!); break;
-    //             }
-    //         else prefs[key].current_value = prefs[key].default_value;
-    //     }
-    // }
-    
-    // export async function save_pref<T extends PrefOptions>(pref: T, value: (typeof prefs)[T]['default_value']) {
-    //     switch(prefs[pref].type) {
-    //         case "STRING":            await AsyncStorage.setItem(pref, value as string); break;
-    //         case "BOOLEAN":           await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-    //         case "NUMBER":            await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-    //         case "DATE":              await AsyncStorage.setItem(pref, (value as Date).toISOString()); break;
-    //         case "COOKIE_JAR":        await AsyncStorage.setItem(pref, (value as CookieJar).toString()); break;
-    //         case "STRING_ARRAY":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-    //         case "LINKER_LINKS":      await AsyncStorage.setItem(pref, JSON.stringify(value)); break;
-    //     }
-    //     await load_prefs();
-    // }
-    // export async function reset_prefs() {
-    //     const keys = (Object.keys(prefs) as PrefOptions[]).filter(opt => opt !== user_uuid_key);
-    //     await AsyncStorage.multiRemove(keys);
-    //     await load_prefs();
-    // }
 
     export async function try_remove_from_recent_searches(query: string) {
         const recent_searches: string[] = get_pref('recent_searches');

@@ -9,13 +9,12 @@ import { SQLPlaylists } from './sql/sql_playlists';
 import { load_native_modules } from '@native/gen/load_native_modules';
 import { miscnative } from '@native/miscnative/miscnative';
 import { SQLfs } from './sql/sql_fs';
-import { has_db_connection_handle, load_database } from './db/database';
+import { is_database_connected, load_database } from './db/database';
 import { Illusive } from './illusive';
 import { default_playlists } from './default_playlists';
 import { addShortcutListener, getInitialShortcut } from "react-native-siri-shortcut";
 import { reinterpret_cast } from '../../common/cast';
 import { Constants } from './constants';
-import { get_native_platform, type NativePlatform } from '@native/native_mode';
 import { YouTubeDL } from '@origin/youtube_dl';
 import { SoundCloud } from '@origin/index';
 import { ffmpeg } from '@native/ffmpeg/ffmpeg';
@@ -33,21 +32,6 @@ export async function warmup_client(){
     }
 }
 
-export async function load_sqlite_database(){
-    //TODO CHANGE location based on platform
-    const sqlite_name = 'illusi-db-1400.sqlite3';
-    const sqlite_location_mobile = SQLfs.document_directory('SQLite')
-        .replace('file://', '')
-        .replace('file:', '');
-    const sqlite_location_desktop = SQLfs.document_directory(".illusi/sumi.sqlite");
-    const sqlite_location_map: Record<NativePlatform, string> = {
-        NODE: sqlite_location_desktop,
-        REACT_NATIVE: sqlite_location_mobile,
-        WEB: sqlite_location_desktop
-    };
-    await load_database(sqlite_name, sqlite_location_map[get_native_platform()]);
-}
-
 export async function illusi_startup(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: typeof GLOBALS.global_var.set_theme, bottom_alert: typeof GLOBALS.global_var.bottom_alert, on_finish_essentials: () => {
 
 }) {
@@ -56,8 +40,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         await SQLfs.cache_load_directories();
         await Prefs.load_mmkv_module();
 
-        if(!has_db_connection_handle())
-            await load_sqlite_database();
+        if(!is_database_connected()) load_database();
 
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
@@ -65,11 +48,11 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         GLOBALS.global_var.set_theme = set_theme;
         GLOBALS.global_var.bottom_alert = bottom_alert;
 
+        await Prefs.load_prefs();
         await SQLUpdate.fix_to_new_update(version);
 
         on_finish_essentials();
         
-        await Prefs.load_prefs();
         if(version === Prefs.get_pref('latest_version')){
             GLOBALS.global_var.past_playing_tracks = SQLTracks.add_playback_saved_data_to_tracks(Prefs.get_pref('past_queue').tracks);
             GLOBALS.global_var.past_track_index = Prefs.get_pref('past_queue').index;

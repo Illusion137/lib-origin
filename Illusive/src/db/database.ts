@@ -1,32 +1,53 @@
 import { SQLfs } from '@illusive/sql/sql_fs';
-import { sqlite } from '@native/sqlite/sqlite';
-import type { GenericSQLiteDatabase } from '@native/sqlite/sqlite.base';
-import { is_empty } from '../../../common/utils/util';
+import { ANDROID_DATABASE_PATH,
+IOS_LIBRARY_PATH,
+open, type DB } from '@op-engineering/op-sqlite';
+import { drizzle } from 'drizzle-orm/op-sqlite';
+import { Platform } from 'react-native';
+import { generror_catch } from '@common/utils/error_util';
+import { get_native_platform,
+type NativePlatform } from '@native/native_mode';
 
-export const db_path = "illusi-db-1400.sqlite3";
+export const db_path = "illusi-db-1800.sqlite3";
 export const sqlite_location = async() => (SQLfs.document_directory('SQLite')).replace('file://', '');
 
-let db_connection_handle: Awaited<ReturnType<ReturnType<typeof sqlite>['create_database_connection']>>;
-let db_database_handle: Awaited<ReturnType<ReturnType<typeof sqlite>['create_database_handle']>>;
-export let db_exec: <V>(fn: (db: GenericSQLiteDatabase) => Promise<V>) => Promise<V>;
+export let db: ReturnType<typeof drizzle>;
 
-export async function load_database(path?: string, location?: string){
-    db_connection_handle = await sqlite().create_database_connection({
-        name: path ?? db_path,
-        location: location
+// TODO for the love of fuck add transactions :3
+
+export function load_legacy_1720_database(): DB{
+    const sqlite_name = 'illusi-db-1400.sqlite3';
+    const sqlite_location_mobile = SQLfs.document_directory('SQLite')
+        .replace('file://', '')
+        .replace('file:', '');
+    const sqlite_location_desktop = SQLfs.document_directory(".illusi/sumi.sqlite");
+    const sqlite_location_map: Record<NativePlatform, string> = {
+        NODE: sqlite_location_desktop,
+        REACT_NATIVE: sqlite_location_mobile,
+        WEB: sqlite_location_desktop
+    };
+    const database_client = open({
+        name: sqlite_name,
+        location: sqlite_location_map[get_native_platform()]
     });
-    db_database_handle = await sqlite().create_database_handle(db_connection_handle);
-    db_database_handle;
-    db_exec = async<V>(runnable: (db: GenericSQLiteDatabase) => Promise<V>): Promise<V> => {
-        return await sqlite().exec<V>(db_database_handle, runnable);
+    return database_client;
+}
+
+export function load_database(path?: string){
+    try {
+        const database_client = open({
+            name: path ?? db_path,
+            location: Platform.OS === 'ios' ? IOS_LIBRARY_PATH : ANDROID_DATABASE_PATH
+        });
+        db = drizzle(database_client);
+        return {};
+    }
+    catch(e){
+        console.error(e);
+        return generror_catch(e, "Unable to load main database", {path});
     }
 }
-export function has_db_connection_handle(){
-    return !is_empty(db_connection_handle);
-}
-export function get_connection_handle(){
-    return db_connection_handle;
-}
-export function get_database_handle(){
-    return db_database_handle;
+
+export function is_database_connected(){
+    return db !== undefined;
 }

@@ -1,8 +1,6 @@
 import { reinterpret_cast } from "@common/cast";
 import type { ResponseError } from "@common/types";
-import { catch_ignore,
-catch_log,
-generror_catch } from "@common/utils/error_util";
+import { catch_ignore, catch_log, generror_catch } from "@common/utils/error_util";
 import { error_undefined, extract_file_extension, is_empty } from "@common/utils/util";
 import { tracks_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
@@ -14,7 +12,7 @@ import type { ISOString, NamedUUID, OnErrorCallback, Promises, Track, TrackMetaD
 import { eq } from 'drizzle-orm';
 import { SQLfs } from "./sql_fs";
 import { SQLGlobal } from "./sql_global";
-import { db_exec } from "@illusive/db/database";
+import { db } from "@illusive/db/database";
 
 export namespace SQLTracks {
     const bad_artist_names = [',', '&', 'and'];
@@ -103,7 +101,6 @@ export namespace SQLTracks {
     }
     export function sql_track_to_track(sql_track: Track): Track|ResponseError {
         try {
-            delete (sql_track as any).id;
             return {
                 ...sql_track,
                 artists: sql_track.artists.filter((artist: NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
@@ -133,7 +130,7 @@ export namespace SQLTracks {
         }
     }
     export async function mark_track_downloaded(track_uid: Track['uid'], media_uri: string) {
-        await db_exec(async(db) => await db.update(tracks_table).set({media_uri}).where(eq(tracks_table.uid, track_uid)));
+        await db.update(tracks_table).set({media_uri}).where(eq(tracks_table.uid, track_uid));
         SQLGlobal.update_global_track_property(track_uid, 'media_uri', media_uri);
         const track = GLOBALS.global_var.sql_tracks.find(t => t.uid === track_uid);
         if(track === undefined) return;
@@ -145,19 +142,19 @@ export namespace SQLTracks {
             await SQLfs.delete_item(SQLfs.media_directory(track.media_uri!));
             track.media_uri = "";
         }));
-        await db_exec(async(db) => await db.update(tracks_table).set({media_uri: ""}));
+        await db.update(tracks_table).set({media_uri: ""});
         SQLGlobal.update_global_track_all_property('media_uri', '');
     }
     export async function mark_track_undownloaded(track_uid: Track['uid'], media_uri: string) {
         if(is_empty(media_uri)) return;
         const found = GLOBALS.global_var.sql_tracks.find(track => track.uid === track_uid);
         if(found && !is_empty(found.imported_id)) return;
-        await db_exec(async(db) => await db.update(tracks_table).set({media_uri: ""}).where(eq(tracks_table.uid, track_uid)));
+        await db.update(tracks_table).set({media_uri: ""}).where(eq(tracks_table.uid, track_uid));
         await SQLfs.delete_item(SQLfs.media_directory(media_uri));
         SQLGlobal.update_global_track_property(track_uid, 'media_uri', '');
     }
     export async function clear_track_youtube(track_uid: Track['uid']) {
-        await db_exec(async(db) => await db.update(tracks_table).set({youtube_id: ""}).where(eq(tracks_table.uid, track_uid)));
+        await db.update(tracks_table).set({youtube_id: ""}).where(eq(tracks_table.uid, track_uid));
         SQLGlobal.update_global_track_property(track_uid, 'youtube_id', '');
     }
     
@@ -181,23 +178,23 @@ export namespace SQLTracks {
             }
         }
         if(is_empty(key) || is_empty(track_id)) return undefined;
-        const track = await db_exec(async(db) => await db.select().from(tracks_table).where(eq(tracks_table[reinterpret_cast<never>(key)], track_id)).get());
+        const track = await db.select().from(tracks_table).where(eq(tracks_table[reinterpret_cast<never>(key)], track_id)).get();
         if(!track) return undefined;
         return sql_track_to_track(track);
     }
     export async function track_from_uid(track_uid: Track['uid']) {
-        const track = await db_exec(async(db) => await db.select().from(tracks_table).where(eq(tracks_table.uid, track_uid)).get());
+        const track = await db.select().from(tracks_table).where(eq(tracks_table.uid, track_uid)).get();
         if(track === undefined) return undefined;
         return sql_track_to_track(track);
     }
     export async function track_uid_exists(track: Track) {
-        const count = await db_exec(async(db) => await db.$count(tracks_table, eq(tracks_table.uid, track.uid)));
+        const count = await db.$count(tracks_table, eq(tracks_table.uid, track.uid));
         return count !== 0;
     }
     let time_since_last_fetched_track_data = new Date(0);
     export async function fetch_track_data() {
         if(Date.now() - time_since_last_fetched_track_data.getTime() < 5000) return;
-        const tracks = await db_exec(async(db) => await db.select().from(tracks_table));
+        const tracks = await db.select().from(tracks_table);
         GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
         time_since_last_fetched_track_data = new Date();
         if(Prefs.get_pref('album_track_tinting')){
@@ -205,15 +202,15 @@ export namespace SQLTracks {
         }
     }
     export async function get_tracks(){
-        const tracks = await db_exec(async(db) => await db.select().from(tracks_table));
+        const tracks = await db.select().from(tracks_table);
         return sql_tracks_to_tracks(tracks);
     }
     export async function clear_tracks() {
-        await db_exec(async(db) => await db.delete(tracks_table));
+        await db.delete(tracks_table);
         GLOBALS.global_var.sql_tracks = [];
     }
     export async function fetch_track_data_from_uid(track_uid: Track['uid']): Promise<Track|ResponseError|undefined> {
-        const track = await db_exec(async(db) => await db.select().from(tracks_table).where(eq(tracks_table.uid, track_uid)).get());
+        const track = await db.select().from(tracks_table).where(eq(tracks_table.uid, track_uid)).get();
         if(track === undefined) return undefined;
         return sql_track_to_track(track);
     }
@@ -226,7 +223,7 @@ export namespace SQLTracks {
     }
     export async function insert_track(track: Track) {
         if( track_exists(track, GLOBALS.global_var.sql_tracks) ) return;
-        await await db.insert(tracks_table).values({
+        await db.insert(tracks_table).values({
             ...track, 
             meta: {
                 ...reinterpret_cast<TrackMetaData>(track.meta),
@@ -243,11 +240,11 @@ export namespace SQLTracks {
         if(Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
-        await db_exec(async(db) => await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track_uid)));
+        await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track_uid));
         SQLGlobal.update_global_track_item(track_uid, new_track);
     }
     export async function update_track_meta_data(track_uid: Track['uid'], new_meta: TrackMetaData) {
-        await db_exec(async(db) => await db.update(tracks_table).set({meta: new_meta}).where(eq(tracks_table.uid, track_uid)));
+        await db.update(tracks_table).set({meta: new_meta}).where(eq(tracks_table.uid, track_uid));
         SQLGlobal.update_global_track_property(track_uid, 'meta', new_meta);
     }
     
@@ -257,7 +254,7 @@ export namespace SQLTracks {
         return merged_track;
     }
     export async function delete_track(track_uid: Track['uid']) {
-        await db_exec(async(db) => await db.delete(tracks_table).where(eq(tracks_table.uid, track_uid)));
+        await db.delete(tracks_table).where(eq(tracks_table.uid, track_uid));
         SQLGlobal.delete_global_track_item(track_uid);
     }
 
@@ -268,7 +265,7 @@ export namespace SQLTracks {
         const thumbnail_uri = track.uid + ext;
         const thumbnail_download = await SQLfs.download_to_file(best_artwork, SQLfs.thumbnail_directory(thumbnail_uri));
         if(error_undefined(thumbnail_download) === undefined) return;
-        await db_exec(async(db) => await db.update(tracks_table).set({thumbnail_uri}).where(eq(tracks_table.uid, track.uid)));
+        await db.update(tracks_table).set({thumbnail_uri}).where(eq(tracks_table.uid, track.uid));
         SQLGlobal.update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
         SQLGlobal.update_global_track_property(track.uid, 'playback', {...track.playback!, artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track)});
         return track.uid + ext;
@@ -280,8 +277,7 @@ export namespace SQLTracks {
         const promises: Promises = [];
         for(const file of files)
             promises.push(SQLfs.delete_item(SQLfs.thumbnail_directory(file)))
-        await db_exec(async(db) => await db.update(tracks_table).set({thumbnail_uri: ""}));
-        // await db_all_async(`${sql_update_table("tracks")} ${sql_set<Track>(["thumbnail_uri", ""])}`);
+        await db.update(tracks_table).set({thumbnail_uri: ""});
         await Promise.all(promises);
         SQLGlobal.update_global_track_all_property('thumbnail_uri', '');
     }
@@ -308,7 +304,7 @@ export namespace SQLTracks {
             ...track,
             lyrics_uri: lyrics_file
         };
-        await db_exec(async(db) => await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid)));
+        await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid));
         SQLGlobal.update_global_track_item(track.uid, new_track);
         return lyrics_file;
     }
@@ -318,7 +314,7 @@ export namespace SQLTracks {
             ...track,
             lyrics_uri: ''
         };
-        await db_exec(async(db) => await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid)));
+        await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid));
         SQLGlobal.update_global_track_item(track.uid, new_track);
     }
 

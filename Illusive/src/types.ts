@@ -187,7 +187,7 @@ export interface TrackMetaData {
     enddur?: number;
     nsplit?: number;
     age_restricted?: boolean;
-    // chapters?: Chapter[];
+    chapters?: YouTubeDL.Chapter[];
     songs?: YTDescriptionSong[];
     unavailable?: boolean;
 }

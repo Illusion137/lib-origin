@@ -23,14 +23,15 @@ export namespace ExampleObj {
         spotify_id: "",
         amazonmusic_id: "",
         applemusic_id: "",
+        bandlab_id: "",
         artwork_url: "",
         thumbnail_uri: "",
         media_uri: "",
         lyrics_uri: "",
         meta: {} as never,
-        playback: undefined,
-        downloading_data: undefined,
-    }
+        playback: undefined as never,
+        downloading_data: undefined as never,
+    } satisfies Required<Track>;
 
     export const playlist_example0: Playlist = {
         uuid: "",
@@ -47,11 +48,11 @@ export namespace ExampleObj {
         linked_playlists: [],
         visual_data: undefined as never,
         date: "",
-    }
+    } satisfies Required<Playlist>;
     export const playlists_tracks_example0: PlaylistsTracks = {
         uuid: "",
         track_uid: ""
-    }
+    } satisfies Required<PlaylistsTracks>;
     export const new_releases_example0: CompactPlaylist = {
         title: {name: "", uri: null},
         artist: [],
@@ -62,7 +63,7 @@ export namespace ExampleObj {
         type: "ALBUM",
         date: "" as ISOString,
         song_track: {} as never
-    }
+    } satisfies Required<CompactPlaylist>;
     export const seen_new_releases_example0: CompactPlaylist & {Timestamp: string} = {
         title: {name: "", uri: null},
         artist: [],
@@ -72,11 +73,12 @@ export namespace ExampleObj {
         album_type: "ALBUM",
         type: "ALBUM",
         date: "" as ISOString,
-        Timestamp: ""
-    }
+        Timestamp: "",
+        song_track: {} as never
+    } satisfies Required<CompactPlaylist & {Timestamp: string}>;
     export const artist_example0: SQLArtist = {
         name: "",
         uri: "",
         artwork_url: ""
-    };
+    } satisfies Required<SQLArtist>;
 }

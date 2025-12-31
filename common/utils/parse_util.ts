@@ -12,7 +12,10 @@ export function force_json_parse<T>(json_string: string): T {
 	try { return JSON.parse(json_string) as T; } catch (_) { return {} as never; }
 }
 export function force_json_parse_array<T>(json_string: string): T {
-	try { return JSON.parse(json_string) as T; } catch (_) { return [] as never; }
+	try { return JSON.parse(json_string) as T; } catch (_) { 
+        console.error("FAILED TO FORCE PARSE ARRAY: ", json_string);
+        return [] as never;
+    }
 }
 export function try_json_parse<T>(json_string: string): T|ResponseError {
 	try { return JSON.parse(json_string) as T; } catch (error) { return generror_catch(error, "Failed to parse JSON", {json_string: small_string(json_string)}); }

@@ -6,6 +6,7 @@ import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, 
 import { encode_params } from "@common/utils/fetch_util";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror } from "@common/utils/error_util";
+import { try_json_parse } from "@common/utils/parse_util";
 
 export namespace SoundCloud {
     type Opts = BaseOpts & {client_id?: (string|ResponseError)};
@@ -130,8 +131,9 @@ export namespace SoundCloud {
     export async function get_hydration(url: string, opts: Opts): PromiseResult<{hydration: Hydration, scripts_urls: string[]}> {
         const hydration_text = await extract_from_page(url, /__sc_hydration ?= ?(.+?);<\/script>/si, opts);
         if ("error" in hydration_text) return {error: hydration_text.error};
-        const hydration: Hydration = JSON.parse(hydration_text.extracted);
-        
+        const hydration = try_json_parse<Hydration>(hydration_text.extracted);
+        if("error" in hydration) return hydration;
+
         const version_string = extract_string_from_pattern(hydration_text.full, /window.__sc_version ?= ?"(.+?)"/si);
         if (typeof version_string === "object") return version_string;
         app_version = parseInt(version_string);

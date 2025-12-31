@@ -5,9 +5,11 @@ import uuid from 'react-native-uuid';
 import { force_json_parse } from './parse_util';
 
 export function generate_new_uid(prefix_name: string) {
-	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + Date.now().toString(36).substring(2, 15) +
+    const suffix = Date.now().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) +
 	Math.random().toString(36).substring(2, 15);
+    if(prefix_name === undefined) return suffix;
+	return prefix_name?.replace(/[^a-zA-Z0-9]/g,'') + '-' + suffix;
 }
 export function gen_uuid(): string{
     return uuid.v4();

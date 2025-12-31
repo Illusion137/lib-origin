@@ -34,7 +34,8 @@ export async function artist_watch(artists: NamedUUID[]): Promise<(CompactPlayli
                 // promises.push(music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch))
             // }
             // else {
-                releases.push(await music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch));
+            const release = (await music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch) ?? []) as CompactPlaylist[];
+            releases.push(release);
             // }
         }
     }

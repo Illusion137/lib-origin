@@ -1,9 +1,6 @@
-import type { drizzle } from "drizzle-orm/op-sqlite";
-import type { Scalar, _InternalDB } from "@op-engineering/op-sqlite";
+import type { DB, Scalar } from "@op-engineering/op-sqlite";
 import { generror_catch } from "./error_util";
 import { reinterpret_cast } from "@common/cast";
-
-type DrizzleDB = ReturnType<typeof drizzle>;
 
 function is_error_failed_unique_contraint(error: unknown){
     return (error as Error).message.includes("UNIQUE constraint failed")
@@ -15,14 +12,14 @@ function log_error_if_not_unique_constraint_failed(error: unknown, source: strin
     }
 }
 export class DrizzleUtils<SQLTables extends string> {
-    db: DrizzleDB;
-    constructor(db: DrizzleDB) {
+    db: DB;
+    constructor(db: DB) {
         this.db = db;
     }
 
     async exec_async(source: string) {
         try {
-            await this.db.$client.execute(source);
+            await this.db.execute(source);
         } catch (error) {
             log_error_if_not_unique_constraint_failed(error, source, "execute async");
         }
@@ -31,8 +28,8 @@ export class DrizzleUtils<SQLTables extends string> {
     async run_async(source: string, params?: Scalar[]) {
         try {
             if(params !== undefined)
-                await this.db.$client.execute(source, params);
-            else await this.db.$client.execute(source);
+                await this.db.execute(source, params);
+            else await this.db.execute(source);
         } catch (error) {
             log_error_if_not_unique_constraint_failed(error, source, "run async");
         }
@@ -40,7 +37,7 @@ export class DrizzleUtils<SQLTables extends string> {
 
     get_all_sync<T>(source: string, ...params: Scalar[]): T[] {
         try {
-            return (this.db.$client.executeSync(source, params)).rows as unknown as T[];
+            return (this.db.executeSync(source, params)).rows as unknown as T[];
         } catch (error) {
             log_error_if_not_unique_constraint_failed(error, source, "get all SYNC");
             return [];
@@ -48,7 +45,7 @@ export class DrizzleUtils<SQLTables extends string> {
     }
     async get_all_async<T>(source: string, ...params: Scalar[]): Promise<T[]> {
         try {
-            return (await this.db.$client.executeWithHostObjects(source, params)).rows as unknown as T[];
+            return (await this.db.executeWithHostObjects(source, params)).rows as unknown as T[];
         } catch (error) {
             log_error_if_not_unique_constraint_failed(error, source, "get all async");
             return [];
@@ -61,7 +58,7 @@ export class DrizzleUtils<SQLTables extends string> {
 
     async delete_all_triggers(){
         const triggers = await this.get_all_triggers();
-        await this.db.$client.transaction(async () => {
+        await this.db.transaction(async () => {
             for(const trigger of triggers){
                 await this.exec_async(`DROP TRIGGER IF EXISTS ${trigger.name};`);
             }

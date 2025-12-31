@@ -3,7 +3,7 @@ import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, Illus
 import { index, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const tracks_config = {
-    id: int().primaryKey({ autoIncrement: true }),
+    id: int().primaryKey({autoIncrement: true}),
     uid: text().notNull().$defaultFn(() => generate_new_uid("")),
     title: text().notNull().default(""),
     alt_title: text().notNull().default(""),
@@ -25,7 +25,7 @@ const tracks_config = {
     spotify_id: text().notNull().default(""),
     amazonmusic_id: text().notNull().default(""),
     applemusic_id: text().notNull().default(""),
-    // bandlab_id: text().notNull().default(""),
+    bandlab_id: text().notNull().default(""),
     artwork_url: text().notNull().default(""),
     thumbnail_uri: text().notNull().default(""),
     media_uri: text().notNull().default(""),
@@ -35,12 +35,13 @@ const tracks_config = {
         last_played_date: new Date().toISOString() as ISOString,
         plays: 0,
     }),
-    Timestamp: int().notNull().$defaultFn(() => Date.now())
+    created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    uuid: text().notNull().$defaultFn(gen_uuid),
+    id: int().primaryKey({autoIncrement: true}),
+    uuid: text().primaryKey().notNull().$defaultFn(gen_uuid),
     title: text().notNull().default(""),
     description: text().notNull().default(""),
     pinned: int({mode: 'boolean'}).notNull().default(false),
@@ -53,14 +54,15 @@ const playlists_config = {
     inherited_searchs: text({mode: 'json'}).notNull().$type<InheritedSearch[]>().default([]),
     linked_playlists: text({mode: 'json'}).notNull().$type<LinkedPlaylist[]>().default([]),
     date: text().notNull().$defaultFn(() => new Date().toISOString()),
-    Timestamp: int().notNull().$defaultFn(() => Date.now())
+    created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_tracks_config = {
     id: int().primaryKey({ autoIncrement: true }),
     uuid: text().notNull(),
     track_uid: text().notNull(),
-    Timestamp: int().notNull().$defaultFn(() => Date.now())
+    created_at: int().notNull().$defaultFn(() => Date.now()),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const new_releases_config = {
@@ -74,20 +76,22 @@ const new_releases_config = {
     type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"),
     date: text().notNull().$type<ISOString>().default(new Date(0).toISOString() as ISOString),
     song_track: text({mode: 'json'}).$type<Track>(),
-    Timestamp: int().notNull().$defaultFn(() => Date.now()),
+    created_at: int().notNull().$defaultFn(() => Date.now()),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const artists_config = {
-    id: int().primaryKey({ autoIncrement: true }),
+    uri: text().primaryKey().notNull(),
     name: text().notNull(),
-    uri: text().notNull(),
     artwork_url: text().notNull(),
+    created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const track_plays_config = {
     id: int().primaryKey({ autoIncrement: true }),
     track_uid: text().notNull(),
-    timestamp: int().notNull().$defaultFn(() => Date.now()),
+    created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 export const tracks_table                   = sqliteTable("tracks", tracks_config, (table) => ([index("tracks_uuid_idx").on(table.uid)]));

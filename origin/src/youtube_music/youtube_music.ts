@@ -15,7 +15,7 @@ import type { ContinuationItemRenderer } from "@origin/youtube_music/types/Playl
 import type { SearchSuggestions } from "@origin/youtube_music/types/SearchSuggestions";
 import { sapisid_hash_auth0, sapisid_hash_auth1 } from "@common/utils/auth_utilt";
 import { generror, generror_fetch } from "@common/utils/error_util";
-import { parse_runs, try_json_eval } from "@common/utils/parse_util";
+import { parse_runs, try_json_eval,try_json_parse } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import { get_native_platform } from "@native/native_mode";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
@@ -126,8 +126,8 @@ export namespace YouTubeMusic {
 				data: string
 			}>(imatch);
             if("error" in try_route) return [];
-			const data: InitialData = JSON.parse(try_route.data);
-			initial_data.push(data);
+			const data = try_json_parse<InitialData>(try_route.data);
+			if(!("error" in data)) initial_data.push(data);
 		}
 		return initial_data;
 	}

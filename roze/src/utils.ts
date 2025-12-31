@@ -256,11 +256,15 @@ export async function save_base64_image_to_file(base64: string, file_path: strin
 
 export function generate_youtube_chapters(chapters: RozChapterContents[]): string{
     let total_duration = 0;
+    const seen_timestamps = new Set<string>();
     return chapters.map(({chapter}) => {
-        const line = `${timestamp_to_timecode(total_duration)} ${chapter.title}`;
+        const timestamp = timestamp_to_timecode(total_duration);
+        if(seen_timestamps.has(timestamp)) return undefined;
+        seen_timestamps.add(timestamp);
+        const line = `${timestamp} ${chapter.title}`;
         total_duration += chapter.duration ?? 0;
         return line;
-    }).join('\n');
+    }).filter(line => line).join('\n');
 }
 export function generate_srt_subtitles_contents(chapters: RozChapterContents[]): string{
     const accepted_content_types: RozContentType[] = ["PARAGRAPH", "CHAPTER_TITLE", "CHAPTER_SUBTITLE", "HEADING", "TITLE"];
