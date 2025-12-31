@@ -1,6 +1,6 @@
+import type { SetState } from '@illusive/types';
 import { catch_function_async, is_empty } from '@common/utils/util';
 import { Prefs } from '@illusive/prefs';
-import type { SetState } from '@illusive/types';
 import { GLOBALS } from './globals';
 import { download_track, download_track_lyrics } from './downloader';
 import { SQLTracks } from './sql/sql_tracks';
@@ -9,7 +9,7 @@ import { SQLPlaylists } from './sql/sql_playlists';
 import { load_native_modules } from '@native/gen/load_native_modules';
 import { miscnative } from '@native/miscnative/miscnative';
 import { SQLfs } from './sql/sql_fs';
-import { is_database_connected, load_database } from './db/database';
+import { db, is_database_connected, load_database } from './db/database';
 import { Illusive } from './illusive';
 import { default_playlists } from './default_playlists';
 import { addShortcutListener, getInitialShortcut } from "react-native-siri-shortcut";
@@ -21,6 +21,8 @@ import { ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { SQLUpdate } from './sql/sql_update';
 import { SQLArtists } from './sql/sql_artists';
 import { catch_log } from '@common/utils/error_util';
+import { migrate } from 'drizzle-orm/op-sqlite/migrator';
+import migrations from './drizzle/mobile/migrations';
 
 export async function warmup_client(){
     await ffmpeg().execute_args(['-L']);
@@ -42,6 +44,8 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 
         if(!is_database_connected()) load_database();
 
+        await migrate(db, migrations);
+        
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.download_track_lyrics = download_track_lyrics;

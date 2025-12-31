@@ -15,3 +15,5 @@
 // Re-compile
 // Re-Run Tests
 // Update service.json (outages n stuff)
+
+// If need to run npx drizzle-kit generate --config=drizzle-illusi-mobile.config.ts          37% 23/63GB 

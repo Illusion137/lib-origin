@@ -1,18 +1,18 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "27c7fe86-6205-4820-ab8d-214b8ef4b117",
+  "id": "63a1baa8-795f-4126-a724-0f7e02de035d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {
       "name": "artists",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
+        "uri": {
+          "name": "uri",
+          "type": "text",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "autoincrement": false
         },
         "name": {
           "name": "name",
@@ -21,16 +21,23 @@
           "notNull": true,
           "autoincrement": false
         },
-        "uri": {
-          "name": "uri",
+        "artwork_url": {
+          "name": "artwork_url",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "artwork_url": {
-          "name": "artwork_url",
-          "type": "text",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -218,6 +225,14 @@
           "autoincrement": false,
           "default": "''"
         },
+        "bandlab_id": {
+          "name": "bandlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "artwork_url": {
           "name": "artwork_url",
           "type": "text",
@@ -256,10 +271,17 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-11-03T09:27:15.037Z\",\"last_played_date\":\"2025-11-03T09:27:15.038Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -448,6 +470,14 @@
           "autoincrement": false,
           "default": "''"
         },
+        "bandlab_id": {
+          "name": "bandlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "artwork_url": {
           "name": "artwork_url",
           "type": "text",
@@ -486,10 +516,17 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-11-03T09:27:15.037Z\",\"last_played_date\":\"2025-11-03T09:27:15.038Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -591,8 +628,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -618,7 +655,7 @@
         "uuid": {
           "name": "uuid",
           "type": "text",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true,
           "autoincrement": false
         },
@@ -716,8 +753,15 @@
           "notNull": true,
           "autoincrement": false
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -743,7 +787,7 @@
         "uuid": {
           "name": "uuid",
           "type": "text",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true,
           "autoincrement": false
         },
@@ -841,8 +885,15 @@
           "notNull": true,
           "autoincrement": false
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -887,8 +938,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -925,8 +976,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1115,6 +1166,14 @@
           "autoincrement": false,
           "default": "''"
         },
+        "bandlab_id": {
+          "name": "bandlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "artwork_url": {
           "name": "artwork_url",
           "type": "text",
@@ -1153,10 +1212,17 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-11-03T09:27:15.037Z\",\"last_played_date\":\"2025-11-03T09:27:15.038Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1172,6 +1238,44 @@
           "isUnique": false
         }
       },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "track_plays": {
+      "name": "track_plays",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "track_uid": {
+          "name": "track_uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -1353,6 +1457,14 @@
           "autoincrement": false,
           "default": "''"
         },
+        "bandlab_id": {
+          "name": "bandlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "artwork_url": {
           "name": "artwork_url",
           "type": "text",
@@ -1391,10 +1503,17 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-11-03T09:27:15.037Z\",\"last_played_date\":\"2025-11-03T09:27:15.038Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1583,6 +1702,14 @@
           "autoincrement": false,
           "default": "''"
         },
+        "bandlab_id": {
+          "name": "bandlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "artwork_url": {
           "name": "artwork_url",
           "type": "text",
@@ -1621,10 +1748,17 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-11-03T09:27:15.037Z\",\"last_played_date\":\"2025-11-03T09:27:15.038Z\",\"plays\":0}'"
+          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
         },
-        "timestamp": {
-          "name": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modified_at": {
+          "name": "modified_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
