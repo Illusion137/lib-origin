@@ -1,39 +1,38 @@
 import { try_json_parse } from '@common/utils/parse_util';
 import { groupby, is_empty, milliseconds_of } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
-import { db_exec } from '@illusive/db/database';
+import { db } from '@illusive/db/database';
 import { new_releases_table } from '@illusive/db/schema';
 import { Prefs } from "@illusive/prefs";
-import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompactPlaylist, TimestampedCompactPlaylist } from "@illusive/types";
+import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompactPlaylist, TimestampedCompactPlaylist,Track } from "@illusive/types";
 import { SQLTracks } from './sql_tracks';
 import { reinterpret_cast } from '@common/cast';
 import { GLOBALS } from '@illusive/globals';
 
 export namespace SQLNewReleases {
     export async function new_releases_count(): Promise<number>{
-        return await db_exec(async(db) => await db.$count(new_releases_table));
+        return await db.$count(new_releases_table);
     }
     
     export async function sql_compact_playlist_to_compact_playlist(playlist: CompactPlaylist|SQLCompactPlaylist): Promise<CompactPlaylist>{
         if(typeof playlist.title === "object") return reinterpret_cast<CompactPlaylist>(playlist);
         const sql_playlist = reinterpret_cast<SQLCompactPlaylist>(playlist);
-        const title: NamedUUID = JSON.parse(sql_playlist.title);
+        const title = try_json_parse<NamedUUID>(sql_playlist.title);
         const artist = try_json_parse<NamedUUID[]>(sql_playlist.artist);
         const artwork_thumbnails = is_empty(sql_playlist.artwork_thumbnails) ? undefined : try_json_parse<IllusiveThumbnail[]>(sql_playlist.artwork_thumbnails!);
-        // const song_track = is_empty(sql_playlist.song_track) ? undefined : try_json_parse<Track>(sql_playlist.song_track!);
+        const song_track = is_empty(sql_playlist.song_track) ? undefined : try_json_parse<Track>(sql_playlist.song_track!);
         return {
             ...sql_playlist,
             title: "error" in title ? {name: "UNKNOWN", uri: null} : title,
             artist: "error" in artist ? [] : artist,
             artwork_thumbnails: artwork_thumbnails === undefined || "error" in artwork_thumbnails ? undefined : artwork_thumbnails,
-            song_track: is_empty(sql_playlist.song_track) ? undefined : JSON.parse(sql_playlist.song_track!)
-            // song_track === undefined || song_track === null || "error" in song_track ? undefined : (await SQLTracks.add_playback_saved_data_to_track(song_track))
+            song_track: song_track === undefined || song_track === null || "error" in song_track ? undefined : SQLTracks.add_playback_saved_data_to_track(song_track)
         }
     }
     
     export async function get_all_new_releases(){
         return await Promise.all(
-            (await db_exec(async(db) => await db.select().from(new_releases_table))).map(sql_compact_playlist_to_compact_playlist)
+            (await db.select().from(new_releases_table)).map(sql_compact_playlist_to_compact_playlist)
         ) as TimestampedCompactPlaylist[];
     }
     
@@ -116,12 +115,12 @@ export namespace SQLNewReleases {
     }
     
     export async function delete_all_from_new_releases(){
-        await db_exec(async(db) => await db.delete(new_releases_table));
+        await db.delete(new_releases_table);
     }
     export async function insert_all_into_new_releases(new_releases: CompactPlaylist[]){
         const promises: Promises = [];
         for(const new_release of new_releases){
-            const promise = db_exec(async(db) => await db.insert(new_releases_table).values(new_release));
+            const promise = db.insert(new_releases_table).values(new_release);
             promises.push(promise);
         }
         await Promise.all(promises);

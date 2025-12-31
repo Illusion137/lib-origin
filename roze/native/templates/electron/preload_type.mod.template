@@ -1,1 +1,0 @@
-	__KEY__: (...args: Parameters<ReturnType<(typeof __NATIVE_MODULE__)>["__KEY__"]>) => Promise<ReturnType<ReturnType<(typeof __NATIVE_MODULE__)>["__KEY__"]>>;

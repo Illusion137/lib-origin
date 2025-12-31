@@ -472,7 +472,7 @@ process.on("SIGINT", function () {
 		cleanup_bar.increment(1, { file: file_path });
 		try {
 			rmSync(file_path);
-		} catch (e) {}
+		} catch (_) {}
 	});
 
 	cleanup_bar.stop();

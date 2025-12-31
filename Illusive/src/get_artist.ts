@@ -15,6 +15,7 @@ import { is_empty } from '../../common/utils/util';
 import { SQLArtists } from "./sql/sql_artists";
 import { reinterpret_cast } from "@common/cast";
 import { parse_spotify_artist_album, parse_spotify_artist_appears_on, parse_spotify_artist_track, parse_spotify_similar_artist } from './parsers/spotify_parser';
+import { catch_log } from "@common/utils/error_util";
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
@@ -62,14 +63,14 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
             artwork_url: background_thumbnail,
             name: name,
             uri: create_uri('youtubemusic', id)
-        }).catch(e => e);
+        }).catch(catch_log);
     }
     similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach(artist => {
         SQLArtists.insert_sql_artists({
             artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
             name: artist.name.name,
             uri: artist.name.uri!
-        }).catch(e => e);
+        }).catch(catch_log);
     })
 
 
@@ -113,7 +114,7 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
             artwork_url: artwork,
             name: artist_info.name,
             uri: create_uri('applemusic', id)
-        }).catch(e => e);
+        }).catch(catch_log);
     }
 
     const parsed_similar_artists = similar_artists?.items.map(parse_apple_music_artist_similar_artist) ?? [];
@@ -123,7 +124,7 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
             artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
             name: artist.name.name,
             uri: artist.name.uri!
-        }).catch(e => e);
+        }).catch(catch_log);
     })
 
     return {
@@ -161,7 +162,7 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
             artwork_url: artist_id.hydration.data.avatar_url,
             name: artist_id.hydration.data.username,
             uri: create_uri('soundcloud', id)
-        }).catch(e => e);
+        }).catch(catch_log);
     }
 
     return {

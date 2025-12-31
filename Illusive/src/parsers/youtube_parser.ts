@@ -8,8 +8,8 @@ import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/y
 import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
 import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
 import { YTNodes } from "youtubei.js/agnostic";
-import { YouTubeDL } from '@origin/youtube_dl/index';
-import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
+import { YouTubeDL, type VideoInfo } from '@origin/youtube_dl/index';
+// import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;
@@ -18,7 +18,7 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
         if(engagement_panels !== undefined && Array.isArray(engagement_panels) && engagement_panels.filter(item => item !== undefined).length > 0) {
             const structured_description_panel = engagement_panels.find(panel => panel.target_id === "engagement-panel-structured-description");
             if(structured_description_panel !== undefined) {
-                const music_renderer = structured_description_panel.content?.as(YTNodes.StructuredDescriptionContent).items.find(item => item.as(YTNodes.HorizontalCardList) !== undefined && item.as(YTNodes.HorizontalCardList).header.as(YTNodes.ButtonView).icon_name === "MUSIC")?.as(YTNodes.HorizontalCardList);
+                const music_renderer = structured_description_panel.content?.as(YTNodes.StructuredDescriptionContent).items.find(item => item.as(YTNodes.HorizontalCardList)?.header.as(YTNodes.ButtonView).icon_name === "MUSIC")?.as(YTNodes.HorizontalCardList);
                 if(music_renderer !== undefined) {
                     songs = music_renderer.cards.map(item => {
                         const attributes = item.as(YTNodes.VideoAttributeView);
@@ -32,7 +32,7 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
                 }
             }
         }
-    } catch (error) {}
+    } catch (_) {}
 
 
     return {
@@ -43,15 +43,15 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
 }
 
 export function extract_youtube_title_info(track: Track) {    
-    const prods_0 = extract_string_from_pattern(track.title, / ?[\(\[] ?prod\.?(.+?)[\)\]]/ig);
-    const prods_1 = extract_string_from_pattern(track.title, / ?[\(\[] ?produced\.?(.+?)[\)\]]/ig);
+    const prods_0 = extract_string_from_pattern(track.title, / ?[([] ?prod\.?(.+?)[)]]/ig);
+    const prods_1 = extract_string_from_pattern(track.title, / ?[([] ?produced\.?(.+?)[)]]/ig);
     const prods: string[] = [prods_0, prods_1].filter(item => typeof item === "string").map(item => item.replace(/ by /i, ''));
-    const feats_0 = extract_string_from_pattern(track.title, / ?[\(\[] ?ft\.?(.+?)[\)\]]/ig);
-    const feats_1 = extract_string_from_pattern(track.title, / ?[\(\[] ?feat\.?(.+?)[\)\]]/ig);
+    const feats_0 = extract_string_from_pattern(track.title, / ?[([] ?ft\.?(.+?)[)]]/ig);
+    const feats_1 = extract_string_from_pattern(track.title, / ?[([] ?feat\.?(.+?)[)]]/ig);
     const feats: string[] = [feats_0, feats_1].filter(item => typeof item === "string");
-    const unreleased = / ?[\(\[] ?unreleased ?[\)\]]/ig.test(track.title) || / unreleased/g.test(track.title);
-    const explicit = / ?[\(\[] ?explicit ?[\)\]]/ig.test(track.title) || / ?[\(\[] ?explicit version ?[\)\]]/ig.test(track.title);
-    const clean = / ?[\(\[].*?clean.*?[\)\]]/ig.test(track.title);
+    const unreleased = / ?[([] ?unreleased ?[)]]/ig.test(track.title) || / unreleased/g.test(track.title);
+    const explicit = / ?[([] ?explicit ?[)]]/ig.test(track.title) || / ?[([] ?explicit version ?[)]]/ig.test(track.title);
+    const clean = / ?[([].*?clean.*?[)]]/ig.test(track.title);
     return {
         prods: prods[0],
         feats: feats[0],
@@ -61,57 +61,57 @@ export function extract_youtube_title_info(track: Track) {
     }   
 }
 export function clean_youtube_title(title: string){
-    return String(title)
+    return title
     .replace(/ ?full song ?/ig, '')
-    .replace(/ ?[\(\[] ?prod\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?dir\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?ft\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?feat\.?.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?w\/.+?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?unreleased ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?explicit ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?explicit version ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?legendado ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?full video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?video version ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?music ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?audio ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?lyrics? ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?lyrics? video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official audio ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official visual ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official lyrics? ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official lyrics? video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?exclusive music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?official music video ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?visualizer ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?visualiser ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official visualizer ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?official mv ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?reupload ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?bass boosted ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?HD ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?HQ ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?remix ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?ost ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?fanmade ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?extended ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?tik tok ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?tiktok ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?amv ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?full ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?full song ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?best version ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[] ?best ?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?only.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?remix.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?clean.*?[\)\]]/ig, '')
-    .replace(/ ?[\(\[].*?by.*?[\)\]]/ig, '')
+    .replace(/ ?[([] ?prod\.?.+?[)]]/ig, '')
+    .replace(/ ?[([] ?dir\.?.+?[)]]/ig, '')
+    .replace(/ ?[([] ?ft\.?.+?[)]]/ig, '')
+    .replace(/ ?[([] ?feat\.?.+?[)]]/ig, '')
+    .replace(/ ?[([] ?w\/.+?[)]]/ig, '')
+    .replace(/ ?[([] ?unreleased ?[)]]/ig, '')
+    .replace(/ ?[([] ?explicit ?[)]]/ig, '')
+    .replace(/ ?[([] ?explicit version ?[)]]/ig, '')
+    .replace(/ ?[([] ?official ?[)]]/ig, '')
+    .replace(/ ?[([] ?legendado ?[)]]/ig, '')
+    .replace(/ ?[([] ?full video ?[)]]/ig, '')
+    .replace(/ ?[([] ?video version ?[)]]/ig, '')
+    .replace(/ ?[([] ?music ?[)]]/ig, '')
+    .replace(/ ?[([] ?audio ?[)]]/ig, '')
+    .replace(/ ?[([] ?video ?[)]]/ig, '')
+    .replace(/ ?[([] ?lyrics? ?[)]]/ig, '')
+    .replace(/ ?[([] ?lyrics? video ?[)]]/ig, '')
+    .replace(/ ?[([] ?music video ?[)]]/ig, '')
+    .replace(/ ?[([] ?official audio ?[)]]/ig, '')
+    .replace(/ ?[([] ?official video ?[)]]/ig, '')
+    .replace(/ ?[([] ?official visual ?[)]]/ig, '')
+    .replace(/ ?[([] ?official lyrics? ?[)]]/ig, '')
+    .replace(/ ?[([] ?official lyrics? video ?[)]]/ig, '')
+    .replace(/ ?[([] ?exclusive music video ?[)]]/ig, '')
+    .replace(/ ?[([] ?official music video ?[)]]/ig, '')
+    .replace(/ ?[([].*?official music video ?[)]]/ig, '')
+    .replace(/ ?[([] ?visualizer ?[)]]/ig, '')
+    .replace(/ ?[([] ?visualiser ?[)]]/ig, '')
+    .replace(/ ?[([] ?official visualizer ?[)]]/ig, '')
+    .replace(/ ?[([] ?official mv ?[)]]/ig, '')
+    .replace(/ ?[([] ?reupload ?[)]]/ig, '')
+    .replace(/ ?[([] ?bass boosted ?[)]]/ig, '')
+    .replace(/ ?[([] ?HD ?[)]]/ig, '')
+    .replace(/ ?[([] ?HQ ?[)]]/ig, '')
+    .replace(/ ?[([] ?remix ?[)]]/ig, '')
+    .replace(/ ?[([] ?ost ?[)]]/ig, '')
+    .replace(/ ?[([] ?fanmade ?[)]]/ig, '')
+    .replace(/ ?[([] ?extended ?[)]]/ig, '')
+    .replace(/ ?[([] ?tik tok ?[)]]/ig, '')
+    .replace(/ ?[([] ?tiktok ?[)]]/ig, '')
+    .replace(/ ?[([] ?amv ?[)]]/ig, '')
+    .replace(/ ?[([] ?full ?[)]]/ig, '')
+    .replace(/ ?[([] ?full song ?[)]]/ig, '')
+    .replace(/ ?[([] ?best version ?[)]]/ig, '')
+    .replace(/ ?[([] ?best ?[)]]/ig, '')
+    .replace(/ ?[([].*?only.*?[)]]/ig, '')
+    .replace(/ ?[([].*?remix.*?[)]]/ig, '')
+    .replace(/ ?[([].*?clean.*?[)]]/ig, '')
+    .replace(/ ?[([].*?by.*?[)]]/ig, '')
     .replace(/unreleased/ig, '');
 }
 export function parse_youtube_title_artist(track: Track): Track {

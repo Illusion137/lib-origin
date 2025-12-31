@@ -1,6 +1,6 @@
 import { timestamp_to_timecode } from "@roze/utils";
 
-test("timestamp_to_string", async() => {
+test("timestamp_to_string", () => {
     expect(timestamp_to_timecode(0)).toBe("00:00:00");
     expect(timestamp_to_timecode(-1)).toBe("00:00:00");
     expect(timestamp_to_timecode(60)).toBe("00:01:00");

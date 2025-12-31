@@ -68,7 +68,7 @@ export namespace SQLfs {
         }
         await fs().remove(path); 
     }
-    export async function read_directory(path: string) { try { return await fs().read_directory(path); } catch(e) { return []; } }
+    export async function read_directory(path: string) { try { return await fs().read_directory(path); } catch(_) { return []; } }
     export async function download_to_file(uri: string, file_uri: string) { return fs().download_to_file(uri, file_uri); }
     
     export async function create_file(path: string, data: string){

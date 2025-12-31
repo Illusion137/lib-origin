@@ -114,7 +114,8 @@ export namespace FileParser {
                     ...section,
                     chapter: {
                         ...section.chapter,
-                        title: section.chapter.title ?? ""
+                        title: section.chapter.title ?? "",
+                        uuid: gen_uuid()
                     },
                     contents: roz_contents
                 });
@@ -134,6 +135,7 @@ export namespace FileParser {
             
             const roz_sections = await parse_epub_sections_to_roz_content(epub, sections);
             return {
+                version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(file_path_or_url),
                 source_file_type: "EPUB",
@@ -372,6 +374,7 @@ export namespace FileParser {
             const cover = contents.slice(0, opts.cover_look_slice ?? 3).find(content => content.type === "IMAGE");
 
             return {
+                version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(file_path_or_url),
                 source_file_type: "PDF",
@@ -399,6 +402,7 @@ export namespace FileParser {
             if(docx_result.messages.some(msg => msg.type === "error")) return generror("Error in docx_result", {file_path_or_url, opts, messages: docx_result.messages});
             const html = docx_result.value;
             return {
+                version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(file_path_or_url),
                 source_file_type: "DOCX",
@@ -424,6 +428,7 @@ export namespace FileParser {
             if(typeof text_contents === "object") return text_contents;
             const line_normalized_text_contents = text_contents.replace(/\r\n/g, '\n');
             return {
+                version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(file_path_or_url),
                 source_file_type: "TXT",

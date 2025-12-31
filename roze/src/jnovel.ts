@@ -133,6 +133,7 @@ export namespace JNovel {
     export function readers_to_roz(readers: JNovel_Reader[]): Roz{
         const metadata: JNovel_Reader|undefined = readers[0];
         return {
+			version: 1,
             uuid: gen_uuid(),
             source_file: metadata.part.legacy_id,
             source_file_type: "JNOVEL",

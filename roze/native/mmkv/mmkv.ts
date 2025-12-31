@@ -9,20 +9,15 @@ export async function load_native_mmkv(): Promise<MMKVModule>{
 		case "WEB":
 			console.error("Web Native MMKVModule is NOT implemented");
 			break;
-		case "ELECTRON_RENDERER":
-			try {
-				// mmkv_instance = (await import("../gen/electron/modules/mmkv.electron_renderer")).electron_renderer_mmkv;
-			} catch (e) {}
-			break;
 		case "NODE":
 			try {
-				mmkv_instance = (await import("./mmkv.node")).node_mmkv;
-			} catch (e) {}
+				mmkv_instance = (await import("./mmkv.node.ts")).node_mmkv;
+			} catch (e) { console.error(e); }
 			break;
 		case "REACT_NATIVE":
 			try {
-				mmkv_instance = (await import("./mmkv.mobile")).mobile_mmkv;
-			} catch (e) {}
+				mmkv_instance = (await import("./mmkv.mobile.ts")).mobile_mmkv;
+			} catch (e) { console.error(e); }
 			break;
 	}
 	return mmkv_instance;

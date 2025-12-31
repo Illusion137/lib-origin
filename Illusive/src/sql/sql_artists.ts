@@ -1,10 +1,10 @@
 import { remove_topic } from "@common/utils/clean_util";
 import { Constants } from "@illusive/constants";
-import { db_exec } from "@illusive/db/database";
-import { artists_table, type SQLArtist } from "@illusive/db/schema";
+import { artists_table, type SQLArtist,type SQLArtistInsert } from "@illusive/db/schema";
 import { create_uri } from "@illusive/illusive_utils";
 import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from "@illusive/types";
 import { eq } from "drizzle-orm";
+import { db } from "@illusive/db/database";
 
 export namespace SQLArtists {
     export const default_profile_picture_url = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
@@ -15,7 +15,7 @@ export namespace SQLArtists {
         artists_artwork_memo[create_uri("illusi", Constants.import_uri_id)] = Constants.sudo_profile_picture_index;
         artists_artwork_memo[create_uri("illusi", Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
 
-        const artists = await db_exec(async(db) => await db.select().from(artists_table));
+        const artists = await db.select().from(artists_table);
         for(const artist of artists){
             artists_artwork_memo[artist.uri] = artist.artwork_url;
             artists_memo[artist.uri] = artist;
@@ -25,32 +25,30 @@ export namespace SQLArtists {
 
     export async function get_sql_artist_artwork_uri(uri: string): Promise<string|number|undefined> {
         const result = artists_artwork_memo[uri] ?? 
-            (await db_exec(async(db) => 
-                db.select({artwork_url: artists_table.artwork_url})
-                .from(artists_table)
-                .where(eq(artists_table.uri, uri))
-                .get()
-        ))?.artwork_url;
+            (await db.select({artwork_url: artists_table.artwork_url})
+            .from(artists_table)
+            .where(eq(artists_table.uri, uri))
+            .get())?.artwork_url;
         artists_artwork_memo[uri] = result;
         return result;
     }
     
-    export async function insert_sql_artists(sql_artist: SQLArtist){
+    export async function insert_sql_artists(sql_artist: SQLArtistInsert){
         artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
-        artists_memo[sql_artist.uri] = sql_artist;
-        await db_exec(async(db) => await db.insert(artists_table).values(sql_artist));
+        artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
+        await db.insert(artists_table).values(sql_artist);
     }
 
-    export async function insert_all_into_sql_artists(sql_artists: SQLArtist[]){
+    export async function insert_all_into_sql_artists(sql_artists: SQLArtistInsert[]){
         for(const sql_artist of sql_artists){
             artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
-            artists_memo[sql_artist.uri] = sql_artist;
+            artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
         }
-        await db_exec(async(db) => await db.insert(artists_table).values(sql_artists));
+        await db.insert(artists_table).values(sql_artists);
     }
     
     export async function clear_all_sql_artists(){
-        await db_exec(async(db) => await db.delete(artists_table));
+        await db.delete(artists_table);
     }
 
     export function sort_compact_artists(mode: ArtistSortMode, artists: NamedUUID[], global_tracks: Track[]): CompactArtist[] {

@@ -9,6 +9,7 @@ import { play_track_discord_recieve } from "@illusive/discord";
 import { Utils } from "@illusicord/player/utils";
 import { Constants } from "@illusicord/constants";
 import { duration_to_string } from "@illusive/illusive_utils";
+import { catch_ignore } from "@common/utils/error_util";
 
 export type DiscordClient = Client & { player: Player };
 export type DiscordMessage = OmitPartialGroupDMChannel<Message>;
@@ -115,7 +116,7 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 	seek: async (client, message, args) => {
 		guild_queue(client, message)
 			?.seek(parseInt(args[0]))
-			.catch((e) => e);
+			.catch(catch_ignore);
 	},
 	clear: async (client, message, _) => {
 		guild_queue(client, message)?.clear_queue();

@@ -164,7 +164,7 @@ export function generate_text_structure(text: string): RozTextStructures{
 }
 
 export function generate_translation_map(file_buffer: string): TranslationMap {
-    const punctuation_regex_presufix = "((\.|\s|,|-|&|!|\(|\)|\?|~|`|\[|\]|\{|\}|\"|\'|:|;|<|>|^|“|”|‛|’|‘|«|»||$|「|」|『|』)+)";
+    const punctuation_regex_presufix = "((\\.|\\s|,|-|&|!|\\(|\\)|\\?|~|`|\\[|\\]|\\{|\\}|\"|\\'|:|;|<|>|^|“|”|‛|’|‘|«|»||$|「|」|『|』)+)";
     file_buffer = file_buffer.replace(/\r\n/g, '\n');
     const lines = file_buffer.split('\n');
     const translation_map: TranslationMap = [];
@@ -256,11 +256,15 @@ export async function save_base64_image_to_file(base64: string, file_path: strin
 
 export function generate_youtube_chapters(chapters: RozChapterContents[]): string{
     let total_duration = 0;
+    const seen_timestamps = new Set<string>();
     return chapters.map(({chapter}) => {
-        const line = `${timestamp_to_timecode(total_duration)} ${chapter.title}`;
+        const timestamp = timestamp_to_timecode(total_duration);
+        if(seen_timestamps.has(timestamp)) return undefined;
+        seen_timestamps.add(timestamp);
+        const line = `${timestamp} ${chapter.title}`;
         total_duration += chapter.duration ?? 0;
         return line;
-    }).join('\n');
+    }).filter(line => line).join('\n');
 }
 export function generate_srt_subtitles_contents(chapters: RozChapterContents[]): string{
     const accepted_content_types: RozContentType[] = ["PARAGRAPH", "CHAPTER_TITLE", "CHAPTER_SUBTITLE", "HEADING", "TITLE"];

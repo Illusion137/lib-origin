@@ -192,6 +192,7 @@ export namespace Syosetu {
         const filtered_contents = reinterpret_cast<WebnovelContents[]>(webnovel_contents.filter(content => !("error" in content)));
         const metadata_header: WebnovelContentsHeader|undefined = filtered_contents[0].header;
         return {
+            version: 1,
             uuid: gen_uuid(),
             title: metadata_header.series_name ?? "",
             author: metadata_header.author ?? null,

@@ -8,6 +8,7 @@ import type { Prefs } from "@illusive/prefs";
 import { remove } from "@common/utils/clean_util";
 import type { BasePref } from "@native/mmkv/mmkv_utils";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
+import type { YouTubeDL } from '@origin/youtube_dl/index';
 
 type ArtworkCacheType = 'force-cache';
 
@@ -89,13 +90,19 @@ export interface AlphabetScroll {
 export interface ConvertToUUIDURI { uuid_uri: string };
 export interface ConvertToTitle { title: string };
 export type ConvertTo = ConvertToUUIDURI | ConvertToTitle;
-export interface LinkerLink {
+export interface BaseLinkerLink {
     link_uuid: string;
-    uuid_uri: string;
-    full_sample: boolean;
-    to_service: MusicServiceType;
-    to: ConvertTo;
+    illusi_uuid: string;
+    service_uri: MusicServiceURI;
+    full_service_playlist: boolean;
 }
+export interface IncomingLinkerLink extends BaseLinkerLink{
+    type: "INCOMING";
+}
+export interface OutgoingLinkerLink extends BaseLinkerLink{
+    type: "OUTGOING";
+}
+export type LinkerLink = IncomingLinkerLink | OutgoingLinkerLink;
 
 export interface DefaultPlaylist {
     name: string;
@@ -180,13 +187,14 @@ export interface TrackMetaData {
     enddur?: number;
     nsplit?: number;
     age_restricted?: boolean;
-    // chapters?: Chapter[];
+    chapters?: YouTubeDL.Chapter[];
     songs?: YTDescriptionSong[];
     unavailable?: boolean;
 }
 // Regex
 // \s+.+?: (.+?)\n
 interface Basic_Track<T, U, V, X> {
+    id?: number;
     uid: string
     title: string
     alt_title?: string
@@ -375,7 +383,7 @@ export interface DownloadFromIdResult {
     url: string;
     metadata?: {
         artist_id: string;
-        // chapters: Chapter[];
+        chapters: YouTubeDL.Chapter[];
         songs?: YTDescriptionSong[]
     };
 }

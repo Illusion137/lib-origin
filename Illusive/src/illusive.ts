@@ -278,7 +278,7 @@ export namespace Illusive {
             try {
                 const result = await fetch(uri, {});
                 if(result.status === 200) return uri;
-            } catch (error) {}
+            } catch (_) {}
         }
         return `https://img.youtube.com/vi/${video_id}/0.jpg`;
     }
@@ -300,7 +300,7 @@ export namespace Illusive {
             try {
                 const result = await fetch(duri, {});
                 if(result.status === 200) return duri;
-            } catch (error) {}
+            } catch (_) {}
         }
         return uri;
     }
@@ -561,7 +561,7 @@ export namespace Illusive {
                 continue;
             }
             const query = remove_topic(track.artists[0].name) + " " + guess_title;
-            const searched: MusicSearchResponse|ResponseError = await youtube_music_search(query).catch(json_catch);
+            const searched = await youtube_music_search(query).catch<MusicSearchResponse|ResponseError>(json_catch);
             if("error" in searched){
                 continue;
             }

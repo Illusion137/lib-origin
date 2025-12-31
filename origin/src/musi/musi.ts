@@ -4,6 +4,7 @@ import type { PlaylistResponse, PlaylistResponseSuccessParsed, PlaylistSuccessDa
 import type { Support } from "@origin/musi/types/Support";
 import type { Track } from "@origin/musi/types/types";
 import rozfetch from "@common/rozfetch";
+import { try_json_parse } from "@common/utils/parse_util";
 
 // GET   /api/v4/support%@
 // GET   /api/v4/search/explore/@ld
@@ -50,10 +51,12 @@ export namespace Musi {
         if("error" in response) return response;
         const playlist_response = await response.json();
         if("error" in playlist_response) return playlist_response;
+        const data = try_json_parse<PlaylistSuccessData>(playlist_response.success.data);
+        if("error" in data) return data;
         const playlist_response_parsed_data: PlaylistResponseSuccessParsed = {
             success: {
                 ...playlist_response.success, 
-                data: JSON.parse(playlist_response.success.data) as PlaylistSuccessData
+                data: data
             }
         };
         return playlist_response_parsed_data;

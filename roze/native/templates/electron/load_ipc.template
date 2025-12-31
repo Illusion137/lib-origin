@@ -1,6 +1,0 @@
-import { ipcMain, type IpcMainInvokeEvent } from "electron";
-__IMPORT_NATIVE_MODULES__
-
-export function load_ipc() {
-__LOAD_IPC_HANDLE_MODULES__
-}

@@ -85,7 +85,7 @@ export namespace Genius {
             all_strings.push(...initial_children.map(c => recursive_parse(c, [])));
             return all_strings.flat().join('');
         }
-        catch(e){
+        catch(_){
             return generror(lyrics_no_continue_fail_message);
         }
     }

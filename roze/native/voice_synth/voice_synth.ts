@@ -10,20 +10,15 @@ export async function load_native_voice_synth(): Promise<VoiceSynth>{
         case "WEB":
             console.error("Web Native VoiceSynth is NOT implemented");
             break;
-        case "ELECTRON_RENDERER":
-            try {
-
-            } catch (e) {}
-            break;
         case "NODE":
             try {
-                voice_synth_instance = (await import("./voice_synth.node")).node_voice_synth;
-            } catch (e) {}
+                voice_synth_instance = (await import("./voice_synth.node.ts")).node_voice_synth;
+            } catch (e) { console.error(e); }
             break;
         case "REACT_NATIVE":
             try {
-                voice_synth_instance = (await import("./voice_synth.mobile")).mobile_voice_synth;
-            } catch (e) {}
+                voice_synth_instance = (await import("./voice_synth.mobile.ts")).mobile_voice_synth;
+            } catch (e) { console.error(e); }
             break;
     }
     return voice_synth_instance;

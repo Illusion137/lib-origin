@@ -2,7 +2,7 @@
 import jsdom from 'jsdom-jscore-rn';
 
 export function jsdom_document(html: string): Document {
-    return jsdom.jsdom(html);
+    return jsdom.jsdom(html) as Document;
 }
 
 export function map_html_collection<T>(collection: HTMLCollection|NodeListOf<Element>|undefined, callback: (el: Element) => T) {

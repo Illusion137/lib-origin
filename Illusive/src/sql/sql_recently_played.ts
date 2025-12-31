@@ -1,5 +1,5 @@
 import { is_empty } from "@common/utils/util";
-import { db_exec } from "@illusive/db/database";
+import { db } from "@illusive/db/database";
 import { recently_played_tracks_table } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
 import { Prefs } from "@illusive/prefs";
@@ -9,20 +9,19 @@ import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLRecentlyPlayed {
     export async function insert_recently_played_track(track: Track) {
-        await db_exec(async(db) => await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
-        await db_exec(async(db) => await db.insert(recently_played_tracks_table).values(track));
+        await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
+        await db.insert(recently_played_tracks_table).values(track);
     }
     export async function delete_recently_played_track(track: Track) {
-        await db_exec(async(db) => await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid)));
+        await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
     }
     export async function clear_recently_played_tracks(){
-        await db_exec(async(db) => await db.delete(recently_played_tracks_table));
+        await db.delete(recently_played_tracks_table);
     }
     export async function recently_played_tracks(limit?: number): Promise<Track[]> {
-        // TODO fix this whole shit;
         const recently_played_sql_tracks: Track[] = limit ? 
-            await db_exec(db =>db.select().from(recently_played_tracks_table).limit(limit).orderBy(desc(recently_played_tracks_table.id))) 
-            : await db_exec(db =>db.select().from(recently_played_tracks_table).orderBy(desc(recently_played_tracks_table.id)));
+            await db.select().from(recently_played_tracks_table).limit(limit).orderBy(desc(recently_played_tracks_table.id)) 
+            : await db.select().from(recently_played_tracks_table).orderBy(desc(recently_played_tracks_table.id));
         const mapped_recently_played_tracks = SQLTracks.sql_tracks_to_tracks(recently_played_sql_tracks);
         const global_tracks_uuid_set = new Set<string>(GLOBALS.global_var.sql_tracks.map(({uid}) => uid));
         const global_tracks_uuid_track_map = new Map<string, Track>(GLOBALS.global_var.sql_tracks.map(track => [track.uid, track]));
@@ -38,7 +37,6 @@ export namespace SQLRecentlyPlayed {
         const to_delete_recently_played_data = (await recently_played_tracks());
         if(to_delete_recently_played_data.length <= recently_played_max_size) return;
         const sliced_to_delete_recently_played_data = to_delete_recently_played_data.slice(recently_played_max_size);
-        
         await Promise.all(
             sliced_to_delete_recently_played_data.map(async track => delete_recently_played_track(track))
         );

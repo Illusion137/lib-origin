@@ -57,7 +57,7 @@ export namespace FutsalShuffle {
                         icache.most_recent_added_ms - new Date(track.meta?.last_played_date ?? 0).getTime()
                     }), 20) ); 
         weight -= bias.total_plays * -((track.meta?.plays ?? 0) / icache.max_plays_in_library); 
-        return 0;
+        return weight;
     }
 
     export function shuffle_weighted<T>(data: {weight: number, value: T}[]): T[]{

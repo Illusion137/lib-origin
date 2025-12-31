@@ -9,7 +9,7 @@ import type { InitialData } from '@origin/youtube/types/types';
 import type { YTCFG } from "@origin/youtube/types/YTCFG";
 import type { Proxy } from "@origin/proxy/proxy";
 import { sapisid_hash_auth1 } from "@common/utils/auth_utilt";
-import { try_json_eval } from "@common/utils/parse_util";
+import { try_json_eval,try_json_parse } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
 import rozfetch from "@common/rozfetch";
@@ -52,7 +52,7 @@ export namespace YouTube {
 		};
 	}
 	export function playlist_urlid(playlist_url: string) {
-		return urlid(playlist_url, "youtube.com/", "playlist?list=", /\&.+/);
+		return urlid(playlist_url, "youtube.com/", "playlist?list=", /&.+/);
 	}
 	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
@@ -109,7 +109,7 @@ export namespace YouTube {
 		}
 		const initial_data = try_json_eval<string>(extracted);
         if(typeof initial_data === "object") return initial_data;
-		return JSON.parse(initial_data) as InitialData;
+		return try_json_parse<InitialData>(initial_data);
 	}
 	function extract_ytcfg(html: string): YTCFG|ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;

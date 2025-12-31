@@ -6,6 +6,7 @@ import { fs } from "@native/fs/fs";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
 import pathlib from "path-browserify";
+import { reinterpret_cast } from "./cast";
 
 interface RozFetchCacheOptsBase {
 	cache_ms: number;
@@ -129,7 +130,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 		if (cached_response !== undefined) return cached_response;
 
 		const response = (await fetch(input, { ...init, signal: init?.abort_ms ? AbortSignal.timeout(init.abort_ms) : undefined })) as RoZFetchResponse<T>;
-		response.json = (async () => response.clone().json().catch(json_catch)) as RozFetchJSON<T>;
+		response.json = (async () => reinterpret_cast<PromiseResult<T>>(response.clone().json().catch(json_catch))) as RozFetchJSON<T>;
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
 

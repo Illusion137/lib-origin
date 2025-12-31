@@ -1,7 +1,9 @@
 // Merging from Archived Proj. https://github.com/Illusion137/gomovies/
-const { JSDOM } = require('jsdom-jscore-rn');
 import axios from 'axios';
 import type { Country, Genre, GoMovie_Display_Content, GoMovieAjaxSource, GoMovieFilters, GoMovieMovie, GoMovieSearchPage, GoMovieSourceData, GoMovieTab, HrefString, MonoPath, Path } from '@origin/gomovies/types/types';
+import { jsdom_document } from '@common/jsdom';
+import { generror } from '@common/utils/error_util';
+import type { PromiseResult } from '@common/types';
 
 export namespace GoMovies {
     const BASE_URL = "https://gomovies.sx/";
@@ -61,8 +63,8 @@ export namespace GoMovies {
         return display_contents;
     }
     function page_html_to_gomovie_tabs(page_html: string): GoMovieTab[] {
-        const { window } = new JSDOM(page_html);
-        const contents = window.document.querySelectorAll('.flw-item, section');
+        const document = jsdom_document(page_html);
+        const contents = document.querySelectorAll('.flw-item, section');
         
         const tab_data: GoMovieTab[] = [];
     
@@ -72,7 +74,7 @@ export namespace GoMovies {
             if(is_section_header) {
                 tab_data.push(
                     {
-                        title:content_html.querySelector(".cat-heading")?.innerHTML, 
+                        title: content_html.querySelector(".cat-heading")?.innerHTML, 
                         gomovies: []
                     }
                 );
@@ -84,10 +86,9 @@ export namespace GoMovies {
         return tab_data;
     }
     function page_html_to_search_page_data(page_html: string, page = 1): GoMovieSearchPage {
-        const { window } = new JSDOM(page_html);
-        const contents = window.document.querySelectorAll('.flw-item, section');
-        const doc = window.document;
-        const last_page_str = doc.querySelector('[title="Last"]')?.getAttribute("href").replace(/.+?page=/,"");
+        const document = jsdom_document(page_html);
+        const contents = document.querySelectorAll('.flw-item, section');
+        const last_page_str = document.querySelector('[title="Last"]')?.getAttribute("href")?.replace(/.+?page=/,"") ?? "0";
         const last_page = parseInt(last_page_str);
     
         const search_page_data: GoMovieSearchPage = {
@@ -111,8 +112,8 @@ export namespace GoMovies {
         search_query = search_query.trim().replace(/[^a-zA-Z0-9 ,]/g,'').trim();
         if(search_query == '') return [];
         const search_autocomplete_ajax_html_data = (await axios.post("search", `keyword=${search_query.replace(' ', '+')}`, {baseURL: BASE_AJAX_URL,headers: DEFAULT_AJAX_HEADERS,}) ).data;
-        const { window } = new JSDOM(search_autocomplete_ajax_html_data);
-        const contents = window.document.querySelectorAll('a');
+        const document = jsdom_document(search_autocomplete_ajax_html_data);
+        const contents = document.querySelectorAll('a');
     
         const autocomplete_data: GoMovie_Display_Content[] = [];
     
@@ -138,9 +139,9 @@ export namespace GoMovies {
     export async function search_mono_path(mono_path: MonoPath, page = 1): Promise< GoMovieSearchPage > {
         return await get_page(mono_path, page);
     }
-    export async function search_by_query(search_query: string, page = 1): Promise< GoMovieSearchPage > {
+    export async function search_by_query(search_query: string, page = 1): PromiseResult< GoMovieSearchPage > {
         search_query = search_query.trim().replace(/[^a-zA-Z0-9 ,]/g,'').trim();
-        if(search_query == '') return null as any;
+        if(search_query == '') generror("Bad search_query", {search_query, page});
         return await get_page(`search/${search_query.replace(/ /g, '-')}`, page);
     }
     export async function search_path(path: Path, data: Genre | Country | string, page = 0): Promise< GoMovieSearchPage > {
@@ -171,10 +172,10 @@ export namespace GoMovies {
         query_string += `&page=${page}`;
         return query_string;
     }
-    export async function search_filters(filters: GoMovieFilters, page = 1): Promise< GoMovieSearchPage > {
+    export async function search_filters(filters: GoMovieFilters, page = 1): PromiseResult< GoMovieSearchPage > {
         const query_string = filters_to_query_string(filters, page);
         console.log(query_string)
-        if(!query_string) return null as any;
+        if(!query_string) return generror("Bad query string", {query_string, filters, page});
         return await get_page(query_string);
     }
     function parse_watch_page_genres(row_line: Element): string[] {
@@ -210,42 +211,42 @@ export namespace GoMovies {
     }
     export async function get_vote_info(movie_href: string): Promise<string> {
         const vote_info_html_data = (await axios.get(`vote_info/${movie_href_to_movie_id(movie_href)}`, {baseURL: BASE_AJAX_URL, headers: DEFAULT_AJAX_HEADERS})).data;
-        const { window } = new JSDOM(vote_info_html_data);
-        return window.document.querySelector(".rr-mark")?.textContent;
+        const document = jsdom_document(vote_info_html_data);
+        const element = document.querySelector<HTMLParagraphElement>(".rr-mark");
+        return element!.textContent;
     }
     async function get_sources_list(movie_href: string): Promise< GoMovieSourceData[] > {
         const movie_id = movie_href_to_movie_id(movie_href);
         const ajax_sources_data = (await axios.get(`episode/list/${movie_id}`, {baseURL: BASE_AJAX_URL, headers: DEFAULT_AJAX_HEADERS})).data;
-        const { window } = new JSDOM(ajax_sources_data);
+        const document = jsdom_document(ajax_sources_data);
         const sources_and_titles: GoMovieSourceData[] = [];
-        window.document.querySelectorAll(".btn-sm").forEach((source: any) => {sources_and_titles.push(
+        document.querySelectorAll(".btn-sm").forEach((source: any) => {sources_and_titles.push(
             {host: source?.getAttribute("title"), data_linkid: source?.getAttribute("data-linkid")}
         )});
         return sources_and_titles;
     }
     async function parse_movie_watch_page(page_html: string, movie_href: string): Promise<GoMovieMovie> {
-        const { window } = new JSDOM(page_html);
-        const doc = window.document;
-        const row_lines = doc.querySelectorAll(".row-line");
+        const document = jsdom_document(page_html);
+        const row_lines = document.querySelectorAll(".row-line");
     
         const goMovie: GoMovieMovie = {
             id: movie_href_to_movie_id(movie_href),
-            title : doc.querySelector(".breadcrumb-item.active")?.innerHTML,
+            title : document.querySelector(".breadcrumb-item.active")?.innerHTML ?? "",
             href : movie_href,
-            thumbnail_url : doc.querySelector(".film-poster-img")?.getAttribute("src"),
-            trailer_url : doc.querySelector("#iframe-trailer")?.getAttribute("data-src"),
-            quality : doc.querySelector(".btn-quality")?.children[0]?.innerHTML,
-            imdb_rating : doc.querySelector(".btn-imdb")?.innerHTML.replace("IMDB: ",''),
+            thumbnail_url : document.querySelector(".film-poster-img")?.getAttribute("src") ?? "",
+            trailer_url : document.querySelector("#iframe-trailer")?.getAttribute("data-src") ?? "",
+            quality : document.querySelector(".btn-quality")?.children[0]?.innerHTML ?? "",
+            imdb_rating : document.querySelector(".btn-imdb")?.innerHTML.replace("IMDB: ",'') ?? "",
             released : row_lines[0]?.textContent.replaceAll(/\s{2,}|\n/g,' ').replace("Released: ",'').trim(),
             genres : parse_watch_page_genres(row_lines[1]),
             cast : parse_watch_page_cast(row_lines[2]),
             duration : row_lines[3]?.textContent.replaceAll(/\s{2,}|\n/g,' ').replace("Duration: ",'').trim(),
             countries : parse_watch_page_countries(row_lines[4]),
             productions : parse_watch_page_production(row_lines[5]),
-            description : doc.querySelector(".description")?.textContent.replaceAll(/\s{2,}|\n/g,' ').trim(),
+            description : document.querySelector(".description")?.textContent.replaceAll(/\s{2,}|\n/g,' ').trim() ?? "",
             vote_info: await get_vote_info(movie_href),
             sources_list: await get_sources_list(movie_href),
-            may_also_like: flw_items_to_display_contents(doc),
+            may_also_like: flw_items_to_display_contents(document),
         };
         return goMovie;
     }

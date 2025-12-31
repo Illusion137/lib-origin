@@ -22,7 +22,7 @@ export async function youtube_music_get_latest_releases(id: string, opts?: Artis
     const artist_info: NamedUUID = {name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs ?? []), uri: create_uri("youtubemusic", artist_response.data.artist_id ?? id)};
     const artist_albums_response = await YouTubeMusic.get_only_artist_albums({cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy}, artist_response.icfg.ytcfg, id);;
 
-    const potential_all_albums_singles = "error" in artist_albums_response ? [] : artist_albums_response.data.map(item => parse_youtube_music_artist_album({musicTwoRowItemRenderer: item}, artist_info));
+    const potential_all_albums_singles = "error" in artist_albums_response ? [] : artist_albums_response.data.map(item => parse_youtube_music_artist_album({musicTwoRowItemRenderer: item}, artist_info, "ALBUM"));
     
     return potential_all_albums_singles.length <= 0 ? undefined : potential_all_albums_singles.slice(0, 3);
 }

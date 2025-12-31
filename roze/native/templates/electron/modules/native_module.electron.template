@@ -1,5 +1,0 @@
-import type { __NATIVE_MODULE_INTERFACE__ } from "@native/__NATIVE_MODULE__/__NATIVE_MODULE__.base";
-import { reinterpret_cast } from "@common/cast";
-import { electron_window } from "@native/electron_window";
-
-export const electron_renderer___NATIVE_MODULE__ = reinterpret_cast<__NATIVE_MODULE_INTERFACE__>(electron_window.context);

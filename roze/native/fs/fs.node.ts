@@ -35,7 +35,7 @@ export const node_fs: FileSystem = {
 				is_directory: stats.isDirectory(),
 				uri: path
 			};
-		} catch (error) {
+		} catch(_) {
 			return {
 				exists: false,
 				file_modified_ms: 0,

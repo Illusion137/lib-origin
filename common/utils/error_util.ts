@@ -60,7 +60,7 @@ export function generror_catch(e: unknown, msg: string, args: object = {}): Resp
         err.message = generror_base_msg(msg, err.message, args)
         return {error: clean_error_trace(err)};
     }
-    return {error: clean_error_trace(new Error(`e: ${e}\n ${generror_base_msg(msg, undefined, args)}`))};
+    return {error: clean_error_trace(new Error(`e: ${String(e)}\n ${generror_base_msg(msg, undefined, args)}`))};
 }
 export function generror(msg: string, args: object = {}): ResponseError{
 	return {error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args)))};
@@ -82,4 +82,13 @@ export async function catch_else<T>(value: () => Promise<T>, fail_value: (e: unk
     } catch (e) {
         return await fail_value(e);
     }
+}
+
+export async function catch_ignore(_: unknown){
+    return;
+}
+
+export async function catch_log(e: unknown){
+    console.error(e);
+    return;
 }

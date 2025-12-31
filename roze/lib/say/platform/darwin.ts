@@ -69,17 +69,16 @@ let added_exit_handler = false;
 
 export const SayPlatformDarwin: SayPlatformBase = {
 	get_voices: async () => {
-		const data = new Promise((resolve) => {
+		await new Promise((resolve) => {
 			try {
 				const all_data: string[] = [];
 				const cmd = spawn("say", ['-v', "'?'"], { windowsHide: true });
-				cmd.stdout.on("data", (data) => resolve(data.toString()));
+				cmd.stdout.on("data", (d) => resolve(d.toString()));
 				cmd.on('exit', () => resolve(all_data));
-			} catch (e) {
+			} catch (_) {
 				resolve("");
 			}
 		});
-		data;
 		return [];
 	},
 	speak: async (text: string, voice?: string, speed?: number) => {

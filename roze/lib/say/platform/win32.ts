@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
-import { generror, generror_catch } from "@common/utils/error_util";
+import { catch_ignore,
+generror, generror_catch } from "@common/utils/error_util";
 import type { SayPlatformBase } from "./base";
 import type { ResponseError } from "@common/types";
 import os from "os";
@@ -173,12 +174,12 @@ export const SayPlatformWin32: SayPlatformBase = {
 		return await new Promise<number | ResponseError>((resolve) => {
 			const ps = spawn("pwsh", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-JsonPath", json_path, "-Voice", voice, "-Rate", String(rate)], { windowsHide: true });
 
-			ps.stdout.on("data", (data) => on_text_export?.(stamp, data.toString()));
+			ps.stdout.on("data", (data) => {on_text_export?.(stamp, data.toString());});
 			ps.stderr.on("data", (d) => process.stderr.write(`[TTS ERROR] ${d}`));
 			ps.on("close", async (code) => {
 				try {
-					await fs.unlink(script_path).catch((e) => e);
-					await fs.unlink(json_path).catch((e) => e);
+					await fs.unlink(script_path).catch(catch_ignore);
+					await fs.unlink(json_path).catch(catch_ignore);
 				} finally {
 					code === 0 ? resolve(code) : resolve(generror("Failed to export tts", { code }));
 				}

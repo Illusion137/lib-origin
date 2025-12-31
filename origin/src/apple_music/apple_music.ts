@@ -34,7 +34,7 @@ export namespace AppleMusic {
 		return urlid(playlist_url, "music.apple.com/", "us/", "artist/", "playlist/", "?l=en-US", /.+?\//);
 	}
 	async function extract_serialized_server_data(html: string, opts: Opts) {
-		const serialized_server_data_regex = /<script type=\"application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
+		const serialized_server_data_regex = /<script type="application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
 		const extraction = extract_string_from_pattern(html, serialized_server_data_regex);
 		if (typeof extraction === "object") return extraction;
 		const data = try_json_parse<SerializedServerData>(extraction);
@@ -192,7 +192,7 @@ export namespace AppleMusic {
 				const user_playlist = await api_playlists_response.json();
 				if ("error" in user_playlist) throw user_playlist.error;
 				return { data: user_playlist, authorization: playlist_response.authorization };
-			} catch (e) {
+			} catch (_) {
 				const api_playlists_response = await api_check_response<UserPlaylist>(opts, "NO_CHECK_COOKIES", playlist_response.authorization, `catalog/us/playlists/${playlist_id}`, params, null);
 				if ("error" in api_playlists_response) return api_playlists_response;
 				const user_playlist = await api_playlists_response.json();
@@ -216,7 +216,7 @@ export namespace AppleMusic {
 			const playlists_response = await api_check_response<UserPlaylist>(opts, "NO_CHECK_COOKIES", authorization, `me/library/playlists/${playlist_urlid(playlist_id)}/tracks`, params, null);
 			if ("error" in playlists_response) throw playlists_response.error;
 			return await playlists_response.json();
-		} catch (e) {
+		} catch (_) {
 			const params = {
 				l: "en-US",
 				offset: offset,
