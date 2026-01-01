@@ -205,6 +205,21 @@ export function version_greater_than(version: string, other_version: string): bo
         return false;
     }
 }
+export function version_greater_equal_to(version: string, other_version: string): boolean{
+    try {
+        const [major, minor, patch] = version.split('.').map(item => parseInt(item));
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(item => parseInt(item));
+        if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
+        if(major === other_major && minor === other_minor && patch === other_patch) return true;
+        if(major > other_major) return true;
+        if(major === other_major && minor > other_minor) return true;
+        if(major === other_major && minor === other_minor && patch > other_patch) return true;
+        return false;
+    }
+    catch(_) {
+        return false;
+    }
+}
 
 export function single_case(str: string): string {
     if(str.length <= 2) return str.toUpperCase();

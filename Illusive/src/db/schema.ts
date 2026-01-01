@@ -3,7 +3,7 @@ import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, Illus
 import { index, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const tracks_config = {
-    id: int().primaryKey({autoIncrement: true}),
+    id: int().primaryKey({autoIncrement: true}).notNull(),
     uid: text().notNull().$defaultFn(() => generate_new_uid("")),
     title: text().notNull().default(""),
     alt_title: text().notNull().default(""),
@@ -30,11 +30,11 @@ const tracks_config = {
     thumbnail_uri: text().notNull().default(""),
     media_uri: text().notNull().default(""),
     lyrics_uri: text().notNull().default(""),
-    meta: text({mode: 'json'}).notNull().$type<TrackMetaData>().default({
+    meta: text({mode: 'json'}).notNull().$type<TrackMetaData>().$defaultFn(() => ({
         added_date: new Date().toISOString() as ISOString,
         last_played_date: new Date().toISOString() as ISOString,
         plays: 0,
-    }),
+    })),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
@@ -48,7 +48,7 @@ const playlists_config = {
     archived: int({mode: 'boolean'}).notNull().default(false),
     thumbnail_uri: text().notNull().default(""),
     sort: text().notNull().$type<SortType>().default("OLDEST"),
-    public: text().notNull().$type<boolean>().default(false),
+    public: int({mode: 'boolean'}).notNull().default(false),
     public_uuid: text().notNull().$defaultFn(gen_uuid),
     inherited_playlists: text({mode: 'json'}).notNull().$type<InheritedPlaylist[]>().default([]),
     inherited_searchs: text({mode: 'json'}).notNull().$type<InheritedSearch[]>().default([]),
@@ -89,6 +89,7 @@ const artists_config = {
 
 const track_plays_config = {
     id: int().primaryKey({ autoIncrement: true }),
+    count: int().notNull().default(0),
     track_uid: text().notNull(),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())

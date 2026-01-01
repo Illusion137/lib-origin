@@ -62,7 +62,6 @@ export namespace Prefs {
 
     export const prefs = {
         legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as BasePref<string, OtherPrefTypes>,
-        updated_to_1800:                       {default_value: false, current_value: false, type: "BOOLEAN"} as BasePref<boolean, OtherPrefTypes>,
         youtube_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         youtube_music_cookie_jar:              {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
         soundcloud_cookie_jar:                 {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
@@ -76,6 +75,7 @@ export namespace Prefs {
         new_releases_last_refreshed:           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
         discord_webhook_url:                   {default_value: '', current_value: '', type: "STRING"}       as BasePref<string, OtherPrefTypes>,
         latest_version:                        {default_value: "16.2.5", current_value: "16.2.5", type: "STRING"} as BasePref<string, OtherPrefTypes>,
+        database_version:                        {default_value: "17.2.0", current_value: "17.2.0", type: "STRING"} as BasePref<string, OtherPrefTypes>,
         recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as BasePref<string[], OtherPrefTypes>,
         equalizer_preset:                      {default_value: "Default", current_value: "Default", type: "STRING"} as BasePref<EqualizerPreset, OtherPrefTypes>,
         crossfade:                             {default_value: 0, current_value: 0, type: "NUMBER"}         as BasePref<number, OtherPrefTypes>,

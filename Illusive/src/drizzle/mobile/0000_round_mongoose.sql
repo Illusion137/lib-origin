@@ -34,7 +34,7 @@ CREATE TABLE `backpack_deleted` (
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`media_uri` text DEFAULT '' NOT NULL,
 	`lyrics_uri` text DEFAULT '' NOT NULL,
-	`meta` text DEFAULT '{"added_date":"2025-12-31T07:42:30.851Z","last_played_date":"2025-12-31T07:42:30.852Z","plays":0}' NOT NULL,
+	`meta` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`modified_at` integer NOT NULL
 );
@@ -67,7 +67,7 @@ CREATE TABLE `backpack` (
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`media_uri` text DEFAULT '' NOT NULL,
 	`lyrics_uri` text DEFAULT '' NOT NULL,
-	`meta` text DEFAULT '{"added_date":"2025-12-31T07:42:30.851Z","last_played_date":"2025-12-31T07:42:30.852Z","plays":0}' NOT NULL,
+	`meta` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`modified_at` integer NOT NULL
 );
@@ -96,7 +96,7 @@ CREATE TABLE `playlists_deleted` (
 	`archived` integer DEFAULT false NOT NULL,
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`sort` text DEFAULT 'OLDEST' NOT NULL,
-	`public` text DEFAULT false NOT NULL,
+	`public` integer DEFAULT false NOT NULL,
 	`public_uuid` text NOT NULL,
 	`inherited_playlists` text DEFAULT '[]' NOT NULL,
 	`inherited_searchs` text DEFAULT '[]' NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE `playlists` (
 	`archived` integer DEFAULT false NOT NULL,
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`sort` text DEFAULT 'OLDEST' NOT NULL,
-	`public` text DEFAULT false NOT NULL,
+	`public` integer DEFAULT false NOT NULL,
 	`public_uuid` text NOT NULL,
 	`inherited_playlists` text DEFAULT '[]' NOT NULL,
 	`inherited_searchs` text DEFAULT '[]' NOT NULL,
@@ -168,7 +168,7 @@ CREATE TABLE `recently_played_tracks` (
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`media_uri` text DEFAULT '' NOT NULL,
 	`lyrics_uri` text DEFAULT '' NOT NULL,
-	`meta` text DEFAULT '{"added_date":"2025-12-31T07:42:30.851Z","last_played_date":"2025-12-31T07:42:30.852Z","plays":0}' NOT NULL,
+	`meta` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`modified_at` integer NOT NULL
 );
@@ -176,6 +176,7 @@ CREATE TABLE `recently_played_tracks` (
 CREATE INDEX `recently_played_tracks_uuid_idx` ON `recently_played_tracks` (`uid`);--> statement-breakpoint
 CREATE TABLE `track_plays` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`count` integer DEFAULT 0 NOT NULL,
 	`track_uid` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`modified_at` integer NOT NULL
@@ -209,7 +210,7 @@ CREATE TABLE `tracks_deleted` (
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`media_uri` text DEFAULT '' NOT NULL,
 	`lyrics_uri` text DEFAULT '' NOT NULL,
-	`meta` text DEFAULT '{"added_date":"2025-12-31T07:42:30.851Z","last_played_date":"2025-12-31T07:42:30.852Z","plays":0}' NOT NULL,
+	`meta` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`modified_at` integer NOT NULL
 );
@@ -242,7 +243,7 @@ CREATE TABLE `tracks` (
 	`thumbnail_uri` text DEFAULT '' NOT NULL,
 	`media_uri` text DEFAULT '' NOT NULL,
 	`lyrics_uri` text DEFAULT '' NOT NULL,
-	`meta` text DEFAULT '{"added_date":"2025-12-31T07:42:30.851Z","last_played_date":"2025-12-31T07:42:30.852Z","plays":0}' NOT NULL,
+	`meta` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`modified_at` integer NOT NULL
 );

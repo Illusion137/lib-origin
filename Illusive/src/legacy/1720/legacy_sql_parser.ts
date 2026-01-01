@@ -1,7 +1,8 @@
 import type { LT1720 } from '@illusive/legacy/1720/legacy_types';
-import { Illusive } from '@illusive/illusive';
-import { SQLfs } from '@illusive/sql/sql_fs';
 import type { ResponseError } from '@common/types';
+import type { NamedUUID } from '@illusive/types';
+import { try_json_parse } from '@common/utils/parse_util';
+import { is_empty } from '@common/utils/util';
 
 export namespace LSQLParser {
     export function sql_playlist_to_playlist_no_visual_data(sql_playlist: LT1720.SQLPlaylist): LT1720.Playlist{
@@ -21,26 +22,31 @@ export namespace LSQLParser {
     const bad_artist_names = [',', '&', 'and'];
     export function sql_track_to_track(sql_track: LT1720.SQLTrack): LT1720.Track|ResponseError {
         try {
-            const meta: LT1720.TrackMetaData = JSON.parse(sql_track.meta!);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const {id, Timestamp, ...sql_track_clean} = sql_track as any;
+            const meta: LT1720.TrackMetaData = JSON.parse(sql_track_clean.meta);
+            const album = JSON.parse(sql_track_clean.album) as NamedUUID;
+            if((album as any).uri === "") album.uri = null;
             return {
-                ...sql_track,
-                uid: sql_track.uid,
-                artists: JSON.parse(sql_track.artists).filter((artist: LT1720.NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
-                album: JSON.parse(sql_track.album!),
-                prods: sql_track.prods?.trim(),
-                tags: JSON.parse(sql_track.tags!),
-                explicit: sql_track.explicit,
-                unreleased: Boolean(sql_track.unreleased),
+                ...sql_track_clean,
+                uid: sql_track_clean.uid,
+                alt_title: sql_track_clean.alt_title === "null" ? "" : 
+                    sql_track_clean.alt_title ?? "",
+                artists: JSON.parse(sql_track_clean.artists).filter((artist: LT1720.NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
+                album: album,
+                prods: sql_track_clean.prods?.trim(),
+                tags: JSON.parse(sql_track_clean.tags),
+                explicit: sql_track_clean.explicit,
+                unreleased: Boolean(sql_track_clean.unreleased),
                 meta: {
                     ...meta,
                     plays: meta.plays ?? 0,
                     added_date: meta.added_date ?? new Date(0).toISOString(),
                     last_played_date: meta.last_played_date ?? new Date(0).toISOString()
                 },
-                playback: {artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), sql_track as unknown as LT1720.Track), added: false, successful: false},
-                downloading_data: {} as never
-            };
+            } as LT1720.Track;
         } catch (error) {
+            console.error(error);
             return {error: new Error((error as Error).message, {'cause': JSON.stringify(sql_track)})};
         }
     }
@@ -48,4 +54,19 @@ export namespace LSQLParser {
         const tracks = sql_tracks.map(sql_track_to_track);
         return tracks.filter(track => !("error" in track)) as LT1720.Track[];
     }
+    export async function sql_compact_playlist_to_compact_playlist(sql_playlist: LT1720.SQLCompactPlaylist): Promise<LT1720.CompactPlaylist>{
+        const title = try_json_parse<NamedUUID>(sql_playlist.title);
+        const artist = try_json_parse<NamedUUID[]>(sql_playlist.artist);
+        const artwork_thumbnails = is_empty(sql_playlist.artwork_thumbnails) ? undefined : try_json_parse<LT1720.IllusiveThumbnail[]>(sql_playlist.artwork_thumbnails!);
+        const song_track = is_empty(sql_playlist.song_track) ? undefined : try_json_parse<LT1720.Track>(sql_playlist.song_track!);
+        return {
+            ...sql_playlist,
+            title: "error" in title ? {name: "UNKNOWN", uri: null} : title,
+            artist: "error" in artist ? [] : artist,
+            artwork_thumbnails: artwork_thumbnails === undefined || "error" in artwork_thumbnails ? undefined : artwork_thumbnails,
+            song_track: song_track === undefined || song_track === null || "error" in song_track ? undefined : song_track
+        }
+    }
 }
+
+    

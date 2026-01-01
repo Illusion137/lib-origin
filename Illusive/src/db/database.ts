@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 import { generror_catch } from '@common/utils/error_util';
 import { get_native_platform,
 type NativePlatform } from '@native/native_mode';
+import { fs } from '@native/fs/fs';
 
 export const db_path = "illusi-db-1800.sqlite3";
 export const sqlite_location = async() => (SQLfs.document_directory('SQLite')).replace('file://', '');
@@ -31,6 +32,12 @@ export function load_legacy_1720_database(): DB{
         location: sqlite_location_map[get_native_platform()]
     });
     return database_client;
+}
+
+export async function delete_database(){
+    const db_delete_path = (Platform.OS === 'ios' ? IOS_LIBRARY_PATH : ANDROID_DATABASE_PATH) + "/" + db_path;
+    await fs().remove(db_delete_path);
+    console.warn(db_delete_path, "DATABASE HAS BEEN REMOVED");
 }
 
 export function load_database(path?: string){

@@ -225,9 +225,7 @@ interface Basic_Track<T, U, V, X> {
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
 }
-export type SQLTrackArray = [ string, string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
 
-export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
 export interface SmallTrack {
