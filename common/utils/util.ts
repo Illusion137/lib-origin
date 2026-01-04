@@ -229,7 +229,7 @@ export function single_case(str: string): string {
 }
 
 export function recreate<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    return JSON.parse(JSON.stringify(obj)) as T;
 }
 
 export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: number): Promise<T[]>{
@@ -243,6 +243,15 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
         );
     }
     return results.flat();
+}
+
+export function separate_array<T>(array: readonly T[], filter_fn_list: ((item: T) => boolean)[]): T[][]{
+    const output: T[][] = [];
+    for(const filter_fn of filter_fn_list){
+        output.push(array.filter(filter_fn));
+        array = array.filter((item) => !filter_fn(item));
+    }
+    return output;
 }
 
 export function catch_function_sync<T>(func: () => T, on_error: (error: unknown) => any) {

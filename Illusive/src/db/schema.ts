@@ -73,7 +73,7 @@ const new_releases_config = {
     artwork_thumbnails: text({mode: 'json'}).notNull().$type<IllusiveThumbnail[]>().default([]),
     explicit: text().notNull().$type<ExplicitMode>().default("NONE"),
     album_type: text().notNull().$type<CompactPlaylistAlbumType>().default("SINGLE"),
-    type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"),
+    type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"), // TODO remove this boofy ass shit
     date: text().notNull().$type<ISOString>().default(new Date(0).toISOString() as ISOString),
     song_track: text({mode: 'json'}).$type<Track>(),
     created_at: int().notNull().$defaultFn(() => Date.now()),

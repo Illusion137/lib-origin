@@ -63,6 +63,7 @@ export namespace SQLUpdate {
             let updated = true;
             try {
                 // TODO check if error on load legacy_db
+                // TODO fix bad thumbnails
                 const legacy_db = load_legacy_1720_database();
                 const $ = new DrizzleUtils<LT1720.SQLTables>(legacy_db);
                 const legacy_tracks = LSQLParser.sql_tracks_to_tracks(await $.get_all_async<LT1720.SQLTrack>("SELECT * FROM tracks"));

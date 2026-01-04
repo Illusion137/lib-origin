@@ -1,7 +1,5 @@
 import { SQLfs } from '@illusive/sql/sql_fs';
-import { ANDROID_DATABASE_PATH,
-IOS_LIBRARY_PATH,
-open, type DB } from '@op-engineering/op-sqlite';
+import { ANDROID_DATABASE_PATH, IOS_LIBRARY_PATH, open, type DB } from '@op-engineering/op-sqlite';
 import { drizzle } from 'drizzle-orm/op-sqlite';
 import { Platform } from 'react-native';
 import { generror_catch } from '@common/utils/error_util';
@@ -40,10 +38,10 @@ export async function delete_database(){
     console.warn(db_delete_path, "DATABASE HAS BEEN REMOVED");
 }
 
-export function load_database(path?: string){
+export function load_database(){
     try {
         const database_client = open({
-            name: path ?? db_path,
+            name: db_path,
             location: Platform.OS === 'ios' ? IOS_LIBRARY_PATH : ANDROID_DATABASE_PATH
         });
         db = drizzle(database_client);
@@ -51,7 +49,7 @@ export function load_database(path?: string){
     }
     catch(e){
         console.error(e);
-        return generror_catch(e, "Unable to load main database", {path});
+        return generror_catch(e, "Unable to load main database", {});
     }
 }
 

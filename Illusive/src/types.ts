@@ -93,8 +93,9 @@ export type ConvertTo = ConvertToUUIDURI | ConvertToTitle;
 export interface BaseLinkerLink {
     link_uuid: string;
     illusi_uuid: string;
-    service_uri: MusicServiceURI;
+    service_uri: IllusiveURI;
     full_service_playlist: boolean;
+    on_startup: boolean;
 }
 export interface IncomingLinkerLink extends BaseLinkerLink{
     type: "INCOMING";

@@ -15,7 +15,7 @@ export namespace SQLArtists {
         artists_artwork_memo[create_uri("illusi", Constants.import_uri_id)] = Constants.sudo_profile_picture_index;
         artists_artwork_memo[create_uri("illusi", Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
 
-        const artists = await db.select().from(artists_table);
+        const artists: SQLArtist[] = await db.select().from(artists_table);
         for(const artist of artists){
             artists_artwork_memo[artist.uri] = artist.artwork_url;
             artists_memo[artist.uri] = artist;
@@ -30,7 +30,7 @@ export namespace SQLArtists {
             .where(eq(artists_table.uri, uri))
             .get())?.artwork_url;
         artists_artwork_memo[uri] = result;
-        return result;
+        return result as string|number|undefined;
     }
     
     export async function insert_sql_artists(sql_artist: SQLArtistInsert){
