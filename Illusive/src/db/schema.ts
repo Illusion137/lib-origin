@@ -3,7 +3,7 @@ import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, Illus
 import { index, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const tracks_config = {
-    id: int().primaryKey({autoIncrement: true}),
+    id: int().primaryKey({autoIncrement: true}).notNull(),
     uid: text().notNull().$defaultFn(() => generate_new_uid("")),
     title: text().notNull().default(""),
     alt_title: text().notNull().default(""),
@@ -30,25 +30,25 @@ const tracks_config = {
     thumbnail_uri: text().notNull().default(""),
     media_uri: text().notNull().default(""),
     lyrics_uri: text().notNull().default(""),
-    meta: text({mode: 'json'}).notNull().$type<TrackMetaData>().default({
+    meta: text({mode: 'json'}).notNull().$type<TrackMetaData>().$defaultFn(() => ({
         added_date: new Date().toISOString() as ISOString,
         last_played_date: new Date().toISOString() as ISOString,
         plays: 0,
-    }),
+    })),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_config = {
     id: int().primaryKey({autoIncrement: true}),
-    uuid: text().primaryKey().notNull().$defaultFn(gen_uuid),
+    uuid: text().notNull().$defaultFn(gen_uuid),
     title: text().notNull().default(""),
     description: text().notNull().default(""),
     pinned: int({mode: 'boolean'}).notNull().default(false),
     archived: int({mode: 'boolean'}).notNull().default(false),
     thumbnail_uri: text().notNull().default(""),
     sort: text().notNull().$type<SortType>().default("OLDEST"),
-    public: text().notNull().$type<boolean>().default(false),
+    public: int({mode: 'boolean'}).notNull().default(false),
     public_uuid: text().notNull().$defaultFn(gen_uuid),
     inherited_playlists: text({mode: 'json'}).notNull().$type<InheritedPlaylist[]>().default([]),
     inherited_searchs: text({mode: 'json'}).notNull().$type<InheritedSearch[]>().default([]),
@@ -73,7 +73,7 @@ const new_releases_config = {
     artwork_thumbnails: text({mode: 'json'}).notNull().$type<IllusiveThumbnail[]>().default([]),
     explicit: text().notNull().$type<ExplicitMode>().default("NONE"),
     album_type: text().notNull().$type<CompactPlaylistAlbumType>().default("SINGLE"),
-    type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"),
+    type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"), // TODO remove this boofy ass shit
     date: text().notNull().$type<ISOString>().default(new Date(0).toISOString() as ISOString),
     song_track: text({mode: 'json'}).$type<Track>(),
     created_at: int().notNull().$defaultFn(() => Date.now()),
@@ -89,6 +89,7 @@ const artists_config = {
 
 const track_plays_config = {
     id: int().primaryKey({ autoIncrement: true }),
+    count: int().notNull().default(0),
     track_uid: text().notNull(),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())

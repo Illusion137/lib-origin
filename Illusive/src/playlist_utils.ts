@@ -69,11 +69,6 @@ export async function mutilate_to_service_playlist(to_service: MusicServiceType,
     return generror("Unknown Mutilate Mode", {to_service, convert_opts, mode});
 }
 
-function date_time(date?: string): number{
-    if(date) return new Date(date).getTime();
-    return 0;
-}
-
 export const playlist_sort_modes: Record<SortType, 0> = {
     "OLDEST": 0,
     "NEWEST": 0,
@@ -96,33 +91,6 @@ export const playlist_sort_modes: Record<SortType, 0> = {
     "LONGEST_PLAYED_HILOW": 0,
     "LONGEST_PLAYED_LOWHI": 0,
 };
-
-export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Track[] {
-    switch(sort_mode) {
-        case undefined:
-        case "OLDEST":                  return tracks;
-        case "NEWEST":                  return tracks.slice().reverse();
-        case "ALPHABETICAL":            return tracks.sort((a, b) => a.title.localeCompare(b.title) );
-        case "ALPHABETICAL_REVERSE":    return tracks.sort((a, b) => b.title.localeCompare(a.title) );
-        case "DURATION_HILOW":          return tracks.sort((a, b) => b.duration - a.duration);
-        case "DURATION_LOWHI":          return tracks.sort((a, b) => a.duration - b.duration);
-        case "PLAYS_HILOW":             return tracks.sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0));
-        case "PLAYS_LOWHI":             return tracks.sort((a, b) => (a.meta?.plays ?? 0) - (b.meta?.plays ?? 0));
-        case "VIEWS_HILOW":             return tracks.sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0));
-        case "VIEWS_LOWHI":             return tracks.sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0));
-        case "ADDED_DATE_HILOW":        return tracks.sort((a, b) => date_time(b.meta?.added_date) - date_time(a.meta?.added_date)); 
-        case "ADDED_DATE_LOWHI":        return tracks.sort((a, b) => date_time(a.meta?.added_date) - date_time(b.meta?.added_date));
-        case "DOWNLOAD_DATE_HILOW":     return tracks.sort((a, b) => date_time(b.meta?.downloaded_date) - date_time(a.meta?.downloaded_date));
-        case "DOWNLOAD_DATE_LOWHI":     return tracks.sort((a, b) => date_time(a.meta?.downloaded_date) - date_time(b.meta?.downloaded_date));
-        case "LAST_PLAYED_DATE_HILOW":  return tracks.sort((a, b) => date_time(b.meta?.last_played_date) - date_time(a.meta?.last_played_date));
-        case "LAST_PLAYED_DATE_LOWHI":  return tracks.sort((a, b) => date_time(a.meta?.last_played_date) - date_time(b.meta?.last_played_date));
-        case "LAST_SAMPLED_DATE_HILOW": return tracks.sort((a, b) => date_time(b.meta?.last_sampled_date) - date_time(a.meta?.last_sampled_date));
-        case "LAST_SAMPLED_DATE_LOWHI": return tracks.sort((a, b) => date_time(a.meta?.last_sampled_date) - date_time(b.meta?.last_sampled_date));
-        case "LONGEST_PLAYED_HILOW":    return tracks.sort((a, b) => (b.duration * (b.meta?.plays ?? 0)) - (a.duration * (a.meta?.plays ?? 0)));
-        case "LONGEST_PLAYED_LOWHI":    return tracks.sort((a, b) => (a.duration * (a.meta?.plays ?? 0)) - (b.duration * (b.meta?.plays ?? 0)));
-        default: return tracks;
-    }
-}
 
 export function sort_compact_playlists_data(playlists: CompactPlaylistData[]) {
     const ordered_playlists: CompactPlaylistData[] = [];

@@ -5,7 +5,7 @@ import { groupby, is_empty, milliseconds_of, seeded_random_of, urlid } from "@co
 import { Constants } from "@illusive/constants";
 import { Prefs } from "@illusive/prefs";
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from "@illusive/query_flags";
-import type { AlbumSortMode, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from "@illusive/types";
+import type { AlbumSortMode, Artwork, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from "@illusive/types";
 import type { Run3 } from "@origin/youtube/types/PlaylistResults_0";
 import fuzzysort from "fuzzysort";
 import { reinterpret_cast } from '../../common/cast';
@@ -83,16 +83,18 @@ export function get_most_played_artists(global_tracks: Track[]) {
 		.map((track) => track.artists[0]);
 }
 
-export function get_unique_album_names_with_uris(global_tracks: Track[]): string[]{
+// TODO dont forget this
+export type ArtworkNamedUUID = NamedUUID & {artwork: Artwork};
+export function get_unique_album_names_with_uris(global_tracks: Track[]): ArtworkNamedUUID[]{
 	const seen_uris: Set<string> = new Set<string>();
-	const album_names: string[] = [];
+	const album_names: ArtworkNamedUUID[] = [];
 	for(const track of global_tracks){
 		if(!track.album?.uri) continue;
 		if(seen_uris.has(track.album.uri)) continue;
 		seen_uris.add(track.album.uri);
-		album_names.push(track.album.name);
+		album_names.push({...track.album, artwork: track.playback?.artwork ?? 0});
 	}
-	return album_names
+	return album_names;
 }
 
 export function sort_compact_playlist_by_most_played_artists(albums: CompactPlaylist[], global_tracks: Track[]): CompactPlaylist[] {

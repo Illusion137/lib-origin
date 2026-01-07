@@ -39,12 +39,23 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 }) {
     await catch_function_async(async() => {
         await load_native_modules();
+
         await SQLfs.cache_load_directories();
         await Prefs.load_mmkv_module();
-
+        
+        await Prefs.load_prefs();
+        
+        // await Prefs.save_pref('database_version', "17.2.0");
+        // await delete_database();
+        // return;
+        
         if(!is_database_connected()) load_database();
+        if(!is_database_connected()) {
+            console.error("BAD DATABASE CONNECTION");
+            return;
+        };
 
-        await migrate(db, migrations);
+        await migrate(db, migrations).catch(catch_log);
         
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
@@ -52,8 +63,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         GLOBALS.global_var.set_theme = set_theme;
         GLOBALS.global_var.bottom_alert = bottom_alert;
 
-        await Prefs.load_prefs();
-        await SQLUpdate.fix_to_new_update(version);
+        await SQLUpdate.fix_to_new_update();
 
         on_finish_essentials();
         

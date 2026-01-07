@@ -43,6 +43,7 @@
     "@react-native-community/cookies": "^5.0.1",
     "@react-native-documents/picker": "^10.1.5",
     "@react-navigation/native": "^7.1.26",
+    "@supabase/supabase-js": "^2.89.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cli-progress": "^3.11.6",
     "@types/crypto-js": "^4.2.2",
@@ -190,5 +191,6 @@
     "tty": "tty-browserify",
     "vm": "vm-browserify",
     "tls": false
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

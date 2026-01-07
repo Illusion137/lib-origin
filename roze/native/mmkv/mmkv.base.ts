@@ -1,6 +1,6 @@
 export interface MMKVModuleOpts {
-    id: string;
-    path: string;
+    id?: string;
+    path?: string;
     multi_process?: boolean;
     encryption_key?: string;
 }

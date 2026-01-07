@@ -25,6 +25,7 @@ import { SQLRecentlyPlayed } from '@illusive/sql/sql_recently_played';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
+import { SQLTrackPlays } from './sql/sql_track_plays';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
@@ -305,6 +306,7 @@ export async function playback_service() {
                 current_track.meta!.last_played_date = (new Date().toISOString() as ISOString);
                 current_track.meta!.plays++;
                 await SQLTracks.update_track_meta_data(current_track.uid, current_track.meta!);
+                await SQLTrackPlays.insert_track_play(current_track.uid); // TODO fix whatever going on here
             }
             if(illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) await track_player_next();
 

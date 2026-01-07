@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "63a1baa8-795f-4126-a724-0f7e02de035d",
+  "id": "460b07e7-eb5a-4811-ba5f-32eb7e046bff",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {
@@ -270,8 +270,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -515,8 +514,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -655,7 +653,7 @@
         "uuid": {
           "name": "uuid",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -709,7 +707,7 @@
         },
         "public": {
           "name": "public",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
@@ -787,7 +785,7 @@
         "uuid": {
           "name": "uuid",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -841,7 +839,7 @@
         },
         "public": {
           "name": "public",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
@@ -1211,8 +1209,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -1252,6 +1249,14 @@
           "primaryKey": true,
           "notNull": true,
           "autoincrement": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "track_uid": {
           "name": "track_uid",
@@ -1502,8 +1507,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -1747,8 +1751,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'{\"added_date\":\"2025-12-31T06:56:42.990Z\",\"last_played_date\":\"2025-12-31T06:56:42.991Z\",\"plays\":0}'"
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

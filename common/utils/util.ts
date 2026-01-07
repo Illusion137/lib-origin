@@ -2,7 +2,6 @@ import { reinterpret_cast } from '@common/cast';
 import type { ResponseError } from '@common/types';
 import { generror } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
-import { force_json_parse } from './parse_util';
 
 export function generate_new_uid(prefix_name: string) {
     const suffix = Date.now().toString(36).substring(2, 15) +
@@ -206,6 +205,21 @@ export function version_greater_than(version: string, other_version: string): bo
         return false;
     }
 }
+export function version_greater_equal_to(version: string, other_version: string): boolean{
+    try {
+        const [major, minor, patch] = version.split('.').map(item => parseInt(item));
+        const [other_major, other_minor, other_patch] = other_version.split('.').map(item => parseInt(item));
+        if(isNaN(major) || isNaN(minor) || isNaN(patch) || isNaN(other_major) || isNaN(other_minor) || isNaN(other_patch)) return false;
+        if(major === other_major && minor === other_minor && patch === other_patch) return true;
+        if(major > other_major) return true;
+        if(major === other_major && minor > other_minor) return true;
+        if(major === other_major && minor === other_minor && patch > other_patch) return true;
+        return false;
+    }
+    catch(_) {
+        return false;
+    }
+}
 
 export function single_case(str: string): string {
     if(str.length <= 2) return str.toUpperCase();
@@ -215,7 +229,7 @@ export function single_case(str: string): string {
 }
 
 export function recreate<T>(obj: T): T {
-    return force_json_parse(JSON.stringify(obj));
+    return JSON.parse(JSON.stringify(obj)) as T;
 }
 
 export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: number): Promise<T[]>{
@@ -229,6 +243,15 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
         );
     }
     return results.flat();
+}
+
+export function separate_array<T>(array: readonly T[], filter_fn_list: ((item: T) => boolean)[]): T[][]{
+    const output: T[][] = [];
+    for(const filter_fn of filter_fn_list){
+        output.push(array.filter(filter_fn));
+        array = array.filter((item) => !filter_fn(item));
+    }
+    return output;
 }
 
 export function catch_function_sync<T>(func: () => T, on_error: (error: unknown) => any) {

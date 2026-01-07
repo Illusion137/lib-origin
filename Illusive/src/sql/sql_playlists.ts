@@ -5,7 +5,6 @@ import { playlists_table, playlists_tracks_table, tracks_table } from "@illusive
 import { default_playlists } from "@illusive/default_playlists";
 import { GLOBALS } from '@illusive/globals';
 import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utils";
-import { sort_playlist_tracks } from "@illusive/playlist_utils";
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, Promises, SortType, SQLPlaylist, Track } from "@illusive/types";
 import { and, eq } from 'drizzle-orm';
 import { SQLTracks } from "./sql_tracks";
@@ -14,6 +13,37 @@ import { catch_ignore } from "@common/utils/error_util";
 import { force_json_parse_array } from "@common/utils/parse_util";
 
 export namespace SQLPlaylists {
+    function date_time(date?: string): number{
+        if(date) return new Date(date).getTime();
+        return 0;
+    }
+    export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Track[] {
+        switch(sort_mode) {
+            case undefined:
+            case "OLDEST":                  return tracks;
+            case "NEWEST":                  return tracks.slice().reverse();
+            case "ALPHABETICAL":            return tracks.sort((a, b) => a.title.localeCompare(b.title) );
+            case "ALPHABETICAL_REVERSE":    return tracks.sort((a, b) => b.title.localeCompare(a.title) );
+            case "DURATION_HILOW":          return tracks.sort((a, b) => b.duration - a.duration);
+            case "DURATION_LOWHI":          return tracks.sort((a, b) => a.duration - b.duration);
+            case "PLAYS_HILOW":             return tracks.sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0));
+            case "PLAYS_LOWHI":             return tracks.sort((a, b) => (a.meta?.plays ?? 0) - (b.meta?.plays ?? 0));
+            case "VIEWS_HILOW":             return tracks.sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0));
+            case "VIEWS_LOWHI":             return tracks.sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0));
+            case "ADDED_DATE_HILOW":        return tracks.sort((a, b) => date_time(b.meta?.added_date) - date_time(a.meta?.added_date)); 
+            case "ADDED_DATE_LOWHI":        return tracks.sort((a, b) => date_time(a.meta?.added_date) - date_time(b.meta?.added_date));
+            case "DOWNLOAD_DATE_HILOW":     return tracks.sort((a, b) => date_time(b.meta?.downloaded_date) - date_time(a.meta?.downloaded_date));
+            case "DOWNLOAD_DATE_LOWHI":     return tracks.sort((a, b) => date_time(a.meta?.downloaded_date) - date_time(b.meta?.downloaded_date));
+            case "LAST_PLAYED_DATE_HILOW":  return tracks.sort((a, b) => date_time(b.meta?.last_played_date) - date_time(a.meta?.last_played_date));
+            case "LAST_PLAYED_DATE_LOWHI":  return tracks.sort((a, b) => date_time(a.meta?.last_played_date) - date_time(b.meta?.last_played_date));
+            case "LAST_SAMPLED_DATE_HILOW": return tracks.sort((a, b) => date_time(b.meta?.last_sampled_date) - date_time(a.meta?.last_sampled_date));
+            case "LAST_SAMPLED_DATE_LOWHI": return tracks.sort((a, b) => date_time(a.meta?.last_sampled_date) - date_time(b.meta?.last_sampled_date));
+            case "LONGEST_PLAYED_HILOW":    return tracks.sort((a, b) => (b.duration * (b.meta?.plays ?? 0)) - (a.duration * (a.meta?.plays ?? 0)));
+            case "LONGEST_PLAYED_LOWHI":    return tracks.sort((a, b) => (a.duration * (a.meta?.plays ?? 0)) - (b.duration * (b.meta?.plays ?? 0)));
+            default: return tracks;
+        }
+    }
+
     export async function track_exists_in_playlist(playlist_track: PlaylistsTracks) {
         return await db
                 .$count(playlists_tracks_table,
