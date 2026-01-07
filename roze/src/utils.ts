@@ -36,12 +36,12 @@ export function prepare_text_for_tts(text: string): string{
 }
 
 export function fix_punctuation(text: string){
-    return text.replace(/(”|“)/g, "\"")
-                .replace(/’/g, '\'')
-                .replace(/``/g, '"')
-                .replace(/ ?… ?/g, '...')
-                .replace(/ ?\.\.\. ?/g, '...')
-                .replace(/''/g, '"');
+    return text.replaceAll(/(”|“)/g, "\"")
+                .replaceAll(/’/g, '\'')
+                .replaceAll(/``/g, '"')
+                .replaceAll(/ ?… ?/g, '...')
+                .replaceAll(/ ?\.\.\. ?/g, '...')
+                .replaceAll(/''/g, '"')
 }
 
 type ElementTagName = "IMAGE"|"IMG"|"SPAN"|"P"|"H1"|"H2"|"BR"|"HR"|"A"|"BLOCKQUOTE";
@@ -259,10 +259,10 @@ export function generate_youtube_chapters(chapters: RozChapterContents[]): strin
     const seen_timestamps = new Set<string>();
     return chapters.map(({chapter}) => {
         const timestamp = timestamp_to_timecode(total_duration);
-        if(seen_timestamps.has(timestamp)) return undefined;
-        seen_timestamps.add(timestamp);
         const line = `${timestamp} ${chapter.title}`;
         total_duration += chapter.duration ?? 0;
+        if(seen_timestamps.has(timestamp)) return undefined;
+        seen_timestamps.add(timestamp);
         return line;
     }).filter(line => line).join('\n');
 }

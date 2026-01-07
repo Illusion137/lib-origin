@@ -11,5 +11,6 @@
 	"editor.formatOnSaveMode": "file",
 	"markdownlint.config": {
 		"MD041": false
-	}
+	},
+	"cmake.ignoreCMakeListsMissing": true
 }

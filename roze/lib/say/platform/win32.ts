@@ -7,6 +7,7 @@ import os from "os";
 import path from "path-browserify";
 import fs from "fs/promises";
 import { gen_uuid } from "@common/utils/util";
+import { supertonic_batch } from "@lib/supertonic/supertonic";
 
 export const SayPlatformWin32: SayPlatformBase = {
 	get_voices: async () => {
@@ -63,9 +64,9 @@ export const SayPlatformWin32: SayPlatformBase = {
 	},
 	export_batch: async (texts: { text: string; export_path: string }[], voice?: string, speed?: number, on_text_export?: (uuid:string, data: string) => any) => {
 		const flushLimit = 2 * 1024 * 1024 * 1024;
-		const batchSize = 1;
-        const useBatch = true;
-		const throttle = Math.max(1, os.cpus().length);
+		const batchSize = 16;
+        const useBatch = false;
+		const throttle = 1;
 		// Windows SpeechSynthesizer rate is -10..10 — clamp it.
 		const rate = Math.max(-10, Math.min(10, speed ?? 0));
 		voice ??= voice ?? "";
@@ -186,4 +187,33 @@ export const SayPlatformWin32: SayPlatformBase = {
 			});
 		});
 	}
+	// export_batch: async (texts: { text: string; export_path: string }[], voice?: string, speed?: number, on_text_export?: (uuid:string, data: string) => any) => {
+	// 	try {
+	// 		voice = 'assets/voice_styles/F1.json';
+	// 		speed ??= 1.00;
+
+	// 		if (!texts.length) {
+	// 			return { ok: true, exported: 0 };
+	// 		}
+
+	// 		await supertonic_batch({
+	// 			useGpu: false,
+	// 			onnxDir: 'assets/onnx',
+	// 			totalStep: 5,
+	// 			speed: speed,
+	// 			voiceStyle: voice,
+	// 			texts,
+	// 			lang: 'en'
+	// 		});
+
+	// 		return 0;
+	// 	} catch (err: any) {
+	// 		console.log(err);
+	// 		const code =
+	// 			err?.code ??
+	// 			err?.message ??
+	// 			'UNKNOWN_TTS_EXPORT_ERROR';
+	// 		return generror('Failed to export tts', { code });
+	// 	}
+	// }
 };
