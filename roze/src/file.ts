@@ -49,7 +49,7 @@ export namespace FileParser {
         return strerr;
     }
     async function epub_get_image_base64(epub: EPub, html_image_path: string) {
-        const image_id = epub.listImage().find(image => image.href && html_image_path.replace(epub.imageroot, '') === image.href)?.id;
+        const image_id = epub.listImage().find(image => image.href && html_image_path.replace(epub.imageroot, '') === image.href)?.id ?? epub.listImage().find(image => image.href?.includes(html_image_path.replaceAll("../",  "").replace(epub.imageroot, '')))?.id;
         const image: [Buffer, string] = await epub.getImageAsync(image_id!); 
         return base_64_image(image[0].toString('base64'), image[1]);
     }
