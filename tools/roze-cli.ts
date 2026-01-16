@@ -23,6 +23,8 @@ import { rmSync } from "fs";
 import { JNovel } from "@roze/jnovel";
 import { Constants } from "@roze/constants";
 import { WitchcultTranslations } from "@roze/witchcult_translations";
+import devnull from 'dev-null';
+
 
 const help_contents: string = green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}
 
@@ -54,6 +56,7 @@ ${magenta("roz")} ${cyan("<input>")} ${blue("-z")} ${cyan("<size-mode?>")}      
 ${magenta("roz")} ${cyan("<input>")} ${blue("-t")} ${cyan("<translate?>")}                                                      Translate the Input?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-n")} ${cyan("<debug-mode?>")}                                                     Debug Mode?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-o")} ${cyan("<output>")}                                                          Output data to file
+${magenta("roz")} ${cyan("<input>")} ${blue("-q")} ${cyan("<no-progress-bar>")}                                                 No progress bar?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-e")} ${cyan("<chrome_executable_path>")}                                          Sets the chrome executable path`);
 
 const HELP_TABLE = {
@@ -120,7 +123,8 @@ const options = {
 	text_to_speach_speed: 1,
 	pdf_margin: [0, 48],
 	pdf_start: 0,
-	output_to: ""
+	output_to: "",
+	no_progress_bar: false
 };
 
 //Part 5 Volume 10
@@ -294,8 +298,9 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 	}
 
     if(options.cover && roz.cover){
-        log_info("Cover Path: ");
-        console.log((await save_base64_image_to_file(roz.cover, undefined, "NO_REGISTER")).path);
+		const cover_path = await save_base64_image_to_file(roz.cover, undefined, "NO_REGISTER");
+		await fs().move(cover_path.path, options.output_to + extract_file_extension(cover_path.path), {});
+		log_info("Writing cover...");
     }
 
 	if (options.audiobook || options.audiovideobook) {
@@ -305,6 +310,7 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 				clearOnComplete: false,
 				stopOnComplete: true,
 				hideCursor: true,
+				stream: options.no_progress_bar ? devnull : undefined,
 				format: ` ${cyan("{bar}")} | {chapter_name} | {value}/{total} | ETA: {eta}s | Elapsed: {duration}s`,
 			},
 			cliprogress.Presets.shades_grey
@@ -313,13 +319,18 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 		const chapter_title_max_length = Math.max(...roz.chapters.map((chapter) => (chapter.chapter.title ?? "").length));
 		const audiobook_progress_bars = roz.chapters.map((chapter) => ({
 			chapter,
-			bar: audiobook_progress_multibar.create(chapter.contents.length, 0, { chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length) })
+			bar: audiobook_progress_multibar.create(chapter.contents.length, 0, { 
+				chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length) 
+			}, {
+				stream: options.no_progress_bar ? devnull : undefined
+			})
 		}));
 		const ffmpeg_merge_bar = new cliprogress.SingleBar(
 			{
 				clearOnComplete: false,
 				stopOnComplete: false,
 				hideCursor: true,
+				stream: options.no_progress_bar ? devnull : undefined,
 				format: `${green(" {bar}")} | ${"FFMPEG Merge".padEnd(chapter_title_max_length)} | {percentage}% | ETA: {eta}s | Speed: {speed}x | Elapsed: {duration}s`
 			},
 			cliprogress.Presets.shades_grey
@@ -334,10 +345,10 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 					},
 					{
 						on_chapter_content_skip(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 						},
 						on_chapter_content_export(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 						},
 					},
 					{ rate: options.text_to_speach_speed, voice_bank: options.voice },
@@ -352,10 +363,10 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 					},
 					{
 						on_chapter_content_skip(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 						},
 						on_chapter_content_export(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.title === roz_chapter.chapter.title)?.bar.increment();
+							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 						},
 						on_full_audio_complete(complete_full_audio) {
 							audiobook_progress_multibar.stop();
@@ -412,6 +423,7 @@ async function __roze_cli_main__() {
 	if (opts.findIndex((opt) => opt[0] == "-z") != -1) options.size_mode = true;
 	if (opts.findIndex((opt) => opt[0] == "-l") != -1) options.cover = true;
 	if (opts.findIndex((opt) => opt[0] == "-n") != -1) options.debug = true;
+	if (opts.findIndex((opt) => opt[0] == "-q") != -1) options.no_progress_bar = true;
 	let hold_index = -1;
 	if ((hold_index = opts.findIndex((opt) => opt[0] == "-v")) !== -1) options.voice = voice_list[Number(opts[hold_index][1])];
 	if ((hold_index = opts.findIndex((opt) => opt[0] == "-r")) !== -1) options.text_to_speach_speed = Number(opts[hold_index][1]);

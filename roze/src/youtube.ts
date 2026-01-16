@@ -42,7 +42,7 @@ export namespace RozeYouTube {
     export async function upload_audiobook_headless(opts: {
         cookie_jar?: CookieJar;
         media_path: string;
-        thumbnail_path: string;
+        thumbnail_path?: string;
         str_transcription?: string;
         chapter_timestamps?: string;
     }){
@@ -58,8 +58,8 @@ export namespace RozeYouTube {
         if(!upload_response.success) return generror("Uploading audiobook not successful", opts);
         return {"status": "GOOD"} as const;
         // await youtube_client.studio.updateVideoMetadata("", {
-            // "thumbnail": ""
-        // })
+        //     "thumbnail": ""
+        // });
     }
 
 	export async function get_user_channel_id(index?: number){
