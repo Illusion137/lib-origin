@@ -6,7 +6,8 @@
     "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
     "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
     "gen_native": "ts-node ./scripts/gen_native.ts",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public"
   },
   "cmake-js": {
     "runtime": "node",

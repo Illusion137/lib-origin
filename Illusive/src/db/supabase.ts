@@ -3,7 +3,7 @@ import { createClient, type SupportedStorage } from "@supabase/supabase-js";
 import { MMKV } from 'react-native-mmkv';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import type { Database } from './database.types';
-import { separate_array } from '@common/utils/util';
+import { filter_group_array } from '@common/utils/util';
 import type { Track } from '@illusive/types';
 
 const storage = new MMKV({ id: 'supabase-storage' })
@@ -22,6 +22,21 @@ export const supabase = createClient<Database>(process.env.SUPABASE_PROJECT_URL,
         detectSessionInUrl: false
     }
 });
+
+interface ISosuSync {
+    on_error: () => unknown;
+    merge: () => unknown;
+    pull: () => unknown;
+    push: () => unknown;
+}
+
+async function sosu_sync(isync: ISosuSync){
+    isync.pull();
+    isync.push();
+    isync.merge();
+} 
+
+const tracks_sync: ISosuSync = {};
 
 export namespace SosuSync {
     function merge_track(server_track: Track, local_track: Track): {track: Track, push: boolean}{
@@ -57,12 +72,13 @@ export namespace SosuSync {
             // TODO handle error
             return;
         }
-        const [pulled_tracks_to_delete, __no_delete__, pulled_tracks_to_insert, pulled_tracks_to_merge] = separate_array(server_tracks.data, [
+        const [pulled_tracks_to_delete, __no_delete__, pulled_tracks_to_insert, pulled_tracks_to_merge] = filter_group_array(server_tracks.data,
             track => track.deleted && local_tracks_uuids.has(track.tracks.uuid),
             track => track.deleted && !local_tracks_uuids.has(track.tracks.uuid),
             track => track.tracks.modified_at === track.tracks.created_at && !local_tracks_uuids.has(track.tracks.uuid),
             _ => true
-        ]);
+        );
+
         // pulled_tracks_to_delete.forEach(async(track) => {await SQLTracks.delete_track(track.tracks)});
         // pulled_tracks_to_insert.forEach(async(track) => {await SQLTracks.insert_track(track.tracks)});
 

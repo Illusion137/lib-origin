@@ -245,13 +245,13 @@ export async function batch_requests<T>(fns: (() => Promise<T>)[], batch_size: n
     return results.flat();
 }
 
-export function separate_array<T>(array: readonly T[], filter_fn_list: ((item: T) => boolean)[]): T[][]{
+export function filter_group_array<T, V extends ((item: T) => boolean)[]>(array: readonly T[], ...filter_fn_list: V): { [Key in keyof V]: T }{
     const output: T[][] = [];
     for(const filter_fn of filter_fn_list){
         output.push(array.filter(filter_fn));
         array = array.filter((item) => !filter_fn(item));
     }
-    return output;
+    return output as { [Key in keyof V]: T };
 }
 
 export function catch_function_sync<T>(func: () => T, on_error: (error: unknown) => any) {
