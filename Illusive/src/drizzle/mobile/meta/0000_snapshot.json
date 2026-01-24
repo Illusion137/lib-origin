@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "460b07e7-eb5a-4811-ba5f-32eb7e046bff",
+  "id": "e9a1bb4b-a64c-4cde-8d5f-886e87ae14e0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {

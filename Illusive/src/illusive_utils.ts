@@ -499,6 +499,12 @@ export function one_includes_word_not_other(word_group_1: string[], word_group_2
 	return (!word_group_1.includes(needle) && word_group_2.includes(needle)) || (word_group_1.includes(needle) && !word_group_2.includes(needle));
 }
 
+export function get_album_artwork(album_data: CompactPlaylist): Artwork{
+	if(album_data.artwork_url) return album_data.artwork_url;
+	if(album_data.artwork_index) return album_data.artwork_index;
+	return best_thumbnail(album_data.artwork_thumbnails)?.url ?? 0;
+}
+
 export function music_service_track_primary_key(type: MusicServiceType): keyof Track {
 	switch (type) {
 		case "Musi":

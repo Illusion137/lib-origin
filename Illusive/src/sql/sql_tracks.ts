@@ -13,8 +13,10 @@ import { eq } from 'drizzle-orm';
 import { SQLfs } from "./sql_fs";
 import { SQLGlobal } from "./sql_global";
 import { db } from "@illusive/db/database";
+import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 
 export namespace SQLTracks {
+    // TODO remove this and preprocess tracks 
     const bad_artist_names = [',', '&', 'and'];
     
     export async function fixup(track: Track, t: Track){
@@ -132,6 +134,7 @@ export namespace SQLTracks {
     }
     export async function mark_track_downloaded(track_uid: Track['uid'], media_uri: string) {
         await db.update(tracks_table).set({media_uri}).where(eq(tracks_table.uid, track_uid));
+        // ChangeTracker.log_change
         SQLGlobal.update_global_track_property(track_uid, 'media_uri', media_uri);
         const track = GLOBALS.global_var.sql_tracks.find(t => t.uid === track_uid);
         if(track === undefined) return;

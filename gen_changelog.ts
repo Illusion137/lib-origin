@@ -55,8 +55,8 @@ export const CHANGELOG = `# Illusi 19.0.0
   - Redesigned TrackTagIcons
   - [ ] Redesigned Explore UI
   - [ ] Redesigned Search Screen UI
-  - [ ] Redesigned Trim-Track UI
-  - [ ] Redesigned Trim-Info UI
+  - Redesigned Trim-Track UI
+  - Redesigned Track-Info UI
   - [ ] Redesigned Batch-Downloader UI
   - [ ] Redesigned Backpack UI
   - [ ] Redesigned Themes UI

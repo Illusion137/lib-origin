@@ -39,4 +39,8 @@ export namespace Constants {
     export const sudo_profile_picture_index = 3;
     export const sumi_profile_picture_index = 4;
     export const icon_transparent_index = 5;
+
+    export namespace ExtraArtworksIndex {
+        export const santa_time = 10;
+    }
 }

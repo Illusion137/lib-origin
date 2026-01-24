@@ -42,7 +42,7 @@ export namespace SQLUpdate {
     }
 
     export async function fix_to_new_update(){
-        update_to("17.2.0", async() => {
+        await update_to("17.2.0", async() => {
             let updated = false;
             const bad_imported_track = (track: Track): boolean => {
                 const imported_or_yt = !is_empty(track.youtube_id) && !is_empty(track.imported_id);
@@ -69,10 +69,11 @@ export namespace SQLUpdate {
             }
             return updated;
         });
-        update_to("18.0.0", async() => {
+        await update_to("18.0.0", async() => {
             let updated = true;
             // TODO check if error on load legacy_db
             // TODO fix bad thumbnails
+            // TODO update added dates and download dates
             
             const legacy_db = load_legacy_1720_database();
             if(legacy_db === undefined) return false;

@@ -1,6 +1,6 @@
 import type { CookieJar } from "@common/utils/cookie_util";
 import type { FetchMethod, PromiseResult, ResponseError } from "@common/types";
-import { is_empty, random_of, urlid } from '@common/utils/util';
+import { is_empty, milliseconds_of, random_of, urlid } from '@common/utils/util';
 import type { Album } from "@origin/spotify/types/Album";
 import type { Artist } from "@origin/spotify/types/Artist";
 import type { Collection } from "@origin/spotify/types/Collection";
@@ -116,7 +116,7 @@ export namespace Spotify {
         const uri_component = atob(inner_html).split('').map(e => `%${`00${e.charCodeAt(0).toString(16)}`.slice(-2)}`).join('');
         return try_json_parse<T>(decodeURIComponent(uri_component));
     }
-    // TODO add retries
+
     export function get_random_secret(){
         const secrets = spotify_secrets_bytes;
         return random_of(secrets);
@@ -192,13 +192,19 @@ export namespace Spotify {
         url ??= "https://open.spotify.com/";
         if (client_cache_full()) return client_cache.client!;
 
-        // TODO migrate to rozfetch
-        const page_response = await fetch(url, {
+        const page_response = await rozfetch(url, {
             headers: get_headers(undefined, cookie_jar),
             referrerPolicy: "strict-origin-when-cross-origin",
             body: null,
             method: "GET",
+            cache_opts: {
+                cache_ms: milliseconds_of({minutes: 30}),
+                cache_mode: 'file',
+                cache_on: "request"
+            }
         });
+
+        if("error" in page_response) return page_response;
 
         const page_html = await page_response.text();
 

@@ -301,6 +301,7 @@ export interface Basic_CompactPlaylist<T, U, V, W> {
     artist: U
     artwork_thumbnails?: V
     artwork_url?: string
+    artwork_index?: number
     date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType

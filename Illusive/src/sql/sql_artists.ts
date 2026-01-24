@@ -30,7 +30,7 @@ export namespace SQLArtists {
             .where(eq(artists_table.uri, uri))
             .get())?.artwork_url;
         artists_artwork_memo[uri] = result;
-        return result as string|number|undefined;
+        return result;
     }
     
     export async function insert_sql_artists(sql_artist: SQLArtistInsert){

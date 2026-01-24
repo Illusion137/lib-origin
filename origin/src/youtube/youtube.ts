@@ -13,6 +13,8 @@ import { try_json_eval,try_json_parse } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
 import rozfetch from "@common/rozfetch";
+import { get_native_platform } from "@native/native_mode";
+import { generror_catch } from "@common/utils/error_util";
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
@@ -54,10 +56,9 @@ export namespace YouTube {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "youtube.com/", "playlist?list=", /&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg?: YTCFG ): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
-		tuser_agent;
-		return {
+		const base_headers = {
 			"User-Agent": user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
@@ -85,9 +86,20 @@ export namespace YouTube {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"cookie": cookie_jar?.toString(),
 			"Referer": "https://www.youtube.com",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
+		} as const;
+		if(get_native_platform() === "REACT_NATIVE"){
+			return {
+				...base_headers,
+				"Cookies": cookie_jar?.toString()
+			};
+		}
+		else {
+			return {
+				...base_headers,
+				"cookie": cookie_jar?.toString()
+			};
 		}
 	}
 	function get_payload_context(ytcfg: YTCFG, epoch: Date) {
@@ -124,7 +136,7 @@ export namespace YouTube {
 			const page_response = await rozfetch(url, {
 				...opts.fetch_opts,
 				headers: {
-					...(cookies ? {"Cookies": cookies} : {}),
+					...(cookies ? get_native_platform() === "REACT_NATIVE" ? {"Cookies": cookies} : {"cookie": cookies} : {}),
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
 					"accept-language": "en-US,en;q=0.9",
 					"priority": "u=0, i",
@@ -175,12 +187,12 @@ export namespace YouTube {
 	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any, tuser_agent?: string): PromiseICFGData<T> {
 		try {
 			const icfg = await get_initial_data_config(opts, init_url, tuser_agent);
-			if ("error" in icfg) throw icfg.error;
+			if ("error" in icfg) return icfg;
 			return {
 				icfg,
 				data: parser(icfg.initial_data)
 			};
-		} catch (error) { return { error: error as Error }; }
+		} catch (error) { return generror_catch(error, "Failed to parse YouTube", {opts, init_url}); }
 	}
     async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		try {
@@ -188,7 +200,7 @@ export namespace YouTube {
 			const epoch = new Date();
 			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await rozfetch<T>(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
+			const response = await rozfetch<T>(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
 			return response;
 		} catch (error) { return { error: error as Error } }
 	}

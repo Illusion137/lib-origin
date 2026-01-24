@@ -23,6 +23,7 @@ import { SQLArtists } from './sql/sql_artists';
 import { catch_log } from '@common/utils/error_util';
 import { migrate } from 'drizzle-orm/op-sqlite/migrator';
 import migrations from './drizzle/mobile/migrations';
+import { FutsalShuffle } from './futsal_shuffle';
 
 export async function warmup_client(){
     await ffmpeg().execute_args(['-L']);
@@ -87,6 +88,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         ]).catch(catch_log);
         Prefs.pref_set_theme(set_theme);
         await warmup_client();
+        if(Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 

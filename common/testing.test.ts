@@ -6,3 +6,6 @@ export function expect_no_error(value: unknown){
     // expect(is_error).toBe(false);
     expect(value).not.toHaveProperty("error");
 }
+test("Test Utils Fosholi Works", () => {
+    expect(true).toBe(true);
+});

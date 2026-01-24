@@ -219,7 +219,7 @@ export async function illusi_get_artist(id: string): Promise<MusicServiceArtist>
             singles_eps: [],
             playlists: [],
             similar_artists: [],
-            profile_artwork_url: Constants.sudo_profile_picture_index
+            profile_artwork_url: Constants.sumi_profile_picture_index
         }
     }
     return default_artist();
