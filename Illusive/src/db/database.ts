@@ -8,7 +8,7 @@ import {
 } from '@native/native_mode';
 import { fs } from '@native/fs/fs';
 
-export const db_path = "illusi-db-1800.sqlite3";
+export const db_path = "illusi-db-1810.sqlite3";
 export const sqlite_location = async () => (SQLfs.document_directory('SQLite')).replace('file://', '');
 
 export let db: ReturnType<typeof drizzle>;

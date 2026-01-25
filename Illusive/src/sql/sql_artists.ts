@@ -5,6 +5,7 @@ import { create_uri } from "@illusive/illusive_utils";
 import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from "@illusive/types";
 import { eq } from "drizzle-orm";
 import { db } from "@illusive/db/database";
+import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 
 export namespace SQLArtists {
     export const default_profile_picture_url = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
@@ -37,17 +38,23 @@ export namespace SQLArtists {
         artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
         artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
         await db.insert(artists_table).values(sql_artist);
+        await ChangeTracker.log_change('artists', 'insert', sql_artist.uri, sql_artist);
     }
 
     export async function insert_all_into_sql_artists(sql_artists: SQLArtistInsert[]){
         for(const sql_artist of sql_artists){
             artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
             artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
+            await ChangeTracker.log_change('artists', 'insert', sql_artist.uri, sql_artist);
         }
         await db.insert(artists_table).values(sql_artists);
     }
     
     export async function clear_all_sql_artists(){
+        const artists_to_delete = await db.select({ uri: artists_table.uri }).from(artists_table);
+        for (const artist of artists_to_delete) {
+            await ChangeTracker.log_change('artists', 'delete', artist.uri, { uri: artist.uri });
+        }
         await db.delete(artists_table);
     }
 

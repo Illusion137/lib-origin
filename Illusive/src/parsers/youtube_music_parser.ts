@@ -62,7 +62,7 @@ export function parse_youtube_music_track(track: YouTubeMusicTrack): Track{
         album: track.album ? parse_youtube_music_compact_line_artist(track.album) : track.album,
         youtube_id: track.video_id,
         explicit: track.badges.includes("MUSIC_EXPLICIT_BADGE") ? "EXPLICIT" : "NONE",
-        plays: track.plays
+        plays: track.plays ?? 0
     }
 }
 

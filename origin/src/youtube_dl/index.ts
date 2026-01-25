@@ -37,7 +37,9 @@ export namespace YouTubeDL {
             enable_session_cache: true,
             fail_fast: true,
             retrieve_player: true,
-            client_type: ClientType.IOS,
+            client_type: ClientType.MWEB,
+            // TODO further investigate cookies for YTDL
+            // cookie: GCC.dotenv_of("YOUTUBE_COOKIE_JAR")
         });
         return innertube_client;
     }
@@ -68,10 +70,10 @@ export namespace YouTubeDL {
     export async function resolve_url(link: string, options?: Types.FormatOptions): Promise<string|ResponseError>{
         try {
             const client = await get_innertube_client();
-
-            const extractedVideoInfo = await client.getBasicInfo(link, {
-                client: 'IOS',
-            });
+            
+            // const extractedVideoInfo = await client.getBasicInfo(link, {
+            //     client: 'IOS',
+            // });
 
             // const maxAudioQualityStream = extractedVideoInfo.chooseFormat({
             //     quality: 'best',
@@ -79,9 +81,16 @@ export namespace YouTubeDL {
             // });
 
             // console.log(await maxAudioQualityStream.decipher(client.actions.session.player));
-            const url = extractedVideoInfo.streaming_data?.hls_manifest_url;
-            if(url) return url;
-            else return generror("No HLS manifest URL found", {link});
+            // const url = extractedVideoInfo.streaming_data?.hls_manifest_url;
+            // if(url) return url;
+            // else return generror("No HLS manifest URL found", {link});
+
+            const extractedVideoInfo = await client.getShortsVideoInfo(link, 'ANDROID');
+            const maxAudioQualityStream = extractedVideoInfo.chooseFormat({
+                quality: 'best',
+                type: 'audio',
+            });
+            return await maxAudioQualityStream.decipher(client.actions.session.player);
 
             // const iOS = true;
             // const hls_manifest_url = iOS ? (await client.getBasicInfo(link, {client: "IOS"})).streaming_data?.hls_manifest_url : undefined;

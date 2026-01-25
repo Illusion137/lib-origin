@@ -7,19 +7,25 @@ import { eq } from "drizzle-orm";
 import { SQLTracks } from "./sql_tracks";
 import { db } from "@illusive/db/database";
 import { Illusive } from "@illusive/illusive";
+import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 
 export namespace SQLBackpack {
     export async function empty_backpack() {
+        const tracks_to_delete = await db.select({ uid: backpack_table.uid }).from(backpack_table);
+        for (const track of tracks_to_delete) {
+            await ChangeTracker.log_change('backpack', 'delete', track.uid, { uid: track.uid });
+        }
         await db.delete(backpack_table);
     }
     export async function delete_from_backpack(track_uid: string) {
         await db.delete(backpack_table).where(eq(backpack_table.uid, track_uid));
+        await ChangeTracker.log_change('backpack', 'delete', track_uid, { uid: track_uid });
     }
     export async function toss_from_backpack(replacement_track: Track) {
         await Promise.all([
             SQLTracks.insert_track(replacement_track),
             delete_from_backpack(replacement_track.uid)
-        ])
+        ]);
     }
     
     export async function backpack_tracks() {
@@ -40,5 +46,6 @@ export namespace SQLBackpack {
             SQLTracks.delete_track(uid),
             db.insert(backpack_table).values(track)
         ]);
+        await ChangeTracker.log_change('backpack', 'insert', uid, track);
     }
 }

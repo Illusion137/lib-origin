@@ -27,6 +27,13 @@ export namespace LSQLParser {
             const meta: LT1720.TrackMetaData = JSON.parse(sql_track_clean.meta);
             const album = JSON.parse(sql_track_clean.album) as NamedUUID;
             if((album as any).uri === "") album.uri = null;
+
+            for(const key of Object.keys(sql_track_clean)){ 
+                if(sql_track_clean[key] === null || sql_track_clean[key] === undefined){
+                    delete sql_track_clean[key];
+                }
+            }
+
             return {
                 ...sql_track_clean,
                 uid: sql_track_clean.uid,

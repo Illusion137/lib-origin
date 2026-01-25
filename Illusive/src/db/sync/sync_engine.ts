@@ -3,9 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ChangeTracker } from './change_tracker';
 import type { NetworkMonitor } from './network_monitor';
 import { db } from '../database';
-import { playlists_table, playlists_tracks_table, sync_metadata_table, tracks_table } from '../schema';
+import { artists_table, backpack_table, new_releases_table, playlists_table, playlists_tracks_table, recently_played_tracks_table, sync_metadata_table, track_plays_table, tracks_table } from '../schema';
 import { eq } from 'drizzle-orm';
-import type { sqliteTable } from 'drizzle-orm/sqlite-core';
+import type { CompressedChange, LocalPlaylist, LocalPlaylistTrack, LocalTableName, LocalTrack, RemotePlaylist, RemotePlaylistTrack, RemoteTrack, RemoteTableName } from './types';
+import { LOCAL_TO_REMOTE_TABLE_MAP } from './types';
+import { Prefs } from '@illusive/prefs';
+
+type LocalTable = typeof tracks_table | typeof playlists_table | typeof playlists_tracks_table | typeof artists_table | typeof new_releases_table | typeof backpack_table | typeof recently_played_tracks_table | typeof track_plays_table;
 
 export class SyncEngine {
     private is_syncing = false;
@@ -72,28 +76,29 @@ export class SyncEngine {
 
             // Group changes by table
             const changes_by_tables = changes.reduce<Record<string, typeof changes>>((acc, change) => {
-                if (!acc[change.table_name]) acc[change.table_name] = [];
-                acc[change.table_name].push(change);
+                if (!acc[change.table]) acc[change.table] = [];
+                acc[change.table].push(change);
                 return acc;
             }, {});
 
             // Process each table's changes
             for (const [table_name, table_changes] of Object.entries(changes_by_tables)) {
-                await this.push_table_changes(table_name, table_changes);
+                await this.push_table_changes(table_name as LocalTableName, table_changes);
             }
 
             // Mark as synced
-            await ChangeTracker.mark_as_synced(changes.map(c => c.id));
+            await ChangeTracker.mark_as_synced(changes.map(c => c.change_ids).flat());
 
             has_more = changes.length === BATCH_SIZE;
         }
     }
 
-    private async push_table_changes(table_name: string, changes: any[]) {
+    private async push_table_changes(table_name: LocalTableName, changes: CompressedChange[]) {
         const supabase_table_name = this.get_supabase_table_name(table_name);
+        if(!supabase_table_name) return; // table not synced
 
         for (const change of changes) {
-            const data = JSON.parse(change.data);
+            const data = change.data;
 
             try {
                 switch (change.operation) {
@@ -104,18 +109,33 @@ export class SyncEngine {
                         break;
 
                     case 'update':
-                        await this.supabase
-                            .from(supabase_table_name)
-                            .update(this.transform_to_supabase(table_name, data))
-                            .eq(this.get_primary_key(table_name), change.record_id);
+                        {
+                            const update_query = this.supabase
+                                .from(supabase_table_name)
+                                .update(this.transform_to_supabase(table_name, data))
+                            
+                            if(table_name === 'playlists_tracks'){
+                                const [playlist_uuid, track_uid] = change.record_id.split(':');
+                                await update_query.eq('playlist_uuid', playlist_uuid).eq('track_uuid', track_uid);
+                            }else{
+                                await update_query.eq(this.get_primary_key(table_name), change.record_id);
+                            }
+                        }
                         break;
 
                     case 'delete':
-                        // Soft delete
-                        await this.supabase
-                            .from(supabase_table_name)
-                            .update({ deleted: true })
-                            .eq(this.get_primary_key(table_name), change.record_id);
+                        {
+                            const delete_query = this.supabase
+                                .from(supabase_table_name)
+                                .update({ deleted: true } as any)
+                            
+                            if(table_name === 'playlists_tracks'){
+                                const [playlist_uuid, track_uid] = change.record_id.split(':');
+                                await delete_query.eq('playlist_uuid', playlist_uuid).eq('track_uuid', track_uid);
+                            }else{
+                                await delete_query.eq(this.get_primary_key(table_name), change.record_id);
+                            }
+                        }
                         break;
                 }
             } catch (error) {
@@ -126,14 +146,14 @@ export class SyncEngine {
     }
 
     private async pull_changes() {
-        const tables = ['tracks', 'playlists', 'playlists_tracks'];
+        const tables_to_sync = Object.keys(LOCAL_TO_REMOTE_TABLE_MAP).filter(k => LOCAL_TO_REMOTE_TABLE_MAP[k as LocalTableName] !== null);
 
-        for (const table_name of tables) {
-            await this.pull_table_changes(table_name);
+        for (const table_name of tables_to_sync) {
+            await this.pull_table_changes(table_name as LocalTableName);
         }
     }
 
-    private async pull_table_changes(table_name: string) {
+    private async pull_table_changes(table_name: LocalTableName) {
         // Get last sync timestamp
         const metadata = await db
             .select()
@@ -143,6 +163,7 @@ export class SyncEngine {
 
         const last_sync_at = metadata?.last_sync_at || 0;
         const supabase_table_name = this.get_supabase_table_name(table_name);
+        if(!supabase_table_name) return;
 
         // Fetch changes since last sync
         const { data, error } = await this.supabase
@@ -180,133 +201,167 @@ export class SyncEngine {
             });
     }
 
-    private async apply_remote_changes(table_name: string, record: any) {
+    private async apply_remote_changes(table_name: LocalTableName, record: any) {
         const local_table = this.get_local_table(table_name);
+        if(!local_table) return;
+
         const transformed = this.transform_from_supabase(table_name, record);
+        const pk_column = this.get_primary_key(table_name);
 
         if (record.deleted) {
-            // Move to deleted table or just delete
             await db.delete(local_table).where(
-                eq(local_table[this.get_primary_key(table_name)], record[this.get_primary_key(table_name)])
+                eq(local_table[pk_column], record[pk_column])
             );
         } else {
-            // Upsert
             await db
                 .insert(local_table)
                 .values(transformed)
                 .onConflictDoUpdate({
-                    target: local_table[this.get_primary_key(table_name)],
+                    target: local_table[pk_column],
                     set: transformed,
                 });
         }
     }
 
     // Helper methods for table name mapping and data transformation
-    private get_supabase_table_name(local_table: string): string {
-        const mapping: Record<string, string> = {
-            'tracks': 'tracks',
-            'playlists': 'playlists',
-            'playlists_tracks': 'uptracks',
-        };
-        return mapping[local_table] || local_table;
+    private get_supabase_table_name(local_table: LocalTableName): RemoteTableName | null {
+        return LOCAL_TO_REMOTE_TABLE_MAP[local_table];
     }
 
-    private get_local_table(table_name: string): ReturnType<typeof sqliteTable> {
-        // Return the actual drizzle table object
-        // You'll need to import these
-        const tables = {
+    private get_local_table(table_name: LocalTableName): LocalTable | null {
+        const tables: Record<LocalTableName, LocalTable> = {
             'tracks': tracks_table,
             'playlists': playlists_table,
             'playlists_tracks': playlists_tracks_table,
+            'artists': artists_table,
+            'new_releases': new_releases_table,
+            'backpack': backpack_table,
+            'recently_played_tracks': recently_played_tracks_table,
+            'track_plays': track_plays_table
         };
-        return tables[table_name] as ReturnType<typeof sqliteTable>;
+        return tables[table_name] ?? null;
     }
 
-    private get_primary_key(table_name: string): string {
+    private get_primary_key(table_name: LocalTableName): string {
         const keys: Record<string, string> = {
             'tracks': 'uid',
             'playlists': 'uuid',
-            'playlists_tracks': 'uuid',
+            'artists': 'uri',
+            'new_releases': 'id',
         };
         return keys[table_name] || 'id';
     }
 
-    private transform_to_supabase(table_name: string, data: any): any {
-        // Transform local schema to Supabase schema
-        // Handle differences like sqlite int timestamps vs postgres timestamps
-        // TODO fix ids
+    private transform_to_supabase(table_name: LocalTableName, data: Partial<LocalTrack & LocalPlaylist & LocalPlaylistTrack>): any {
+        const user_uid = Prefs.get_pref('user_uuid');
         switch (table_name) {
-            case 'tracks':
+            case 'tracks': {
+                const track = data as LocalTrack;
                 return {
-                    uuid: data.uid,
-                    title: data.title,
-                    artists: data.artists,
-                    album: data.album,
-                    duration: data.duration,
-                    prods: data.prods ? [data.prods] : [],
-                    tags: data.tags,
-                    explicit: data.explicit !== 'NONE',
-                    plays: data.plays,
-                    artwork_url: data.artwork_url,
-                    created_at: new Date(data.created_at).toISOString(),
-                    modified_at: new Date(data.modified_at).toISOString(),
-                };
-
-            case 'playlists':
+                    uuid: track.uid,
+                    title: track.title,
+                    artists: track.artists,
+                    album: track.album,
+                    duration: track.duration,
+                    explicit: track.explicit !== 'NONE',
+                    plays: track.plays,
+                    artwork_url: track.artwork_url,
+                    prods: track.prods ? [track.prods] : [],
+                    tags: track.tags,
+                    service_uris: {
+                        youtube: track.youtube_id,
+                        youtubemusic: track.youtubemusic_id,
+                        spotify: track.spotify_id,
+                        amazonmusic: track.amazonmusic_id,
+                        applemusic: track.applemusic_id,
+                        soundcloud: track.soundcloud_id,
+                        bandlab: track.bandlab_id
+                    }
+                } as Omit<RemoteTrack, 'created_at' | 'modified_at'>;
+            }
+            case 'playlists': {
+                const playlist = data as LocalPlaylist;
                 return {
-                    uuid: data.uuid,
-                    title: data.title,
-                    description: data.description,
-                    pinned: data.pinned,
-                    archived: data.archived,
-                    public: data.public,
-                    sort: data.sort,
-                    inherited_playlists: data.inherited_playlists,
-                    inherited_searchs: data.inherited_searchs,
-                    created_at: new Date(data.created_at).toISOString(),
-                    modified_at: new Date(data.modified_at).toISOString(),
-                };
+                    uuid: playlist.uuid,
+                    title: playlist.title,
+                    description: playlist.description,
+                    pinned: playlist.pinned,
+                    archived: playlist.archived,
+                    public: playlist.public,
+                    sort: playlist.sort,
+                    inherited_playlists: playlist.inherited_playlists as any[],
+                    inherited_searchs: playlist.inherited_searchs as any[],
+                    user_uid: user_uid,
+                } as Omit<RemotePlaylist, 'id' | 'created_at' | 'modified_at' | 'deleted'>;
+            }
+            case 'playlists_tracks': {
+                const playlistTrack = data as LocalPlaylistTrack;
+                return {
+                    playlist_uuid: playlistTrack.uuid,
+                    track_uuid: playlistTrack.track_uid,
+                } as Omit<RemotePlaylistTrack, 'id' | 'created_at' | 'modified_at' | 'deleted'>;
+            }
 
             default:
                 return data;
         }
     }
 
-    private transform_from_supabase(table_name: string, data: any): any {
-        // Transform Supabase schema to local schema
-        // TODO fix this to
+    private transform_from_supabase(table_name: LocalTableName, data: any): any {
         switch (table_name) {
-            case 'tracks':
+            case 'tracks': {
+                const remoteTrack = data as RemoteTrack;
+                const service_uris = (typeof remoteTrack.service_uris === 'object' && remoteTrack.service_uris !== null && !Array.isArray(remoteTrack.service_uris)) ? remoteTrack.service_uris as any : {};
                 return {
-                    uid: data.uuid,
-                    title: data.title,
-                    artists: data.artists,
-                    album: data.album,
-                    duration: data.duration,
-                    prods: Array.isArray(data.prods) ? data.prods.join(', ') : '',
-                    tags: data.tags,
-                    explicit: data.explicit ? 'EXPLICIT' : 'NONE',
-                    plays: data.plays,
-                    artwork_url: data.artwork_url,
-                    created_at: new Date(data.created_at).getTime(),
-                    modified_at: new Date(data.modified_at).getTime(),
-                };
-
-            case 'playlists':
+                    uid: remoteTrack.uuid,
+                    title: remoteTrack.title,
+                    artists: remoteTrack.artists,
+                    album: remoteTrack.album,
+                    duration: remoteTrack.duration,
+                    explicit: remoteTrack.explicit ? 'EXPLICIT' : 'NONE',
+                    plays: remoteTrack.plays,
+                    artwork_url: remoteTrack.artwork_url,
+                    prods: Array.isArray(remoteTrack.prods) ? (remoteTrack.prods as string[]).join(', ') : '',
+                    tags: remoteTrack.tags,
+                    youtube_id: service_uris.youtube,
+                    youtubemusic_id: service_uris.youtubemusic,
+                    spotify_id: service_uris.spotify,
+                    amazonmusic_id: service_uris.amazonmusic,
+                    applemusic_id: service_uris.applemusic,
+                    soundcloud_id: service_uris.soundcloud,
+                    bandlab_id: service_uris.bandlab,
+                    created_at: new Date(remoteTrack.created_at).getTime(),
+                    modified_at: new Date(remoteTrack.modified_at).getTime(),
+                } as unknown as LocalTrack;
+            }
+            case 'playlists': {
+                const remotePlaylist = data as RemotePlaylist;
                 return {
-                    uuid: data.uuid,
-                    title: data.title,
-                    description: data.description,
-                    pinned: data.pinned,
-                    archived: data.archived,
-                    public: data.public,
-                    sort: data.sort,
-                    inherited_playlists: data.inherited_playlists,
-                    inherited_searchs: data.inherited_searchs,
-                    created_at: new Date(data.created_at).getTime(),
-                    modified_at: new Date(data.modified_at).getTime(),
-                };
-
+                    id: remotePlaylist.id,
+                    uuid: remotePlaylist.uuid,
+                    title: remotePlaylist.title,
+                    description: remotePlaylist.description,
+                    pinned: remotePlaylist.pinned,
+                    archived: remotePlaylist.archived,
+                    public: remotePlaylist.public,
+                    sort: remotePlaylist.sort,
+                    inherited_playlists: remotePlaylist.inherited_playlists,
+                    inherited_searchs: remotePlaylist.inherited_searchs,
+                    created_at: new Date(remotePlaylist.created_at).getTime(),
+                    modified_at: new Date(remotePlaylist.modified_at).getTime(),
+                    thumbnail_uri: '', // default value
+                    date: new Date(remotePlaylist.created_at).toISOString(), // default value
+                    public_uuid: '', // default value
+                    linked_playlists: [], // default value
+                } as unknown as LocalPlaylist;
+            }
+            case 'playlists_tracks': {
+                const remotePlaylistTrack = data as RemotePlaylistTrack;
+                return {
+                    uuid: remotePlaylistTrack.playlist_uuid,
+                    track_uid: remotePlaylistTrack.track_uuid
+                } as unknown as LocalPlaylistTrack
+            }
             default:
                 return data;
         }

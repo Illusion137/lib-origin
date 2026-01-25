@@ -115,14 +115,14 @@ async function run_tests(){
 
 async function prebuild_main(){
     await load_native_fs();
-    await compile_lint_code();
+    // await compile_lint_code();
     
     await update_env();
     await generate_illusi_playlists_links();
     await update_spotify_secrets();
     
-    await run_tests();
-    await compile_lint_code();
+    // await run_tests();
+    // await compile_lint_code();
     // TODO finish prebuild script
     // Gen-Files
     

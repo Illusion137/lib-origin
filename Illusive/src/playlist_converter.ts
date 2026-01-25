@@ -3,26 +3,42 @@ import { music_service_track_primary_key } from "./illusive_utils";
 import { Illusive } from "./illusive";
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { mutilate_to_service_playlist, playlist_tracks_differences_actions, type MutilatePlaylistMode, type MutilatePlaylistResponse } from "./playlist_utils";
+import { SQLTracks } from "@illusive/sql/sql_tracks";
+import { Prefs } from "@illusive/prefs";
+import { Wifi } from "@illusive/illusi/src/wifi_utils";
+import { sample_tracks_meta, sample_tracks_service, speed_sample_unavailable_tracks } from "@illusive/sampler";
 
-export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse{
-    if("title" in convert_opts) {
-        const all_playlists = await SQLPlaylists.all_playlists_data();
-        const found_playlist = all_playlists.find(playlist => playlist.title === convert_opts.title);
-        if(found_playlist !== undefined){
-            //TODO check if tracks exist in library first
-            // if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
-            // if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(found_playlist.uuid, incoming_tracks.map(({uid}) => uid));
-            return {ok: true};
+export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse {
+    const track_uids = incoming_tracks.map(({ uid }) => uid);
+
+    if (mode === "ADD") {
+        const existing_track_uids = (await Promise.all(incoming_tracks.map(async (track) => ({ track, exists: await SQLTracks.track_uid_exists(track) }))))
+            .filter(p => p.exists)
+            .map(p => p.track.uid);
+
+        if ("title" in convert_opts) {
+            const all_playlists = await SQLPlaylists.all_playlists_data();
+            const found_playlist = all_playlists.find(playlist => playlist.title === convert_opts.title);
+            const playlist_uuid = found_playlist?.uuid ?? await SQLPlaylists.create_playlist(convert_opts.title);
+            await SQLPlaylists.insert_all_tracks_playlist(existing_track_uids.map(track_uid => ({ uuid: playlist_uuid, track_uid })));
+        } else {
+            await SQLPlaylists.insert_all_tracks_playlist(existing_track_uids.map(track_uid => ({ uuid: convert_opts.uuid_uri, track_uid })));
         }
-        // const playlist_uuid = await SQLPlaylists.create_playlist(convert_opts.title);
-        // await SQLPlaylists.insert_all_tracks_playlist(playlist_uuid, incoming_tracks.map(({uid}) => uid));
-        return {ok: true};
-    } else {
-        // if(mode === "ADD") await SQLPlaylists.insert_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
-        // if(mode === "REMOVE") await SQLPlaylists.delete_all_tracks_playlist(convert_opts.uuid_uri, incoming_tracks.map(({uid}) => uid)); 
-        return {ok: true};
+    } else { // REMOVE
+        if ("title" in convert_opts) {
+            const all_playlists = await SQLPlaylists.all_playlists_data();
+            const found_playlist = all_playlists.find(playlist => playlist.title === convert_opts.title);
+            if(found_playlist) {
+                await SQLPlaylists.delete_all_tracks_playlist(track_uids.map(track_uid => ({ uuid: found_playlist.uuid, track_uid })));
+            }
+        } else {
+            await SQLPlaylists.delete_all_tracks_playlist(track_uids.map(track_uid => ({ uuid: convert_opts.uuid_uri, track_uid })));
+        }
     }
+    
+    return { ok: true };
 }
+
 export async function mutilate_playlist(to_service: MusicServiceType, convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode){
     if(to_service === "Illusi") return mutilate_to_illusi_playlist(convert_opts, incoming_tracks, mode);
     else return mutilate_to_service_playlist(to_service, convert_opts, incoming_tracks, mode);
@@ -34,8 +50,7 @@ async function playlist_convert_divide_and_conquer(to: MusicServiceType, convert
     if(incoming_tracks.length === 1) {
         const status = await mutilate_playlist(to, convert_to, incoming_tracks, mode);
         if(!("error" in status) && !status.ok){
-            // TODO Maybe sample
-            // await sample_tracks_meta(from_tracks);
+            await sample_tracks_meta(incoming_tracks);
         }
         return true;
     }
@@ -54,16 +69,16 @@ interface ConvertPlaylistOpts {
 }
 
 export async function convert_playlist(playlist_tracks: Track[], incoming_tracks: Track[], to_service: MusicServiceType, opts: ConvertPlaylistOpts) {
-    // TODO checking connection n shit
-    // if(opts.check_connection && Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
+    if(opts.check_connection && Prefs.get_pref("expensive_wifi_only") && !await Wifi.wifi_connected()) return {error: new Error("Unable to convert playlist due to lack of wifi connection and Preference['expensive_wifi_only']")};
     const service = Illusive.music_service.get(to_service)!;
     const to_ok = service.create_playlist !== undefined && service.add_tracks_to_playlist !== undefined;
     if(!to_ok) return {error: new Error(`Unable to create/modify playlist from ${to_service}`)};
     if(opts.full_sample !== "NONE" && service.search === undefined) return {error: new Error(`Unable to sample tracks to ${to_service}; Missing search function`)};
-    //TODO SAMPLING
-    // if(opts.full_sample === "SPEED_SAMPLE") from_tracks = await sample_tracks_service(from_tracks, to);
+    
+    if(opts.full_sample === "SPEED_SAMPLE") incoming_tracks = await sample_tracks_service(incoming_tracks, to_service);
+    
     if(to_service === "YouTube" || to_service === "YouTube Music") {
-        // await speed_sample_unavailable_tracks(from_tracks); 
+        await speed_sample_unavailable_tracks(incoming_tracks, opts.full_sample === "SUPER_SPEED_SAMPLE"); 
         incoming_tracks = incoming_tracks.filter(track => !(track.meta?.unavailable ?? false));
     }
     if(!("uuid_uri" in opts.convert_opts)){

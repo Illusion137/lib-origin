@@ -15,7 +15,7 @@ export function parse_spotify_playlist_track(track: ContentItem): Track {
         artists: track.itemV2.data.artists.items.map(artist => {
             return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
         }),
-        plays: parseInt(track.itemV2.data.playcount),
+        plays: track.itemV2.data.playcount ? parseInt(track.itemV2.data.playcount) : 0,
         album: {name: track.itemV2.data.albumOfTrack.name, uri: spotify_uri_to_uri(track.itemV2.data.albumOfTrack.uri)},
         duration: Math.floor(track.itemV2.data.trackDuration.totalMilliseconds/1000),
         explicit: track.itemV2.data.contentRating.label === "EXPLICIT" ? "EXPLICIT" : "NONE",
@@ -30,7 +30,7 @@ export function parse_spotify_album_track(track: Item4, album: {name: string, ur
         artists: track.track.artists.items.map(artist => {
             return {name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri)};
         }),
-        plays: parseInt(track.track.playcount),
+        plays: track.track.playcount ? parseInt(track.track.playcount) : 0,
         album: {name: album.name, uri: spotify_uri_to_uri(album.uri)},
         duration: Math.floor(track.track.duration.totalMilliseconds/1000),
         explicit: track.track.contentRating.label === "EXPLICIT" ? "EXPLICIT" : "NONE",
@@ -88,7 +88,7 @@ export function parse_spotify_artist_track(track: SpotifyArtistTrack): Track {
         explicit: track.track.contentRating.label === "EXPLICIT" ? "EXPLICIT" : "NONE",
         artwork_url: best_thumbnail(track.track.albumOfTrack.coverArt.sources.map(source => ({...source, height: 0, width: 0})))?.url,
         spotify_id: track.track.uri,
-        plays: Number(track.track.playcount)
+        plays: track.track.playcount ? Number(track.track.playcount) : 0
     }
 }
 export function parse_spotify_artist_album(album: SpotifyArtistAlbum, artist: NamedUUID): CompactPlaylist{

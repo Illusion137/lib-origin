@@ -83,7 +83,6 @@ export function get_most_played_artists(global_tracks: Track[]) {
 		.map((track) => track.artists[0]);
 }
 
-// TODO dont forget this
 export type ArtworkNamedUUID = NamedUUID & {artwork: Artwork};
 export function get_unique_album_names_with_uris(global_tracks: Track[]): ArtworkNamedUUID[]{
 	const seen_uris: Set<string> = new Set<string>();

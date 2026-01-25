@@ -3,30 +3,23 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { db } from '../database';
 import { change_log_table } from '../schema';
-import { eq, and, inArray, asc } from 'drizzle-orm';
-
-interface CompressedChange {
-    table_name: string;
-    operation: 'insert' | 'update' | 'delete';
-    record_id: string;
-    data: any;
-    change_ids: number[];
-}
+import { eq, and, inArray, asc, lt } from 'drizzle-orm';
+import type { CompressedChange, LocalTableName } from './types';
 
 export class ChangeTracker {
     /**
      * Log a change to the change log table
      */
     static async log_change(
-        table_name: string,
+        table_name: LocalTableName,
         operation: 'insert' | 'update' | 'delete',
-        record_id: string,
+        record_id: string | number,
         data: any
     ) {
         await db.insert(change_log_table).values({
             table_name,
             operation,
-            record_id,
+            record_id: String(record_id),
             data: JSON.stringify(data),
             synced: false,
         });
@@ -68,7 +61,7 @@ export class ChangeTracker {
         for (const [key, record_changes] of changes_by_record.entries()) {
             const [table_name, record_id] = key.split(':');
             const compressed_change = this.compress_record_changes(
-                table_name,
+                table_name as LocalTableName,
                 record_id,
                 record_changes
             );
@@ -86,7 +79,7 @@ export class ChangeTracker {
      * Compress multiple changes to the same record into a single operation
      */
     private static compress_record_changes(
-        table_name: string,
+        table_name: LocalTableName,
         record_id: string,
         changes: any[]
     ): CompressedChange | null {
@@ -103,7 +96,7 @@ export class ChangeTracker {
             }
             
             return {
-                table_name,
+                table: table_name,
                 operation: 'delete',
                 record_id,
                 data: null,
@@ -115,7 +108,7 @@ export class ChangeTracker {
         if (operations[0] === 'insert') {
             const merged_data = this.merge_changes(changes);
             return {
-                table_name,
+                table: table_name,
                 operation: 'insert',
                 record_id,
                 data: merged_data,
@@ -129,7 +122,7 @@ export class ChangeTracker {
             const minimal_data = this.extract_minimal_update(merged_data);
             
             return {
-                table_name,
+                table: table_name,
                 operation: 'update',
                 record_id,
                 data: minimal_data,
@@ -140,7 +133,7 @@ export class ChangeTracker {
         // Default: return the latest change
         const latest = changes[changes.length - 1];
         return {
-            table_name,
+            table: table_name,
             operation: latest.operation,
             record_id,
             data: JSON.parse(latest.data),
@@ -190,7 +183,7 @@ export class ChangeTracker {
         }
         
         // Always include modified_at for tracking
-        minimal.modified_at = data.modified_at || Date.now();
+        minimal.modified_at = data.modified_at || new Date().toISOString();
         
         return minimal;
     }
@@ -259,20 +252,17 @@ export class ChangeTracker {
     }
 
     /**
-     * Clean up old synced changes (keep last 30 days)
+     * Clean up old synced changes
      */
     static async cleanup_old_changes(days_to_keep = 30) {
-        // TODO maybe investigate if we want to keep a longer history
-        days_to_keep;
-        // const cutoff_time = Date.now() - (days_to_keep * 24 * 60 * 60 * 1000);
+        const cutoff_time = Date.now() - (days_to_keep * 24 * 60 * 60 * 1000);
         
         await db
             .delete(change_log_table)
             .where(
                 and(
                     eq(change_log_table.synced, true),
-                    // Use less than instead of gte for older records
-                    // created_at < cutoff_time
+                    lt(change_log_table.created_at, cutoff_time)
                 )
             );
     }

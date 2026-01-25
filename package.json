@@ -7,7 +7,8 @@
     "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
     "gen_native": "ts-node ./scripts/gen_native.ts",
     "check-types": "tsc --noEmit",
-    "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public"
+    "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
+    "postinstall": "patch-package"
   },
   "cmake-js": {
     "runtime": "node",
@@ -73,6 +74,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "epub2": "^3.0.2",
+    "event-target-polyfill": "^0.0.4",
     "events": "^3.3.0",
     "expo-audio": "^1.1.1",
     "expo-battery": "^10.0.8",

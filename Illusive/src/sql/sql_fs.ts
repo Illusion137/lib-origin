@@ -4,8 +4,6 @@ import { fs } from '@native/fs/fs';
 import path_lib from 'path-browserify';
 
 export namespace SQLfs {
-
-
     let cached_temp_directory: (...paths: string[]) => string = () => "";
     let cached_document_directory: (...paths: string[]) => string = () => "";
 

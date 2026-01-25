@@ -284,18 +284,19 @@ export namespace Illusive {
         return `https://img.youtube.com/vi/${video_id}/0.jpg`;
     }
 
+    // TODO investigate previous one to update new ones
     export async function get_highest_quality_service_thumbnail_uri(uri: string) {
         if (!/w\d{2,}-h\d{2,}/.test(uri)) return uri;
-        const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{2,})/g), extract_string_from_pattern(uri, /h(\d{2,})/g)];
+        const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{2,})-h\d{2,}/g), extract_string_from_pattern(uri, /w\d{2,}-h(\d{2,})/g)];
         const [width, height] = [parseInt(width_str as string), parseInt(height_str as string)];
         const uris_descending = [
-            uri.replace(/w\d{2,}/, 'w2000').replace(/h\d{2,}/, 'h2000'),
-            uri.replace(/w\d{2,}/, 'w1000').replace(/h\d{2,}/, 'h1000'),
-            uri.replace(/w\d{2,}/, 'w500').replace(/h\d{2,}/, 'h500'),
-            uri.replace(/w\d{2,}/, `w${width * 8}`).replace(/h\d{2,}/, `h${height * 8}`),
-            uri.replace(/w\d{2,}/, `w${width * 6}`).replace(/h\d{2,}/, `h${height * 6}`),
-            uri.replace(/w\d{2,}/, `w${width * 4}`).replace(/h\d{2,}/, `h${height * 4}`),
-            uri.replace(/w\d{2,}/, `w${width * 2}`).replace(/h\d{2,}/, `h${height * 2}`),
+            uri.replace(/w\d{2,}-h\d{2,}/, 'w2000-h2000'),
+            uri.replace(/w\d{2,}-h\d{2,}/, 'w1000-h1000'),
+            uri.replace(/w\d{2,}-h\d{2,}/, 'w500-h500'),
+            uri.replace(/w\d{2,}-h\d{2,}/, `w${width * 8}-h${height * 8}`),
+            uri.replace(/w\d{2,}-h\d{2,}/, `w${width * 6}-h${height * 6}`),
+            uri.replace(/w\d{2,}-h\d{2,}/, `w${width * 4}-h${height * 4}`),
+            uri.replace(/w\d{2,}-h\d{2,}/, `w${width * 2}-h${height * 2}`),
         ];
         for (const duri of uris_descending) {
             try {
