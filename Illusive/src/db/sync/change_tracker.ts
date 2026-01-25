@@ -23,6 +23,7 @@ export class ChangeTracker {
             data: JSON.stringify(data),
             synced: false,
         });
+        db.$client.flushPendingReactiveQueries();
     }
 
     /**
