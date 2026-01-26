@@ -1,8 +1,8 @@
-import { FeaturedArtistSection } from "./FeaturedArtistSection";
-import { PlaylistHeaderSection } from "./PlaylistHeaderSection";
-import { SpacerSection } from "./SpacerSection";
-import { TrackListFooterSection } from "./TrackListFooterSection";
-import { TrackListSection } from "./TrackListSection";
+import type { FeaturedArtistSection } from "@origin/apple_music/types/FeaturedArtistSection";
+import type { PlaylistHeaderSection } from "@origin/apple_music/types/PlaylistHeaderSection";
+import type { SpacerSection } from "@origin/apple_music/types/SpacerSection";
+import type { TrackListFooterSection } from "@origin/apple_music/types/TrackListFooterSection";
+import type { TrackListSection } from "@origin/apple_music/types/TrackListSection";
 
 export type Section = PlaylistHeaderSection | TrackListSection | TrackListFooterSection | SpacerSection | FeaturedArtistSection;
 export type SerializedServerData = SerializedServerDataObj[];

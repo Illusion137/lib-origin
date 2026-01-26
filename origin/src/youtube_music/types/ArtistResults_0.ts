@@ -1,4 +1,4 @@
-import { Badge } from "./ExploreResults_0"
+import type { Badge } from "@origin/youtube_music/types/ExploreResults_0"
 
 export type ArtistResults_0 = Root2[]
 

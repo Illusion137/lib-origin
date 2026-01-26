@@ -1,15 +1,15 @@
-import { ChannelResultsW } from "./types/ChannelResultsW";
-import { ChannelResultsWContinuation } from "./types/ChannelResultsWContinuation";
+import type { ChannelResultsW } from "@origin/youtube/types/ChannelResultsW";
+import type { ChannelResultsWContinuation } from "@origin/youtube/types/ChannelResultsWContinuation";
 // import { HomeResultsW } from "./types/HomeResultsW";
-import { HomeResultsWContinuation } from "./types/HomeResultsWContinuation";
-import { LibraryResultsW } from "./types/LibraryResultsW";
-import { MixResults_0 } from "./types/MixResults_0";
-import { PlaylistResultsW, PlaylistVideoRenderer } from "./types/PlaylistResultsW";
-import { PlaylistResultsWContinuation } from "./types/PlaylistResultsWContinuation";
-import { SearchResultsM } from "./types/SearchResultsM";
-import { SearchResultsW } from "./types/SearchResultsW";
-import { SearchResultsWContinuation } from "./types/SearchResultsWContinuation";
-import { InitialData } from "./types/types";
+import type { HomeResultsWContinuation } from "@origin/youtube/types/HomeResultsWContinuation";
+import type { LibraryResultsW } from "@origin/youtube/types/LibraryResultsW";
+import type { MixResults_0 } from "@origin/youtube/types/MixResults_0";
+import type { PlaylistResultsW, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
+import type { PlaylistResultsWContinuation } from "@origin/youtube/types/PlaylistResultsWContinuation";
+import type { SearchResultsM } from "@origin/youtube/types/SearchResultsM";
+import type { SearchResultsW } from "@origin/youtube/types/SearchResultsW";
+import type { SearchResultsWContinuation } from "@origin/youtube/types/SearchResultsWContinuation";
+import type { InitialData } from "@origin/youtube/types/types";
 
 export function parse_home_contents(initial_data: InitialData) {
     initial_data;
@@ -26,7 +26,7 @@ export function parse_home_continuation_contents(initial_data: InitialData) {
     return {
         videos: { video_renderer: contents.filter(item => item.richItemRenderer !== undefined).map(item => item.richItemRenderer!.content.videoRenderer)},
         shorts: { shorts_renderer: contents.filter(item => item.richSectionRenderer !== undefined).map(item => item.richSectionRenderer!.content.richShelfRenderer.contents
-            .filter(item => item.richItemRenderer.content.shortsLockupViewModel !== undefined).map(item => item.richItemRenderer.content.shortsLockupViewModel)).map(item => item[0])},
+            .filter(initem => initem.richItemRenderer.content.shortsLockupViewModel !== undefined).map(initem => initem.richItemRenderer.content.shortsLockupViewModel)).map(item => item[0])},
         continuation: contents.find(item => item.continuationItemRenderer !== undefined)?.continuationItemRenderer ?? null
     }
 }

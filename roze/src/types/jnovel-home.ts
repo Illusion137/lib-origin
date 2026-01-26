@@ -27,7 +27,7 @@ export interface Data {
 	titlesLatest: TitlesLatest[]
 	volumesLatest: VolumesLatest[]
 	volumesLatestPhysical: VolumesLatestPhysical
-	physicalLatesSeries: PhysicalLatesSeries
+	physicalLatesSeries: Record<string, N64ff0a7425b027661057e25a>
 	titlesCatchup: TitlesCatchup[]
 }
 

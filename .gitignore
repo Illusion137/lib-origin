@@ -7,8 +7,17 @@ ignore/**
 node_modules
 sample/illusi/*.sqlite3
 *.epub
+*.pdf
 scratch
 scratch*
 scratch.**
 translate
 catids.txt
+*.roz.json
+*.wav
+*.wav
+*.mp3
+*.m4a
+*.bin
+tts/
+roze/lib/supertonic/assets

@@ -1,4 +1,4 @@
-import { Status } from "./types"
+import type { Status } from "@origin/instagram/types/types"
 
 export interface MediaInfo {
     num_results: number

@@ -1,14 +1,19 @@
 import * as fs from 'fs';
 import request from 'request';
-import { gcc } from "../admin/gcc";
-import { Instagram } from "../origin/src/instagram/instragram";
-import { MediaListItem } from "../origin/src/instagram/types/MediaList";
-import { CookieJar } from "../origin/src/utils/cookie_util";
+import { GCC } from "@admin/gcc";
+import { Instagram } from "@origin/instagram/instragram";
+import type { MediaListItem } from "@origin/instagram/types/MediaList";
+import { CookieJar } from "@common/utils/cookie_util";
+import { catch_log } from '@common/utils/error_util';
 
 const threshold = 72;
-const cookie_jar = CookieJar.fromString(gcc.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
+const cookie_jar = CookieJar.fromString(GCC.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
 const cat_posters_usernames: string[] = ["maoxiaosi_219", "brownsugar_ddang", "sasuke.0116"];
 const cat_regex = /(cat)|(kitty)/ig;
+
+//GUESS 2025
+//[SETH]CATS - 14750 +- 100 : 10000 DANIEL
+//[SETH]BUNNY - 3290 +- 100 : 3000 DANIEL
 
 async function main() {
 	// const all_collections = await Instagram.all_collections({cookie_jar});
@@ -16,23 +21,23 @@ async function main() {
 
 	const cats_collection_id = "17877414743861513";
 	let cats_collection = await Instagram.collection_posts({ cookie_jar, collection_id: cats_collection_id });
-	if ("error" in cats_collection) return;
+	if ("error" in cats_collection || cats_collection.status === "fail") return;
 
 	function parse_collection(items: MediaListItem[]) {
 		return items
 			.map(item => ({ username: item.media.user.username, name: item.media.user.full_name }))
 			.filter(item => cat_posters_usernames.includes(item.username) || cat_regex.test(item.username) || cat_regex.test(item.name));
 	}
-
+	
 	let only_cat_posters = parse_collection(cats_collection.items);
 	const seen_cat_posters_usernames = new Set<string>();
 	const seen_ids = new Set<string>();
 
 	let i = 0;
 	let length = only_cat_posters.length;
-	async function add_only_cat_posters(only_cat_posters: { username: string; name: string }[]) {
+	async function add_only_cat_posters(only_cat_posters_data: { username: string; name: string }[]) {
 		const cat_posts_to_add: string[] = [];
-		for (const cat_poster of only_cat_posters) {
+		for (const cat_poster of only_cat_posters_data) {
 			if (seen_cat_posters_usernames.has(cat_poster.username)) {
 				console.log("Seen: ", cat_poster.username);
 				continue;
@@ -120,7 +125,7 @@ function dispatch_dlposts(items: MediaListItem[]){
         if(post.media.carousel_media === undefined) continue;
         for(const media of post.media.carousel_media){
             if(media.image_versions2.candidates.length > 0){
-                dlpost(media.image_versions2.candidates[0].url).catch(e => e);
+                dlpost(media.image_versions2.candidates[0].url).catch(catch_log);
             }
         }
     }
@@ -146,7 +151,7 @@ async function catdl(){
 }
 
 //24K +- 1 -> 48k
-catdl().catch(e => e);
+catdl().catch(catch_log);
 // ISAIAH
 // 4798
 

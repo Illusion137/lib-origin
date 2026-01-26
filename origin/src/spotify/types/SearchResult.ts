@@ -3,14 +3,15 @@ export interface SearchResult {
     extensions: Extensions
 }
 
-interface Data {
+export interface Data {
     searchV2: SearchV2
 }
 
-interface SearchV2 {
+export interface SearchV2 {
     albumsV2: AlbumsV2
     artists: Artists2
     audiobooks: Audiobooks
+    authors: Authors
     chipOrder: ChipOrder
     episodes: Episodes
     genres: Genres
@@ -21,249 +22,283 @@ interface SearchV2 {
     users: Users
 }
 
-interface AlbumsV2 {
+export interface AlbumsV2 {
     __typename: string
-    items: Item[]
+    items: SpotifySearchAlbum[]
     totalCount: number
 }
 
-interface Item {
+export interface SpotifySearchAlbum {
     __typename: string
     data: Data2
 }
 
-interface Data2 {
+export interface Data2 {
     __typename: string
     artists: Artists
     coverArt: CoverArt
     date: Date
     name: string
+    playability: Playability
+    type: string
     uri: string
 }
 
-interface Artists {
+export interface Artists {
     items: Item2[]
 }
 
-interface Item2 {
+export interface Item2 {
     profile: Profile
     uri: string
 }
 
-interface Profile {
+export interface Profile {
     name: string
 }
 
-interface CoverArt {
+export interface CoverArt {
     extractedColors: ExtractedColors
     sources: Source[]
 }
 
-interface ExtractedColors {
+export interface ExtractedColors {
     colorDark: ColorDark
 }
 
-interface ColorDark {
+export interface ColorDark {
     hex: string
     isFallback: boolean
 }
 
-interface Source {
+export interface Source {
     height: number
     url: string
     width: number
 }
 
-interface Date {
+export interface Date {
     year: number
 }
 
-interface Artists2 {
+export interface Playability {
+    playable: boolean
+    reason: string
+}
+
+export interface Artists2 {
     items: Item3[]
     totalCount: number
 }
 
-interface Item3 {
+export interface Item3 {
     __typename: string
-    data: Data3
+    data: SpotifyCompactArtist
 }
 
-interface Data3 {
+export interface SpotifyCompactArtist {
     __typename: string
     profile: Profile2
     uri: string
     visuals: Visuals
 }
 
-interface Profile2 {
+export interface Profile2 {
     name: string
     verified: boolean
 }
 
-interface Visuals {
-    avatarImage?: AvatarImage
+export interface Visuals {
+    avatarImage: AvatarImage
 }
 
-interface AvatarImage {
+export interface AvatarImage {
     extractedColors: ExtractedColors2
     sources: Source2[]
 }
 
-interface ExtractedColors2 {
+export interface ExtractedColors2 {
     colorDark: ColorDark2
 }
 
-interface ColorDark2 {
+export interface ColorDark2 {
     hex: string
     isFallback: boolean
 }
 
-interface Source2 {
+export interface Source2 {
     height: number
     url: string
     width: number
 }
 
-interface Audiobooks {
+export interface Audiobooks {
     items: Item4[]
     totalCount: number
 }
 
-interface Item4 {
+export interface Item4 {
     __typename: string
     data: Data4
 }
 
-interface Data4 {
+export interface Data4 {
     __typename: string
     accessInfo: AccessInfo
-    authors: Author[]
+    authorsV2: AuthorsV2[]
     coverArt: CoverArt2
+    description: string
+    audiobookDuration: AudiobookDuration
     isPreRelease: boolean
     mediaType: string
     name: string
+    preReleaseEndDateTime: PreReleaseEndDateTime
     publishDate: PublishDate
     topics: Topics
     uri: string
 }
 
-interface AccessInfo {
+export interface AccessInfo {
+    accessExplanation: AccessExplanation
+    isUserMemberOfAtLeastOneGroup: boolean
     signifier: Signifier
 }
 
-interface Signifier {
+export interface AccessExplanation {
+    __typename: string
+}
+
+export interface Signifier {
     text: string
 }
 
-interface Author {
+export interface AuthorsV2 {
     name: string
+    uri: any
 }
 
-interface CoverArt2 {
+export interface CoverArt2 {
     extractedColors: ExtractedColors3
     sources: Source3[]
 }
 
-interface ExtractedColors3 {
+export interface ExtractedColors3 {
     colorDark: ColorDark3
 }
 
-interface ColorDark3 {
+export interface ColorDark3 {
     hex: string
     isFallback: boolean
 }
 
-interface Source3 {
+export interface Source3 {
     height: number
     url: string
     width: number
 }
 
-interface PublishDate {
+export interface AudiobookDuration {
+    totalMilliseconds: number
+}
+
+export interface PreReleaseEndDateTime {
     isoString: string
 }
 
-interface Topics {
+export interface PublishDate {
+    isoString: string
+    precision: string
+}
+
+export interface Topics {
     items: any[]
 }
 
-interface ChipOrder {
+export interface Authors {
+    __typename: string
+    items: any[]
+    totalCount: number
+}
+
+export interface ChipOrder {
     items: Item5[]
 }
 
-interface Item5 {
+export interface Item5 {
     typeName: string
 }
 
-interface Episodes {
+export interface Episodes {
     items: Item6[]
     totalCount: number
 }
 
-interface Item6 {
+export interface Item6 {
     __typename: string
     data: Data5
 }
 
-interface Data5 {
+export interface Data5 {
     __typename: string
     contentRating: ContentRating
     coverArt: CoverArt3
     description: string
     duration: Duration
+    gatedEntityRelations: any[]
     mediaTypes: string[]
     name: string
-    playability: Playability
+    playability: Playability2
     playedState: PlayedState
     podcastV2: PodcastV2
     releaseDate: ReleaseDate
     restrictions: Restrictions
     uri: string
+    videoPreviewThumbnail?: VideoPreviewThumbnail
 }
 
-interface ContentRating {
+export interface ContentRating {
     label: string
 }
 
-interface CoverArt3 {
+export interface CoverArt3 {
     extractedColors: ExtractedColors4
     sources: Source4[]
 }
 
-interface ExtractedColors4 {
+export interface ExtractedColors4 {
     colorDark: ColorDark4
 }
 
-interface ColorDark4 {
+export interface ColorDark4 {
     hex: string
     isFallback: boolean
 }
 
-interface Source4 {
+export interface Source4 {
     height: number
     url: string
     width: number
 }
 
-interface Duration {
+export interface Duration {
     totalMilliseconds: number
 }
 
-interface Playability {
+export interface Playability2 {
     reason: string
 }
 
-interface PlayedState {
+export interface PlayedState {
     playPositionMilliseconds: number
     state: string
 }
 
-interface PodcastV2 {
+export interface PodcastV2 {
     __typename: string
     data: Data6
 }
 
-interface Data6 {
+export interface Data6 {
     __typename: string
     coverArt: CoverArt4
     mediaType: string
@@ -272,45 +307,65 @@ interface Data6 {
     uri: string
 }
 
-interface CoverArt4 {
+export interface CoverArt4 {
     sources: Source5[]
 }
 
-interface Source5 {
+export interface Source5 {
     height: number
     url: string
     width: number
 }
 
-interface Publisher {
+export interface Publisher {
     name: string
 }
 
-interface ReleaseDate {
+export interface ReleaseDate {
     isoString: string
     precision: string
 }
 
-interface Restrictions {
+export interface Restrictions {
     paywallContent: boolean
 }
 
-interface Genres {
+export interface VideoPreviewThumbnail {
+    __typename: string
+    imagePreview: ImagePreview
+}
+
+export interface ImagePreview {
+    data: Data7
+}
+
+export interface Data7 {
+    __typename: string
+    sources: Source6[]
+}
+
+export interface Source6 {
+    maxHeight: number
+    maxWidth: number
+    url: string
+}
+
+export interface Genres {
     items: any[]
     totalCount: number
 }
 
-interface Playlists {
+export interface Playlists {
     items: Item7[]
     totalCount: number
 }
 
-interface Item7 {
+export interface Item7 {
     __typename: string
-    data: Data7
+    data: Data8
 }
 
-interface Data7 {
+export interface Data8 {
     __typename: string
     attributes: Attribute[]
     description: string
@@ -321,41 +376,41 @@ interface Data7 {
     uri: string
 }
 
-interface Attribute {
+export interface Attribute {
     key: string
     value: string
 }
 
-interface Images {
+export interface Images {
     items: Item8[]
 }
 
-interface Item8 {
+export interface Item8 {
     extractedColors: ExtractedColors5
-    sources: Source6[]
+    sources: Source7[]
 }
 
-interface ExtractedColors5 {
+export interface ExtractedColors5 {
     colorDark: ColorDark5
 }
 
-interface ColorDark5 {
+export interface ColorDark5 {
     hex: string
     isFallback: boolean
 }
 
-interface Source6 {
-    height: number
+export interface Source7 {
+    height?: number
     url: string
-    width: number
+    width?: number
 }
 
-interface OwnerV2 {
+export interface OwnerV2 {
     __typename: string
-    data: Data8
+    data: Data9
 }
 
-interface Data8 {
+export interface Data9 {
     __typename: string
     avatar: Avatar
     name: string
@@ -363,27 +418,27 @@ interface Data8 {
     username: string
 }
 
-interface Avatar {
-    sources: Source7[]
+export interface Avatar {
+    sources: Source8[]
 }
 
-interface Source7 {
+export interface Source8 {
     height: number
     url: string
     width: number
 }
 
-interface Podcasts {
+export interface Podcasts {
     items: Item9[]
     totalCount: number
 }
 
-interface Item9 {
+export interface Item9 {
     __typename: string
-    data: Data9
+    data: Data10
 }
 
-interface Data9 {
+export interface Data10 {
     __typename: string
     coverArt: CoverArt5
     mediaType: string
@@ -393,51 +448,51 @@ interface Data9 {
     uri: string
 }
 
-interface CoverArt5 {
+export interface CoverArt5 {
     extractedColors: ExtractedColors6
-    sources: Source8[]
+    sources: Source9[]
 }
 
-interface ExtractedColors6 {
+export interface ExtractedColors6 {
     colorDark: ColorDark6
 }
 
-interface ColorDark6 {
+export interface ColorDark6 {
     hex: string
     isFallback: boolean
 }
 
-interface Source8 {
+export interface Source9 {
     height: number
     url: string
     width: number
 }
 
-interface Publisher2 {
+export interface Publisher2 {
     name: string
 }
 
-interface Topics2 {
+export interface Topics2 {
     items: Item10[]
 }
 
-interface Item10 {
+export interface Item10 {
     __typename: string
     title: string
     uri: string
 }
 
-interface TopResultsV2 {
+export interface TopResultsV2 {
     featured: Featured[]
     itemsV2: ItemsV2[]
 }
 
-interface Featured {
+export interface Featured {
     __typename: string
-    data: Data10
+    data: Data11
 }
 
-interface Data10 {
+export interface Data11 {
     __typename: string
     attributes: Attribute2[]
     description: string
@@ -448,41 +503,41 @@ interface Data10 {
     uri: string
 }
 
-interface Attribute2 {
+export interface Attribute2 {
     key: string
     value: string
 }
 
-interface Images2 {
+export interface Images2 {
     items: Item11[]
 }
 
-interface Item11 {
+export interface Item11 {
     extractedColors: ExtractedColors7
-    sources: Source9[]
+    sources: Source10[]
 }
 
-interface ExtractedColors7 {
+export interface ExtractedColors7 {
     colorDark: ColorDark7
 }
 
-interface ColorDark7 {
+export interface ColorDark7 {
     hex: string
     isFallback: boolean
 }
 
-interface Source9 {
+export interface Source10 {
     height: any
     url: string
     width: any
 }
 
-interface OwnerV22 {
+export interface OwnerV22 {
     __typename: string
-    data: Data11
+    data: Data12
 }
 
-interface Data11 {
+export interface Data12 {
     __typename: string
     avatar: Avatar2
     name: string
@@ -490,391 +545,311 @@ interface Data11 {
     username: string
 }
 
-interface Avatar2 {
-    sources: Source10[]
-}
-
-interface Source10 {
-    height: number
-    url: string
-    width: number
-}
-
-interface ItemsV2 {
-    item: Item12
-    matchedFields: string[]
-}
-
-interface Item12 {
-    __typename: string
-    data: Data12
-}
-
-interface Data12 {
-    __typename: string
-    profile?: Profile3
-    uri: string
-    visuals?: Visuals2
-    contentRating?: ContentRating2
-    coverArt?: CoverArt6
-    description?: string
-    duration?: Duration2
-    mediaTypes?: string[]
-    name?: string
-    playability?: Playability2
-    playedState?: PlayedState2
-    podcastV2?: PodcastV22
-    releaseDate?: ReleaseDate2
-    restrictions?: Restrictions2
-    attributes?: any[]
-    format?: string
-    images?: Images3
-    ownerV2?: OwnerV23
-    albumOfTrack?: AlbumOfTrack
-    artists?: Artists3
-    associations?: Associations
-    id?: string
-}
-
-interface Profile3 {
-    name: string
-    verified: boolean
-}
-
-interface Visuals2 {
-    avatarImage: AvatarImage2
-}
-
-interface AvatarImage2 {
-    extractedColors: ExtractedColors8
+export interface Avatar2 {
     sources: Source11[]
 }
 
-interface ExtractedColors8 {
-    colorDark: ColorDark8
-}
-
-interface ColorDark8 {
-    hex: string
-    isFallback: boolean
-}
-
-interface Source11 {
+export interface Source11 {
     height: number
     url: string
     width: number
 }
 
-interface ContentRating2 {
-    label: string
+export interface ItemsV2 {
+    item: Item12
+    matchedFields: any[]
 }
 
-interface CoverArt6 {
-    extractedColors: ExtractedColors9
-    sources: Source12[]
-}
-
-interface ExtractedColors9 {
-    colorDark: ColorDark9
-}
-
-interface ColorDark9 {
-    hex: string
-    isFallback: boolean
-}
-
-interface Source12 {
-    height: number
-    url: string
-    width: number
-}
-
-interface Duration2 {
-    totalMilliseconds: number
-}
-
-interface Playability2 {
-    playable?: boolean
-    reason?: string
-}
-
-interface PlayedState2 {
-    playPositionMilliseconds: number
-    state: string
-}
-
-interface PodcastV22 {
+export interface Item12 {
     __typename: string
     data: Data13
 }
 
-interface Data13 {
+export interface Data13 {
     __typename: string
-    coverArt: CoverArt7
-    mediaType: string
-    name: string
-    publisher: Publisher3
+    profile?: Profile3
     uri: string
+    visuals?: Visuals2
+    artists?: Artists3
+    coverArt?: CoverArt6
+    date?: Date2
+    name?: string
+    playability?: Playability3
+    type?: string
+    albumOfTrack?: AlbumOfTrack
+    associationsV3?: AssociationsV3
+    contentRating?: ContentRating2
+    duration?: Duration2
+    id?: string
+    trackMediaType?: string
 }
 
-interface CoverArt7 {
-    sources: Source13[]
-}
-
-interface Source13 {
-    height: number
-    url: string
-    width: number
-}
-
-interface Publisher3 {
+export interface Profile3 {
     name: string
+    verified: boolean
 }
 
-interface ReleaseDate2 {
-    isoString: string
-    precision: string
+export interface Visuals2 {
+    avatarImage: AvatarImage2
 }
 
-interface Restrictions2 {
-    paywallContent: boolean
+export interface AvatarImage2 {
+    extractedColors: ExtractedColors8
+    sources: Source12[]
 }
 
-interface Images3 {
-    items: Item13[]
+export interface ExtractedColors8 {
+    colorDark: ColorDark8
 }
 
-interface Item13 {
-    extractedColors: ExtractedColors10
-    sources: Source14[]
-}
-
-interface ExtractedColors10 {
-    colorDark: ColorDark10
-}
-
-interface ColorDark10 {
+export interface ColorDark8 {
     hex: string
     isFallback: boolean
 }
 
-interface Source14 {
+export interface Source12 {
     height: number
     url: string
     width: number
 }
 
-interface OwnerV23 {
+export interface Artists3 {
+    items: Item13[]
+}
+
+export interface Item13 {
+    profile: Profile4
+    uri: string
+}
+
+export interface Profile4 {
+    name: string
+}
+
+export interface CoverArt6 {
+    extractedColors: ExtractedColors9
+    sources: Source13[]
+}
+
+export interface ExtractedColors9 {
+    colorDark: ColorDark9
+}
+
+export interface ColorDark9 {
+    hex: string
+    isFallback: boolean
+}
+
+export interface Source13 {
+    height: number
+    url: string
+    width: number
+}
+
+export interface Date2 {
+    year: number
+}
+
+export interface Playability3 {
+    playable: boolean
+    reason: string
+}
+
+export interface AlbumOfTrack {
+    coverArt: CoverArt7
+    id: string
+    name: string
+    uri: string
+}
+
+export interface CoverArt7 {
+    extractedColors: ExtractedColors10
+    sources: Source14[]
+}
+
+export interface ExtractedColors10 {
+    colorDark: ColorDark10
+}
+
+export interface ColorDark10 {
+    hex: string
+    isFallback: boolean
+}
+
+export interface Source14 {
+    height: number
+    url: string
+    width: number
+}
+
+export interface AssociationsV3 {
+    audioAssociations: AudioAssociations
+    videoAssociations: VideoAssociations
+}
+
+export interface AudioAssociations {
+    totalCount: number
+}
+
+export interface VideoAssociations {
+    totalCount: number
+}
+
+export interface ContentRating2 {
+    label: string
+}
+
+export interface Duration2 {
+    totalMilliseconds: number
+}
+
+export interface TracksV2 {
+    items: SpotifySearchTrack[]
+    totalCount: number
+}
+
+export interface SpotifySearchTrack {
+    item: Item15
+    matchedFields: any[]
+}
+
+export interface Item15 {
     __typename: string
     data: Data14
 }
 
-interface Data14 {
+export interface Data14 {
     __typename: string
-    avatar: Avatar3
+    albumOfTrack: AlbumOfTrack2
+    artists: Artists4
+    associationsV3: AssociationsV32
+    contentRating: ContentRating3
+    duration: Duration3
+    id: string
+    trackMediaType: string
     name: string
+    playability: Playability4
     uri: string
-    username: string
 }
 
-interface Avatar3 {
-    sources: Source15[]
-}
-
-interface Source15 {
-    height: number
-    url: string
-    width: number
-}
-
-interface AlbumOfTrack {
+export interface AlbumOfTrack2 {
     coverArt: CoverArt8
     id: string
     name: string
     uri: string
 }
 
-interface CoverArt8 {
+export interface CoverArt8 {
     extractedColors: ExtractedColors11
-    sources: Source16[]
+    sources: Source15[]
 }
 
-interface ExtractedColors11 {
+export interface ExtractedColors11 {
     colorDark: ColorDark11
 }
 
-interface ColorDark11 {
+export interface ColorDark11 {
     hex: string
     isFallback: boolean
 }
 
-interface Source16 {
+export interface Source15 {
     height: number
     url: string
     width: number
 }
 
-interface Artists3 {
-    items: Item14[]
+export interface Artists4 {
+    items: Item16[]
 }
 
-interface Item14 {
-    profile: Profile4
-    uri: string
-}
-
-interface Profile4 {
-    name: string
-}
-
-interface Associations {
-    associatedVideos: AssociatedVideos
-}
-
-interface AssociatedVideos {
-    totalCount: number
-}
-
-interface TracksV2 {
-    items: SpotifySearchTrack[]
-    totalCount: number
-}
-
-export interface SpotifySearchTrack {
-    item: Item16
-    matchedFields: string[]
-}
-
-interface Item16 {
-    __typename: string
-    data: Data15
-}
-
-interface Data15 {
-    __typename: string
-    albumOfTrack: AlbumOfTrack2
-    artists: Artists4
-    associations: Associations2
-    contentRating: ContentRating3
-    duration: Duration3
-    id: string
-    name: string
-    playability: Playability3
-    uri: string
-}
-
-interface AlbumOfTrack2 {
-    coverArt: CoverArt9
-    id: string
-    name: string
-    uri: string
-}
-
-interface CoverArt9 {
-    extractedColors: ExtractedColors12
-    sources: Source17[]
-}
-
-interface ExtractedColors12 {
-    colorDark: ColorDark12
-}
-
-interface ColorDark12 {
-    hex: string
-    isFallback: boolean
-}
-
-interface Source17 {
-    height: number
-    url: string
-    width: number
-}
-
-interface Artists4 {
-    items: Item17[]
-}
-
-interface Item17 {
+export interface Item16 {
     profile: Profile5
     uri: string
 }
 
-interface Profile5 {
+export interface Profile5 {
     name: string
 }
 
-interface Associations2 {
-    associatedVideos: AssociatedVideos2
+export interface AssociationsV32 {
+    audioAssociations: AudioAssociations2
+    videoAssociations: VideoAssociations2
 }
 
-interface AssociatedVideos2 {
+export interface AudioAssociations2 {
     totalCount: number
 }
 
-interface ContentRating3 {
+export interface VideoAssociations2 {
+    totalCount: number
+}
+
+export interface ContentRating3 {
     label: string
 }
 
-interface Duration3 {
+export interface Duration3 {
     totalMilliseconds: number
 }
 
-interface Playability3 {
+export interface Playability4 {
     playable: boolean
+    reason: string
 }
 
-interface Users {
-    items: Item18[]
+export interface Users {
+    items: Item17[]
     totalCount: number
 }
 
-interface Item18 {
+export interface Item17 {
     __typename: string
-    data: Data16
+    data: Data15
 }
 
-interface Data16 {
+export interface Data15 {
     __typename: string
-    avatar?: Avatar4
+    avatar: Avatar3
     id: string
     displayName: string
     uri: string
     username: string
 }
 
-interface Avatar4 {
-    extractedColors: ExtractedColors13
-    sources: Source18[]
+export interface Avatar3 {
+    extractedColors: ExtractedColors12
+    sources: Source16[]
 }
 
-interface ExtractedColors13 {
-    colorDark: ColorDark13
+export interface ExtractedColors12 {
+    colorDark: ColorDark12
 }
 
-interface ColorDark13 {
+export interface ColorDark12 {
     hex: string
     isFallback: boolean
 }
 
-interface Source18 {
+export interface Source16 {
     height: number
     url: string
     width: number
 }
 
-interface Extensions {
+export interface Extensions {
     requestIds: RequestIds
 }
 
-interface RequestIds {
+export interface RequestIds {
     "/searchV2": SearchV22
     "/searchV2/topResultsV2": SearchV2TopResultsV2
 }
 
-interface SearchV22 {
+export interface SearchV22 {
     "search-api": string
 }
 
-interface SearchV2TopResultsV2 {
+export interface SearchV2TopResultsV2 {
     "search-api": string
 }

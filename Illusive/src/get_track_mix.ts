@@ -1,8 +1,8 @@
-import * as Origin from '../../origin/src/index';
-import { soundcloud_parse_track } from './gen/soundcloud_parser';
-import { youtube_parse_videos } from './gen/youtube_parser';
-import { Prefs } from './prefs';
-import { Track } from './types';
+import * as Origin from '@origin/index';
+import { soundcloud_parse_track } from '@illusive/parsers/soundcloud_parser';
+import { youtube_parse_videos } from '@illusive/parsers/youtube_parser';
+import { Prefs } from '@illusive/prefs';
+import type { Track } from '@illusive/types';
 
 export async function get_soundcloud_track_mix(track_id: string): Promise<{"tracks": Track[], "error"?: Error}> {
     const cookie_jar = Prefs.get_pref("soundcloud_cookie_jar");

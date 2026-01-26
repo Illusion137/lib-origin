@@ -1,16 +1,22 @@
-import { CookieJar } from "../../origin/src/utils/cookie_util";
-import { PromiseResult, ResponseError } from "../../origin/src/utils/types";
-import { extract_string_from_pattern } from "../../origin/src/utils/util";
-import { JNovel_Calender } from "./types/jnovel-calender";
-import { JNovel_Home } from "./types/jnovel-home";
-import { JNovel_Part, JNovel_Serie, JNovel_Toc } from "./types/jnovel-reader";
-import { JNovel_Series } from "./types/jnovel-series";
-import { JNovel_Series_Page } from "./types/jnovel-series-page";
-import { JNovel_User } from "./types/jnovel-user";
-import { ReaderContent } from "./types/types";
+import type { CookieJar } from "@common/utils/cookie_util";
+import type { PromiseResult, ResponseError } from "@common/types";
+import { extract_string_from_pattern, gen_uuid, milliseconds_of } from "@common/utils/util";
+import { RozeHeaders } from "@roze/headers";
+import type { JNovel_Calender } from "@roze/types/jnovel-calender";
+import type { JNovel_Home } from "@roze/types/jnovel-home";
+import type { JNovel_Part, JNovel_Serie, JNovel_Toc } from "@roze/types/jnovel-reader";
+import type { JNovel_Series } from "@roze/types/jnovel-series";
+import type { JNovel_Series_Page } from "@roze/types/jnovel-series-page";
+import type { JNovel_User } from "@roze/types/jnovel-user";
+import type { RozChapterContents, RozContent } from "@roze/types/roz";
+import { clean_html_text, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from "@roze/utils";
+import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
+import { generror, generror_catch } from "@common/utils/error_util";
+import { try_json_parse } from "@common/utils/parse_util";
+import type Roz from "@roze/types/roz";
 
 export namespace JNovel {
-	export interface Opts { cookie_jar?: CookieJar }
+	export interface Opts { cookie_jar?: CookieJar, fetch_opts?: RoZFetchRequestInit }
 
 	interface JNovel_Reader {
 		title: string,
@@ -18,64 +24,49 @@ export namespace JNovel {
 		part: JNovel_Part
 		serie: JNovel_Serie
 		toc: JNovel_Toc
-		content: ReaderContent
+		content: RozContent[]
 	};
 
 	async function get_response(url: string, opts: Opts) {
-		return await fetch(url, {
-			headers: {
-				"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-				"accept-language": "en-US,en;q=0.9",
-				"cache-control": "max-age=0",
-				"priority": "u=0, i",
-				"sec-ch-ua": "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"",
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "\"Windows\"",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1",
-				"cookie": opts.cookie_jar?.toString() as string
-			},
-			referrerPolicy: "strict-origin-when-cross-origin",
-			body: null,
-			method: "GET"
-		});
+		return await rozfetch(url, {
+            headers: RozeHeaders.get_document_headers(opts.cookie_jar),
+            referrerPolicy: "strict-origin-when-cross-origin",
+            cache_opts: {
+                cache_ms: milliseconds_of({days: 1}),
+                cache_ms_fail: milliseconds_of({}),
+                cache_mode: "all"
+            },
+            ...opts.fetch_opts
+        });
 	}
 	async function get_response_text(url: string, opts: Opts) {
 		const response = await get_response(url, opts);
-		if (!response.ok) return { error: new Error(`user_response is not ok: Status Code: ${response.status}`) };
+        if("error" in response) return generror_catch(response, "get_response_text failed", {url, opts});
 		return await response.text();
 	}
-	function try_json_parse<T>(json_string: string): T | ResponseError {
-		try { return JSON.parse(json_string) as T; } catch (error) { return { error: error as Error }; }
-	}
-	function clean_html_text(text: string) {
-		return text.replace(/&#34;/g, '"')
-			.replace(/&#39;/g, "'")
-			.replace(/\n/g, '');
-	}
-	function html_inner_text_content(html_line: string) {
-		return html_line.trim().replace(/<.+?>/g, '');
-	}
-	function html_img_src(html_line: string) {
-		return (/<img src="(.+?)"/.exec(html_line) as RegExpExecArray)[1];
-	}
-	export function __next_data__(html: string | ResponseError) {
+	export function __next_data__<T>(html: string | ResponseError): T|ResponseError {
 		if (typeof html === "object") return html;
-		const next_data_string = extract_string_from_pattern(html, /<script id=".+?" type="application\/json">.+?({.+?})<\/script>/igs);
+		const next_data_string = extract_string_from_pattern(html, /<script id="__NEXT_DATA__" type="application\/json">.*?({.+?})<\/script>/igs);
 		if (typeof next_data_string === "object") return next_data_string;
-		return try_json_parse(next_data_string);
+		return try_json_parse<T>(next_data_string);
 	}
-	export async function home(opts: Opts): PromiseResult<JNovel_Home> { return __next_data__(await get_response_text("https://j-novel.club/", opts)) as JNovel_Home | ResponseError; }
-	export async function series_page(opts: Opts): PromiseResult<JNovel_Series_Page> { return __next_data__(await get_response_text("https://j-novel.club/series", opts)) as JNovel_Series_Page | ResponseError; }
-	export async function series(opts: Opts & { path: string }): PromiseResult<JNovel_Series> { return __next_data__(await get_response_text(`https://j-novel.club/series/${opts.path}`, opts)) as JNovel_Series | ResponseError; }
-	export async function calender(opts: Opts): PromiseResult<JNovel_Calender> { return __next_data__(await get_response_text("https://j-novel.club/calendar", opts)) as JNovel_Calender | ResponseError; }
-	export async function user(opts: Opts): PromiseResult<JNovel_User> {
+	export async function next_response<T>(url: string, opts: Opts): PromiseResult<T>{
+		return __next_data__<T>(await get_response_text(url, opts));
+	}
+	export async function home(opts: Opts) { return await next_response<JNovel_Home>("https://j-novel.club/", opts); }
+	export async function series_page(opts: Opts) { return await next_response<JNovel_Series_Page>("https://j-novel.club/series", opts); }
+	export async function series(opts: Opts & { path: string }) { return await next_response<JNovel_Series>(`https://j-novel.club/series/${opts.path}`, opts); }
+	export async function calender(opts: Opts) { return await next_response<JNovel_Calender>("https://j-novel.club/calendar", opts); }
+	export async function user(opts: Opts) {
 		const access_token_expired = opts.cookie_jar?.getCookie("access_token")?.hasExpired() ?? true;
-		if (access_token_expired) return { error: new Error("Access token is expired or doesn't exist") };
-		return __next_data__(await get_response_text("https://j-novel.club/user", opts)) as JNovel_User | ResponseError;
+		if (access_token_expired) return generror("Access token is expired or doesn't exist");
+		return await next_response<JNovel_User>("https://j-novel.club/user", opts);
+	}
+
+	function extract_from_pattern_cleaned_to_json<T>(text: string, regex: RegExp): T|ResponseError{
+		const strerr = extract_string_from_pattern(text, regex);
+		if (typeof strerr === "object") return strerr;
+		return try_json_parse<T>(clean_html_text(strerr));
 	}
 	export async function reader_initial(opts: Opts & { legacy_id: string }) {
 		const reader_text = await get_response_text(`https://labs.j-novel.club/embed/${opts.legacy_id}`, opts);
@@ -85,21 +76,9 @@ export namespace JNovel {
 		const volume_img_uri = extract_string_from_pattern(reader_text, /<meta property="og:image" content="(.+?)">/gis);
 		if (typeof title === "object") return title;
 		if (typeof volume_img_uri === "object") return volume_img_uri;
-
-		const data_toc_strerr = extract_string_from_pattern(reader_text, /data-toc="(.+?)"/gis);
-		const data_serie_strerr = extract_string_from_pattern(reader_text, /data-serie="(.+?)"/gis);
-		const data_part_strerr = extract_string_from_pattern(reader_text, /data-part="(.+?)"/gis);
-		if (typeof data_toc_strerr === "object") return data_toc_strerr;
-		if (typeof data_serie_strerr === "object") return data_serie_strerr;
-		if (typeof data_part_strerr === "object") return data_part_strerr;
-
-		const data_toc_string = data_toc_strerr.replace(/&#34;/g, '"');
-		const data_serie_string = data_serie_strerr.replace(/&#34;/g, '"');
-		const data_part_string = data_part_strerr.replace(/&#34;/g, '"');
-
-		const data_toc = try_json_parse<JNovel_Toc>(clean_html_text(data_toc_string));
-		const data_serie = try_json_parse<JNovel_Serie>(clean_html_text(data_serie_string));
-		const data_part = try_json_parse<JNovel_Part>(clean_html_text(data_part_string));
+		const data_toc = extract_from_pattern_cleaned_to_json<JNovel_Toc>(reader_text, /data-toc="(.+?)"/gis);
+		const data_serie = extract_from_pattern_cleaned_to_json<JNovel_Serie>(reader_text, /data-serie="(.+?)"/gis);
+		const data_part = extract_from_pattern_cleaned_to_json<JNovel_Part>(reader_text, /data-part="(.+?)"/gis);
 		if ("error" in data_toc) return data_toc;
 		if ("error" in data_serie) return data_serie;
 		if ("error" in data_part) return data_part;
@@ -112,31 +91,10 @@ export namespace JNovel {
 			toc: data_toc,
 		}
 	}
-	export async function reader_contents(opts: Opts & { legacy_id: string }): PromiseResult<ReaderContent> {
-		const xhtml = await get_response_text(`https://labs.j-novel.club/embed/${opts.legacy_id}/data.xhtml`, opts);
+	export async function reader_contents(opts: Opts & { legacy_id: string }): PromiseResult<RozContent[]> {
+		const xhtml = await get_response_text(`https://labs.j-novel.club/embed/v2/${opts.legacy_id}/data.xhtml`, opts);
 		if (typeof xhtml === "object") return xhtml;
-		const content = [] as ReaderContent;
-
-		const xhtml_lines = xhtml.split('\n');
-		let line = 0;
-		while (!/<div class="main"?/.test(xhtml_lines[line])) line++;
-		while (!/<\/div>/.test(xhtml_lines[++line])) {
-			type HTMLClass = 'img' | 'p' | 'h1' | 'h2';
-			const extract_type_regex = /<(.+?)(>|\s)/;
-			const type: HTMLClass = (extract_type_regex.exec(xhtml_lines[line]) as RegExpExecArray)[1] as HTMLClass;
-			switch (type) {
-				case 'img':
-					content.push({ type: "image", src: html_img_src(xhtml_lines[line]) }); break;
-				case 'p':
-					content.push({ type: "text", text: html_inner_text_content(xhtml_lines[line]) + '\r\n' }); break;
-				case 'h1':
-					content.push({ type: "chapter", title: html_inner_text_content(xhtml_lines[line]) + '\r\n' }); break;
-				case 'h2':
-					content.push({ type: "sub_chapter", title: html_inner_text_content(xhtml_lines[line]) + '\r\n' }); break;
-				default: return { error: new Error(`Parse Error: unknown JNovel html_class of '${type}'`) };
-			}
-		}
-		return content;
+		return html_to_roz_contents(xhtml);
 	}
 	export async function reader(opts: Opts & { legacy_id: string }): PromiseResult<JNovel_Reader> {
 		const [reader_init, contents] = await Promise.all([reader_initial(opts), reader_contents(opts)]);
@@ -151,21 +109,42 @@ export namespace JNovel {
 			toc: reader_init.toc
 		}
 	}
-	export async function reader_volume(opts: Opts & { legacy_id: string }): PromiseResult<JNovel_Reader[]> {
+	export async function reader_volume(opts: Opts & { legacy_id: string, on_uuid_count?: (count: number) => any, on_reader_complete?: () => any }): PromiseResult<JNovel_Reader[]> {
 		const reader_result = await reader(opts);
+        opts.on_reader_complete?.();
 		if ("error" in reader_result) return reader_result;
 		const parts = [reader_result];
 		const uuids: string[] = [opts.legacy_id];
 		const index = reader_result.toc.findIndex(volume => volume.chapters.findIndex(chapter => chapter.uuid === opts.legacy_id) !== -1);
 		const volume_parts = reader_result.toc[index].chapters;
 		for (const volume_part of volume_parts)
-			if (volume_part.selected != true)
+			if (volume_part.selected !== true)
 				uuids.push(volume_part.uuid);
 		for (const uuid of uuids) {
 			const temp_reader = await reader({ ...opts, legacy_id: uuid });
+            opts.on_reader_complete?.();
 			if ("error" in temp_reader) return temp_reader;
 			parts.push(temp_reader);
 		}
 		return parts;
 	}
+
+
+    export function readers_to_roz(readers: JNovel_Reader[]): Roz{
+        const metadata: JNovel_Reader|undefined = readers[0];
+        return {
+			version: 1,
+            uuid: gen_uuid(),
+            source_file: metadata.part.legacy_id,
+            source_file_type: "JNOVEL",
+            title: metadata.part.title,
+            cover: metadata.volume_img_uri,
+            author: null,
+            publisher: null,
+            date: new Date(metadata.serie.created.seconds * 1000).toISOString(),
+            series_name: metadata.part.title,
+            series_no: metadata.part.number,
+            chapters: readers.map<RozChapterContents[]>(jreader => roz_contents_to_roz_chapters_contents(jreader.content)).flat()
+        };
+    }
 }

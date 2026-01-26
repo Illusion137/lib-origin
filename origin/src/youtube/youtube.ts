@@ -1,19 +1,25 @@
-import * as Parser from "./parser";
-import { CookieJar } from "../utils/cookie_util";
-import { PromiseResult, ResponseError } from '../utils/types';
-import { encode_params, eval_json, extract_string_from_pattern, google_query, sapisid_hash_auth1, urlid } from "../utils/util";
-import { Continuation } from "./types/Continuation";
-import { ContinuedResults_0 } from './types/ContinuedResults_0';
-import { CreatePlaylist } from "./types/CreatePlaylist";
-import { InitialData } from './types/types';
-import { YTCFG } from "./types/YTCFG";
-import fetch from "../utils/orifetch";
-import { Proxy } from "../proxy/proxy";
+import * as Parser from "@origin/youtube/parser";
+import type { CookieJar } from "@common/utils/cookie_util";
+import type { PromiseResult, ResponseError } from '@common/types';
+import { extract_string_from_pattern, urlid } from "@common/utils/util";
+import type { Continuation } from "@origin/youtube/types/Continuation";
+import type { ContinuedResults_0 } from '@origin/youtube/types/ContinuedResults_0';
+import type { CreatePlaylist } from "@origin/youtube/types/CreatePlaylist";
+import type { InitialData } from '@origin/youtube/types/types';
+import type { YTCFG } from "@origin/youtube/types/YTCFG";
+import type { Proxy } from "@origin/proxy/proxy";
+import { sapisid_hash_auth1 } from "@common/utils/auth_utilt";
+import { try_json_eval,try_json_parse } from "@common/utils/parse_util";
+import { encode_params, google_query } from "@common/utils/fetch_util";
+import type { RoZFetchRequestInit } from "@common/rozfetch";
+import rozfetch from "@common/rozfetch";
+import { get_native_platform } from "@native/native_mode";
+import { generror_catch } from "@common/utils/error_util";
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent_windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
-	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy };
+	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy, fetch_opts?: RoZFetchRequestInit };
 	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
 	interface ICFG {
 		initial_data: InitialData,
@@ -48,12 +54,11 @@ export namespace YouTube {
 		};
 	}
 	export function playlist_urlid(playlist_url: string) {
-		return urlid(playlist_url, "youtube.com/", "playlist?list=", /\&.+/);
+		return urlid(playlist_url, "youtube.com/", "playlist?list=", /&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, tuser_agent?: string, ytcfg?: YTCFG ): Record<string, any> {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg?: YTCFG ): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
-		tuser_agent;
-		return {
+		const base_headers = {
 			"User-Agent": user_agent_mobile,
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
@@ -81,9 +86,20 @@ export namespace YouTube {
 			"x-youtube-bootstrap-logged-in": "true",
 			"x-youtube-client-name": "67",
 			"x-youtube-client-version": "1.20240717.01.00",
-			"cookie": cookie_jar?.toString(),
 			"Referer": "https://www.youtube.com",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
+		} as const;
+		if(get_native_platform() === "REACT_NATIVE"){
+			return {
+				...base_headers,
+				"Cookies": cookie_jar?.toString()
+			};
+		}
+		else {
+			return {
+				...base_headers,
+				"cookie": cookie_jar?.toString()
+			};
 		}
 	}
 	function get_payload_context(ytcfg: YTCFG, epoch: Date) {
@@ -100,25 +116,27 @@ export namespace YouTube {
 		let extracted = extract_string_from_pattern(html, initial_data_regex0);
 		if (typeof extracted === "object") {
 			extracted = extract_string_from_pattern(html, initial_data_regex1);
-			const initial_data: InitialData = eval_json(extracted as string);
+			const initial_data = try_json_eval<InitialData>(extracted as string);
 			return initial_data;
 		}
-		const initial_data: string = eval_json(extracted);
-		return JSON.parse(initial_data) as InitialData;
+		const initial_data = try_json_eval<string>(extracted);
+        if(typeof initial_data === "object") return initial_data;
+		return try_json_parse<InitialData>(initial_data);
 	}
-	function extract_ytcfg(html: string): YTCFG {
+	function extract_ytcfg(html: string): YTCFG|ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
 		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
-		const ytcfg: YTCFG = eval_json(extracted as string);
+		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}
 	async function get_initial_data_config(opts: Opts, url: string, tuser_agent?: string): Promise<ICFG | ResponseError> {
 		try {
 			tuser_agent;
 			const cookies = opts.cookie_jar?.toString();
-			const page_response = await fetch(url, {
+			const page_response = await rozfetch(url, {
+				...opts.fetch_opts,
 				headers: {
-					...(cookies ? {"Cookies": cookies} : {}),
+					...(cookies ? get_native_platform() === "REACT_NATIVE" ? {"Cookies": cookies} : {"cookie": cookies} : {}),
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
 					"accept-language": "en-US,en;q=0.9",
 					"priority": "u=0, i",
@@ -152,10 +170,15 @@ export namespace YouTube {
 				proxy: opts.proxy,
 				method: "GET"
 			});
+			if("error" in page_response) return page_response;
 			const page_html = await page_response.text();
+            const initial_data = extract_initial_data(page_html);
+            if("error" in initial_data) return initial_data;
+            const ytcfg = extract_ytcfg(page_html);
+            if("error" in ytcfg) return ytcfg;
 			return {
-				initial_data: extract_initial_data(page_html),
-				ytcfg: extract_ytcfg(page_html)
+				initial_data,
+				ytcfg
 			};
 		} catch (error) { return { error: error as Error }; }
 	}
@@ -164,12 +187,22 @@ export namespace YouTube {
 	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any, tuser_agent?: string): PromiseICFGData<T> {
 		try {
 			const icfg = await get_initial_data_config(opts, init_url, tuser_agent);
-			if ("error" in icfg) throw icfg.error;
+			if ("error" in icfg) return icfg;
 			return {
 				icfg,
 				data: parser(icfg.initial_data)
 			};
-		} catch (error) { return { error: error as Error }; }
+		} catch (error) { return generror_catch(error, "Failed to parse YouTube", {opts, init_url}); }
+	}
+    async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
+		try {
+			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
+			const epoch = new Date();
+			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
+			const url = `https://www.youtube.com/youtubei/v1/${path}`;
+			const response = await rozfetch<T>(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
+			return response;
+		} catch (error) { return { error: error as Error } }
 	}
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
@@ -185,19 +218,9 @@ export namespace YouTube {
 			const payload = {
 				continuation: next_con.continuationEndpoint.continuationCommand.token,
 			};
-			const response = await post_check_response(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
+			const response = await post_check_response<ContinuedResults_0>(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
 			if ("error" in response) throw response.error;
-			return (await response.json()) as ContinuedResults_0;
-		} catch (error) { return { error: error as Error } }
-	}
-	async function post_check_response(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
-		try {
-			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
-			const epoch = new Date();
-			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
-			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await fetch(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, "a", new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
-			return response;
+			return await response.json();
 		} catch (error) { return { error: error as Error } }
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
@@ -227,10 +250,10 @@ export namespace YouTube {
 			privacyStatus: privacy,
 			videoIds: []
 		}
-		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload, true);
+		const response = await post_check_response<CreatePlaylist>(opts, ytcfg, "playlist/create?prettyPrint=false", payload, true);
 		if ("error" in response) return response;
 		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
-		return await response.json() as CreatePlaylist;
+		return await response.json();
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {
 		const payload = {

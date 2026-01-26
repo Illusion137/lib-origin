@@ -161,7 +161,7 @@ interface Queue4 {
 
 interface Widget {
     interface: string
-    items: Item[]
+    items: AmazonMusicLibraryPlaylist[]
     header: string
     uuid: string
     onViewed: OnViewed5[]
@@ -173,7 +173,7 @@ interface Widget {
     isCompact?: boolean
 }
 
-interface Item {
+export interface AmazonMusicLibraryPlaylist {
     interface: string
     text?: string
     onItemSelected?: OnItemSelected2[]

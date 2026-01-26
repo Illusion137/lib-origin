@@ -1,3 +1,191 @@
+# Illusi 20.0.0
+  - [ ] Illusi-CLI
+  - [ ] Illusi desktop based on React-Native
+# Illusi 19.0.0
+  - [ ] Added Illusi server (Supabase)
+  - [ ] Fixed remaining bugs
+  - [ ] Added Unit Tests
+# Illusi 18.2.0
+  
+# Illusi 18.1.0
+  -  Fixed bug relating to duplicate new releases
+  - [ ] Fixed bug relating to YouTube Music playlist parsing
+  - [ ] Fixed bug relating to ContextMenu and Track-refreshing
+  - [ ] Fixed bug related to SoundCloud related tracks fr
+  - Fixed CompactArtistComponent
+  - [ ] Fixed YouTube Music Search album being put into playlists tab
+  - [ ] Fixed latest release SQLArtist integration
+  - [ ] Fixed search SQLArtist integration
+  - [ ] Fixed SQLArtist integration re-chaching
+  - Fixed Spotify client integration
+  - Fixed Queryflag `prod`
+  - Fixed Queryflag `prodby`
+  - [ ] Fixed YouTube (Music) artwork not being square for lock-screen // https://docs.expo.dev/versions/latest/sdk/imagemanipulator/
+  - [ ] FourTrackArtwork Album tinting
+  - Added Caching to Album-Playlists as they are mostly static
+  - [ ] Added Edit-Track
+  - [ ] Added specialized playlists to explore
+  - Added Illusi custom shuffle algorithm
+  - [ ] Added Extra-Linker
+  - [ ] Added Keep-Delete
+  - [ ] Added Playlist-Converter
+  - [ ] Added Extras-Help
+  - [ ] Added Watch Artist
+  - [ ] Added SQLTrackSkips
+  - [ ] Added SQLTrackPlays
+  - Added Equalizer
+  - [ ] Added Crossafade
+  - Added Bandlab integration
+  - [ ] Added Sharing intents // https://www.devas.life/supporting-ios-share-extensions-android-intents-on-react-native/
+  - [ ] Added Explore Soundcloud new tracks integration
+  - [ ] Added ExtraDevScreen
+  - [ ] Added Trim-Silence
+  - [ ] Added Audio Normalizer
+  - [ ] Added Synced Lyrics
+  - [ ] Added Lyrics uploading
+  - [ ] Added Lyrics editing
+  - [ ] Added loading screens
+  - [ ] Added custom secondary color to themes
+  - [ ] Added custom AudioPlayer backgrounds
+  - [ ] Added ContextMenu to RowArtist and CompactArtistComponents
+  - [ ] Added Illusi-Rewind context
+  - [ ] Slightly modify PlaylistBase by moving artist-data to center of artwork and searchbar
+  - [ ] Refactored Illusive.Illusi to support get-playlist
+  - [ ] Refactored Illusive.Illusi to support create-playlist
+  - [ ] Refactored Illusive.Illusi to support add-tracks-to-playlist
+  - [ ] Refactored Illusive.Illusi to support delete-tracks-to-playlist
+  - [ ] Refactored Extras-Settings UI
+  - Redesigned TrackTagIcons
+  - [ ] Redesigned Explore UI
+  - [ ] Redesigned Search Screen UI
+  - Redesigned Trim-Track UI
+  - Redesigned Track-Info UI
+  - [ ] Redesigned Batch-Downloader UI
+  - [ ] Redesigned Backpack UI
+  - [ ] Redesigned Themes UI
+  - Redesigned **Sudo** Artist
+  - [ ] Redesigned Statistics UI
+  - [ ] Redesigned Changlog UI
+  - [ ] Redesigned CompactArtistComponent
+  - Redesigned BottomAlert
+  -  Update Audioplayer UI
+  - [ ] Update Lyrics UI
+  - Improved Spotify integration (get_artist, latest_release, etc)
+# Illusi 17.2.0
+  - Fixed bug relating to Audioplayer not handling NaN durations
+  - Fixed bug relating to downloading track thumbnails
+  - Fixed bug relating to being able to share certain tracks that can't be shared as links
+  - Fixed bug relating to downloading YouTube videos
+  - Fixed bug relating to SoundCloud related tracks
+  - Fixed bug relating to SoundCloud tracks not having artworks
+  - Fixed bug relating to navigation in the Explore Page
+  - Fixed bug relating to new releases refresh
+  - Fixed bug relating to search suggestions
+  - (DEV) Fixed bug relating to no fast refresh in Expo
+  - UI redesign for Artist
+  - Improved load times for YouTube playback
+  - Improved load times for SoundCloud playback
+  - Improved YouTube Music parsing
+  - Improved Performance for Artist
+  - Improved Lyrics fetching
+  - Improved UI for Playlist
+  - Improved Past Queue
+  - Improved Trackplayer
+  - Improved SQLGlobal event listener system
+  - Improved YTDL caching
+  - Improved performance of AlbumList
+  - Improved performance of HorizontalRowArtists
+  - Improved performance of TrackHorizontalScrolls
+  - Added Trackplayer retries
+  - Added warmup script to Startup with Pref-Toggles
+  - Added serialization for FS_CACHE for YTDL
+  - Added Track-BottomLine plays for Artist-Popular-Tracks
+  - Added automated dev device check to Sentry
+  - Added custom URI to imported tracks
+  - Added Illusive.get_artist for Illusi
+  - Added FFMPEG retrying
+  - Added stash for artists and their artworks
+  - Added Artist NavLink to Playlist
+  - Added Pref: `new_releases_hide_unknowns`
+  - Added QueryFlags for prods
+  - Added fully selectable text in the Lyrics Modal
+  - Added service icon to RowArtist
+  - Added artwork to RowArtist
+  - Removed metadata from YTDL for sanity
+  - Working on UI redesign for Explore
+  - Working on Futal Shuffle (Illusive Custom Shuffling Algorithm)
+  - SO MUCH DAMN REFACTORING
+# Illusi 17.1.0
+  - Fixed bug relating to document picker not properly adding playback data to tracks
+  - Fixed bug relating to native module get_audio_duration that prevented music downloading
+  - Fixed bug relating to settings not showing in the settings screen
+  - Fixed bug relating to playlists from `uri` would display inproper data
+  - Fixed bug relating to RNSiriShortcuts
+  - Fixed bug relating to Illusi sharing links
+  - Fixed bug relating to failed downloads not showing errors properly
+  - Fixed bug relating to deleted track not updating immediately
+  - Fixed bug relating to Audioplayer never using cached lyrics
+  - Fixed bug relating to Audioplayer IImage not updating when tracks switch
+  - Fixed bug relating to Recently Played Tracks
+  - Fixed bug relating to External Services based on the Prefs system
+  - Fixed bug relating to New Releases based on the Prefs system
+  - Fixed bug relating to get_audio_duration native module
+  - Fixed bug relating to YTDL Innertube
+  - Fixed bug relating to YouTube Music get_library
+  - Fixed bug relating to YouTube Music search
+  - Fixed bug relating to deleting tracks
+  - Migrated to AsyncFNQueue for track_lyrics_downloader
+  - Migrated to {sql}_sync to {sql}_async for Drizzle ORM
+  - Updated UI for Audioplayer Lyrics
+  - Updated UI for Audioplayer Settings
+  - Updated UI for Audioplayer Equalzier-Selector
+  - Added Internal Pref `equalizer_preset`
+  - Added Internal Pref `crossfade`
+  - Added Internal Pref `past_queue`
+  - Added past_queue default playlist to store queue even after app resets
+  - Added truncated mode in Audioplayer-Queue to improve performance
+  - Removed `Formerly Played` default playlist
+  - Refactored YTDL again
+  - ...Proly some more stuff not listed
+# Illusi 17.0.0 (New Arch Migration)
+  - Migrated from raw @react-navigation/native to expo-router
+  - Migrated to React Native New-Architecture
+  - Upgraded from Expo SDK 52 to SDK 54
+  - Replaced SlideUpPanel modal and Modal Components with Screen Modals
+  - Migrated to use drizzle-orm from IllusiSQLUtils
+  - Migrated to @roze/native (internal)
+  - Migrated to Illusive (internal) New-Architecture from Illusi (lib-origin)
+  - Migrated to AsyncFNQueue for track_downloader
+  - Migrating to rozfetch from js.fetch
+  - Migrating to YouTube.js(Innertube) from ytdl(internal)
+  - Refactored more than half of Illusi(mobile) codebase
+  - Implemented logging through Sentry
+  - Introduced countless bugs due to update being late
+  - Added ContextMenu to AudioPlayer IImage
+  - Added URL Linking (with expo-router)
+  - Added checks to IImages to see if Image file exists
+# Illusi 16.2.5
+  - Fixed misc track related bugs
+  - Fixed search related bugs
+  - Allows for query flags when in strict mode
+  - Allows for anti-query flags in autocomplete
+  - Playlist actions use filtered_tracks for context
+  - Added Search input clear button
+# Illusi 16.2.4
+  - Fixed sprinkle in queue related bug
+  - Fixed encoding for discord illusi integration
+  - Fixed bug related to recently_played_tracks
+  - Fixed bug relating to adding playback data to tracks
+  - Fixed bug relating to getting highest_quality_service_thumbnail_uri
+  - Fixed bug relating to most played albums (as of artist)
+  - Fixed bug relating to albums not having the high quality thumbnail
+  - Improved startup speed
+  - Improved should_automatic_refresh YouTube Music new_releases
+  - Added Query Flag related Prefs
+  - Added more query flags
+  - Added strict search mode toggle
+  - Refactored Search Screen to improve perf, loading animation, UI and UX design
+  - Refactored Illusi Icons to use Illusive without syntax errors
 # Illusi 16.1.4
   - Fixed bug relating to refreshing data in playlists
   - Fixed bug relating to lyrics fetching

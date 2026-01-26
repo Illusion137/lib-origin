@@ -1,15 +1,19 @@
-import { Proxy } from "../../origin/src";
-import { CookieJar } from "../../origin/src/utils/cookie_util"
-import { ResponseError, TimedCache } from "../../origin/src/utils/types"
-import { remove } from "../../origin/src/utils/util";
-import { Chapter } from "../../origin/src/youtube_dl/types";
-import { Constants } from "./constants";
-import { Prefs } from "./prefs";
+import type * as Origin from "@origin/index";
+import type { CookieJar } from "@common/utils/cookie_util"
+import type { ResponseError} from "@common/types";
+import { TimedCache } from "@common/types"
+// import type { Chapter } from "@origin/youtube_dl/types";
+import { Constants } from "@illusive/constants";
+import type { Prefs } from "@illusive/prefs";
+import { remove } from "@common/utils/clean_util";
+import type { BasePref } from "@native/mmkv/mmkv_utils";
+import type { RoZFetchRequestInit } from "@common/rozfetch";
+import type { YouTubeDL } from '@origin/youtube_dl/index';
 
 type ArtworkCacheType = 'force-cache';
 
 export type SQLTables = "sqlite_master"
-    | "new_releases"
+    | "new_releases" | "artists"
     | "tracks" | "tracks_deleted" 
     | "recently_played_tracks" | "recently_played_tracks_deleted" 
     | "backpack" | "backpack_deleted" 
@@ -19,7 +23,7 @@ export interface ImageArtwork {
     uri: string
     cache: ArtworkCacheType
 }
-export type Artwork = ImageArtwork | number
+export type Artwork = ImageArtwork | string | number
 export type Promises = Promise<unknown>[]
 
 export interface Route<T> {"key": string, "name": string, "params": T, path: string}
@@ -29,11 +33,12 @@ export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': s
                        {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
                        {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
 
+export type LoadingState = "NONE" | "LOADING" | "COMPLETE";
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
-export type DownloadTrackResult = "GOOD" | "ERROR";
+export type DownloadTrackResult = "GOOD" | "EXISTS" | ResponseError;
 export type SetState = any;
-export type SQLCount = {"COUNT(1)": number};
+export interface SQLCount {"COUNT(1)": number}
 
 export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE" 
     | "NEWEST" | "OLDEST" 
@@ -44,8 +49,11 @@ export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE"
     | "DOWNLOAD_DATE_HILOW" | "DOWNLOAD_DATE_LOWHI"
     | "LAST_PLAYED_DATE_HILOW" | "LAST_PLAYED_DATE_LOWHI"
     | "LAST_SAMPLED_DATE_HILOW" | "LAST_SAMPLED_DATE_LOWHI"
+    | "LONGEST_PLAYED_HILOW" | "LONGEST_PLAYED_LOWHI"
 
-export type BottomAlertType = "GOOD"|"INFO"|"WARN";
+export type OnErrorCallback = (err: ResponseError) => void
+
+export type BottomAlertType = "GOOD"|"INFO"|"WARN"|"ERROR";
 
 export interface SQLTable {
     name: string
@@ -56,8 +64,8 @@ export interface SQLTable {
 }
 export type Runs = {text: string, navigationEndpoint: any}[];
 
-export type PrefEntry = [Prefs.PrefOptions, Prefs.Pref<unknown>];
-export type GroupSection<T> = {title: string, data: T[]};
+export type PrefEntry = [Prefs.PrefOptions, BasePref<unknown>];
+export interface GroupSection<T> {title: string, data: T[]};
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
@@ -79,14 +87,23 @@ export interface AlphabetScroll {
     current_position: number,
     top_scroll: number
 }
-export type ConvertTo = { uuid_uri: string } | { title: string };
-export interface LinkerLink {
+export interface ConvertToUUIDURI { uuid_uri: string };
+export interface ConvertToTitle { title: string };
+export type ConvertTo = ConvertToUUIDURI | ConvertToTitle;
+export interface BaseLinkerLink {
     link_uuid: string;
-    uuid_uri: string;
-    full_sample: boolean;
-    to_service: MusicServiceType;
-    to: ConvertTo;
+    illusi_uuid: string;
+    service_uri: IllusiveURI;
+    full_service_playlist: boolean;
+    on_startup: boolean;
 }
+export interface IncomingLinkerLink extends BaseLinkerLink{
+    type: "INCOMING";
+}
+export interface OutgoingLinkerLink extends BaseLinkerLink{
+    type: "OUTGOING";
+}
+export type LinkerLink = IncomingLinkerLink | OutgoingLinkerLink;
 
 export interface DefaultPlaylist {
     name: string;
@@ -116,25 +133,28 @@ export interface IllusiveThumbnail {
 }
 
 export interface Downloading {
+    track: Track;
     uid: string
     progress: number
     execution_id: number
     progress_updater?: SetState
+    redownload: boolean;
     duration: number
 }
+export interface LyricsDownloading {
+    track: Track; 
+    uid: string;
+}
+export type LyricsDownloadingResult = ResponseError | string;
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = {name: string, uuid: string, uri?: never} | {name: string, uuid?: never, uri: IllusiveURI|null};
 
-interface Basic_Artist<T, U> {
-    uuid: string
-    avatar_thumbnails: T
-    name: string
-    uris: U
-    verified?: boolean
+export interface SQLArtist {
+    uri: string;
+    name: string;
+    artwork_url: string;
 }
-export type SQLArtist = Basic_Artist<string, string>;
-export type Artist = Basic_Artist<IllusiveThumbnail[], IllusiveURI[]>;
 
 export type ExplicitMode = "NONE" | "EXPLICIT" | "CLEAN";
 interface Basic_Album<T, U, V> {
@@ -153,7 +173,7 @@ interface TrackDownloadingData {
     saved: boolean
     playlist_saved: boolean
 }
-interface TrackPlaybackData {
+export interface TrackPlaybackData {
     added: boolean
     successful: boolean
     artwork: Artwork
@@ -168,13 +188,14 @@ export interface TrackMetaData {
     enddur?: number;
     nsplit?: number;
     age_restricted?: boolean;
-    chapters?: Chapter[];
+    chapters?: YouTubeDL.Chapter[];
     songs?: YTDescriptionSong[];
     unavailable?: boolean;
 }
 // Regex
 // \s+.+?: (.+?)\n
 interface Basic_Track<T, U, V, X> {
+    id?: number;
     uid: string
     title: string
     alt_title?: string
@@ -196,6 +217,7 @@ interface Basic_Track<T, U, V, X> {
     spotify_id?: string
     amazonmusic_id?: string
     applemusic_id?: string
+    bandlab_id?: string
     artwork_url?: string
     thumbnail_uri?: string
     media_uri?: string
@@ -204,9 +226,7 @@ interface Basic_Track<T, U, V, X> {
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
 }
-export type SQLTrackArray = [ string, string, string, string, number, string, string, string, ExplicitMode, boolean, string, number, string, string, string, string, number, string, string, string, string, string, string, string, string, string ];
 
-export type SQLTrack = Basic_Track<string, string, string, string>
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
 export interface SmallTrack {
@@ -227,7 +247,7 @@ export interface InheritedSearch {
     query: string
     mode: PlaylistInheritanceMode
 }
-type LinkedPlaylist = { max_depth: number, uri: IllusiveURI, uuid?: never } | { max_depth: number, uri?: never, uuid: string };
+export type LinkedPlaylist = { max_depth: number, uri: IllusiveURI, uuid?: never } | { max_depth: number, uri?: never, uuid: string };
 interface PlaylistVisualData {
     four_track?: Track[]
     track_count?: number
@@ -274,18 +294,19 @@ export interface PlaylistsTracks {
     track_uid: string
 }
 
-export type MaybeErrors = ResponseError[] | undefined;
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
+export type CompactPlaylistAlbumType = "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG";
 export interface Basic_CompactPlaylist<T, U, V, W> {
     title: T
     artist: U
     artwork_thumbnails?: V
     artwork_url?: string
+    artwork_index?: number
     date?: ISOString
     explicit?: ExplicitMode
     type?: CompactPlaylistType
-    album_type?: "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG"
-    song_track?: W
+    album_type?: CompactPlaylistAlbumType
+    song_track?: W|null
 }
 export type SQLCompactPlaylist = Basic_CompactPlaylist<string, string, string, string>;
 export type CompactPlaylist = Basic_CompactPlaylist<NamedUUID, NamedUUID[], IllusiveThumbnail[], Track>;
@@ -297,7 +318,7 @@ export interface TimestampedCompactPlaylist extends CompactPlaylist {
 }
 export interface CompactArtist {
     name: NamedUUID
-    profile_artwork_url?: string
+    profile_artwork_url?: Artwork
     is_official_artist_channel: boolean
 }
 export type SearchSuggestion = string|Track;
@@ -316,12 +337,12 @@ export interface MusicServicePlaylist {
     artwork_url?: string
     date?: ISOString
     continuation: Record<string, any> | null
-    error?: MaybeErrors
+    error?: ResponseError
 }
 export interface MusicServicePlaylistContinuation {
     tracks: Track[]
     continuation: Record<string, any> | null
-    error?: MaybeErrors
+    error?: ResponseError
 }
 
 export interface MusicSearchResponse {
@@ -329,8 +350,13 @@ export interface MusicSearchResponse {
     artists: CompactArtist[]
     playlists: CompactPlaylist[]
     albums: CompactPlaylist[]
-    error?: MaybeErrors
+    error?: ResponseError
     continuation: Record<string, any> | null
+}
+
+export interface StatefullMusicSearchResponse {
+    state: "NONE"|"LOADING"|"FUFILLED";
+    search_data: MusicSearchResponse;
 }
 
 export interface MusicServiceArtist {
@@ -343,9 +369,9 @@ export interface MusicServiceArtist {
     singles_eps: CompactPlaylist[]
     appears_on?: CompactPlaylist[]
     background_artwork_url?: string
-    profile_artwork_url?: string
+    profile_artwork_url?: Artwork
     similar_artists: CompactArtist[],
-    error?: MaybeErrors
+    error?: ResponseError
 }
 export interface YTDescriptionSong {
     artwork_url: string,
@@ -357,8 +383,7 @@ export interface DownloadFromIdResult {
     url: string;
     metadata?: {
         artist_id: string;
-        age_restricted: boolean;
-        chapters: Chapter[];
+        chapters: YouTubeDL.Chapter[];
         songs?: YTDescriptionSong[]
     };
 }
@@ -369,23 +394,22 @@ export interface IllusiveExplore {
 
 export type ParsedUri = [MusicServiceURI, string]
 
-export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "API";
-export type MusicServiceURI = "illusi" | "musi" | "youtube" | "youtubemusic" | "spotify" | "amazonmusic" | "applemusic" | "soundcloud" | "api";
+export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "BandLab" | "API";
+export type MusicServiceURI = "illusi" | "musi" | "youtube" | "youtubemusic" | "spotify" | "amazonmusic" | "applemusic" | "soundcloud" | "bandlab" | "api";
 export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
 
-export interface CompactPlaylistsResult {"playlists": CompactPlaylist[], "error"?: Error}
-export interface TrackMix { "tracks": Track[], "error"?: Error }
+export type CompactPlaylistsResult = {"playlists": CompactPlaylist[]} | ResponseError;
+export type TrackMix = { "tracks": Track[], "error"?: Error } | ResponseError;
 
 export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
-
-export type SearchOpts = {limit?: number; proxy?: Proxy.Proxy};
-export type ArtistOpts = {proxy?: Proxy.Proxy};
+export interface SearchOpts {limit?: number; proxy?: Origin.Proxy.Proxy}
+export interface ArtistOpts {proxy?: Origin.Proxy.Proxy}
 
 const search_cache: TimedCache<string, MusicSearchResponse> = new TimedCache<string, MusicSearchResponse>(Constants.playlist_cache_duration_seconds * 1000);
 export class MusicService {
-    app_icon: string | number
+    app_icon: string|number
     web_view_url?: string
     pref_cookie_jar?: Prefs.PrefOptions
     link_text: string
@@ -400,7 +424,7 @@ export class MusicService {
     add_tracks_to_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
     delete_tracks_from_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
     get_user_playlists?: () => Promise<CompactPlaylistsResult>
-    get_playlist: (url: string) => Promise<MusicServicePlaylist>
+    get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
@@ -408,7 +432,7 @@ export class MusicService {
     get_new_releases?: () => Promise<CompactPlaylist[]>
     get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>
     constructor(s: {
-        app_icon: string | number,
+        app_icon: string|number,
         web_view_url?: string,
         pref_cookie_jar?: Prefs.PrefOptions
         link_text: string,
@@ -423,7 +447,7 @@ export class MusicService {
         add_tracks_to_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
         delete_tracks_from_playlist?: (tracks: Track[], playlist_uri: string) => Promise<boolean>
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
-        get_playlist: (url: string) => Promise<MusicServicePlaylist>,
+        get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
         download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
@@ -440,10 +464,8 @@ export class MusicService {
         this.cookie_jar_callback = s.cookie_jar_callback;
         this.search = Constants.use_illusive_cahce ? async(query: string, opts?: SearchOpts) => {
             const key = query + ":MS:" + String(this.app_icon);
-            if(search_cache.get(key)) return search_cache.get(key)!; 
-            const result = await s.search!(query, opts);
-            search_cache.add(query, result);
-            return result;
+            if(search_cache.get(key)) return search_cache.get(key)!;
+            return search_cache.update(key, await s.search!(query, opts));
         } : s.search;
         this.search_continuation = s.search_continuation;
         this.explore = s.explore;
@@ -469,16 +491,16 @@ export class MusicService {
     has_credentials() {
         if (this.cookie_jar_callback === undefined) return false;
         for (const required_cookie_credential of this.required_cookie_credentials) {
-            if (this.cookie_jar_callback().getCookie(required_cookie_credential) === undefined)
+            if (this.cookie_jar_callback?.().getCookie?.(required_cookie_credential) === undefined)
                 return false;
         }
         return true;
     }
-    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError[]}> {
+    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError}> {
         const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
-        if(this.get_user_playlists === undefined) return {error: [{error: new Error("get_user_playlist is undefined")}], map};
+        if(this.get_user_playlists === undefined) return {error: {error: new Error("get_user_playlist is undefined")}, map};
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {error: [account_playlists as ResponseError], map};
+        if("error" in account_playlists) return {error: account_playlists, map};
         const service_domain_map: Record<MusicServiceURI, string> = {
             illusi: "",
             musi: "",
@@ -488,15 +510,16 @@ export class MusicService {
             amazonmusic: "https://music.amazon.com",
             applemusic: "https://music.apple.com/library/playlist/",
             soundcloud: "https://soundcloud.com/",
+            bandlab: "https://www.bandlab.com/",
             api: "",
         };
         for(const playlist of account_playlists.playlists) {
             // eslint-disable-next-line prefer-const
             let [service, endpoint] = playlist.title.uri!.split(':') as [MusicServiceURI, string];
-            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: [{error: new Error("Service lacks playlist list")}], map};
+            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: {error: new Error("Service lacks playlist list")}, map};
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
             if(service === "spotify") {
-                if(playlist.type === undefined) return {error: [{error: new Error("Playlist Type is undefined")}], map};
+                if(playlist.type === undefined) return {error: {error: new Error("Playlist Type is undefined")}, map};
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
                 map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
             } else
@@ -532,6 +555,8 @@ export class PQueue<T> {
         this.head = 0;
         this.tail = 0;
     }
+    get length() { return this.tail - this.head; }
+    get is_empty() { return this.length === 0; }
     enqueue(element: T): void {
         this.elements[this.tail] = element;
         this.tail++;
@@ -543,6 +568,4 @@ export class PQueue<T> {
         return item;
     }
     peek() { return this.elements[this.head]; }
-    get length() { return this.tail - this.head; }
-    get is_empty() { return this.length === 0; }
 }

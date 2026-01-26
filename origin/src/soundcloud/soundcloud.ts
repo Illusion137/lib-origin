@@ -1,12 +1,15 @@
-import { Proxy } from "../proxy/proxy";
-import { CookieJar } from "../utils/cookie_util";
-import { FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "../utils/types";
-import { encode_params, extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, urlid } from "../utils/util";
-import { HydratablePlaylist, HydratableUser, Hydration } from "./types/Hydration";
-import { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "./types/Search";
+import { CookieJar } from "@common/utils/cookie_util";
+import type { BaseOpts, FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "@common/types";
+import { extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, milliseconds_of, urlid } from "@common/utils/util";
+import type { HydratablePlaylist, HydratableUser, Hydration } from "@origin/soundcloud/types/Hydration";
+import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "@origin/soundcloud/types/Search";
+import { encode_params } from "@common/utils/fetch_util";
+import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
+import { generror } from "@common/utils/error_util";
+import { try_json_parse } from "@common/utils/parse_util";
 
 export namespace SoundCloud {
-    interface Opts { cookie_jar?: CookieJar, client_id?: (string|ResponseError), proxy?: Proxy.Proxy }
+    type Opts = BaseOpts & {client_id?: (string|ResponseError)};
     let app_version = 1727431820;
     const client_cache = {client: {client_id: null as null|string, user_id: null as null|string}, enabled: true};
 
@@ -15,14 +18,14 @@ export namespace SoundCloud {
     export function client_cache_user_full() { return client_cache.enabled && client_cache.client.user_id !== null; }
 
     function requires_cookies(opts: Opts): ResponseError | ResponseSuccess {
-        if(opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return {error: new Error("No cookies supplied")};
+        if(opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return generror("No cookies supplied", {opts});
         return {success: true};
     }
     export function clean_permalink(permalink?: string) {
         if(permalink === undefined) return "";
         return urlid(permalink, "m.soundcloud.com/", "soundcloud.com/", /\?.+/);
     }
-    function page_method_options(cookie_jar?: CookieJar): RequestInit {
+    function page_method_options(opts: Opts): RoZFetchRequestInit {
         return {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
@@ -37,16 +40,21 @@ export namespace SoundCloud {
                 "sec-fetch-mode": "navigate",
                 "sec-fetch-site": "same-origin",
                 "upgrade-insecure-requests": "1",
-                "cookie": cookie_jar?.toString() as string
+                "cookie": opts.cookie_jar?.toString() as string
             },
             referrerPolicy: "strict-origin-when-cross-origin",
             body: null,
-            method: "GET"
+            method: "GET",
+            cache_opts: {
+                cache_ms: milliseconds_of({hours: 1}),
+                cache_mode: "file"
+            },
+            ...opts.fetch_opts
         }
     }
-    function api_method_options(cookie_jar?: CookieJar): RequestInit {
-        const datadome_cookie = cookie_jar?.getCookie('datadome');
-        const oauth_cookie = cookie_jar?.getCookie('oauth_token');
+    function api_method_options(opts: Opts): RoZFetchRequestInit {
+        const datadome_cookie = opts.cookie_jar?.getCookie('datadome');
+        const oauth_cookie = opts.cookie_jar?.getCookie('oauth_token');
         return {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
@@ -62,16 +70,21 @@ export namespace SoundCloud {
                 "x-datadome-clientid": datadome_cookie?.getData()?.value as string,
                 "Referer": "https://soundcloud.com/",
                 "Referrer-Policy": "origin",
-                "cookie": cookie_jar?.toString() as string
+                "cookie": opts.cookie_jar?.toString() as string
             },
             body: null,
-            method: "GET"
+            method: "GET",
+            cache_opts: {
+                cache_ms: milliseconds_of({hours: 1}),
+                cache_mode: "file"
+            },
+            ...opts.fetch_opts
         }
     }
-    function post_api_headers(cookie_jar: CookieJar) {
-        if(cookie_jar === undefined) cookie_jar === new CookieJar([]);
-        const oauth_cookie = cookie_jar.getCookie('oauth_token');
-        const datadome_cookie = cookie_jar.getCookie('datadome');
+    function post_api_headers(opts: Opts) {
+        if(opts.cookie_jar === undefined) opts.cookie_jar === new CookieJar([]);
+        const oauth_cookie = opts.cookie_jar?.getCookie('oauth_token');
+        const datadome_cookie = opts.cookie_jar?.getCookie('datadome');
         return {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "accept": "application/json, text/javascript, */*; q=0.01",
@@ -89,30 +102,38 @@ export namespace SoundCloud {
             "Referrer-Policy": "origin"
         }
     }
-    export async function get_client_id(scripts: string[], cookie_jar?: CookieJar) {
-        if(client_cache_full()) return client_cache.client.client_id!;
-        for(const asset_script of asset_scripts(scripts)) {
-            const response = await fetch(asset_script, api_method_options(cookie_jar));
-            if(!response.ok) continue;
+    export async function get_client_id(opts: Opts & {scripts?: string[], url?: string}) {
+        if(client_cache_full()) return { client_id: client_cache.client.client_id!, hydration: null};
+        let hydration: null|Awaited<ReturnType<typeof get_hydration>> = null;
+        if(!opts.scripts){
+            hydration = await get_hydration(opts.url ?? "https://soundcloud.com/", {cookie_jar: opts.cookie_jar});
+            if ("error" in hydration) return hydration;
+            opts.scripts = hydration.scripts_urls;
+        }
+
+        for(const asset_script of asset_scripts(opts.scripts)) {
+            const response = await rozfetch(asset_script, api_method_options({...opts, fetch_opts: {...opts.fetch_opts, cache_opts: undefined}}));
+            if("error" in response) return response;
             const extracted = extract_string_from_pattern(await response.text(), /client_id: ?"(.+?)"/si);
             if(typeof extracted === "object") continue;
-            return extracted;
+            return { client_id: extracted, hydration};
         }
-        return {error: new Error("Can't find client_id")};
+        return generror("Can't find client_id", {opts});
     }
-    export async function extract_from_page(url: string, pattern: RegExp, opts: Opts): PromiseError<{extracted: string, full: string}> {
-        const response = await fetch(url, page_method_options(opts.cookie_jar));
-        if (!response.ok) return {error: new Error("Response not ok: extractFromPage")};
+    export async function extract_from_page(url: string, pattern: RegExp, opts: Opts): PromiseResult<{extracted: string, full: string}> {
+        const response = await rozfetch(url, page_method_options(opts));
+        if ("error" in response) return response;
         const text = await response.text();
         const exec = pattern.exec(text);
-        if (exec === null || exec[1] === undefined) return {error: new Error("Couldn't extract pattern: extractFromPage")};
+        if (exec?.[1] === undefined) return generror("Couldn't extract pattern: extractFromPage", {url, pattern, opts});
         return {extracted: exec[1], full: text};
     }
-    export async function get_hydration(url: string, opts: Opts): PromiseError<{hydration: Hydration, scripts_urls: string[]}> {
+    export async function get_hydration(url: string, opts: Opts): PromiseResult<{hydration: Hydration, scripts_urls: string[]}> {
         const hydration_text = await extract_from_page(url, /__sc_hydration ?= ?(.+?);<\/script>/si, opts);
         if ("error" in hydration_text) return {error: hydration_text.error};
-        const hydration: Hydration = JSON.parse(hydration_text.extracted);
-        
+        const hydration = try_json_parse<Hydration>(hydration_text.extracted);
+        if("error" in hydration) return hydration;
+
         const version_string = extract_string_from_pattern(hydration_text.full, /window.__sc_version ?= ?"(.+?)"/si);
         if (typeof version_string === "object") return version_string;
         app_version = parseInt(version_string);
@@ -140,51 +161,66 @@ export namespace SoundCloud {
         if(opts.client_id === undefined) {
             hydration = await get_hydration(opts.hydration_url ?? `https://soundcloud.com/`, opts);
             if("error" in hydration) return hydration;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
+            if(opts.client_id === undefined){
+                const client_id = await get_client_id({...opts, scripts: hydration.scripts_urls});
+                if(!("error" in client_id)){
+                    opts.client_id = client_id.client_id;
+                }
+                else return client_id;
+            }
         }
         const params = {
             ...opts.params,
             ...get_locale_params(opts)
         }
-        const response = await fetch(`https://api-v2.soundcloud.com/${opts.path}?${encode_params(params)}`, api_method_options(opts.cookie_jar));
-        if(!response.ok) return {error: new Error(String(response.status))};
-        return {data: await response.json() as SearchOf<T>, client_id: opts.client_id, hydration};
+        const response = await rozfetch<SearchOf<T>>(`https://api-v2.soundcloud.com/${opts.path}?${encode_params(params)}`, api_method_options(opts));
+        if("error" in response) return response;
+        const response_search_of = await response.json();
+        if("error" in response_search_of) return response_search_of;
+        return {data: response_search_of, client_id: opts.client_id, hydration};
     }
-    export async function apipost(opts: Opts & {path: string, params?: Record<string, any>, payload: object|null, method?: FetchMethod, hydration_url?: string, }) {
+    export async function apipost<T>(opts: Opts & {path: string, params?: Record<string, any>, payload: object|null, method?: FetchMethod, hydration_url?: string, }) {
         const has_cookies = requires_cookies(opts);
         if("error" in has_cookies) return has_cookies;
         let hydration = {} as Awaited<ReturnType<typeof get_hydration>>;
         if(opts.client_id === undefined) {
             hydration = await get_hydration(opts.hydration_url ?? `https://soundcloud.com/`, opts);
             if("error" in hydration) return hydration;
-            opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
+            if(opts.client_id === undefined){
+                const client_id = await get_client_id({...opts, scripts: hydration.scripts_urls});
+                if(!("error" in client_id)){
+                    opts.client_id = client_id.client_id;
+                }
+                else return client_id;
+            }
         }
         const params = {
             ...opts.params,
             ...get_locale_params(opts)
         }
-        const response = await fetch(`https://api-v2.soundcloud.com/${opts.path}?${encode_params(params)}`, {method: opts.method ?? "POST", body: opts.payload === null ? null : JSON.stringify(opts.payload), headers: post_api_headers(opts.cookie_jar!)});
-        if(!response.ok) return {error: new Error(String(response.status))};
+        const response = await rozfetch<T>(`https://api-v2.soundcloud.com/${opts.path}?${encode_params(params)}`, {method: opts.method ?? "POST", body: opts.payload === null ? null : JSON.stringify(opts.payload), headers: post_api_headers(opts), ...opts.fetch_opts});
+        if("error" in response) return response;
         return {data: response, client_id: opts.client_id, hydration};
     }
-    export function combine_continuation(current: SearchOf<unknown>, next: SearchOf<unknown>) {
+    export function combine_continuation<T>(current: SearchOf<T>, next: SearchOf<T>): SearchOf<T> {
         return {
             collection: current.collection.concat(next.collection),
             next_href: next.next_href,
             query_urn: null
         }
     }
-    export async function continuation(next_href: string, opts: Opts, depth = -1): Promise<SearchOf<unknown>> {
+    export async function continuation<T>(next_href: string, opts: Opts, depth = -1): Promise<SearchOf<T>> {
         try {
             if(next_href === null || next_href === undefined || next_href === "" || depth === 0) throw new Error();
             const locale_params = get_locale_params(opts);
-            const next_response = await fetch(`${next_href}&${encode_params(locale_params)}`, api_method_options());
-            if(!next_response.ok) throw new Error(String(next_response.status));
-            const next_data: SearchOf<unknown> = await next_response.json();
+            const next_response = await rozfetch<SearchOf<T>>(`${next_href}&${encode_params(locale_params)}`, api_method_options(opts));
+            if("error" in next_response) throw next_response.error;
+            const next_data = await next_response.json();
+            if("error" in next_data) throw next_data.error;
             if(depth === 1) return next_data;
-            const combined_data = combine_continuation(next_data, await continuation(next_data.next_href, opts, depth - 1));
+            const combined_data = combine_continuation<T>(next_data, await continuation(next_data.next_href, opts, depth - 1));
             return combined_data;
-        } catch (error) { 
+        } catch (_) { 
             return {
                 collection: [],
                 next_href: "",
@@ -202,13 +238,20 @@ export namespace SoundCloud {
             case "PLAYLISTS": return "search/playlists_without_albums?";
         }
     }
-    type PromiseError<T>  = Promise<T|ResponseError>;
     export async function try_user_id(url: string, opts: Opts) {
         if(client_cache_user_full()) return [client_cache.client.client_id, client_cache.client.user_id!];
         const hydration = await get_hydration(url, opts);
         if("error" in hydration) return hydration;
         const anonymous_hydration = hydration.hydration.find(item => item.hydratable === "anonymousId");
-        const res: [string|undefined|ResponseError, string|undefined] = [opts.client_id ?? (client_cache.client?.client_id ?? await get_client_id(hydration.scripts_urls, opts.cookie_jar)), anonymous_hydration?.data];
+        if(opts.client_id === undefined){
+            const client_id = await get_client_id({...opts, scripts: hydration.scripts_urls});
+            if(!("error" in client_id)){
+                opts.client_id = client_id.client_id;
+            }
+            else return client_id;
+        }
+        // TODO investigate this
+        const res: [string|undefined|ResponseError, string|undefined] = [opts.client_id ?? client_cache.client?.client_id, anonymous_hydration?.data];
         if(typeof res[0] === "object" && !is_empty(res) ) return res[0];
         if(client_cache.enabled) {
             if(!is_empty(res[0]))
@@ -218,12 +261,11 @@ export namespace SoundCloud {
         }
         return res; 
     }
-    export async function search(search_type: "TRACKS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Track>>
-    export async function search(search_type: "PEOPLE", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<User>>
-    export async function search(search_type: "ALBUMS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
-    export async function search(search_type: "PLAYLISTS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist>>
-    export async function search(search_type: "EVERYTHING", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist|Track|User>>
-    export async function search(search_type: SearchType, opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ClientSearchOf<Playlist|Track|User>> {
+    export async function search(search_type: "TRACKS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<Track>>
+    export async function search(search_type: "PEOPLE", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<User>>
+    export async function search(search_type: "ALBUMS"|"PLAYLISTS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<Playlist>>
+    export async function search(search_type: "EVERYTHING", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<Playlist|Track|User>>
+    export async function search(search_type: SearchType, opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<Playlist|Track|User>> {
         const hydration = await try_user_id(`https://soundcloud.com/search?${encode_params({q: opts.query})}`, opts);
         if("error" in hydration) return hydration;
         opts.client_id = hydration[0]!;
@@ -237,10 +279,11 @@ export namespace SoundCloud {
             limit: opts.limit ?? 20,
             offset: opts.offset ?? 0,
         }
-        const search_response = await fetch(`https://api-v2.soundcloud.com/${search_type_to_api_method(search_type ?? "EVERYTHING")}${encode_params(params)}`, api_method_options(opts.cookie_jar));
-        if(!search_response.ok) return {error: new Error(`${search_response.status} : ${search_response.statusText}`)};
-        const search_data: Search = await search_response.json() as Search;
-        const result: SearchOf<Playlist|Track|User> = combine_continuation(search_data, await continuation(search_data.next_href, opts, opts.depth ?? 0) ) as unknown as SearchOf<Playlist|Track|User>;
+        const search_response = await rozfetch<Search>(`https://api-v2.soundcloud.com/${search_type_to_api_method(search_type ?? "EVERYTHING")}${encode_params(params)}`, api_method_options(opts));
+        if("error" in search_response) return search_response;
+        const search_data = await search_response.json();
+        if("error" in search_data) return search_data;
+        const result = combine_continuation<Playlist|Track|User>(search_data, await continuation<Playlist|Track|User>(search_data.next_href, opts, opts.depth ?? 0) );
         return {data: result, client_id: opts.client_id};
     }
     type ArtistMode = "ALL" | "POPULAR_TRACKS" | "TRACKS" | "ALBUMS" | "PLAYLISTS" | "REPOSTS";
@@ -259,18 +302,21 @@ export namespace SoundCloud {
         let user_hyrdration: HydratableUser = {} as never;
         const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.artist_permalink)}`, opts);
         if("error" in hydration) return hydration;
-        opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id; 
+        if(opts.client_id === undefined){
+            const client_id = await get_client_id({...opts, scripts: hydration.scripts_urls});
+            if(!("error" in client_id)){
+                opts.client_id = client_id.client_id;
+            }
+            else return client_id;
+        }
         if (typeof opts.client_id === "object") return opts.client_id;
         user_hyrdration = hydration.hydration.find((hydratable) => hydratable.hydratable == "user") as HydratableUser;
         return {id: String(user_hyrdration.data.id), hydration: user_hyrdration, client_id: opts.client_id};
     }
 
-    export async function get_artist(mode: "POPULAR_TRACKS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "TRACKS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "REPOSTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Track>>
-    export async function get_artist(mode: "ALBUMS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: "PLAYLISTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist>>
-    export async function get_artist(mode: ArtistMode = "ALL", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseError<ArtistUser<Playlist|User|Track>> {
+    export async function get_artist(mode: "POPULAR_TRACKS"|"TRACKS"|"REPOSTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ArtistUser<Track>>
+    export async function get_artist(mode: "ALBUMS"|"PLAYLISTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ArtistUser<Playlist>>
+    export async function get_artist(mode: ArtistMode, opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ArtistUser<Playlist|User|Track>> {
         let artist_id = clean_permalink(opts.artist_id);
         let user_hyrdration: HydratableUser = {} as never;
         if(!is_empty(opts.artist_permalink)) {
@@ -288,15 +334,22 @@ export namespace SoundCloud {
         }
         //
         const repost_mode_str = mode === "REPOSTS" ? "stream/" : "";
-        const artist_response = await fetch(`https://api-v2.soundcloud.com/${repost_mode_str}users/${artist_id}/${artist_mode_to_api_method(mode ?? "ALL")}?${encode_params(params)}`, api_method_options(opts.cookie_jar) );
-        if(!artist_response.ok) return {error: new Error(`${artist_response.status} : ${artist_response.statusText}`)};
-        const artist: Search = await artist_response.json() as Search;
-        return {user: user_hyrdration, artist_data: combine_continuation(artist, await continuation(artist.next_href, opts, opts.depth ?? 0)) as unknown as SearchOf<Playlist|User|Track>};
+        const artist_response = await rozfetch<Search>(`https://api-v2.soundcloud.com/${repost_mode_str}users/${artist_id}/${artist_mode_to_api_method(mode ?? "ALL")}?${encode_params(params)}`, api_method_options(opts) );
+        if("error" in artist_response) return artist_response;
+        const artist = await artist_response.json();
+        if("error" in artist) return artist;
+        return {user: user_hyrdration, artist_data: combine_continuation<Playlist|User|Track>(artist, await continuation<Playlist|User|Track>(artist.next_href, opts, opts.depth ?? 0))};
     }
     export async function get_playlist(opts: Opts & ({ playlist_path: string })) {
         const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.playlist_path)}`, opts);
         if("error" in hydration) return hydration;
-        opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
+        if(opts.client_id === undefined){
+            const client_id = await get_client_id({...opts, scripts: hydration.scripts_urls});
+            if(!("error" in client_id)){
+                opts.client_id = client_id.client_id;
+            }
+            else return client_id;
+        }
         if (typeof opts.client_id === "object") return opts.client_id;
         const playlist_hyrdration: HydratablePlaylist = hydration.hydration.find((hydratable) => hydratable.hydratable == "playlist") as HydratablePlaylist;
 
@@ -310,13 +363,17 @@ export namespace SoundCloud {
             ids: playlist_hyrdration.data.tracks.map(track => String(track.id)).join(",")
         }
         const params = Object.assign(locale_params, opts_params);
-        const playlist_tracks_response = await fetch(`https://api-v2.soundcloud.com/tracks?${encode_params(params)}`, { headers: post_api_headers(opts.cookie_jar!), method: "GET" });
-        if(!playlist_tracks_response.ok) return {error: new Error(String(playlist_tracks_response.status))};
-        const playlist_tracks: Track[] = await playlist_tracks_response.json();
+        const playlist_tracks_response = await rozfetch<Track[]>(`https://api-v2.soundcloud.com/tracks?${encode_params(params)}`, { headers: post_api_headers(opts), method: "GET", ...opts.fetch_opts });
+        if("error" in playlist_tracks_response) return playlist_tracks_response;
+        const playlist_tracks = await playlist_tracks_response.json();
+        if("error" in playlist_tracks) return playlist_tracks;
         return { hydration: playlist_hyrdration, tracks: playlist_tracks, client_id: opts.client_id };
     }
     export async function get_mix(opts: Opts & {track_id: string, limit?: number, offset?: number}) {
-        return await apiget<Track>({...opts, path: `tracks/${opts.track_id}/related`, params: {user_id: get_self_user_id(opts.cookie_jar!), limit: opts.limit ?? 50, offset: opts.offset ?? 0}});
+        return await apiget<Track>({...opts, path: `tracks/${opts.track_id}/related`, params: {
+            ...(opts.cookie_jar ? {user_id: get_self_user_id(opts.cookie_jar)} : {}),
+            limit: opts.limit ?? 50, offset: opts.offset ?? 0}
+        });
     }
     export async function listening_history(opts: Opts & {limit?: number, offset?: number}) {
         return await apiget<HistoryTrack>({...opts, path: `me/play-history/tracks`, params: {limit: opts.limit ?? 50, offset: opts.offset ?? 0}});
@@ -336,8 +393,9 @@ export namespace SoundCloud {
     export async function you_redirect(opts: Opts) {
         const has_cookies = requires_cookies(opts);
         if("error" in has_cookies) return has_cookies;
-        const redirect_response = await fetch("https://soundcloud.com/you", page_method_options(opts.cookie_jar));
-        if(redirect_response.redirected === false) return {error: new Error("Response not redirected")};
+        const redirect_response = await rozfetch("https://soundcloud.com/you", page_method_options(opts));
+        if("error" in redirect_response) return redirect_response;
+        if(!redirect_response.redirected) return generror("Response not redirected", {opts});
         return redirect_response.headers.get("Location")?.replace("//", "");
     }
     function extract_playlist_name(permalink: string) {
@@ -353,9 +411,9 @@ export namespace SoundCloud {
                 _resource_type: "playlist"
             }
         }
-        const post = await apipost({...opts, path: `playlists`, params: {}, payload});
+        const post = await apipost<Playlist>({...opts, path: `playlists`, params: {}, payload});
         if("error" in post) return post;
-        return await post.data.json() as Playlist;
+        return await post.data.json();
     }
     export async function delete_playlist(opts: Opts & {playlist_id: string}) {
         const playlist_id = extract_playlist_name( opts.playlist_id);
@@ -372,7 +430,13 @@ export namespace SoundCloud {
         if("error" in has_cookies) return has_cookies;
         const hydration = await get_hydration(`https://soundcloud.com/`, opts);
         if("error" in hydration) return hydration;
-        opts.client_id = opts.client_id === undefined ? await get_client_id(hydration.scripts_urls, opts.cookie_jar) : opts.client_id;
+        if(opts.client_id === undefined){
+            const client_id = await get_client_id({...opts, scripts: hydration.scripts_urls});
+            if(!("error" in client_id)){
+                opts.client_id = client_id.client_id;
+            }
+            else return client_id;
+        }
         if (typeof opts.client_id === "object") return opts.client_id;
         const user_playlists = await get_artist("PLAYLISTS", {...opts, client_id: opts.client_id, artist_id: get_self_user_id(opts.cookie_jar!)});
         if("error" in user_playlists) return user_playlists;
@@ -420,20 +484,21 @@ export namespace SoundCloud {
             }
         };
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 5000);
+        const abort = setTimeout(() => { controller.abort(); }, 5000);
         try {
-            const response = await fetch(`https://api-auth.soundcloud.com/connect/session?${encode_params(params)}`, { 
+            const response = await rozfetch(`https://api-auth.soundcloud.com/connect/session?${encode_params(params)}`, { 
                 method: "POST", 
                 body: JSON.stringify(payload), 
-                headers: post_api_headers(opts.cookie_jar!), 
-                signal: controller.signal
+                headers: post_api_headers(opts), 
+                signal: controller.signal, 
+                ...opts.fetch_opts
             });
             clearTimeout(abort);
-            if(!response.ok) return {ok: false};
+            if("error" in response) return {ok: false};
             opts.cookie_jar?.updateWithFetch(response);
             return {ok: true};
         }
-        catch(e) {
+        catch(_) {
             clearTimeout(abort);
             return {ok: false};
         }

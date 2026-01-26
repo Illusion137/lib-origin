@@ -1,17 +1,18 @@
 {
+    "lib": ["ESNext"],
+    "exclude": ["node_modules"],
     "compilerOptions": {
         "strict": true,
         "noImplicitAny": false,
         "noEmitOnError": true,
         "noEmit": true,
-        "module": "commonjs",
         "esModuleInterop": true,
-        "target": "ES2024",
-        "moduleResolution": "node",
+        "target": "esnext",
+        "module": "commonjs",
         "resolveJsonModule": true,
         "sourceMap": true,
         "outDir": "dist",
-        "noUnusedLocals": true,
+        "noUnusedLocals": false,
         "noUnusedParameters": true,
         "allowUnreachableCode": false,
         "alwaysStrict": true,
@@ -20,9 +21,24 @@
         "noImplicitReturns": true,
         "skipLibCheck": true,
         "allowJs": true,
+        "allowSyntheticDefaultImports": true,
+        "allowImportingTsExtensions": true,
+        "paths": {
+            "@native/*": ["./roze/native/*"],
+            "@lib/*": ["./roze/lib/*"],
+            "@roze/*": ["./roze/src/*", "./roze/*"],
+            "@arneb/*": ["./arneb/*"],
+            "@origin/*": ["./origin/src/*"],
+            "@lutz/*": ["./lutz/src/*"],
+            "@sosu/*": ["./sosu/src/*"],
+            "@illusive/*": ["./Illusive/src/*"],
+            "@illusicord/*": ["./illusicord/src/*"],
+            "@common/*": ["./common/*"],
+            "@admin/*": ["./admin/*"],
+            "@sample/*": ["./sample/*"],
+        }
     },
-    "exclude": ["node_modules/**"],
-    "lib": [
-        "es2015"
-    ]
+    "ts-node": {
+        "require": ["tsconfig-paths/register"]
+    }
 }

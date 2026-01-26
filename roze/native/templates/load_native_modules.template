@@ -1,0 +1,7 @@
+__IMPORT_LOAD_NATIVE_MODULES__
+
+export async function load_native_modules(){
+    await Promise.all([
+__LOAD_NATIVE_MODULES_MODULES__
+    ]);
+}

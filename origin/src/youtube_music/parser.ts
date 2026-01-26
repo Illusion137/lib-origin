@@ -1,13 +1,30 @@
-import { parse_runs, youtube_views_number } from "../utils/util";
-import { ArtistResults_0, ArtistCarouselContent, MusicCarouselShelfRenderer, MusicShelfRenderer, Run } from "./types/ArtistResults_0";
-import { ExploreResults_0 } from "./types/ExploreResults_0";
-import { HomeResults_0 } from "./types/HomeResults_0";
-import { LibraryResults_0 } from "./types/LibraryResults_0";
-import { NewReleasesAlbums, Run2 } from "./types/NewReleasesAlbums";
-import { PlaylistResults_0 } from "./types/PlaylistResults_0";
-import { SearchResults_0 } from "./types/SearchResults_0";
-import { SuggestionMusicResponsiveListItemRenderer } from "./types/SearchSuggestions";
-import { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "./types/types";
+import { parse_runs } from "@common/utils/parse_util";
+import type { ArtistResults_0, ArtistCarouselContent, MusicCarouselShelfRenderer, MusicShelfRenderer, Run } from "@origin/youtube_music/types/ArtistResults_0";
+import type { ExploreResults_0 } from "@origin/youtube_music/types/ExploreResults_0";
+import type { HomeResults_0 } from "@origin/youtube_music/types/HomeResults_0";
+import type { LibraryResults_0 } from "@origin/youtube_music/types/LibraryResults_0";
+import type { NewReleasesAlbums, Run2 } from "@origin/youtube_music/types/NewReleasesAlbums";
+import type { PlaylistResults_0 } from "@origin/youtube_music/types/PlaylistResults_0";
+import type { SearchResults_0 } from "@origin/youtube_music/types/SearchResults_0";
+import type { SuggestionMusicResponsiveListItemRenderer } from "@origin/youtube_music/types/SearchSuggestions";
+import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "@origin/youtube_music/types/types";
+import { youtube_views_number } from "@illusive/illusive_utils";
+
+const separator = '•';
+export function parse_subtitle_text(runs: Run[]){
+    const separated_runs: Run2[][] = [];
+    let run_section: Run2[] = [];
+    for(const run of runs){
+        if(run.text.trim().includes(separator)){
+            separated_runs.push(run_section);
+            run_section = [];
+            continue;
+        }
+        run_section.push(run);
+    }
+    separated_runs.push(run_section);
+    return separated_runs;
+}
 
 export function parse_home_contents(initial_data: InitialData[]) {
     const contents: HomeResults_0[] = initial_data as unknown as HomeResults_0[];
@@ -111,22 +128,6 @@ export function parse_track_search_suggestion(suggestion: SuggestionMusicRespons
         } : album,
         plays: youtube_views_number(parse_runs(plays_string)),
     }
-}
-
-const separator = '•';
-export function parse_subtitle_text(runs: Run[]){
-    const separated_runs: Run2[][] = [];
-    let run_section: Run2[] = [];
-    for(const run of runs){
-        if(run.text.trim().includes(separator)){
-            separated_runs.push(run_section);
-            run_section = [];
-            continue;
-        }
-        run_section.push(run);
-    }
-    separated_runs.push(run_section);
-    return separated_runs;
 }
 
 function is_numeric(num: any) { return !isNaN(num) }

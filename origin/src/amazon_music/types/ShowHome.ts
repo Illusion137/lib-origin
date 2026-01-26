@@ -1,5 +1,5 @@
-import { CreateAndBindMethod } from "./ShowHomeCreateAndBindMethod"
-import { TemplateListInterfaceMethod } from "./ShowHomeTemplateList"
+import type { CreateAndBindMethod } from "@origin/amazon_music/types/ShowHomeCreateAndBindMethod"
+import type { TemplateListInterfaceMethod } from "@origin/amazon_music/types/ShowHomeTemplateList"
 
 export interface ShowHome {
     methods: (

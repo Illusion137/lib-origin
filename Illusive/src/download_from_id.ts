@@ -1,43 +1,55 @@
-import * as Origin from '../../origin/src/index'
-import { ResponseError } from '../../origin/src/utils/types';
-import { DownloadOptions, YTDLQuality } from '../../origin/src/youtube_dl/types';
-import { youtube_info_metadata } from './gen/youtube_parser';
-import { Prefs } from './prefs';
-import { DownloadFromIdResult } from './types';
+import * as Origin from '@origin/index'
+import type { ResponseError } from '@common/types';
+import { Prefs } from '@illusive/prefs';
+import type { DownloadFromIdResult } from '@illusive/types';
+import { generror_catch } from '@common/utils/error_util';
+import { milliseconds_of } from '@common/utils/util';
+// import type { Types } from 'youtubei.js';
 
 export async function soundcloud_download_from_id(permalink: string, _: string): Promise<DownloadFromIdResult|ResponseError> {
     const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     const url = await Origin.SoundCloudDL.get_download_info_from_permalink(permalink, use_cookies_on_download ? cookie_jar : undefined);
     if(typeof url === "object") return url;
-    return {url: url}
+    return {url: url};
 }
 export async function youtube_download_from_id(video_id: string, quality: string): Promise<DownloadFromIdResult|ResponseError> {
-    const ytdl_opts: DownloadOptions = {
-        quality: Prefs.get_pref('force_youtube_18_quality') ? "18" : quality as YTDLQuality, 
-        playerClients: ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"]};
+    // const ytdl_opts: Types.FormatOptions = {
+    //     itag: Number(quality),
+    //     client: "MWEB"
+    // };
     try {
-        try {            
-            const av_info = (await Origin.YouTubeDL.get_info(video_id, ytdl_opts));
-            if("error" in av_info) throw new Error(av_info.error as string);
-            const av_format = Origin.YouTubeDL.choose_format(av_info.info, ytdl_opts);
-            if(Prefs.get_pref('force_youtube_18_quality'))
-                return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
-            // const status_fetch = await fetch(av_format.url);
-            // console.log("fetch");
-            // if(!status_fetch.ok) {
-            //     console.log("18f");
-            //     const av_format_18 = Origin.YouTubeDL.choose_format(av_info.info, {...ytdl_opts, quality: "18"});
-            //     return {url: av_format_18.url, metadata: youtube_info_metadata(av_info.info)};
-            // }
-            return {url: av_format.url, metadata: youtube_info_metadata(av_info.info)};
+        try {
+            // FIXME: YouTube Download From ID is silly
+            const av_format_url = await Origin.YouTubeDL.resolve_url(video_id, );
+            if(typeof av_format_url === "object") return av_format_url;
+            return {url: av_format_url};
         } catch (error) {
-            const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
-            if(!use_cookies_on_download) throw error;
-            const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
-            const av_result = await Origin.YouTubeDL.ytdl(video_id, {...ytdl_opts, requestOptions: use_cookies_on_download ? {headers: {cookie: cookie_jar.toString()}} : {}});
-            if("error" in av_result) throw new Error(av_result.error as string);
-            return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
+            console.warn(error);
+            // FIXME: YouTube Download With cookies is silly
+            // const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
+            // if(!use_cookies_on_download) throw error;
+            // const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
+            // const av_result = await Origin.YouTubeDL.ytdl(video_id, {...ytdl_opts, requestOptions: {headers: {cookie: cookie_jar.toString()}}});
+            // if("error" in av_result) throw av_result.error;
+            // return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
+            return {url: '', metadata: {} as never};
         }
-    } catch (error) { return { error: error as Error }; }
+    } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", {video_id, quality}); }
+}
+
+export async function bandlab_download_from_id(song_id: string, _: string): Promise<DownloadFromIdResult|ResponseError> {
+    const cookie_jar = Prefs.get_pref('bandlab_cookie_jar');
+    const url_response = await Origin.BandLab.get_download_url(song_id, {cookie_jar: cookie_jar, fetch_opts: {
+        cache_opts: {
+            cache_ms: milliseconds_of({hours: 6}),
+            cache_mode: "file",
+            cache_ms_fail: 0,
+            cache_on: "url"
+        }
+    }});
+    if(typeof url_response === "object") return url_response;
+    return {
+        url: url_response,
+    };
 }

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `new_releases_title_unique` ON `new_releases` (`title`);

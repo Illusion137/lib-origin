@@ -1,5 +1,5 @@
-import { CookieJar } from "../../origin/src/utils/cookie_util";
-import { Prefs } from "./prefs";
+import { CookieJar } from "@common/utils/cookie_util";
+import { Prefs } from "@illusive/prefs";
 import * as fs from 'fs';
 
 export default function load_cookies_env(){
