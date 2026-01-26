@@ -67,7 +67,7 @@ const playlists_tracks_config = {
 
 const new_releases_config = {
     id: int().primaryKey({ autoIncrement: true }),
-    title: text({mode: 'json'}).notNull().$type<NamedUUID>().default({name: '', uri: null}),
+    title: text({mode: 'json'}).unique().notNull().$type<NamedUUID>().default({name: '', uri: null}),
     artist: text({mode: 'json'}).notNull().$type<NamedUUID[]>().default([]),
     artwork_url: text().notNull().default(""),
     artwork_thumbnails: text({mode: 'json'}).notNull().$type<IllusiveThumbnail[]>().default([]),

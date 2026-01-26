@@ -6,7 +6,8 @@
   - [ ] Fixed remaining bugs
   - [ ] Added Unit Tests
 # Illusi 17.3.0
-  - Fixed bug relating to YouTube Music playlist parsing
+  -  Fixed bug relating to duplicate new releases
+  - [ ] Fixed bug relating to YouTube Music playlist parsing
   - [ ] Fixed bug relating to ContextMenu and Track-refreshing
   - [ ] Fixed bug related to SoundCloud related tracks fr
   - [ ] Fixed CompactArtistComponent

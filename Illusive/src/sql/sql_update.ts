@@ -22,6 +22,7 @@ import type { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 import { fs } from "@native/fs/fs";
 import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import { Illusive } from "@illusive/illusive";
+import { sql } from "drizzle-orm";
 
 export namespace SQLUpdate {
     type Version = `${number}.${number}.${number}`;
@@ -97,10 +98,10 @@ export namespace SQLUpdate {
             let legacy_db;
             try {
                 legacy_db = load_legacy_1720_database();
-                if(legacy_db === undefined) return false;
+                if(legacy_db === undefined) return true;
             } catch (e) {
                 console.error("Failed to load legacy database:", e);
-                return false;
+                return true;
             }
             
             const $ = new DrizzleUtils<LT1720.SQLTables>(legacy_db);
@@ -183,6 +184,27 @@ export namespace SQLUpdate {
                 }
             });
             return updated;
-        })
+        });
+        await update_to("18.2.0", async () => {
+            const seen_new_releases = new Set<string>();
+            const new_releases = await db.select().from(new_releases_table);
+            const unique_releases = new_releases.filter(release => {
+                if (seen_new_releases.has(release.title?.uri ?? "")) {
+                    return false;
+                }
+                seen_new_releases.add(release.title?.uri ?? "");
+                return true;
+            });
+            await db.delete(new_releases_table);
+            for (const release of unique_releases) {
+                try {
+                    await db.insert(new_releases_table).values(release);
+                }
+                catch(e) {
+                    console.warn(e);
+                }
+            }
+            return true;
+        });
     }
 }

@@ -2,7 +2,7 @@ import { try_json_parse } from '@common/utils/parse_util';
 import { groupby, is_empty, milliseconds_of } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { db } from '@illusive/db/database';
-import { new_releases_table, SQLNewRelease } from '@illusive/db/schema';
+import { new_releases_table } from '@illusive/db/schema';
 import { Prefs } from "@illusive/prefs";
 import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompactPlaylist, TimestampedCompactPlaylist,Track } from "@illusive/types";
 import { SQLTracks } from './sql_tracks';
@@ -120,7 +120,7 @@ export namespace SQLNewReleases {
     export async function delete_all_from_new_releases(){
         const releases_to_delete = await db.select().from(new_releases_table);
         for (const release of releases_to_delete) {
-            const record_id = `${(release.title as NamedUUID)?.uri ?? gen_uuid()}`;
+            const record_id = release.title?.uri ?? gen_uuid();
             await ChangeTracker.log_change('new_releases', 'delete', record_id, { id: release.id });
         }
         await db.delete(new_releases_table);
@@ -128,10 +128,10 @@ export namespace SQLNewReleases {
     export async function insert_all_into_new_releases(new_releases: (CompactPlaylist & {id?: number})[]){
         const promises: Promises = [];
         for(const new_release of new_releases){
-            const { id, ...release_data } = new_release;
-            const promise = db.insert(new_releases_table).values(release_data);
+            const { id, ...release_data } = new_release; id;
+            const promise = db.insert(new_releases_table).values(release_data).onConflictDoNothing();
             promises.push(promise);
-            const record_id = `${new_release.title.uri ?? gen_uuid()}`;
+            const record_id = new_release.title.uri ?? gen_uuid();
             await ChangeTracker.log_change('new_releases', 'insert', record_id, release_data);
         }
         await Promise.all(promises);

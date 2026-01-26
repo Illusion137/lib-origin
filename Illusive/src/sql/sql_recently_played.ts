@@ -16,6 +16,7 @@ export namespace SQLRecentlyPlayed {
             ...track, 
             duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration
         });
+        db.$client.flushPendingReactiveQueries();
     }
     export async function delete_recently_played_track(track: Track) {
         await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
