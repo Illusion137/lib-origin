@@ -1,16 +1,18 @@
-# Illusi 19.0.0
+# Illusi 20.0.0
   - [ ] Illusi-CLI
   - [ ] Illusi desktop based on React-Native
-# Illusi 18.0.0
+# Illusi 19.0.0
   - [ ] Added Illusi server (Supabase)
   - [ ] Fixed remaining bugs
   - [ ] Added Unit Tests
-# Illusi 17.3.0
+# Illusi 18.2.0
+  
+# Illusi 18.1.0
   -  Fixed bug relating to duplicate new releases
   - [ ] Fixed bug relating to YouTube Music playlist parsing
   - [ ] Fixed bug relating to ContextMenu and Track-refreshing
   - [ ] Fixed bug related to SoundCloud related tracks fr
-  - [ ] Fixed CompactArtistComponent
+  - Fixed CompactArtistComponent
   - [ ] Fixed YouTube Music Search album being put into playlists tab
   - [ ] Fixed latest release SQLArtist integration
   - [ ] Fixed search SQLArtist integration
@@ -23,7 +25,7 @@
   - Added Caching to Album-Playlists as they are mostly static
   - [ ] Added Edit-Track
   - [ ] Added specialized playlists to explore
-  - [ ] Added Illusi custom shuffle algorithm
+  - Added Illusi custom shuffle algorithm
   - [ ] Added Extra-Linker
   - [ ] Added Keep-Delete
   - [ ] Added Playlist-Converter
@@ -31,10 +33,10 @@
   - [ ] Added Watch Artist
   - [ ] Added SQLTrackSkips
   - [ ] Added SQLTrackPlays
-  - [ ] Added Equalizer
+  - Added Equalizer
   - [ ] Added Crossafade
-  - [ ] Added Bandlab integration
-  - Added Sharing intents // https://www.devas.life/supporting-ios-share-extensions-android-intents-on-react-native/
+  - Added Bandlab integration
+  - [ ] Added Sharing intents // https://www.devas.life/supporting-ios-share-extensions-android-intents-on-react-native/
   - [ ] Added Explore Soundcloud new tracks integration
   - [ ] Added ExtraDevScreen
   - [ ] Added Trim-Silence
@@ -66,7 +68,7 @@
   - [ ] Redesigned Changlog UI
   - [ ] Redesigned CompactArtistComponent
   - Redesigned BottomAlert
-  - [ ] Update Audioplayer UI
+  -  Update Audioplayer UI
   - [ ] Update Lyrics UI
   - Improved Spotify integration (get_artist, latest_release, etc)
 # Illusi 17.2.0
