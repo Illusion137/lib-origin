@@ -1,4 +1,4 @@
-import NetInfo, { type NetInfoSubscription } from '@react-native-community/netinfo';
+import NetInfo, { NetInfoCellularGeneration, NetInfoStateType, type NetInfoSubscription } from '@react-native-community/netinfo';
 import * as Battery from 'expo-battery';
 
 export class NetworkMonitor {
@@ -23,8 +23,8 @@ export class NetworkMonitor {
         // - Not on low battery (>20% or charging)
         const has_good_connection: boolean =
             (net_state.isConnected ?? false) &&
-            (net_state.type === 'wifi' ||
-                (net_state.type === 'cellular' && net_state.details?.cellularGeneration === '4g'));
+            (net_state.type === NetInfoStateType.wifi ||
+                (net_state.type === NetInfoStateType.cellular && net_state.details?.cellularGeneration === NetInfoCellularGeneration['4g']));
 
         const has_sufficient_battery =
             battery_level > 0.2 ||

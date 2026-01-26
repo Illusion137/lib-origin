@@ -1,5 +1,5 @@
 import { RCache } from './rcache';
-import { generror, generror_catch } from '@common/utils/error_util';
+import { generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
 import type { ResponseError } from '@common/types';

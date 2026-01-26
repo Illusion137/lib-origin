@@ -22,7 +22,6 @@ import type { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 import { fs } from "@native/fs/fs";
 import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import { Illusive } from "@illusive/illusive";
-import { sql } from "drizzle-orm";
 
 export namespace SQLUpdate {
     type Version = `${number}.${number}.${number}`;

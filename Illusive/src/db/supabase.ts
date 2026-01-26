@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import 'dotenv/config';
 import { createClient, type SupportedStorage } from "@supabase/supabase-js";
 import { MMKV } from 'react-native-mmkv';

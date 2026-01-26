@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/switch-exhaustiveness-check */
 // sync/sync-engine.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ChangeTracker } from './change_tracker';
@@ -254,6 +255,7 @@ export class SyncEngine {
 
     private transform_to_supabase(table_name: LocalTableName, data: Partial<LocalTrack & LocalPlaylist & LocalPlaylistTrack>): any {
         const user_uid = Prefs.get_pref('user_uuid');
+        // TODO exhaustiveness check
         switch (table_name) {
             case 'tracks': {
                 const track = data as LocalTrack;
@@ -308,6 +310,7 @@ export class SyncEngine {
     }
 
     private transform_from_supabase(table_name: LocalTableName, data: any): any {
+        // TODO exhaustiveness check
         switch (table_name) {
             case 'tracks': {
                 const remoteTrack = data as RemoteTrack;

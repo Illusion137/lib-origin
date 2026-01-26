@@ -1,6 +1,6 @@
 
 import type { Database } from "../database.types";
-import type { SQLTrack, SQLPlaylist, SQLPlaylistTrack, SQLNewRelease, SQLArtist } from '../schema';
+import type { SQLTrack, SQLPlaylist, SQLPlaylistTrack, SQLNewRelease } from '../schema';
 
 // Define local table names as a string literal union
 export type LocalTableName = 'tracks' | 'playlists' | 'playlists_tracks' | 'artists' | 'new_releases' | 'backpack' | 'recently_played_tracks' | 'track_plays';
