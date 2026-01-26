@@ -12,7 +12,10 @@ export namespace SQLRecentlyPlayed {
         const {id, ...track} = t as any;
         id;
         await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
-        await db.insert(recently_played_tracks_table).values(track);
+        await db.insert(recently_played_tracks_table).values({
+            ...track, 
+            duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration
+        });
     }
     export async function delete_recently_played_track(track: Track) {
         await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));

@@ -12,6 +12,7 @@ import { reinterpret_cast } from '../../common/cast';
 import type { BasePref } from "@native/mmkv/mmkv_utils";
 
 export function duration_to_string(track_duration: number): string {
+	if(isNaN(track_duration) || track_duration <= 0) return "";
 	if (track_duration / 3600 >= 1) {
 		const hours = Math.floor(track_duration / 3600);
 		const minutes = Math.floor((track_duration % 3600) / 60);

@@ -241,7 +241,8 @@ export namespace SQLTracks {
             plays: 0
         };
         const new_track = {
-            ...track, 
+            ...track,
+            duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration, 
             meta: new_track_meta
         };
         await db.insert(tracks_table).values(new_track);
