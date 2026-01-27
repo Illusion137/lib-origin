@@ -4,7 +4,7 @@ import type { Track } from "./types";
 import { GLOBALS } from "./globals";
 
 export namespace FutsalShuffle {
-    const icache = {
+    export const icache = {
         cache_built: false,
         max_plays_in_library: 1,
         most_recent_played_ms: 0,
