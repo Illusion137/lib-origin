@@ -175,6 +175,7 @@ export const track_lyrics_downloader = new AsyncFNQueue<LyricsDownloading, Await
 
 export async function download_track_lyrics(track: Track){
     if(!is_empty(track.lyrics_uri)) return "EXISTS";
+    if(!is_empty(track.imported_id) || !is_empty(track.bandlab_id) || !is_empty(track.soundcloud_id)) return "EXISTS";
     const result = await track_lyrics_downloader.push_into_queue({ track, uid: track.uid });
     if(typeof result === "object") return result;
     if(result === "EXISTS") return result;
