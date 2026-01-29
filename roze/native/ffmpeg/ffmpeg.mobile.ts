@@ -29,7 +29,8 @@ export const mobile_ffmpeg: FFMPEG = {
         });
         return {
             retcode: promise_to_retcode,
-            session_id: ffmpeg_result.getSessionId()
+            session_id: ffmpeg_result.getSessionId(),
+            logs: async() => await ffmpeg_result.getOutput()
         };
     }
 };

@@ -235,8 +235,9 @@ export interface SmallTrack {
     duration: Track['duration'];
     youtube_id: Track['youtube_id'];
     soundcloud_permalink: Track['soundcloud_permalink'];
+    bandlab_id: Track['bandlab_id'];
 }
-export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['youtube_id'], SmallTrack['soundcloud_permalink']];
+export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['youtube_id'], SmallTrack['soundcloud_permalink'], SmallTrack['bandlab_id']];
 
 export type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK" | "INTERSECTION";
 export interface InheritedPlaylist {

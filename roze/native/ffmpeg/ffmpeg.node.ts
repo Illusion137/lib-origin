@@ -32,7 +32,8 @@ export const node_ffmpeg: FFMPEG = {
         
         return {
             retcode: ffmpeg_cmd_instance,
-            session_id: ffmpeg_spawn.pid ?? -1
+            session_id: ffmpeg_spawn.pid ?? -1,
+            logs: async() => ""
         };
     }
 };

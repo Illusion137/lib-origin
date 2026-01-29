@@ -5,8 +5,9 @@ import { artist_string } from "@illusive/illusive_utils";
 import type { SmallTrackRaw, Track } from "@illusive/types";
 import { force_json_parse_array } from "@common/utils/parse_util";
 
+// TODO make typesafe way to include ALL Downloadable IDs
 export function encode_track(track: Track){
-    const payload: SmallTrackRaw = [track.title, artist_string(track), track.duration, track.youtube_id, track.soundcloud_permalink];
+    const payload: SmallTrackRaw = [track.title, artist_string(track), track.duration, track.youtube_id, track.soundcloud_permalink, track.bandlab_id];
     return btoa(encodeURI(encodeURIComponent(JSON.stringify(payload))));
 }
 
@@ -20,6 +21,7 @@ export function decode_track(encoded_track: string): Track {
         duration: track[2] ?? 0,
         youtube_id: track[3],
         soundcloud_permalink: track[4],
+        bandlab_id: track[5]
     }
 }
 
