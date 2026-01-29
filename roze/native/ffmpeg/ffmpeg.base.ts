@@ -1,6 +1,7 @@
 export interface FFMPEGReturn {
     retcode: Promise<number>;
     session_id: number;
+    logs: () => Promise<string>;
 }
 export type FFMPEGSizeType = "unknown"|"KiB";
 export type FFMPEGBitrateType = "unknown"|"kbits/s";

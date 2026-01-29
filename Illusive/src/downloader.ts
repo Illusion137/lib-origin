@@ -110,6 +110,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
     const new_uri = SQLfs.media_directory(media_uri);
 
     let retcode = 1;
+    let logs = "";
     for(let i = 0; i < 2 && retcode !== 0; i++){
         const ffmpeg_result = await ffmpeg().execute_args([
             '-y',
@@ -128,10 +129,12 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
         track_downloader.update_key(downloading.uid, {...downloading, execution_id: ffmpeg_result.session_id});
 
         retcode = await ffmpeg_result.retcode;
-        await wait(1000);
+        await wait(100); // TODO what we doing here??
+        if(retcode !== Constants.ffmpeg_retcode_success) logs = await ffmpeg_result.logs();
     }
 
-    if(retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n UID: ${downloading.track.uid}`);
+    if(retcode !== Constants.ffmpeg_retcode_success) 
+        return generror(`FFMPEG return status code: ${retcode};\n UID: ${downloading.track.uid}; LOG: ${logs}`);
     
     const audio_duration_seconds = await get_audio_duration().get_audio_duration(new_uri);
     if(audio_duration_seconds === -1) return generror("Unable to access audio metadata duration");
