@@ -1,10 +1,9 @@
 import { CookieJar } from "@common/utils/cookie_util";
 import { AppleMusic } from "@origin/index";
-import { GCC } from "@admin/gcc";
 import { expect_error, expect_no_error } from "@common/testing.test";
 
 const apple_music_mock = {
-    cookie_jar: CookieJar.fromString(GCC.dotenv_of("APPLE_MUSIC_COOKIE_JAR"))
+    cookie_jar: CookieJar.fromString(process.env.APPLE_MUSIC_COOKIE_JAR)
 }
 const playlist_url = "https://music.apple.com/us/playlist/zayboy-loveish/pl.u-4JommGltMdrNMl";
 const search_query = "Lelo new detroit";

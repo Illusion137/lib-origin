@@ -1,13 +1,12 @@
 import * as fs from 'fs';
 import request from 'request';
-import { GCC } from "@admin/gcc";
 import { Instagram } from "@origin/instagram/instragram";
 import type { MediaListItem } from "@origin/instagram/types/MediaList";
 import { CookieJar } from "@common/utils/cookie_util";
 import { catch_log } from '@common/utils/error_util';
 
 const threshold = 72;
-const cookie_jar = CookieJar.fromString(GCC.dotenv_of('INSTRAGRAM_COOKIE_JAR'));
+const cookie_jar = CookieJar.fromString(process.env.INSTAGRAM_COOKIE_JAR);
 const cat_posters_usernames: string[] = ["maoxiaosi_219", "brownsugar_ddang", "sasuke.0116"];
 const cat_regex = /(cat)|(kitty)/ig;
 

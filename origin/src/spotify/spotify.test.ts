@@ -1,10 +1,9 @@
 import { CookieJar } from "@common/utils/cookie_util";
 import { Spotify } from "@origin/index";
-import { GCC } from "@admin/gcc";
 import { expect_error, expect_no_error } from "@common/testing.test";
 
 const spotify_mock = {
-    cookie_jar: CookieJar.fromString(GCC.dotenv_of("SPOTIFY_COOKIE_JAR"))
+    cookie_jar: CookieJar.fromString(process.env.SPOTIFY_COOKIE_JAR)
 }
 const playlist_url = "https://open.spotify.com/album/2WE1yHBWGqmJ3vhebImBmF";
 const search_query = "Lelo new detroit";
