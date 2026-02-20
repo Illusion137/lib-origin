@@ -6,5 +6,6 @@ export default defineConfig({
 	test: {
 		include: ["**/*.test.ts"],
 		testTimeout: 30_000,
+		disableConsoleIntercept: false
 	},
 })

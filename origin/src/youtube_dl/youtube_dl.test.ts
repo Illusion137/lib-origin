@@ -1,6 +1,7 @@
-import { test, expect, describe, beforeEach } from "vitest"
+import { test, describe, beforeEach } from "vitest"
 import { YouTubeDL } from "@origin/youtube_dl/index";
 import { expect_error, expect_no_error } from "@common/testing.test";
+import 'dotenv/config';
 
 let failed = false;
 beforeEach(() => { if (failed) throw new Error("Prior test failed — bailing"); });
