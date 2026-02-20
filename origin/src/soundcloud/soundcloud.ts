@@ -49,7 +49,6 @@ export namespace SoundCloud {
                 cache_ms: milliseconds_of({ hours: 1 }),
                 cache_mode: "file"
             },
-            ignore_fail_request: true,
             ...opts.fetch_opts
         }
     }
