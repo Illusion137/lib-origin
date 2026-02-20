@@ -1,3 +1,5 @@
+import { test, expect } from "vitest"
+
 export function expect_error(value: unknown){
     expect(value).toHaveProperty("error");
 }

@@ -3,34 +3,35 @@ import { generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
 import type { ResponseError } from '@common/types';
-import { fs } from '@native/fs/fs';
+import { fs, load_native_fs } from '@native/fs/fs';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
-Platform.shim.eval = async(data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
+Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
     const properties: string[] = [];
 
-    if(env.n) {
-      properties.push(`n: exportedVars.nFunction("${env.n}")`)
+    if (env.n) {
+        properties.push(`n: exportedVars.nFunction("${env.n}")`)
     }
-  
-    if(env.sig) {
-      properties.push(`sig: exportedVars.sigFunction("${env.sig}")`)
+
+    if (env.sig) {
+        properties.push(`sig: exportedVars.sigFunction("${env.sig}")`)
     }
-  
+
     const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
-  
+
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     return new Function(code)() as typeof Platform.shim.eval;
 }
 
 export namespace YouTubeDL {
-    export interface Chapter {title: string, start_time: number};
+    export interface Chapter { title: string, start_time: number };
     let innertube_client: Innertube;
 
-    export async function get_innertube_client(): Promise<Innertube>{
+    export async function get_innertube_client(): Promise<Innertube> {
         Log.setLevel(Log.Level.NONE);
-        if(innertube_client) return innertube_client;
+        if (innertube_client) return innertube_client;
+        await load_native_fs();
         innertube_client = await Innertube.create({
             cache: new RCache(true, await fs().temp_directory()),
             generate_session_locally: false,
@@ -44,12 +45,12 @@ export namespace YouTubeDL {
         return innertube_client;
     }
 
-    export function get_chapters(info: VideoInfo){
+    export function get_chapters(info: VideoInfo) {
         const markers_map = info?.player_overlays?.decorated_player_bar?.player_bar?.markers_map;
         const marker = Array.isArray(markers_map) && markers_map.find(mark => mark.value && Array.isArray(mark.value.chapters));
         if (!marker) return [];
         const chapters = marker.value.chapters;
-    
+
         return (chapters?.map((chapter: any) => ({
             title: parse_runs(chapter.chapterRenderer.title),
             start_time: chapter.chapterRenderer.timeRangeStartMillis / 1000,
@@ -59,18 +60,18 @@ export namespace YouTubeDL {
     export async function get_info(link: string) {
         try {
             const client = await get_innertube_client();
-            const info = await client.getInfo(link);
+            const info = await client.getShortsVideoInfo(link, 'ANDROID');
             return info;
         } catch (error) {
-            return generror_catch(error, "YTDL Failed", {link});
+            return generror_catch(error, "YTDL Failed", { link });
         }
     };
-    
+
     // https://github.com/lovegaoshi/azusa-player-mobile/blob/1b0a00b77620804c863e78bda888b524b108134b/src/utils/mediafetch/ytbvideo.ytbi.ts#L42
-    export async function resolve_url(link: string, options?: Types.FormatOptions): Promise<string|ResponseError>{
+    export async function resolve_url(link: string, options?: Types.FormatOptions): Promise<string | ResponseError> {
         try {
             const client = await get_innertube_client();
-            
+
             // const extractedVideoInfo = await client.getBasicInfo(link, {
             //     client: 'IOS',
             // });
@@ -109,7 +110,7 @@ export namespace YouTubeDL {
 
             // return max_audio_quality_stream.decipher(client.actions.session.player);
         } catch (error) {
-            return generror_catch(error, "Failed to choose a YTDL format", {options});
+            return generror_catch(error, "Failed to choose a YTDL format", { options });
         }
     }
 }

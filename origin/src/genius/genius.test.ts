@@ -1,4 +1,5 @@
-import { Genius } from "@origin/index";
+import { test, expect, describe } from "vitest"
+import { Genius } from "@origin/genius/genius";
 import { expect_no_error } from "@common/testing.test";
 
 const search_query = "Babytron Half-Blood Prince";

@@ -1,5 +1,6 @@
+import { test, expect, describe } from "vitest"
 import { CookieJar } from "@common/utils/cookie_util";
-import { Spotify } from "@origin/index";
+import { Spotify } from "@origin/spotify/spotify";
 import { expect_error, expect_no_error } from "@common/testing.test";
 
 const spotify_mock = {
