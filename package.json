@@ -1,13 +1,15 @@
 {
   "scripts": {
     "test": "jest",
+    "build": "ts-node -T scripts/prebuild.ts",
     "build:osx": "sh ./scripts/build.sh",
     "build:win": "powershell ./scripts/build.ps1",
     "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
     "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
     "gen_native": "ts-node ./scripts/gen_native.ts",
     "check-types": "tsc --noEmit",
-    "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public"
+    "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
+    "postinstall": "patch-package && husky"
   },
   "cmake-js": {
     "runtime": "node",
@@ -31,6 +33,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
     "rn-nodeify": "github:tradle/rn-nodeify",
     "ts-jest": "^29.4.6",
