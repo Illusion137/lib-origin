@@ -1,7 +1,7 @@
 import { CookieJar } from "@common/utils/cookie_util";
 import type { BaseOpts, FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "@common/types";
 import { extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, milliseconds_of, urlid } from "@common/utils/util";
-import type { HydratablePlaylist, HydratableUser, Hydration } from "@origin/soundcloud/types/Hydration";
+import type { HydratablePlaylist, HydratableUser, Hydration, UserData } from "@origin/soundcloud/types/Hydration";
 import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "@origin/soundcloud/types/Search";
 import { encode_params } from "@common/utils/fetch_util";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
@@ -311,12 +311,12 @@ export namespace SoundCloud {
             url: opts.artist_permalink
         };
 
-        const resolve_response = await rozfetch<User>(`https://api-v2.soundcloud.com/resolve?${encode_params(params)}`, api_method_options(opts));
+        const resolve_response = await rozfetch<UserData>(`https://api-v2.soundcloud.com/resolve?${encode_params(params)}`, api_method_options(opts));
         if ("error" in resolve_response) return resolve_response;
 
         const resolved_user = await resolve_response.json();
         if ("error" in resolved_user) return resolved_user;
-        return { id: String(resolved_user.id), client_id: opts.client_id };
+        return { id: String(resolved_user.id), client_id: opts.client_id, hydration: { hydratable: "user", data: resolved_user } as HydratableUser };
     }
 
     export async function get_artist(mode: "POPULAR_TRACKS" | "TRACKS" | "REPOSTS", opts: Opts & { "artist_permalink"?: string, "artist_id"?: string, "user_hyrdration"?: HydratableUser, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ArtistUser<Track>>
@@ -329,6 +329,7 @@ export namespace SoundCloud {
             if ("error" in potential_artist_id) return potential_artist_id;
             artist_id = potential_artist_id.id;
             opts.client_id = potential_artist_id.client_id;
+            opts.user_hyrdration = potential_artist_id.hydration;
         }
         const params = {
             ...get_locale_params(opts),

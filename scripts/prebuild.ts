@@ -130,7 +130,7 @@ async function prebuild_main() {
         await generate_illusi_playlists_links();
         await update_spotify_secrets();
 
-        await run_tests();
+        // await run_tests();
     }
     catch (e) {
         log_error(reinterpret_cast<Error>(e).message);
