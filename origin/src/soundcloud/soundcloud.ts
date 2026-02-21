@@ -300,6 +300,8 @@ export namespace SoundCloud {
     }
 
     export async function permalink_to_artist_id(opts: Opts & { "artist_permalink": string }) {
+        opts.artist_permalink = urlid(opts.artist_permalink, "soundcloud.com/");
+        opts.artist_permalink = `https://soundcloud.com/${opts.artist_permalink}`;
         if (opts.client_id === undefined) {
             const client_id = await get_client_id({});
             if ("error" in client_id) return client_id;

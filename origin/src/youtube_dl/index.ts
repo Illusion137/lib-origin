@@ -1,5 +1,5 @@
 import { RCache } from './rcache';
-import { generror_catch } from '@common/utils/error_util';
+import { generror, generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
 import type { ResponseError } from '@common/types';
@@ -72,26 +72,27 @@ export namespace YouTubeDL {
         try {
             const client = await get_innertube_client();
 
-            // const extractedVideoInfo = await client.getBasicInfo(link, {
-            //     client: 'IOS',
-            // });
+            const extracted_video_info = await client.getBasicInfo(link, { client: client.session.player?.po_token === undefined ? "WEB_EMBEDDED" : "MWEB" });
 
-            // const maxAudioQualityStream = extractedVideoInfo.chooseFormat({
-            //     quality: 'best',
-            //     type: 'audio',
-            // });
+            const max_audio_quality_stream = extracted_video_info.chooseFormat({
+                quality: 'best',
+                type: 'audio',
+            });
+            const url = await max_audio_quality_stream.decipher(client.actions.session.player);
+            if (url) return url;
+            else return generror("No URL found", { link });
 
             // console.log(await maxAudioQualityStream.decipher(client.actions.session.player));
             // const url = extractedVideoInfo.streaming_data?.hls_manifest_url;
             // if(url) return url;
             // else return generror("No HLS manifest URL found", {link});
 
-            const extractedVideoInfo = await client.getShortsVideoInfo(link, 'ANDROID');
-            const maxAudioQualityStream = extractedVideoInfo.chooseFormat({
-                quality: 'best',
-                type: 'audio',
-            });
-            return await maxAudioQualityStream.decipher(client.actions.session.player);
+            // const extractedVideoInfo = await client.getShortsVideoInfo(link, 'ANDROID');
+            // const maxAudioQualityStream = extractedVideoInfo.chooseFormat({
+            //     quality: 'best',
+            //     type: 'audio',
+            // });
+            // return await maxAudioQualityStream.decipher(client.actions.session.player);
 
             // const iOS = true;
             // const hls_manifest_url = iOS ? (await client.getBasicInfo(link, {client: "IOS"})).streaming_data?.hls_manifest_url : undefined;
