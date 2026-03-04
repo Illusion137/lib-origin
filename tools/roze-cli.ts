@@ -37,6 +37,7 @@ ${magenta("roz")} ${blue("-i")} ${yellow("[syosetu|jnovel|pdf|text|roz|witchcult
   ${magenta("roz")} ${blue("-i")} ${yellow("jnovel")} ${cyan("<jnovel-embeded-link-start>")} ${cyan("<uuid-offset>")}${red("(0)")}                     JNovel from https://labs.j-novel.club/embed/... (must be logged into JNovel on Chrome)
   ${magenta("roz")} ${blue("-i")} ${yellow("pdf")} ${cyan("<pdf-file-path/url>")}                                                 PDF at {pdf-file-path}    
   ${magenta("roz")} ${blue("-i")} ${yellow("txt")} ${cyan("<text-file-path/url>")}                                                Text file at {text-file-path}
+  ${magenta("roz")} ${blue("-i")} ${yellow("epub")} ${cyan("<epub-file-path/url>")}                                               Epub file at {epub-file-path}
   ${magenta("roz")} ${blue("-i")} ${yellow("docx")} ${cyan("<docx-file-path/url>")}                                               Docx file at {docx-file-path}
   ${magenta("roz")} ${blue("-i")} ${yellow("roz")} ${cyan("<roz-file-path/url>")}                                                 Roz file at {roz-file-path}
   ${magenta("roz")} ${blue("-i")} ${yellow("witchcult_translations")} ${cyan("<witchcult_translations-url>")}                     NO_DETAIL
