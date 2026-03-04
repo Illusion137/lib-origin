@@ -96,12 +96,12 @@ const input_source_file_type_table: Record<string, RozSourceFileType> = {
 } as const;
 
 const file_extension_to_source_file_type_table: Record<string, RozSourceFileType> = {
-    ".epub": "EPUB",
-    ".docx": "DOCX",
-    ".roz": "FILEBASE",
-    ".roz.json": "FILEBASE",
-    ".pdf": "PDF",
-    ".txt": "TXT"
+	".epub": "EPUB",
+	".docx": "DOCX",
+	".roz": "FILEBASE",
+	".roz.json": "FILEBASE",
+	".pdf": "PDF",
+	".txt": "TXT"
 }
 
 const options = {
@@ -116,8 +116,8 @@ const options = {
 	clear_cache: false,
 	srt: false,
 	youtube_chapters: false,
-    size_mode: false,
-    debug: false,
+	size_mode: false,
+	debug: false,
 	translation_map_path: "",
 	voice: { id: "", language: "", name: "", quality: "" } as VoiceBank,
 	text_to_speach_speed: 1,
@@ -251,7 +251,7 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 			const witchcult_progress_bar = new cliprogress.SingleBar({ stopOnComplete: true }, cliprogress.Presets.shades_classic);
 			witchcult_progress_bar.start(2, 0);
 			return await WitchcultTranslations.arcno_to_roz(0, {
-				on_chapter_fetch: () => {return}
+				on_chapter_fetch: () => { return }
 			});
 		}
 		case "FILEBASE": {
@@ -297,11 +297,11 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 		run_translation_map_roz(roz, translation_map);
 	}
 
-    if(options.cover && roz.cover){
+	if (options.cover && roz.cover) {
 		const cover_path = await save_base64_image_to_file(roz.cover, undefined, "NO_REGISTER");
 		await fs().move(cover_path.path, options.output_to + extract_file_extension(cover_path.path), {});
 		log_info("Writing cover...");
-    }
+	}
 
 	if (options.audiobook || options.audiovideobook) {
 		// roz.chapters = roz.chapters.slice(0,5);
@@ -319,8 +319,8 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 		const chapter_title_max_length = Math.max(...roz.chapters.map((chapter) => (chapter.chapter.title ?? "").length));
 		const audiobook_progress_bars = roz.chapters.map((chapter) => ({
 			chapter,
-			bar: audiobook_progress_multibar.create(chapter.contents.length, 0, { 
-				chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length) 
+			bar: audiobook_progress_multibar.create(chapter.contents.length, 0, {
+				chapter_name: options.hide_chapter_names ? hidden_text : (chapter.chapter.title ?? "").padEnd(chapter_title_max_length)
 			}, {
 				stream: options.no_progress_bar ? devnull : undefined
 			})
@@ -337,52 +337,52 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 		);
 		const audiobook_result = options.audiobook
 			? await AudiobookGen.roz_full_audio(
-					roz,
-                    {
-						srt_subtitles: options.srt,
-                        youtube_chapters: options.youtube_chapters,
-                        size_mode: options.size_mode
+				roz,
+				{
+					srt_subtitles: options.srt,
+					youtube_chapters: options.youtube_chapters,
+					size_mode: options.size_mode
+				},
+				{
+					on_chapter_content_skip(roz_chapter) {
+						audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 					},
-					{
-						on_chapter_content_skip(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
-						},
-						on_chapter_content_export(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
-						},
+					on_chapter_content_export(roz_chapter) {
+						audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 					},
-					{ rate: options.text_to_speach_speed, voice_bank: options.voice },
-					options.debug ? "NO_CLEAN" : "CLEAN_FILES"
-			  )
+				},
+				{ rate: options.text_to_speach_speed, voice_bank: options.voice },
+				options.debug ? "NO_CLEAN" : "CLEAN_FILES"
+			)
 			: await AudiobookGen.roz_audio_data_to_dynamic_mp4(
-					roz,
-					{
-						srt_subtitles: options.srt,
-                        youtube_chapters: options.youtube_chapters,
-                        size_mode: options.size_mode
+				roz,
+				{
+					srt_subtitles: options.srt,
+					youtube_chapters: options.youtube_chapters,
+					size_mode: options.size_mode
+				},
+				{
+					on_chapter_content_skip(roz_chapter) {
+						audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 					},
-					{
-						on_chapter_content_skip(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
-						},
-						on_chapter_content_export(roz_chapter) {
-							audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
-						},
-						on_full_audio_complete(complete_full_audio) {
-							audiobook_progress_multibar.stop();
-							ffmpeg_merge_bar.start(Math.floor(complete_full_audio.roz.chapters.map((c) => c.chapter.duration ?? 0).reduce((p, c) => p + c, 0)), 0, { speed: 0 });
-						},
-						on_ffmpeg_stats(stats) {
-							ffmpeg_merge_bar.update(stats.time_seconds, { speed: stats.speed });
-						},
-                        on_ffmpeg_data(data){
-                            if(!options.debug) return;
-                            console.log("DATA:", data, '\n');
-                        }
+					on_chapter_content_export(roz_chapter) {
+						audiobook_progress_bars.find((bar) => bar.chapter.chapter.uuid === roz_chapter.chapter.uuid)?.bar.increment();
 					},
-					{ rate: options.text_to_speach_speed, voice_bank: options.voice },
-					options.debug ? "NO_CLEAN" : "CLEAN_FILES"
-			  );
+					on_full_audio_complete(complete_full_audio) {
+						audiobook_progress_multibar.stop();
+						ffmpeg_merge_bar.start(Math.floor(complete_full_audio.roz.chapters.map((c) => c.chapter.duration ?? 0).reduce((p, c) => p + c, 0)), 0, { speed: 0 });
+					},
+					on_ffmpeg_stats(stats) {
+						ffmpeg_merge_bar.update(stats.time_seconds, { speed: stats.speed });
+					},
+					on_ffmpeg_data(data) {
+						if (!options.debug) return;
+						console.log("DATA:", data, '\n');
+					}
+				},
+				{ rate: options.text_to_speach_speed, voice_bank: options.voice },
+				options.debug ? "NO_CLEAN" : "CLEAN_FILES"
+			);
 		audiobook_progress_multibar.stop();
 		ffmpeg_merge_bar.stop();
 		if ("error" in audiobook_result) {
@@ -390,13 +390,13 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 			console.error(audiobook_result);
 			process.exit(1);
 		}
-        const full_audio = "full_audio" in audiobook_result ? audiobook_result.full_audio : audiobook_result;
+		const full_audio = "full_audio" in audiobook_result ? audiobook_result.full_audio : audiobook_result;
 		console.log(`Result: ${magenta(String(audiobook_result.ffmpeg_gen_result.retcode))} :: ${green(audiobook_result.ffmpeg_gen_result.out_file_path)}`);
 		if (options.output_to && !("error" in audiobook_result)) {
 			log_info(`Moving ${audiobook_result.ffmpeg_gen_result.out_file_path} to ${options.output_to}`);
 			await fs().move(audiobook_result.ffmpeg_gen_result.out_file_path, options.output_to, {});
-            if(options.srt && full_audio.srt_file_path) await fs().copy(full_audio.srt_file_path, options.output_to + '.srt', {});
-            if(options.youtube_chapters && full_audio.youtube_chapters_file_path) await fs().copy(full_audio.youtube_chapters_file_path, options.output_to + '.ytc', {});
+			if (options.srt && full_audio.srt_file_path) await fs().copy(full_audio.srt_file_path, options.output_to + '.srt', {});
+			if (options.youtube_chapters && full_audio.youtube_chapters_file_path) await fs().copy(full_audio.youtube_chapters_file_path, options.output_to + '.ytc', {});
 		}
 	}
 }
@@ -430,8 +430,8 @@ async function __roze_cli_main__() {
 	if ((hold_index = opts.findIndex((opt) => opt[0] == "-m")) !== -1) options.translation_map_path = opts[hold_index][1];
 	if ((hold_index = opts.findIndex((opt) => opt[0] == "-o")) !== -1) options.output_to = opts[hold_index][1];
 
-    log_info("Options:");
-    console.log({options});
+	log_info("Options:");
+	console.log({ options });
 
 	if (opts.length == 0) {
 		console.log(help_contents);
@@ -440,26 +440,26 @@ async function __roze_cli_main__() {
 	} else if (opts[0][0] == "-i") {
 		const input_type = input_source_file_type_table[opts[0][1]];
 		if (input_type === "FOLDER") {
-        	const directory_contents = await fs().read_directory(process.cwd());
-            if("error" in directory_contents) {
-                log_error("Couldn't read directory contents");
-		        console.error(directory_contents);
-                process.exit(1);
-            }
-            for(const file_path of directory_contents){
-                const opt_in = [file_path];
-                const extension = extract_file_extension(file_path, "none")
-                options.output_to = file_path + (options.audiovideobook ? ".mp4" : Constants.TTS_DEFAULT_FILE_EXTENSION);
-                const source = file_extension_to_source_file_type_table[extension];
-                if(source === undefined) {
-                    log_info(`Skipping ${file_path}...`);
-                    continue;
-                }
-                log_info(`Loading ${file_path} as ${source}`);
-                await single_roz(source, opt_in);
-            }
+			const directory_contents = await fs().read_directory(process.cwd());
+			if ("error" in directory_contents) {
+				log_error("Couldn't read directory contents");
+				console.error(directory_contents);
+				process.exit(1);
+			}
+			for (const file_path of directory_contents) {
+				const opt_in = [file_path];
+				const extension = extract_file_extension(file_path, "none")
+				options.output_to = file_path + (options.audiovideobook ? ".mp4" : Constants.TTS_DEFAULT_FILE_EXTENSION);
+				const source = file_extension_to_source_file_type_table[extension];
+				if (source === undefined) {
+					log_info(`Skipping ${file_path}...`);
+					continue;
+				}
+				log_info(`Loading ${file_path} as ${source}`);
+				await single_roz(source, opt_in);
+			}
 		}
-        else await single_roz(input_type, opts[0].slice(2));
+		else await single_roz(input_type, opts[0].slice(2));
 	}
 }
 
@@ -484,7 +484,7 @@ process.on("SIGINT", function () {
 		cleanup_bar.increment(1, { file: file_path });
 		try {
 			rmSync(file_path);
-		} catch (_) {}
+		} catch (_) { }
 	});
 
 	cleanup_bar.stop();

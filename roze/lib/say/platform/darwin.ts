@@ -69,17 +69,28 @@ let added_exit_handler = false;
 
 export const SayPlatformDarwin: SayPlatformBase = {
 	get_voices: async () => {
-		await new Promise((resolve) => {
+		const all_data: string[] = [];
+		await new Promise<void>((resolve) => {
 			try {
-				const all_data: string[] = [];
-				const cmd = spawn("say", ['-v', "'?'"], { windowsHide: true });
-				cmd.stdout.on("data", (d) => resolve(d.toString()));
-				cmd.on('exit', () => resolve(all_data));
+				// TODO fix this
+				const cmd = spawn("say", ['-v', "?"], { windowsHide: true });
+				cmd.stdout.on("data", (d) => {
+					const data = d.toString();
+					const regex = /^(([A-zÀ-ú]+)(\s\((Premium|Enhanced)\))?)/i;
+					for (const line of data.split('\n')) {
+						const match = regex.exec(line);
+						if (!match) return;
+						if (match.length < 2) return;
+						all_data.push(match[1]);
+					}
+				});
+				cmd.on('error', () => resolve());
+				cmd.on('exit', () => resolve());
 			} catch (_) {
-				resolve("");
+				resolve();
 			}
 		});
-		return [];
+		return all_data;
 	},
 	speak: async (text: string, voice?: string, speed?: number) => {
 		return new Promise((resolve) => {
@@ -98,8 +109,8 @@ export const SayPlatformDarwin: SayPlatformBase = {
 			}
 		});
 	},
-	export_batch: async (texts: { text: string; export_path: string }[], voice?: string, speed?: number, on_text_export?: (uuid:string, data: string) => any) => {
-		if(!added_exit_handler){
+	export_batch: async (texts: { text: string; export_path: string }[], voice?: string, speed?: number, on_text_export?: (uuid: string, data: string) => any) => {
+		if (!added_exit_handler) {
 			added_exit_handler = true;
 			process.on("exit", () => {
 				children_to_kill.forEach(child => child.kill());
@@ -108,7 +119,7 @@ export const SayPlatformDarwin: SayPlatformBase = {
 		const batch_size = 2;
 		speed = 170; // TODO Fix this
 		return await batch_requests(
-			texts.map(job => async() => {
+			texts.map(job => async () => {
 				return new Promise((resolve) => {
 					try {
 						const args: string[] = ["-o", job.export_path];
