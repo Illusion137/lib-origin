@@ -32,7 +32,7 @@ export function remove_tags(text: string){
 }
 
 export function prepare_text_for_tts(text: string): string{
-    return fix_punctuation(remove_tags(text));
+    return fix_punctuation(remove_tags(text)).replaceAll(/[\u25A0-\u25FF\u2600-\u26FF\u2700-\u27BF]/g, '');
 }
 
 export function fix_punctuation(text: string){
