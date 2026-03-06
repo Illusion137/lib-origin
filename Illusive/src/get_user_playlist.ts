@@ -18,7 +18,6 @@ export async function spotify_get_user_playlists(): Promise<CompactPlaylistsResu
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
     const user_playlists_response = await Origin.Spotify.account_playlists({cookie_jar: cookie_jar, var: {}, fetch_opts});
     if("error" in user_playlists_response) return {playlists: [], error: user_playlists_response.error};
-    console.log(user_playlists_response);
     return {
         playlists: user_playlists_response.data.me.libraryV3.items.map(playlist => {
             return {

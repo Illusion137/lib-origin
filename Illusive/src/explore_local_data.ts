@@ -28,6 +28,7 @@ export namespace ExploreLocalData {
     };
     export const christmas_playlist: CompactPlaylist = {
         title: {name: "Santa Time", uri: create_uri("illusi", "christmas_tracks_v1730.json")},
+        artwork_index: Constants.ExtraArtworksIndex.santa_time,
         artist: base_artist,
         date: christmas_day,
         explicit: "NONE",

@@ -1,6 +1,5 @@
 import type { DB, Scalar } from "@op-engineering/op-sqlite";
 import { generror_catch } from "./error_util";
-import { reinterpret_cast } from "@common/cast";
 
 function is_error_failed_unique_contraint(error: unknown){
     return (error as Error).message.includes("UNIQUE constraint failed")
@@ -98,7 +97,7 @@ export class DrizzleUtils<SQLTables extends string> {
         `);
     }
 
-    async get_all_changes(last_synced_at: number): Promise<Record<SQLTables, string[]>>{
-        return reinterpret_cast<Record<SQLTables, string[]>>({});
-    }
+    // async get_all_changes(last_synced_at: number): Promise<Record<SQLTables, string[]>>{
+    //     return reinterpret_cast<Record<SQLTables, string[]>>({});
+    // }
 }

@@ -14,7 +14,7 @@ import type { Proxy } from "@origin/proxy/proxy";
 import type { ContinuationItemRenderer } from "@origin/youtube_music/types/PlaylistResults_0";
 import type { SearchSuggestions } from "@origin/youtube_music/types/SearchSuggestions";
 import { sapisid_hash_auth0, sapisid_hash_auth1 } from "@common/utils/auth_utilt";
-import { generror, generror_fetch } from "@common/utils/error_util";
+import { generror, generror_catch, generror_fetch } from "@common/utils/error_util";
 import { parse_runs, try_json_eval,try_json_parse } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import { get_native_platform } from "@native/native_mode";
@@ -211,12 +211,17 @@ export namespace YouTubeMusic {
 	type SearchMode = "All" | "Songs" | "Videos" | "Albums" | "Community playlists" | "Artists" | "Episodes" | "Profiles";
 	interface Endpoint { "query": string, "params": string }
 	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any): PromiseICFGData<T> {
-		const icfg = await get_initial_data_config(opts, init_url);
-		if ("error" in icfg) return icfg;
-		return {
-			icfg,
-			data: parser(icfg.initial_data)
-		};
+		try {
+			const icfg = await get_initial_data_config(opts, init_url);
+			if ("error" in icfg) return icfg;
+			return {
+				icfg,
+				data: parser(icfg.initial_data)
+			};
+		}
+		catch(error) {
+			return generror_catch(error, "Failed to parse YouTube Music", {opts, init_url});
+		}
 	}
     async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
         // if (opts.cookie_jar === undefined) return generror("YouTube Music post_check_response CookieJar is empty");

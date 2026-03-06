@@ -22,7 +22,7 @@ import { youtube_parse_playlist_header, youtube_parse_videos } from '@illusive/p
 import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import { parse_amazon_music_playlist_track } from '@illusive/track_parser';
-import type { Track, ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
+import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
@@ -30,10 +30,8 @@ import { get_main_key } from '@common/utils/fetch_util';
 import { parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './parsers/spotify_parser';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
 import { bandlab_parse_track } from './parsers/bandlab_parser';
-import { ExploreLocalData } from './explore_local_data';
-import { reinterpret_cast } from '@common/cast';
-import christmas_tracks_v1730 from '@illusive/data/christmas_tracks_v1730.json';
 import rozfetch from '@common/rozfetch';
+import { get_local_illusi_playlist } from './gen/illusi_playlists_links';
 
 export const album_fetch_opts: RoZFetchRequestInit = {
     cache_opts: {
@@ -389,15 +387,8 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
 
 export async function illusi_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cleaned_url = urlid(url, ".json");
-    // TODO auto generate this with yet another build script
-    if(cleaned_url === "christmas_tracks_v1730"){
-        return {
-            title: ExploreLocalData.illusi_recommend_playlists_map.christmas_tracks_v1730.title.name,
-            creator: [{name: Constants.local_illusi_uri_id, uri: create_uri('illusi', Constants.local_illusi_uri_id)}],
-            tracks: reinterpret_cast<Track[]>(christmas_tracks_v1730),
-            continuation: null
-        };
-    }
+    const local_illusi_playlist = get_local_illusi_playlist(cleaned_url);
+    if(local_illusi_playlist !== undefined) return local_illusi_playlist;
 
     const playlist_response = await rozfetch<MusicServicePlaylist>(url);
     if("error" in playlist_response) return default_playlist(playlist_response);

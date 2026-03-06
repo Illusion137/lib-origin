@@ -5,7 +5,7 @@
 		// "source.organizeImports": "always",
 		// "source.fixAll.eslint": "explicit"
 	},
-	"editor.formatOnSave": false,
+	"editor.formatOnSave": true,
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.wordWrap": "on",
 	"editor.formatOnSaveMode": "file",

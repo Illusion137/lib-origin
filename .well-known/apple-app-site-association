@@ -1,0 +1,16 @@
+{
+    "activitycontinuation": {
+        "apps": [
+            "NE845UW534.com.illusion.illusi"
+        ]
+    },
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "NE845UW534.com.illusion.illusi",
+                "paths": ["/playlist/*"]
+            }
+        ]
+    }
+}

@@ -25,7 +25,9 @@ export namespace Prefs {
 
     export const equalizer_presets = {
         "Default": [0, 0, 0, 0, 0, 0],
-        "Bass Boost": [6, 4, 2, 0, -2, -4],
+        "Super Bass Boost": [8, 6, 2, 0, -1, -2],
+        "Bass Boost": [6, 4, 2, 0, -1, -2],
+        "Small Boost": [3, 2, 1, 0, 0, 0],
         "Treble Boost": [-2, -1, 0, 2, 4, 6],
         "Vocal Boost": [-2, -1, 1, 3, 4, 2],
         "Loudness": [5, 3, 1, 0, 2, 4],
@@ -38,7 +40,9 @@ export namespace Prefs {
         "Acoustic": [-1, 0, 2, 3, 2, 1],
         "Dance": [5, 3, 0, 2, 4, 5],
         "Podcast": [-3, -2, 1, 3, 4, 3],
-        "Movie": [4, 2, 0, 2, 3, 4]
+        "Movie": [4, 2, 0, 2, 3, 4],
+        "Low Bass": [-6, -4, -2, 0, 0, 0],
+        "No Bass": [-12, -6, -2, 0, 0, 0],
     } as const;
     export type EqualizerPreset = keyof typeof equalizer_presets;
     interface PastQueue { index: number; tracks: Track[]; }
@@ -54,7 +58,7 @@ export namespace Prefs {
         has_lyrics_dl: 0,
         plays_from_artist: 0,
         plays_from_album: 0,
-        plays_in_past_month: 0,
+        // plays_in_past_month: 0,
         explicit: 0,
         no_explicit: 0
     };
@@ -99,6 +103,7 @@ export namespace Prefs {
         auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track media whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
         auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track thumbnail whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
         auto_cache_lyrics:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track lyrics whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
+        use_track_shuffle_bias:                {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Enabled shuffle settings from Shuffler"}    as BasePref<boolean, OtherPrefTypes>,
         expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi"}    as BasePref<boolean, OtherPrefTypes>,
         warmup_youtube:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load YouTube Client on startup"}    as BasePref<boolean, OtherPrefTypes>,
         warmup_soundcloud:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup"}    as BasePref<boolean, OtherPrefTypes>,

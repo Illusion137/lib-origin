@@ -2,7 +2,7 @@ import { json_catch } from "@common/utils/util";
 import { ItemTimedCache, type FetchMethod, type PromiseResult, type ResponseError } from "@common/types";
 import MD5 from "crypto-js/md5";
 
-import { fs } from "@native/fs/fs";
+import { fs, load_native_fs } from "@native/fs/fs";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
 import pathlib from "path-browserify";
@@ -11,7 +11,7 @@ import { reinterpret_cast } from "./cast";
 interface RozFetchCacheOptsBase {
 	cache_ms: number;
 	cache_ms_fail?: number;
-	cache_on?: "url"|"request"
+	cache_on?: "url" | "request"
 }
 interface RozFetchCacheOptsMemory {
 	cache_mode?: "memory" | "none";
@@ -31,6 +31,7 @@ export interface RoZFetchRequestInit extends RequestInit {
 	abort_ms?: number;
 	proxy?: RozProxy;
 	method?: FetchMethod | (string & {});
+	ignore_fail_request?: boolean;
 }
 type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
@@ -46,7 +47,7 @@ const cache_file_extension = ".che";
 const rozfetch_cache = new ItemTimedCache<string, ResponseError | RoZFetchResponse<unknown>>();
 
 export function rozfetch_cache_key(input: string, init?: RoZFetchRequestInit): string {
-	if(init?.cache_opts?.cache_on ?? "url" === "url"){
+	if (init?.cache_opts?.cache_on ?? "url" === "url") {
 		return MD5(input).toString();
 	}
 	else return MD5(input + JSON.stringify(init)).toString();
@@ -125,6 +126,7 @@ async function update_rozfetch_cache<T>(init: RoZFetchRequestInit, response: RoZ
 export const ABORT_MESSAGE = "[ABORTED_ROZFETCH]";
 export default async function rozfetch<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
 	try {
+		await load_native_fs();
 		const cache_key = rozfetch_cache_key(input, init);
 		const cached_response = await check_rozfetch_cache<T>(init ?? {}, cache_key);
 		if (cached_response !== undefined) return cached_response;
@@ -137,7 +139,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 		const err = generror_fetch(response, "rozfetch failed | response NOT ok", {}, { input, init });
 		await update_rozfetch_cache(init ?? {}, response, cache_key, err);
 
-		if (!response.ok) return err;
+		if (!response.ok && init?.ignore_fail_request !== true) return err;
 		return response;
 	} catch (e: unknown) {
 		if (is_timeout_error(e)) {
@@ -147,7 +149,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			error.message = ABORT_MESSAGE + err.message;
 			error.stack = ABORT_MESSAGE + err.stack;
 			error.cause = err.cause;
-			return generror_catch(error, "rozfetch failed", { input, init: {...init, headers: "{VARIOUS HEADERS}"} });
+			return generror_catch(error, "rozfetch failed", { input, init: { ...init, headers: "{VARIOUS HEADERS}" } });
 		}
 		return generror_catch(e, "rozfetch failed", { input, init });
 	}

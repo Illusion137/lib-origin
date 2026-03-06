@@ -67,7 +67,7 @@ const playlists_tracks_config = {
 
 const new_releases_config = {
     id: int().primaryKey({ autoIncrement: true }),
-    title: text({mode: 'json'}).notNull().$type<NamedUUID>().default({name: '', uri: null}),
+    title: text({mode: 'json'}).unique().notNull().$type<NamedUUID>().default({name: '', uri: null}),
     artist: text({mode: 'json'}).notNull().$type<NamedUUID[]>().default([]),
     artwork_url: text().notNull().default(""),
     artwork_thumbnails: text({mode: 'json'}).notNull().$type<IllusiveThumbnail[]>().default([]),
@@ -114,3 +114,24 @@ export type SQLArtist = Omit<typeof artists_table.$inferSelect, "id">;
 export type SQLArtistInsert = Omit<typeof artists_table.$inferInsert, "id">;
 export const track_plays_table              = sqliteTable("track_plays", track_plays_config);
 export type SQLTrackPlays = Omit<typeof track_plays_table.$inferSelect, "id">;
+
+const sync_metadata_config = {
+    id: int().primaryKey({ autoIncrement: true }),
+    table_name: text().notNull(),
+    last_sync_at: int().notNull().default(0),
+    last_modified_at: int().notNull().default(0),
+    created_at: int().notNull().$defaultFn(() => Date.now()),
+} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+
+const change_log_config = {
+    id: int().primaryKey({ autoIncrement: true }),
+    table_name: text().notNull(),
+    operation: text().notNull().$type<'insert' | 'update' | 'delete'>(),
+    record_id: text().notNull(),
+    data: text({ mode: 'json' }).notNull(),
+    created_at: int().notNull().$defaultFn(() => Date.now()),
+    synced: int({ mode: 'boolean' }).notNull().default(false),
+} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+
+export const sync_metadata_table = sqliteTable("sync_metadata", sync_metadata_config);
+export const change_log_table = sqliteTable("change_log", change_log_config);

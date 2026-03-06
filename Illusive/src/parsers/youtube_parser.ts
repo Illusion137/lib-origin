@@ -170,7 +170,7 @@ export function youtube_parse_videos(videos: {video_renderer: VideoRenderer[]}|{
         return parse_youtube_title_artist({
             uid: generate_new_uid(parse_runs(track.title.runs)),
             title: parse_runs(track.title.runs),
-            artists: [{name: parse_runs(track.shortBylineText.runs), uri: track.shortBylineText.runs[0]?.navigationEndpoint === undefined ? null : create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId)}],
+            artists: [{name: parse_runs(track.shortBylineText.runs), uri: track.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint?.browseId)}],
             duration: parseInt(track.lengthSeconds),
             plays: youtube_views_number(track.videoInfo?.runs?.[0]?.text),
             youtube_id: track.videoId,

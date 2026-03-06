@@ -11,6 +11,7 @@ import { SQLTracks } from "./sql_tracks";
 import { reinterpret_cast } from "@common/cast";
 import { catch_ignore } from "@common/utils/error_util";
 import { force_json_parse_array } from "@common/utils/parse_util";
+import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 
 export namespace SQLPlaylists {
     function date_time(date?: string): number{
@@ -192,6 +193,7 @@ export namespace SQLPlaylists {
     export async function insert_track_playlist(playlist_track: PlaylistsTracks) {
         if(await track_exists_in_playlist(playlist_track)) return;
         await db.insert(playlists_tracks_table).values(playlist_track);
+        await ChangeTracker.log_change('playlists_tracks', 'insert', `${playlist_track.uuid}:${playlist_track.track_uid}`, playlist_track);
     }
     
     export async function delete_all_tracks_playlist(many_playlist_tracks: PlaylistsTracks[]) {
@@ -206,8 +208,13 @@ export namespace SQLPlaylists {
                     eq(playlists_tracks_table.track_uid, playlist_track.track_uid),
                 )
         );
+        await ChangeTracker.log_change('playlists_tracks', 'delete', `${playlist_track.uuid}:${playlist_track.track_uid}`, playlist_track);
     }
     export async function delete_track_from_all_playlists(track_uid: PlaylistsTracks['track_uid']) {
+        const tracks_to_delete = await db.select().from(playlists_tracks_table).where(eq(playlists_tracks_table.track_uid, track_uid));
+        for (const track of tracks_to_delete) {
+            await ChangeTracker.log_change('playlists_tracks', 'delete', `${track.uuid}:${track.track_uid}`, track);
+        }
         await db
             .delete(playlists_tracks_table)
             .where(
@@ -242,6 +249,7 @@ export namespace SQLPlaylists {
     }
     export async function update_playlist(playlist_uuid: Playlist['uuid'], new_playlist: Playlist) {
         await db.update(playlists_table).set(new_playlist).where(eq(playlists_table.uuid, playlist_uuid));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, new_playlist);
     }
     export async function create_playlist(title: string, cuuid?: string): Promise<string> {
         const playlist_names = await all_playlists_names();
@@ -253,7 +261,9 @@ export namespace SQLPlaylists {
                 title = `${title} ${count}`;
         }
         const playlist_uuid = cuuid ?? gen_uuid();
-        await db.insert(playlists_table).values({uuid: playlist_uuid, title});
+        const new_playlist = {uuid: playlist_uuid, title};
+        await db.insert(playlists_table).values(new_playlist);
+        await ChangeTracker.log_change('playlists', 'insert', playlist_uuid, new_playlist);
         return playlist_uuid;
     }
     export async function delete_playlist(playlist_uuid: string) {
@@ -261,6 +271,7 @@ export namespace SQLPlaylists {
             await tx.delete(playlists_table).where(eq(playlists_table.uuid, playlist_uuid));
             await tx.delete(playlists_tracks_table).where(eq(playlists_tracks_table.uuid, playlist_uuid));
         });
+        await ChangeTracker.log_change('playlists', 'delete', playlist_uuid, {uuid: playlist_uuid});
     }
     export async function delete_all_playlists() {
         const playlists = await all_playlists_data();
@@ -268,12 +279,15 @@ export namespace SQLPlaylists {
     }
     export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
         (await db.update(playlists_table).set({pinned: pin}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {pinned: pin});
     }
     export async function public_private_playlist(playlist_uuid: string, is_public: boolean) {
         (await db.update(playlists_table).set({public: is_public}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {public: is_public});
     }
     export async function archive_playlist(playlist_uuid: string, archive: boolean) {
         (await db.update(playlists_table).set({archived: archive}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {archived: archive});
     }
     export async function is_playlist_pinned(playlist_uuid: string): Promise<boolean> {
         const pinned_result = await db.select({pinned: playlists_table.pinned})
@@ -284,18 +298,23 @@ export namespace SQLPlaylists {
     }
     export async function update_playlist_title(playlist_uuid: string, title: string) {
         (await db.update(playlists_table).set({title: title}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {title: title});
     }
     export async function update_playlist_description(playlist_uuid: string, description: string) {
         (await db.update(playlists_table).set({description: description}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {description: description});
     }
     export async function update_playlist_sort_mode(playlist_uuid: string, sort_mode: SortType) {
         (await db.update(playlists_table).set({sort: sort_mode}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {sort: sort_mode});
     }
     export async function update_playlist_inherited_playlists(playlist_uuid: string, inherited_playlists: InheritedPlaylist[]) {
         (await db.update(playlists_table).set({inherited_playlists: inherited_playlists}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {inherited_playlists: inherited_playlists});
     }
     export async function update_playlist_inherited_searchs(playlist_uuid: string, inherited_searchs: InheritedSearch[]) {
         (await db.update(playlists_table).set({inherited_searchs: inherited_searchs}).where(eq(playlists_table.uuid, playlist_uuid)));
+        await ChangeTracker.log_change('playlists', 'update', playlist_uuid, {inherited_searchs: inherited_searchs});
     }
     export function inherited_playlists_action(inherited_playlists: InheritedPlaylist[], new_iplaylist: InheritedPlaylist, action: "ADD"|"REMOVE"): InheritedPlaylist[] {
         if(action === "ADD") return inherited_playlists.concat(new_iplaylist);

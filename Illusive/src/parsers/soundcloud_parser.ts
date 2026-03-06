@@ -15,7 +15,7 @@ export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
         uid: generate_new_uid(track.title),
         title: remove_prod(track.title),
         artists: [{name: track.user.username, uri: create_uri("soundcloud", track.user.permalink)}],
-        plays: track.playback_count,
+        plays: track.playback_count ?? 0,
         duration: Math.floor(track.duration / 1000),
         soundcloud_id: track.id,
         soundcloud_permalink: track.permalink_url,

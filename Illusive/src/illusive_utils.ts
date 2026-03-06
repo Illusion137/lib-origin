@@ -12,6 +12,7 @@ import { reinterpret_cast } from '../../common/cast';
 import type { BasePref } from "@native/mmkv/mmkv_utils";
 
 export function duration_to_string(track_duration: number): string {
+	if(isNaN(track_duration) || track_duration <= 0) return "";
 	if (track_duration / 3600 >= 1) {
 		const hours = Math.floor(track_duration / 3600);
 		const minutes = Math.floor((track_duration % 3600) / 60);
@@ -83,7 +84,6 @@ export function get_most_played_artists(global_tracks: Track[]) {
 		.map((track) => track.artists[0]);
 }
 
-// TODO dont forget this
 export type ArtworkNamedUUID = NamedUUID & {artwork: Artwork};
 export function get_unique_album_names_with_uris(global_tracks: Track[]): ArtworkNamedUUID[]{
 	const seen_uris: Set<string> = new Set<string>();
@@ -497,6 +497,12 @@ export function str_or_include(str1: string, str2: string) {
 }
 export function one_includes_word_not_other(word_group_1: string[], word_group_2: string[], needle: string) {
 	return (!word_group_1.includes(needle) && word_group_2.includes(needle)) || (word_group_1.includes(needle) && !word_group_2.includes(needle));
+}
+
+export function get_album_artwork(album_data: CompactPlaylist): Artwork{
+	if(album_data.artwork_url) return album_data.artwork_url;
+	if(album_data.artwork_index) return album_data.artwork_index;
+	return best_thumbnail(album_data.artwork_thumbnails)?.url ?? 0;
 }
 
 export function music_service_track_primary_key(type: MusicServiceType): keyof Track {

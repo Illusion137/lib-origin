@@ -1,3 +1,4 @@
+import { test, expect } from "vitest"
 import { timestamp_to_timecode } from "@roze/utils";
 
 test("timestamp_to_string", () => {
