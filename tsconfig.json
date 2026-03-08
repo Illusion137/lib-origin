@@ -2,6 +2,7 @@
     "lib": ["ESNext"],
     "exclude": ["node_modules"],
     "compilerOptions": {
+        "jsx": "react-native",
         "strict": true,
         "noImplicitAny": false,
         "noEmitOnError": true,
