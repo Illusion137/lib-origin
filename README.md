@@ -1,7 +1,7 @@
-<p align="center">
+<div style="text-align: center;">
     <h1>Origin</h1>
     <img src="Illusive/src/assets/icon_transparent.png" height="100" alt="Origin-Logo" />
-</p>
+</div>
 
 Lib-Origin a internal general purpose TypeScript utility library and a web-scaping, data-extracting library. There are several utilities for bridging the native gap between Node.js and React Native through _Roze_. Illusive is built as both a library for extracting music data, but also as a backend to my React Native music app _Illusi_. _Roze_, more than just the native bridge, also is a backend to a audiobook generation app, similarly named [Roze](https://github.com/Illusion137/Roze).
 
