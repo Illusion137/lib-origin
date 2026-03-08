@@ -12,5 +12,6 @@
 	"markdownlint.config": {
 		"MD041": false
 	},
-	"cmake.ignoreCMakeListsMissing": true
+	"cmake.ignoreCMakeListsMissing": true,
+	"clangd.fallbackFlags": ["-std=c++23"]
 }

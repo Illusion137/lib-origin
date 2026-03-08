@@ -9,6 +9,7 @@ import { Constants as IllusiveConstants } from "@illusive/constants";
 import { Utils } from "@illusicord/player/utils";
 import type { Player } from "@illusicord/player/player";
 import { catch_ignore } from "@common/utils/error_util";
+import path from "path-browserify";
 
 export class Queue<T = unknown> {
     player: Player;
@@ -161,7 +162,8 @@ export class Queue<T = unknown> {
             if("error" in download_url){
                 console.log(download_url);
             }
-            const resource = "error" in download_url ? this.connection.create_audio_stream("C:/dev/Illusi/lib-origin/illusicord/media/5-seconds-of-silence.mp3", {
+            const origin_dir = process.env.LORIGIN ?? "/lib-origin";
+            const resource = "error" in download_url ? this.connection.create_audio_stream(path.join(origin_dir, "/illusicord/media/5-seconds-of-silence.mp3"), {
                 metadata: play_track,
                 inputType: StreamType.Arbitrary
             }) : this.connection.create_audio_stream(download_url.url.replace(IllusiveConstants.media_archive_path, ''), {

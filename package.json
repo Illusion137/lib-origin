@@ -5,11 +5,14 @@
     "build:osx": "sh ./scripts/build.sh",
     "build:win": "powershell ./scripts/build.ps1",
     "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
+    "discord_dev:osx": "sh ./illusicord/build/discord_dev.sh",
     "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
+    "discord:osx": "sh ./illusicord/build/discord_start.sh",
     "gen_native": "ts-node ./scripts/gen_native.ts",
     "check-types": "tsc --noEmit",
     "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
-    "postinstall": "patch-package && husky"
+    "postinstall": "patch-package && husky",
+    "prepare": "g++ ./bin/origin.cpp -o ./bin/origin"
   },
   "cmake-js": {
     "runtime": "node",

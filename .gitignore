@@ -2,7 +2,8 @@
 .history/
 .venv
 admin/**
-bin/**
+bin/origin
+bin/origin.exe
 ignore/**
 node_modules
 sample/illusi/*.sqlite3
