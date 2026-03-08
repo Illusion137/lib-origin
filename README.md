@@ -1,4 +1,4 @@
-<div style="text-align: center;">
+<div style="text-align: center;" align="center">
     <h1>Origin</h1>
     <img src="Illusive/src/assets/icon_transparent.png" height="100" alt="Origin-Logo" />
 </div>
