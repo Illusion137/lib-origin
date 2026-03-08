@@ -5,12 +5,13 @@
 		// "source.organizeImports": "always",
 		// "source.fixAll.eslint": "explicit"
 	},
-	"editor.formatOnSave": false,
+	"editor.formatOnSave": true,
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.wordWrap": "on",
 	"editor.formatOnSaveMode": "file",
 	"markdownlint.config": {
 		"MD041": false
 	},
-	"cmake.ignoreCMakeListsMissing": true
+	"cmake.ignoreCMakeListsMissing": true,
+	"clangd.fallbackFlags": ["-std=c++23"]
 }

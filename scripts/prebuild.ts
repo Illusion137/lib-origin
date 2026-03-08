@@ -1,5 +1,6 @@
 // FULL BUILD ORIGIN
-import { log_info } from "@common/log";
+import { reinterpret_cast } from "@common/cast";
+import { log_error, log_info } from "@common/log";
 import { TimeLog } from "@common/time_log";
 import { Cookie, CookieJar } from "@common/utils/cookie_util";
 import { fs, load_native_fs } from "@native/fs/fs";
@@ -22,7 +23,7 @@ const cookie_jar_env_urls = {
 
 async function modify_env(key: string, value: string) {
     const env_string = await fs().read_as_string('.env', {});
-    if(typeof env_string !== 'string') throw new Error(".env file could not be read.");
+    if (typeof env_string !== 'string') throw new Error(".env file could not be read.");
     const variables = env_string.split('\n').filter(line => line.trim().length > 0);
     const index = variables.findIndex(line => line.startsWith(`${key}=`));
     if (index === -1) return;
@@ -40,10 +41,10 @@ async function spawn_code(cmd: string, args: string[]) {
     return await exit_code;
 }
 
-async function update_env(){
+async function update_env() {
     log_info("Fetching Chrome Cookies to store in .env...");
     const default_profile = (await getProfiles())[0];
-    for(const key of Object.keys(cookie_jar_env_urls)){
+    for (const key of Object.keys(cookie_jar_env_urls)) {
         log_info("-- Fetching cookies for " + cookie_jar_env_urls[key]);
         const cookies = await getCookies(cookie_jar_env_urls[key], default_profile.directory);
         log_info(`---- Fetched ${cookies.length} cookies.`);
@@ -63,22 +64,28 @@ async function update_env(){
     }
 }
 
-async function update_spotify_secrets(){
+async function genv() {
+    log_info("Generating types for .env...");
+    const genv_exit_code = await spawn_code("genv.sh", []);
+    if (genv_exit_code !== 0) throw new Error("GENV failed.");
+}
+
+async function update_spotify_secrets() {
     log_info("Running Spotify Secret Grabber...");
     const secret_grabber_exit_code = await spawn_code("ts-node", ["./scripts/spotify_secret_grabber.ts", "--all"]);
     if (secret_grabber_exit_code !== 0) throw new Error("Spotify Secret Grabber failed.");
 }
 
-async function compile_lint_code(){
+async function compile_lint_code() {
     log_info("Running TSC and ESLINT...");
     const build_exit_code = await spawn_code("sh", ["./scripts/build.sh"]);
     if (build_exit_code !== 0) throw new Error("TSC or ESLINT failed.");
 }
 
-async function generate_illusi_playlists_links(){
+async function generate_illusi_playlists_links() {
     log_info("Generating Illusive Playlists...");
     let illusi_playlists = await fs().read_directory("Illusive/src/data");
-    if("error" in illusi_playlists) throw illusi_playlists.error;
+    if ("error" in illusi_playlists) throw illusi_playlists.error;
     illusi_playlists = illusi_playlists.map(item => path.basename(item, ".json"));
 
     const default_includes = `import { Constants } from "@illusive/constants";
@@ -107,30 +114,37 @@ import { reinterpret_cast } from "@common/cast";
     await fs().write_file_as_string("Illusive/src/gen/illusi_playlists_links.ts", text, {});
 }
 
-async function run_tests(){
+async function run_tests() {
     log_info("Running Tests...");
     const test_exit_code = await spawn_code("yarn", ["test"]);
-    if(test_exit_code !== 0) throw new Error("Tests failed.");
+    if (test_exit_code !== 0) throw new Error("Tests failed.");
 }
 
-async function prebuild_main(){
-    await load_native_fs();
-    // await compile_lint_code();
-    
-    await update_env();
-    await generate_illusi_playlists_links();
-    await update_spotify_secrets();
-    
-    // await run_tests();
+async function prebuild_main() {
+    try {
+        await load_native_fs();
+        await compile_lint_code();
+
+        await update_env();
+        await genv();
+        await generate_illusi_playlists_links();
+        await update_spotify_secrets();
+
+        // await run_tests();
+    }
+    catch (e) {
+        log_error(reinterpret_cast<Error>(e).message);
+        process.exit(1);
+    }
     // await compile_lint_code();
     // TODO finish prebuild script
     // Gen-Files
-    
+
     // Generate includes
     // Generate native includes
-    
+
     // Update service.json (outages n stuff)
-    
+
     // If need to run npx drizzle-kit generate --config=drizzle-illusi-mobile.config.ts          37% 23/63GB 
 }
 

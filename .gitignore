@@ -2,7 +2,8 @@
 .history/
 .venv
 admin/**
-bin/**
+bin/origin
+bin/origin.exe
 ignore/**
 node_modules
 sample/illusi/*.sqlite3
@@ -21,3 +22,4 @@ catids.txt
 *.bin
 tts/
 roze/lib/supertonic/assets
+CLAUDE.md

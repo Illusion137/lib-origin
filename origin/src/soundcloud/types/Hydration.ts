@@ -1,4 +1,25 @@
-export type Hydration = (HydratableUser | HydratablePlaylist | HydratableSound | HydratableId)[]
+export type Hydration = (HydratableUser | HydratablePlaylist | HydratableSound | HydratableId | HydrateableEvil)[]
+
+export interface HydrateableEvil {
+    hydratable: "statsigClientInitializeResponse"
+    data: {
+        configString: string
+        user: {
+            userID: string
+            customIDs: {
+                stableID: string
+            }
+            country: string
+            appVersion: string
+            custom: {
+                region: string
+            }
+            statsigEnvironment: {
+                tier: string
+            }
+        }
+    }
+}
 
 export interface HydratableId {
     hydratable: "anonymousId"
@@ -203,7 +224,7 @@ export interface Transcoding {
 }
 
 export interface Format {
-    protocol: 'hls'|'progressive'
+    protocol: 'hls' | 'progressive'
     mime_type: string
 }
 
@@ -423,7 +444,7 @@ export interface Transcoding {
 }
 
 export interface Format {
-    protocol: 'hls'|'progressive'
+    protocol: 'hls' | 'progressive'
     mime_type: string
 }
 

@@ -13,7 +13,7 @@ export namespace ExampleObj {
         tags: [],
         explicit: "NONE",
         unreleased: false,
-        album: {name: "", uri: null},
+        album: { name: "", uri: null },
         plays: 0,
         imported_id: "",
         illusi_id: "",
@@ -55,28 +55,30 @@ export namespace ExampleObj {
         track_uid: ""
     } satisfies Required<PlaylistsTracks>;
     export const new_releases_example0: CompactPlaylist = {
-        title: {name: "", uri: null},
+        title: { name: "", uri: null },
         artist: [],
         artwork_url: "",
         artwork_thumbnails: [],
+        artwork_index: 0,
         explicit: "NONE",
         album_type: "ALBUM",
         type: "ALBUM",
         date: "" as ISOString,
         song_track: {} as never
     } satisfies Required<CompactPlaylist>;
-    export const seen_new_releases_example0: CompactPlaylist & {Timestamp: string} = {
-        title: {name: "", uri: null},
+    export const seen_new_releases_example0: CompactPlaylist & { Timestamp: string } = {
+        title: { name: "", uri: null },
         artist: [],
         artwork_url: "",
         artwork_thumbnails: [],
+        artwork_index: 0,
         explicit: "NONE",
         album_type: "ALBUM",
         type: "ALBUM",
         date: "" as ISOString,
         Timestamp: "",
         song_track: {} as never
-    } satisfies Required<CompactPlaylist & {Timestamp: string}>;
+    } satisfies Required<CompactPlaylist & { Timestamp: string }>;
     export const artist_example0: SQLArtist = {
         name: "",
         uri: "",
