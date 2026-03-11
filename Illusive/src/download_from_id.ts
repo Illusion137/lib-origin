@@ -14,27 +14,25 @@ export async function soundcloud_download_from_id(permalink: string, _: string):
     return {url: url};
 }
 export async function youtube_download_from_id(video_id: string, quality: string): Promise<DownloadFromIdResult|ResponseError> {
-    // const ytdl_opts: Types.FormatOptions = {
-    //     itag: Number(quality),
-    //     client: "MWEB"
-    // };
     try {
-        try {
-            // FIXME: YouTube Download From ID is silly
-            const av_format_url = await Origin.YouTubeDL.resolve_url(video_id, );
-            if(typeof av_format_url === "object") return av_format_url;
-            return {url: av_format_url};
-        } catch (error) {
-            console.warn(error);
-            // FIXME: YouTube Download With cookies is silly
-            // const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
-            // if(!use_cookies_on_download) throw error;
-            // const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
-            // const av_result = await Origin.YouTubeDL.ytdl(video_id, {...ytdl_opts, requestOptions: {headers: {cookie: cookie_jar.toString()}}});
-            // if("error" in av_result) throw av_result.error;
-            // return {url: av_result.av.url, metadata: youtube_info_metadata(av_result.info)};
-            return {url: '', metadata: {} as never};
+        // Try SABR first (server-adaptive bitrate — higher quality, no deciphering needed)
+        const sabr_result = await Origin.YouTubeDL.resolve_sabr_url(video_id);
+        if (!("error" in sabr_result)) {
+            return {
+                url: sabr_result.url,
+                isSabr: sabr_result.isSabr,
+                sabrServerUrl: sabr_result.sabrServerUrl,
+                sabrUstreamerConfig: sabr_result.sabrUstreamerConfig,
+                sabrFormats: sabr_result.sabrFormats,
+                poToken: sabr_result.poToken,
+            };
         }
+        console.warn("[SABR] Falling back to regular URL:", sabr_result.error);
+
+        // Fall back to regular deciphered URL
+        const av_format_url = await Origin.YouTubeDL.resolve_url(video_id);
+        if (typeof av_format_url === "object") return av_format_url;
+        return { url: av_format_url };
     } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", {video_id, quality}); }
 }
 

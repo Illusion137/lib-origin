@@ -91,19 +91,25 @@ const WEBVIEW_INJECTED_JS = `
         )[0];
 
         // ─── botguard.snapshot({ webPoSignalOutput }) ───────────────────
+        // vm.a() calls vmFunctionsCallback ASYNCHRONOUSLY via an internal
+        // background task. We must yield via setInterval (1ms ticks) to let
+        // that task run before calling async_snapshot_function.
         var web_po_signal_output = [];
         var botguard_response = await new Promise(function (resolve, reject) {
-            if (!vm_fns.async_snapshot_function)
-                return reject(new Error('[BotGuardClient] async snapshot function not available'));
-
-            var timeout = setTimeout(function () {
-                reject(new Error('[BotGuardClient] snapshot timed out'));
-            }, 15000);
-
-            vm_fns.async_snapshot_function(
-                function (response) { clearTimeout(timeout); resolve(response); },
-                [undefined, undefined, web_po_signal_output, undefined]
-            );
+            var poll_count = 0;
+            var poll_id = setInterval(function () {
+                if (vm_fns.async_snapshot_function) {
+                    clearInterval(poll_id);
+                    vm_fns.async_snapshot_function(
+                        function (response) { resolve(response); },
+                        [undefined, undefined, web_po_signal_output, undefined]
+                    );
+                } else if (poll_count >= 10000) {
+                    clearInterval(poll_id);
+                    reject(new Error('[BotGuardClient] async snapshot function not available after 10s'));
+                }
+                poll_count += 1;
+            }, 1);
         });
 
         if (!botguard_response) throw new Error('[BotGuardClient] empty snapshot response');
@@ -176,6 +182,7 @@ const WEBVIEW_INJECTED_JS = `
 true;
 `;
 
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 export let _webview_ref: WebView | null = null;
 export let _is_ready = false;
 export let _ready_promise: Promise<void> | null = null;
@@ -239,9 +246,19 @@ async function fetch_challenge_from_innertube(innertube: Innertube): Promise<BgC
 
 	const interpreter_url = raw_url ? (raw_url.startsWith("http") ? raw_url : `https:${raw_url}`) : null;
 
+	// Pre-fetch the BotGuard interpreter script from the React Native side rather than letting
+	// the WebView fetch it. On iOS, WKWebView blocks cross-origin fetches to gstatic.com from
+	// locally-loaded HTML (source={{ html, baseUrl }}), producing "Load failed" inside the VM.
+	let interpreter_javascript: string | null = null;
+	if (interpreter_url) {
+		const resp = await fetch(interpreter_url);
+		if (!resp.ok) throw new Error(`Failed to fetch BotGuard interpreter: ${resp.status}`);
+		interpreter_javascript = await resp.text();
+	}
+
 	return {
-		interpreter_javascript: null,
-		interpreter_url,
+		interpreter_javascript,
+		interpreter_url: null,
 		program: bg_challenge.program,
 		global_name: bg_challenge.global_name
 	};
@@ -275,26 +292,36 @@ async function mint_in_webview(challenge_data: BgChallengeData, identifier: stri
 
 export const mobile_potoken: PoTokenGenerator = {
 	generate_potoken: async (innertube: Innertube, identifier?: string) => {
-		const resolved_identifier = identifier ?? innertube.session.context.client.visitorData ?? "";
+		try {
+			const visitor_data = innertube.session.context.client.visitorData ?? "";
+			const resolved_identifier = identifier ?? visitor_data;
 
-		if (!resolved_identifier) {
-			throw new Error("No identifier provided and no visitorData on the Innertube session.");
+			if (!resolved_identifier) {
+				throw new Error("No identifier provided and no visitorData on the Innertube session.");
+			}
+
+			if (!_is_ready) {
+				if (!_ready_promise) reset_ready();
+				await _ready_promise;
+			}
+
+			const challenge_data = await fetch_challenge_from_innertube(innertube);
+			const result = await mint_in_webview(challenge_data, resolved_identifier, DEFAULT_TIMEOUT_MS);
+
+			return {
+				...result,
+				visitor_data
+			};
+		} catch (error) {
+			return { error: error instanceof Error ? error : new Error(String(error)) };
 		}
-
-		if (!_is_ready) {
-			if (!_ready_promise) reset_ready();
-			await _ready_promise;
-		}
-
-		const challenge_data = await fetch_challenge_from_innertube(innertube);
-
-		return mint_in_webview(challenge_data, resolved_identifier, DEFAULT_TIMEOUT_MS);
 	}
 };
 
 export function PoTokenWebView() {
 	const ref = useRef<WebView>(null);
 
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 	const on_ref = useCallback((instance: WebView | null) => {
 		ref.current = instance;
 		_webview_ref = instance;
@@ -307,7 +334,7 @@ export function PoTokenWebView() {
 				ref={on_ref}
 				originWhitelist={["*"]}
 				source={{
-					html: '<!DOCTYPE html><html lang="en"><head><title></title></head><body></body></html>',
+					html: '<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body></body></html>',
 					baseUrl: "https://www.youtube.com/"
 				}}
 				injectedJavaScript={WEBVIEW_INJECTED_JS}
@@ -325,14 +352,17 @@ export function PoTokenWebView() {
 
 const styles = StyleSheet.create({
 	hidden: {
+		// Off-screen, not zero-size. BotGuard fingerprints window.innerWidth/innerHeight
+		// and refuses to set up async_snapshot_function if the viewport is 0×0 or 1×1
+		// (detects headless/bot environment). 390×844 matches a standard iPhone viewport.
 		position: "absolute",
-		width: 0,
-		height: 0,
-		overflow: "hidden",
-		opacity: 0
+		top: -10000,
+		left: 0,
+		width: 390,
+		height: 844,
+		opacity: 0,
 	},
 	webview: {
-		width: 1,
-		height: 1
+		flex: 1,
 	}
 });

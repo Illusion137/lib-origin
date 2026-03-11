@@ -40,7 +40,7 @@ export async function setup_track_player(): Promise<boolean> {
     let index = 0;
     try {
         index = await TrackPlayer.getActiveTrackIndex() ?? 0;
-    } catch (_) {}
+    } catch (_) { }
     GLOBALS.global_var.past_track_index = GLOBALS.global_var.playing_tracks.length === 0 ? GLOBALS.global_var.past_track_index : index;
     try {
         await TrackPlayer.getActiveTrackIndex();
@@ -156,6 +156,13 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         headers: {},
         contentType: 'audio/mp4',
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+        ...(url_data.isSabr && {
+            isSabr: url_data.isSabr,
+            sabrServerUrl: url_data.sabrServerUrl,
+            sabrUstreamerConfig: url_data.sabrUstreamerConfig,
+            sabrFormats: (url_data.sabrFormats ?? []) as unknown as Record<string, unknown>[],
+            poToken: url_data.poToken,
+        }),
     };
 }
 

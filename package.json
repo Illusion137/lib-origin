@@ -12,7 +12,7 @@
     "check-types": "tsc --noEmit",
     "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
     "postinstall": "patch-package && husky",
-    "prepare": "g++ ./bin/origin.cpp -o ./bin/origin"
+    "prepare": "g++ -std=c++23 ./bin/origin.cpp -o ./bin/origin"
   },
   "cmake-js": {
     "runtime": "node",
@@ -96,6 +96,7 @@
     "ffmpeg-kit-react-native": "^6.0.2",
     "fuzzysort": "^3.1.0",
     "get-audio-duration": "^4.0.1",
+    "googlevideo": "^4.0.4",
     "image-size": "^2.0.2",
     "jsdom": "^28.1.0",
     "jsdom-jscore-rn": "^0.1.9",
