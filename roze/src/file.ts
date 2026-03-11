@@ -1,7 +1,7 @@
 import type { RozChapterContents, RozContent } from '@roze/types/roz';
 import type { TocElement } from 'epub2/lib/epub/const';
 import type Roz from '@roze/types/roz';
-import EPub from 'epub2';
+import EPub from '@lib/epub2';
 import pathlib from 'path-browserify';
 import { gen_uuid } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
@@ -130,7 +130,7 @@ export namespace FileParser {
         const file_path_err = await transform_url_to_path(file_path_or_url, ".epub", opts);
         if(typeof file_path_err === "object") return file_path_err;
         try {
-            const epub = await EPub.createAsync(file_path_err) as EPub;
+            const epub = await EPub.createAsync(file_path_err);
             const sections = await parse_epub_flow(epub);
             
             const roz_sections = await parse_epub_sections_to_roz_content(epub, sections);
