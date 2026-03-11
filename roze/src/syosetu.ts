@@ -53,7 +53,7 @@ export namespace Syosetu {
                 cache_opts: {
                     cache_ms: milliseconds_of({years: 1}),
                     cache_ms_fail: milliseconds_of({}),
-                    cache_mode: "file"    
+                    cache_mode: "file"
                 },
                 ...opts.fetch_opts
             }
