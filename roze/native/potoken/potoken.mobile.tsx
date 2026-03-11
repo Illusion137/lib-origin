@@ -2,6 +2,7 @@ import React, { useRef, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import type { Innertube } from "youtubei.js";
+import { BG } from "bgutils-js";
 import type { PoTokenGenerator, PoTokenResult } from "./potoken.base";
 
 interface BgChallengeData {
@@ -217,7 +218,13 @@ function handle_message(event: WebViewMessageEvent) {
 		if (req) {
 			clearTimeout(req.timer);
 			_pending.delete(data.request_id);
-			req.resolve({ po_token: data.po_token, identifier: data.identifier, visitor_data: "" });
+			let placeholder_po_token = "";
+			try {
+				placeholder_po_token = BG.PoToken.generatePlaceholder(data.identifier);
+			} catch {
+				/* identifier too long */
+			}
+			req.resolve({ po_token: data.po_token, placeholder_po_token, identifier: data.identifier, visitor_data: "" });
 		}
 		return;
 	}
@@ -291,13 +298,12 @@ async function mint_in_webview(challenge_data: BgChallengeData, identifier: stri
 }
 
 export const mobile_potoken: PoTokenGenerator = {
-	generate_potoken: async (innertube: Innertube, identifier?: string) => {
+	generate_potoken: async (innertube: Innertube, content_binding?: string) => {
 		try {
-			const visitor_data = innertube.session.context.client.visitorData ?? "";
-			const resolved_identifier = identifier ?? visitor_data;
+			const visitor_data = content_binding ?? "";
 
-			if (!resolved_identifier) {
-				throw new Error("No identifier provided and no visitorData on the Innertube session.");
+			if (!content_binding) {
+				throw new Error("No content_binding provided Innertube session.");
 			}
 
 			if (!_is_ready) {
@@ -306,10 +312,11 @@ export const mobile_potoken: PoTokenGenerator = {
 			}
 
 			const challenge_data = await fetch_challenge_from_innertube(innertube);
-			const result = await mint_in_webview(challenge_data, resolved_identifier, DEFAULT_TIMEOUT_MS);
+			const result = await mint_in_webview(challenge_data, content_binding, DEFAULT_TIMEOUT_MS);
 
 			return {
 				...result,
+				identifier: content_binding,
 				visitor_data
 			};
 		} catch (error) {
@@ -360,9 +367,9 @@ const styles = StyleSheet.create({
 		left: 0,
 		width: 390,
 		height: 844,
-		opacity: 0,
+		opacity: 0
 	},
 	webview: {
-		flex: 1,
+		flex: 1
 	}
 });

@@ -5,8 +5,11 @@ export interface SabrDownloadParams {
 	sabrUstreamerConfig: string;
 	sabrFormats?: YouTubeDL.SabrFormat[];
 	poToken?: string;
+	placeholder_po_token?: string;
 	clientInfo?: YouTubeDL.SabrClientInfo;
 	cookie?: string;
+	on_refresh_po_token?: () => Promise<string>;
+	on_reload_player_response?: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
 }
 
 export interface SabrDownloader {

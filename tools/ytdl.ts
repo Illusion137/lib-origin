@@ -6,6 +6,7 @@ import path from 'path';
 import { YouTubeDL } from "@origin/youtube_dl/index";
 import { load_native_sabr_downloader, sabr_downloader } from "@native/sabr_downloader/sabr_downloader";
 import { gen_uuid } from "@common/utils/util";
+import { load_native_potoken } from '@native/potoken/potoken';
 
 const is_win = process.platform === "win32";
 const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/ytdl_out/";
@@ -16,6 +17,7 @@ async function ytdl_main__() {
         console.error(red("NO URL SPECIFIED"));
         return;
     }
+    await load_native_potoken();
     await load_native_sabr_downloader();
 
     const sabr_params = await TimeLog.log_fn_async(

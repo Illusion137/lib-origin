@@ -117,6 +117,9 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
                 sabrUstreamerConfig: download_uri.sabrUstreamerConfig!,
                 sabrFormats: download_uri.sabrFormats,
                 poToken: download_uri.poToken,
+                placeholder_po_token: download_uri.placeholder_po_token,
+                on_refresh_po_token: download_uri.on_refresh_po_token,
+                on_reload_player_response: download_uri.on_reload_player_response,
             },
             new_uri,
             (progress) => track_downloader.update_key(downloading.uid, { ...downloading, progress })

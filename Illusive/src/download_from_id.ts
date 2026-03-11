@@ -25,6 +25,9 @@ export async function youtube_download_from_id(video_id: string, quality: string
                 sabrUstreamerConfig: sabr_result.sabrUstreamerConfig,
                 sabrFormats: sabr_result.sabrFormats,
                 poToken: sabr_result.poToken,
+                placeholder_po_token: sabr_result.placeholder_po_token,
+                on_refresh_po_token: sabr_result.on_refresh_po_token,
+                on_reload_player_response: sabr_result.on_reload_player_response,
             };
         }
         console.warn("[SABR] Falling back to regular URL:", sabr_result.error);

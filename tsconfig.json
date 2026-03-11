@@ -39,6 +39,7 @@
             "@sample/*": ["./sample/*"],
             "googlevideo/sabr-stream": ["./node_modules/googlevideo/dist/src/exports/sabr-stream.js"],
             "googlevideo/utils": ["./node_modules/googlevideo/dist/src/exports/utils.js"],
+            "googlevideo/protos": ["./node_modules/googlevideo/dist/src/exports/protos.js"],
         }
     },
     "ts-node": {

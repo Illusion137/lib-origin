@@ -65,7 +65,7 @@
     "adm-zip": "^0.5.16",
     "axios": "^1.7.7",
     "base-64": "^1.0.0",
-    "bgutils-js": "^3.2.0",
+    "bgutils-js": "3.1.0",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
     "canvas": "^3.2.1",
@@ -162,7 +162,7 @@
     "util": "^0.10.4",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^4.2.0",
-    "youtubei.js": "^16.0.1",
+    "youtubei.js": "https://github.com/chadacious/YouTube.js#codex/player-generalization",
     "zustand": "^5.0.9"
   },
   "react-native": {

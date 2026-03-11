@@ -1,37 +1,35 @@
-import { RCache } from './rcache';
-import { generror_catch } from '@common/utils/error_util';
+import { generror,
+generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { ClientType, Constants, Log, Platform, YT, YTNodes, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, UniversalCache, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
-import { fs, load_native_fs } from '@native/fs/fs';
+import { fs,
+load_native_fs } from '@native/fs/fs';
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
-import { get_native_platform } from '@native/native_mode';
 import type { PoTokenResult } from '@native/potoken/potoken.base';
 import { urlid } from '@common/utils/util';
+import type { ReloadPlaybackContext } from 'googlevideo/protos';
+import { RCache } from './rcache';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
-// On React Native/iOS, calling fetch(RequestObject, { body: overrideBody, ... }) is broken:
-// NSURLSession sees the Request's pre-set body stream as already-consumed when we try to pass a
-// different body via the second argument, which produces NSURLErrorCancelled → "Load failed".
-// This wrapper always converts Request objects into plain fetch(urlString, options) calls so
-// that the body/headers overrides applied by youtubei.js's HTTPClient are correctly respected.
-function make_rn_fetch() {
-    return async (input: any, init?: any): Promise<Response> => {
-        if (typeof input !== 'string') {
-            const url: string = typeof input.href === 'string' ? input.href : input.url;
-            return fetch(url, {
-                method: init?.method ?? input.method,
-                headers: init?.headers ?? input.headers,
-                body: init?.body ?? (input.bodyUsed ? undefined : input.body),
-                redirect: init?.redirect ?? input.redirect,
-                credentials: init?.credentials ?? input.credentials,
-            });
-        }
-        return fetch(input, init);
-    };
-}
+Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
+  const properties: string[] = [];
+
+  if (env.n) {
+    properties.push(`n: exportedVars.nFunction("${env.n}")`);
+  }
+
+  if (env.sig) {
+    properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
+  }
+
+  const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-implied-eval
+  return new Function(code)();
+};
 
 interface WatchResult {
     video_info: YT.VideoInfo;
@@ -80,46 +78,8 @@ export namespace YouTubeDL {
         if (innertube_client) return innertube_client;
         await load_native_fs();
         await load_native_potoken();
-        const platform = get_native_platform();
-        const is_mobile = platform === "REACT_NATIVE";
-        if (platform === "NODE" || is_mobile) {
-            Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
-                const properties: string[] = [];
-                if (env.n) properties.push(`n: exportedVars.nFunction("${env.n}")`);
-                if (env.sig) properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
-                const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
-                // eslint-disable-next-line @typescript-eslint/no-implied-eval
-                return new Function(code)() as typeof Platform.shim.eval;
-            };
-        }
         innertube_client = await Innertube.create({
             cache: new RCache(true, await fs().temp_directory()),
-            // On React Native, sw.js_data is a browser service-worker endpoint and
-            // will fail ("Load failed") because it requires Cookie/Referer headers in
-            // a browser context. Generate the session locally instead.
-            generate_session_locally: is_mobile,
-            enable_session_cache: true,
-            // fail_fast on mobile would surface sw.js_data / player-fetch errors as
-            // unrecoverable. Keep it true only on Node where we need a hard failure.
-            fail_fast: !is_mobile,
-            // SABR never calls decipher(), so the player JS is not needed on mobile.
-            // Skipping it avoids a ~4 MB fetch that also sets forbidden headers on iOS.
-            retrieve_player: !is_mobile,
-            // WEB client SABR doesn't require PoToken authentication; MWEB does.
-            // On desktop we use WEB; on mobile MWEB is required for iOS compatibility.
-            client_type: is_mobile ? ClientType.MWEB : ClientType.WEB,
-            // Pass YouTube cookie when available so the session is authenticated.
-            // Authenticated sessions get SABR URLs that don't need additional PoToken validation.
-            cookie: is_mobile ? undefined : (typeof process !== 'undefined' ? process.env.YOUTUBE_COOKIE_JAR : undefined),
-            // On React Native/iOS, fetch(Request, overrideInit) is broken: NSURLSession
-            // sees the Request's pre-set body stream as consumed when a different body is
-            // passed in the second argument, producing "Load failed". The wrapper always
-            // converts Request objects into plain fetch(urlString, options) calls.
-            fetch: is_mobile ? make_rn_fetch() : undefined,
-            // youtubei.js v16.0.1 has a broken nFunction/sigFunction matcher for the new
-            // YouTube player JS format (issue #1146). Pin an older known-working player ID
-            // to avoid the broken extraction. Remove once a fixed youtubei.js is released.
-            player_id: is_mobile ? undefined : '140dafda',
         });
         return innertube_client;
     }
@@ -189,40 +149,63 @@ export namespace YouTubeDL {
         sabrUstreamerConfig: string;
         sabrFormats: SabrFormat[];
         poToken: string;
+        placeholder_po_token: string;
         clientInfo?: SabrClientInfo;
         cookie?: string;
         duration?: number;
+        on_refresh_po_token: () => Promise<string>;
+        on_reload_player_response: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
+    }
+
+    export async function makePlayerRequest(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
+        const watchEndpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId } });
+
+        const extraArgs: Record<string, any> = {
+            playbackContext: {
+            contentPlaybackContext: {
+                vis: 0,
+                splay: false,
+                lactMilliseconds: '-1',
+                signatureTimestamp: innertube.session.player?.signature_timestamp
+            }
+            },
+            contentCheckOk: true,
+            racyCheckOk: true
+        };
+
+        if (reloadPlaybackContext) {
+            extraArgs.playbackContext.reloadPlaybackContext = reloadPlaybackContext;
+        }
+
+        return await watchEndpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
     }
 
     /**
      * Resolves a YouTube video into SABR (server-adaptive bitrate) stream parameters.
-     * The returned params are passed directly to TrackPlayer.load() with url="sabr://stream".
+     * The returned params are passed directly to TrackPlayer.load()
+     *
+     * Unlike resolve_url, this does NOT include serviceIntegrityDimensions in the player request.
+     * The po_token is supplied directly to SabrStream (placeholder on init, real on SPS=2).
+     * This matches the reference implementation in googlevideo/examples/downloader.
      */
     export async function resolve_sabr_url(video_id: string): Promise<SabrTrackParams | ResponseError> {
         try {
             video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
             const client = await get_innertube_client();
 
-            const result = await resolve_watch_response(client, video_id);
-            if ("error" in result) return result;
+            // Generate po_token for the video_id content binding.
+            const content_pot_result = await potoken().generate_potoken(client, video_id);
+            if ("error" in content_pot_result) return content_pot_result;
 
-            const { video_info, content_pot_result } = result;
-            const streaming_data = video_info.streaming_data;
+            const player_response = await makePlayerRequest(client, video_id);
+            const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
+            if(video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", {video_id});
 
-            // The server_abr_streaming_url is ciphered and must be deciphered before use.
-            // If decipher fails (e.g. player n-function extraction broke), fall back to raw URL.
-            let sabr_server_url = streaming_data!.server_abr_streaming_url ?? '';
-            const raw_sabr_url = sabr_server_url;
-            let decipher_succeeded = false;
-            try {
-                sabr_server_url = await client.session.player?.decipher(sabr_server_url) ?? sabr_server_url;
-                decipher_succeeded = sabr_server_url !== raw_sabr_url;
-            } catch (decipher_err) {
-                console.warn('[SABR] decipher failed:', (decipher_err as Error).message);
-            }
-            console.log(`[SABR] decipher ${decipher_succeeded ? 'succeeded' : 'FAILED (using raw URL)'}`);
+            const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
+            if(sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", {video_id});
 
-            const all_formats: SabrFormat[] = (streaming_data!.adaptive_formats ?? [])
+            const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-return
                 .map((f: any) => buildSabrFormat(f));
 
             const ctx = client.session.context.client;
@@ -238,12 +221,36 @@ export namespace YouTubeDL {
                 url: sabr_server_url,
                 isSabr: true,
                 sabrServerUrl: sabr_server_url,
-                sabrUstreamerConfig: video_info.player_config?.media_common_config?.media_ustreamer_request_config?.video_playback_ustreamer_config ?? '',
+                sabrUstreamerConfig: video_playback_ustreamer_config,
                 sabrFormats: all_formats,
                 poToken: content_pot_result.po_token,
+                placeholder_po_token: content_pot_result.placeholder_po_token,
                 clientInfo: client_info,
                 cookie: client.session.cookie,
-                duration: video_info.basic_info.duration,
+                duration: player_response.video_details?.duration ?? 0,
+                on_refresh_po_token: async () => {
+                    const potoken_result = await potoken().generate_potoken(client, video_id);
+                    if ('error' in potoken_result) throw potoken_result.error;
+                    return potoken_result.po_token;
+                },
+                on_reload_player_response: async (reload_ctx: any) => {
+                    const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
+                    const watch_response = await watch_endpoint.call(client.actions, {
+                        playbackContext: {
+                            contentPlaybackContext: {
+                                vis: 0, splay: false, lactMilliseconds: '-1',
+                                signatureTimestamp: client.session.player?.signature_timestamp ?? 0,
+                            },
+                            reloadPlaybackContext: reload_ctx,
+                        },
+                        contentCheckOk: true, racyCheckOk: true,
+                    });
+                    const new_info = new YT.VideoInfo([watch_response], client.actions, '');
+                    const new_url = await client.session.player?.decipher(new_info.streaming_data?.server_abr_streaming_url);
+                    const new_config = new_info.player_config?.media_common_config?.media_ustreamer_request_config?.video_playback_ustreamer_config;
+                    if (!new_url || !new_config) return null;
+                    return { sabrServerUrl: new_url, sabrUstreamerConfig: new_config };
+                },
             };
         } catch (error) {
             return generror_catch(error, "Failed to resolve SABR URL", { video_id });

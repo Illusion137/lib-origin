@@ -1,18 +1,19 @@
 import { createWriteStream } from "fs";
 import { SabrStream } from "googlevideo/sabr-stream";
 import { EnabledTrackTypes } from "googlevideo/utils";
+import type { ReloadPlaybackContext } from "googlevideo/protos";
 import type { SabrDownloader, SabrDownloadParams } from "./sabr_downloader.base";
 
 export const node_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params: SabrDownloadParams, output_path: string, on_progress?: (progress: number) => void) => {
-		const { sabrServerUrl, sabrUstreamerConfig, sabrFormats, poToken, clientInfo, cookie } = params;
+		const { sabrServerUrl, sabrUstreamerConfig, sabrFormats, poToken, placeholder_po_token, clientInfo, cookie } = params;
 
 		const sabr_fetch: typeof fetch = async (input, init) => {
 			const extra_headers: Record<string, string> = {
 				"origin": "https://www.youtube.com",
 				"referer": "https://www.youtube.com/",
 			};
-			if (cookie) extra_headers["cookie"] = cookie;
+			if (cookie) extra_headers.cookie = cookie;
 			const resp = await fetch(input, {
 				...init,
 				headers: {
@@ -26,17 +27,43 @@ export const node_sabr_downloader: SabrDownloader = {
 			return resp;
 		};
 
+		// Start with placeholder token; real token is applied on first SPS=2 event.
+		const initial_token = placeholder_po_token ?? poToken;
+
 		const sabr_stream = new SabrStream({
 			serverAbrStreamingUrl: sabrServerUrl,
 			videoPlaybackUstreamerConfig: sabrUstreamerConfig,
 			formats: sabrFormats as any,
-			poToken,
+			poToken: initial_token,
 			clientInfo: clientInfo as any,
 			fetch: sabr_fetch,
 		});
 
-		sabr_stream.on('streamProtectionStatusUpdate', (status: any) => {
-			console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
+		let real_token_applied = false;
+		sabr_stream.on('streamProtectionStatusUpdate', async (status: any) => {
+			// console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
+			if (status.status === 2) {
+				if (!real_token_applied) {
+					real_token_applied = true;
+					if (poToken) sabr_stream.setPoToken(poToken);
+				} else if (params.on_refresh_po_token) {
+					try {
+						const refreshed = await params.on_refresh_po_token();
+						sabr_stream.setPoToken(refreshed);
+					} catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
+				}
+			}
+		});
+
+		sabr_stream.on('reloadPlayerResponse', async (ctx: ReloadPlaybackContext) => {
+			if (!params.on_reload_player_response) return;
+			try {
+				const updated = await params.on_reload_player_response(ctx);
+				if (updated) {
+					sabr_stream.setStreamingURL(updated.sabrServerUrl);
+					sabr_stream.setUstreamerConfig(updated.sabrUstreamerConfig);
+				}
+			} catch (e) { console.error('[SABR] Failed to reload player response:', e); }
 		});
 
 		const { audioStream, selectedFormats } = await sabr_stream.start({

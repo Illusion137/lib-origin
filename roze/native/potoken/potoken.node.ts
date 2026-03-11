@@ -1,5 +1,5 @@
 import type { PoTokenGenerator } from "@native/potoken/potoken.base";
-import { BG, type BgConfig } from 'bgutils-js';
+import { BG, buildURL, GOOG_API_KEY, USER_AGENT, type WebPoSignalOutput } from 'bgutils-js';
 import type { Innertube } from 'youtubei.js';
 import { JSDOM } from 'jsdom';
 import { generror } from "@common/utils/error_util";
@@ -14,6 +14,7 @@ function setup_botguard_environment(): void {
         {
             url: 'https://www.youtube.com/',
             referrer: 'https://www.youtube.com/',
+            userAgent: USER_AGENT,
         },
     );
 
@@ -29,33 +30,41 @@ function setup_botguard_environment(): void {
             value: dom.window.navigator,
         });
     }
+
+    // jsdom doesn't implement canvas; stub getContext so BotGuard's VM doesn't throw.
+    Object.defineProperty(dom.window.HTMLCanvasElement.prototype, 'getContext', {
+        value: () => null,
+        writable: true,
+    });
 }
 
 export const node_potoken: PoTokenGenerator = {
-    generate_potoken: async (innertube: Innertube, identifier?: string) => {
+    generate_potoken: async (innertube: Innertube, content_binding?: string) => {
         setup_botguard_environment();
 
-        const visitor_data = innertube.session.context.client.visitorData || '';
-        const content_binding = identifier ?? visitor_data;
+        const visitor_data = content_binding || '';
 
         if (!content_binding) {
-            return generror('No identifier provided and no visitorData on the Innertube session.', { identifier });
+            return generror('No identifier provided and no visitorData on the Innertube session.', { identifier: content_binding });
         }
 
-        const bg_config: BgConfig = {
-            fetch: (input, init?) => fetch(input, init),
-            globalObj: globalThis,
-            identifier: content_binding,
-            requestKey: REQUEST_KEY,
-        };
+        const challenge_response = await innertube.getAttestationChallenge('ENGAGEMENT_TYPE_UNBOUND');
 
-        const bg_challenge = await BG.Challenge.create(bg_config);
-
-        if (!bg_challenge) {
-            return generror('Could not get challenge');
+        if (!challenge_response.bg_challenge) {
+            return generror('Could not get BotGuard challenge');
         }
 
-        const interpreter_javascript = bg_challenge.interpreterJavascript.privateDoNotAccessOrElseSafeScriptWrappedValue;
+        let interpreter_url: string =
+            challenge_response.bg_challenge.interpreter_url.private_do_not_access_or_else_trusted_resource_url_wrapped_value ?? '';
+
+        if (!interpreter_url) {
+            return generror('Could not get interpreter URL from BotGuard challenge');
+        }
+
+        if (interpreter_url.startsWith('//')) interpreter_url = `https:${interpreter_url}`;
+
+        const bg_script_response = await fetch(interpreter_url);
+        const interpreter_javascript = await bg_script_response.text();
 
         if (!interpreter_javascript) {
             return generror('Could not load VM');
@@ -64,14 +73,45 @@ export const node_potoken: PoTokenGenerator = {
         // eslint-disable-next-line @typescript-eslint/no-implied-eval
         new Function(interpreter_javascript)();
 
-        const po_token_result = await BG.PoToken.generate({
-            program: bg_challenge.program,
-            globalName: bg_challenge.globalName,
-            bgConfig: bg_config,
+        const botguard = await BG.BotGuardClient.create({
+            program: challenge_response.bg_challenge.program,
+            globalName: challenge_response.bg_challenge.global_name,
+            globalObj: globalThis,
         });
 
+        const web_po_signal_output: WebPoSignalOutput = [];
+        const botguard_response = await botguard.snapshot({ webPoSignalOutput: web_po_signal_output });
+
+        const integrity_token_response = await fetch(buildURL('GenerateIT', true), {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json+protobuf',
+                'x-goog-api-key': GOOG_API_KEY,
+                'x-user-agent': 'grpc-web-javascript/0.1',
+                'user-agent': USER_AGENT,
+            },
+            body: JSON.stringify([REQUEST_KEY, botguard_response]),
+        });
+
+        const integrity_token_data = await integrity_token_response.json() as unknown[];
+
+        if (typeof integrity_token_data[0] !== 'string') {
+            return generror('Could not get integrity token');
+        }
+
+        const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
+        const po_token = await web_po_minter.mintAsWebsafeString(content_binding);
+
+        // generatePlaceholder throws if content_binding > 118 UTF-8 bytes (visitor_data can exceed this).
+        // placeholder_po_token is only needed for SABR init (content binding = video_id, always short).
+        let placeholder_po_token = '';
+        try {
+            placeholder_po_token = BG.PoToken.generatePlaceholder(content_binding);
+        } catch { /* identifier too long — placeholder not needed for this binding */ }
+
         return {
-            po_token: po_token_result.poToken,
+            po_token,
+            placeholder_po_token,
             identifier: content_binding,
             visitor_data,
         };
