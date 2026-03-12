@@ -162,7 +162,7 @@
     "util": "^0.10.4",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^4.2.0",
-    "youtubei.js": "https://github.com/chadacious/YouTube.js#codex/player-generalization",
+    "youtubei.js": "github:chadacious/YouTube.js#21583f7eec0a06b8a7536abfb55942f4ab300e1e",
     "zustand": "^5.0.9"
   },
   "react-native": {

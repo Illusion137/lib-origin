@@ -1,11 +1,15 @@
-import { generror,
-generror_catch } from '@common/utils/error_util';
+import {
+    generror,
+    generror_catch
+} from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { Constants, Log, Platform, UniversalCache, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
-import { fs,
-load_native_fs } from '@native/fs/fs';
+import {
+    fs,
+    load_native_fs
+} from '@native/fs/fs';
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import type { PoTokenResult } from '@native/potoken/potoken.base';
 import { urlid } from '@common/utils/util';
@@ -15,20 +19,20 @@ import { RCache } from './rcache';
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
 Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
-  const properties: string[] = [];
+    const properties: string[] = [];
 
-  if (env.n) {
-    properties.push(`n: exportedVars.nFunction("${env.n}")`);
-  }
+    if (env.n) {
+        properties.push(`n: exportedVars.nFunction("${env.n}")`);
+    }
 
-  if (env.sig) {
-    properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
-  }
+    if (env.sig) {
+        properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
+    }
 
-  const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
+    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-implied-eval
-  return new Function(code)();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-implied-eval
+    return new Function(code)();
 };
 
 interface WatchResult {
@@ -80,6 +84,7 @@ export namespace YouTubeDL {
         await load_native_potoken();
         innertube_client = await Innertube.create({
             cache: new RCache(true, await fs().temp_directory()),
+            player_id: '6c5cb4f4'
         });
         return innertube_client;
     }
@@ -162,12 +167,12 @@ export namespace YouTubeDL {
 
         const extraArgs: Record<string, any> = {
             playbackContext: {
-            contentPlaybackContext: {
-                vis: 0,
-                splay: false,
-                lactMilliseconds: '-1',
-                signatureTimestamp: innertube.session.player?.signature_timestamp
-            }
+                contentPlaybackContext: {
+                    vis: 0,
+                    splay: false,
+                    lactMilliseconds: '-1',
+                    signatureTimestamp: innertube.session.player?.signature_timestamp
+                }
             },
             contentCheckOk: true,
             racyCheckOk: true
@@ -199,10 +204,10 @@ export namespace YouTubeDL {
 
             const player_response = await makePlayerRequest(client, video_id);
             const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
-            if(video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", {video_id});
+            if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", { video_id });
 
             const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
-            if(sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", {video_id});
+            if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", { video_id });
 
             const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-return
