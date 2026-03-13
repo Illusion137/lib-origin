@@ -162,7 +162,7 @@ export namespace YouTubeDL {
         on_reload_player_response: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
     }
 
-    export async function makePlayerRequest(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
+    export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
         const watchEndpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId } });
 
         const extraArgs: Record<string, any> = {
@@ -202,7 +202,7 @@ export namespace YouTubeDL {
             const content_pot_result = await potoken().generate_potoken(client, video_id);
             if ("error" in content_pot_result) return content_pot_result;
 
-            const player_response = await makePlayerRequest(client, video_id);
+            const player_response = await make_player_request(client, video_id);
             const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
             if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", { video_id });
 

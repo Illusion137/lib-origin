@@ -26,6 +26,8 @@ export async function youtube_download_from_id(video_id: string, quality: string
                 sabrFormats: sabr_result.sabrFormats,
                 poToken: sabr_result.poToken,
                 placeholder_po_token: sabr_result.placeholder_po_token,
+                clientInfo: sabr_result.clientInfo,
+                cookie: sabr_result.cookie,
                 on_refresh_po_token: sabr_result.on_refresh_po_token,
                 on_reload_player_response: sabr_result.on_reload_player_response,
             };

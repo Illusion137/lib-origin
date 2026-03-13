@@ -118,6 +118,8 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
                 sabrFormats: download_uri.sabrFormats,
                 poToken: download_uri.poToken,
                 placeholder_po_token: download_uri.placeholder_po_token,
+                clientInfo: download_uri.clientInfo,
+                cookie: download_uri.cookie,
                 on_refresh_po_token: download_uri.on_refresh_po_token,
                 on_reload_player_response: download_uri.on_reload_player_response,
             },

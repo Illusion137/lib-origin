@@ -325,6 +325,12 @@ export const mobile_potoken: PoTokenGenerator = {
 	}
 };
 
+const WEBVIEW_ORIGIN_WHITELIST = ["*"];
+const WEBVIEW_SOURCE = {
+	html: '<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body></body></html>',
+	baseUrl: "https://www.youtube.com/"
+};
+
 export function PoTokenWebView() {
 	const ref = useRef<WebView>(null);
 
@@ -339,11 +345,8 @@ export function PoTokenWebView() {
 		<View style={styles.hidden} pointerEvents="none">
 			<WebView
 				ref={on_ref}
-				originWhitelist={["*"]}
-				source={{
-					html: '<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body></body></html>',
-					baseUrl: "https://www.youtube.com/"
-				}}
+				originWhitelist={WEBVIEW_ORIGIN_WHITELIST}
+				source={WEBVIEW_SOURCE}
 				injectedJavaScript={WEBVIEW_INJECTED_JS}
 				onMessage={handle_message}
 				userAgent={USER_AGENT}

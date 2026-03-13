@@ -24,7 +24,6 @@ async function ytdl_main__() {
         green("RESOLVED SABR URL"),
         async () => await YouTubeDL.resolve_sabr_url(url)
     );
-
     if ("error" in sabr_params) {
         console.error(red("FAILED TO RESOLVE SABR URL"), sabr_params.error);
         return;
