@@ -3,7 +3,7 @@ import {
     generror_catch
 } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import Innertube, { ClientType, Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
 import {
@@ -11,10 +11,10 @@ import {
     load_native_fs
 } from '@native/fs/fs';
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
-import type { PoTokenResult } from '@native/potoken/potoken.base';
 import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { RCache } from './rcache';
+import type { PoTokenResult } from '@native/potoken/potoken.base';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -34,44 +34,6 @@ Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, T
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-implied-eval
     return new Function(code)();
 };
-
-interface WatchResult {
-    video_info: YT.VideoInfo;
-    content_pot_result: PoTokenResult;
-    session_pot_result: PoTokenResult;
-}
-
-async function resolve_watch_response(client: Innertube, video_id: string): Promise<WatchResult | ResponseError> {
-    const content_pot_result = await potoken().generate_potoken(client, video_id);
-    if ("error" in content_pot_result) return content_pot_result;
-
-    const session_pot_result = await potoken().generate_potoken(client, content_pot_result.visitor_data);
-    if ("error" in session_pot_result) return session_pot_result;
-
-    const watch_endpoint = new YTNodes.NavigationEndpoint({
-        watchEndpoint: { videoId: video_id },
-    });
-
-    const watch_response = await watch_endpoint.call(client.actions, {
-        playbackContext: {
-            adPlaybackContext: { pyv: true },
-            contentPlaybackContext: {
-                vis: 0,
-                splay: false,
-                lactMilliseconds: '-1',
-                signatureTimestamp: client.session.player?.signature_timestamp ?? 0,
-            },
-        },
-        serviceIntegrityDimensions: {
-            poToken: content_pot_result.po_token,
-        },
-        contentCheckOk: true,
-        racyCheckOk: true,
-    });
-
-    const video_info = new YT.VideoInfo([watch_response], client.actions, '');
-    return { video_info, content_pot_result, session_pot_result };
-}
 
 export namespace YouTubeDL {
     export interface Chapter { title: string, start_time: number };
@@ -105,29 +67,11 @@ export namespace YouTubeDL {
         try {
             const client = await get_innertube_client();
             const info = await client.getShortsVideoInfo(link, 'ANDROID');
-            return info;
+            return info as unknown;
         } catch (error) {
             return generror_catch(error, "YTDL Failed", { link });
         }
     };
-
-    // https://github.com/lovegaoshi/azusa-player-mobile/blob/1b0a00b77620804c863e78bda888b524b108134b/src/utils/mediafetch/ytbvideo.ytbi.ts#L42
-    export async function resolve_url(video_id: string, options?: Types.FormatOptions): Promise<string | ResponseError> {
-        try {
-            video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
-            const client = await get_innertube_client();
-
-            const result = await resolve_watch_response(client, video_id);
-            if ("error" in result) return result;
-
-            const { video_info, session_pot_result } = result;
-            const format = video_info.chooseFormat({ quality: 'best', type: 'audio', ...options });
-            const url = await format.decipher(client.session.player);
-            return `${url}&pot=${session_pot_result.po_token}`;
-        } catch (error) {
-            return generror_catch(error, "Failed to choose a YTDL format", { options, video_id });
-        }
-    }
 
     export interface SabrFormat {
         itag: number;
