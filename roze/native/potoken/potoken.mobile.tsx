@@ -2,7 +2,7 @@ import React, { useRef, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import type { Innertube } from "youtubei.js";
-import { BG } from "bgutils-js";
+import { BG, GOOG_API_KEY as BG_GOOG_API_KEY } from "bgutils-js";
 import type { PoTokenGenerator, PoTokenResult } from "./potoken.base";
 
 interface BgChallengeData {
@@ -19,11 +19,11 @@ interface PendingRequest {
 }
 
 const REQUEST_KEY = "O43z0dpjhgX20SCx4KAo";
-const GOOG_API_KEY = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw";
+const GOOG_API_KEY = BG_GOOG_API_KEY;
 const USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-const WEBVIEW_INJECTED_JS = `
+export const WEBVIEW_INJECTED_JS = `
 (function () {
     var REQUEST_KEY  = '${REQUEST_KEY}';
     var GOOG_API_KEY = '${GOOG_API_KEY}';
@@ -52,7 +52,7 @@ const WEBVIEW_INJECTED_JS = `
     }
 
     function build_url(endpoint_name) {
-        return 'https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/' + endpoint_name;
+        return 'https://www.youtube.com/api/jnn/v1/' + endpoint_name;
     }
 
     async function execute_botguard_and_mint(challenge_data, identifier) {
@@ -300,6 +300,7 @@ async function mint_in_webview(challenge_data: BgChallengeData, identifier: stri
 export const mobile_potoken: PoTokenGenerator = {
 	generate_potoken: async (innertube: Innertube, content_binding?: string) => {
 		try {
+			console.log("[MobilePoToken] generate_potoken start");
 			const visitor_data = content_binding ?? "";
 
 			if (!content_binding) {
@@ -320,6 +321,7 @@ export const mobile_potoken: PoTokenGenerator = {
 				visitor_data
 			};
 		} catch (error) {
+			console.error("[MobilePoToken] Error:", error);
 			return { error: error instanceof Error ? error : new Error(String(error)) };
 		}
 	}
@@ -343,19 +345,7 @@ export function PoTokenWebView() {
 
 	return (
 		<View style={styles.hidden} pointerEvents="none">
-			<WebView
-				ref={on_ref}
-				originWhitelist={WEBVIEW_ORIGIN_WHITELIST}
-				source={WEBVIEW_SOURCE}
-				injectedJavaScript={WEBVIEW_INJECTED_JS}
-				onMessage={handle_message}
-				userAgent={USER_AGENT}
-				javaScriptEnabled
-				domStorageEnabled
-				cacheEnabled={false}
-				incognito
-				style={styles.webview}
-			/>
+			<WebView ref={on_ref} originWhitelist={WEBVIEW_ORIGIN_WHITELIST} source={WEBVIEW_SOURCE} injectedJavaScript={WEBVIEW_INJECTED_JS} onMessage={handle_message} userAgent={USER_AGENT} javaScriptEnabled domStorageEnabled cacheEnabled={false} incognito style={styles.webview} />
 		</View>
 	);
 }
