@@ -7,6 +7,7 @@ import { try_json_parse } from "@common/utils/parse_util";
 import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
 import pathlib from "path-browserify";
 import { reinterpret_cast } from "./cast";
+import { status_codes_descriptions } from "./status_codes";
 
 interface RozFetchCacheOptsBase {
 	cache_ms: number;
@@ -136,7 +137,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
 
-		const err = generror_fetch(response, "rozfetch failed | response NOT ok", {}, { input, init });
+		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, "INFO", {}, { input, init });
 		await update_rozfetch_cache(init ?? {}, response, cache_key, err);
 
 		if (!response.ok && init?.ignore_fail_request !== true) return err;
@@ -149,8 +150,8 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			error.message = ABORT_MESSAGE + err.message;
 			error.stack = ABORT_MESSAGE + err.stack;
 			error.cause = err.cause;
-			return generror_catch(error, "rozfetch failed", { input, init: { ...init, headers: "{VARIOUS HEADERS}" } });
+			return generror_catch(error, "rozfetch failed", "LOW", { input, init: { ...init, headers: "{VARIOUS HEADERS}" } });
 		}
-		return generror_catch(e, "rozfetch failed", { input, init });
+		return generror_catch(e, "rozfetch failed", "MEDIUM", { input, init });
 	}
 }

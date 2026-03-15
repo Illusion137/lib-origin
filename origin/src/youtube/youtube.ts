@@ -9,7 +9,7 @@ import type { InitialData } from '@origin/youtube/types/types';
 import type { YTCFG } from "@origin/youtube/types/YTCFG";
 import type { Proxy } from "@origin/proxy/proxy";
 import { sapisid_hash_auth1 } from "@common/utils/auth_utilt";
-import { try_json_eval,try_json_parse } from "@common/utils/parse_util";
+import { try_json_eval, try_json_parse } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
 import rozfetch from "@common/rozfetch";
@@ -56,7 +56,7 @@ export namespace YouTube {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "youtube.com/", "playlist?list=", /&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg?: YTCFG ): Record<string, any> {
+	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg?: YTCFG): Record<string, any> {
 		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
 		const base_headers = {
 			"User-Agent": user_agent_mobile,
@@ -89,7 +89,7 @@ export namespace YouTube {
 			"Referer": "https://www.youtube.com",
 			"Referrer-Policy": "strict-origin-when-cross-origin"
 		} as const;
-		if(get_native_platform() === "REACT_NATIVE"){
+		if (get_native_platform() === "REACT_NATIVE") {
 			return {
 				...base_headers,
 				"Cookies": cookie_jar?.toString()
@@ -120,10 +120,10 @@ export namespace YouTube {
 			return initial_data;
 		}
 		const initial_data = try_json_eval<string>(extracted);
-        if(typeof initial_data === "object") return initial_data;
+		if (typeof initial_data === "object") return initial_data;
 		return try_json_parse<InitialData>(initial_data);
 	}
-	function extract_ytcfg(html: string): YTCFG|ResponseError {
+	function extract_ytcfg(html: string): YTCFG | ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
 		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
 		const ytcfg = try_json_eval<YTCFG>(extracted as string);
@@ -136,7 +136,7 @@ export namespace YouTube {
 			const page_response = await rozfetch(url, {
 				...opts.fetch_opts,
 				headers: {
-					...(cookies ? get_native_platform() === "REACT_NATIVE" ? {"Cookies": cookies} : {"cookie": cookies} : {}),
+					...(cookies ? get_native_platform() === "REACT_NATIVE" ? { "Cookies": cookies } : { "cookie": cookies } : {}),
 					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
 					"accept-language": "en-US,en;q=0.9",
 					"priority": "u=0, i",
@@ -170,19 +170,19 @@ export namespace YouTube {
 				proxy: opts.proxy,
 				method: "GET"
 			});
-			if("error" in page_response) return page_response;
+			if ("error" in page_response) return page_response;
 			const page_html = await page_response.text();
-            const initial_data = extract_initial_data(page_html);
-            if("error" in initial_data) return initial_data;
-            const ytcfg = extract_ytcfg(page_html);
-            if("error" in ytcfg) return ytcfg;
+			const initial_data = extract_initial_data(page_html);
+			if ("error" in initial_data) return initial_data;
+			const ytcfg = extract_ytcfg(page_html);
+			if ("error" in ytcfg) return ytcfg;
 			return {
 				initial_data,
 				ytcfg
 			};
 		} catch (error) { return { error: error as Error }; }
 	}
-    interface ICFGData<T> { icfg: ICFG, data: T }
+	interface ICFGData<T> { icfg: ICFG, data: T }
 	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
 	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any, tuser_agent?: string): PromiseICFGData<T> {
 		try {
@@ -192,9 +192,9 @@ export namespace YouTube {
 				icfg,
 				data: parser(icfg.initial_data)
 			};
-		} catch (error) { return generror_catch(error, "Failed to parse YouTube", {opts, init_url}); }
+		} catch (error) { return generror_catch(error, "Failed to parse YouTube", "CRITICAL", { opts, init_url }); }
 	}
-    async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
+	async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		try {
 			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
 			const epoch = new Date();

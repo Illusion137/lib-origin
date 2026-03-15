@@ -19,30 +19,30 @@ export namespace AmazonMusic {
         expirationMS: number
     }
     interface Opts extends BaseOpts { client?: Config }
-    const client_cache = {client: null as Config|null, enabled: true};
+    const client_cache = { client: null as Config | null, enabled: true };
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
-    export function client_cache_full() { return client_cache.enabled && client_cache.client !== null}
+    export function client_cache_full() { return client_cache.enabled && client_cache.client !== null }
 
-    function get_headers(opts: Opts){
+    function get_headers(opts: Opts) {
         return {
             ...base_get_headers(opts),
             "if-none-match": "W/\"7d0-ftBuOfVR2/DK+r1ZmQnASQUtmQw\"",
             "Referer": "https://music.amazon.com/my/library",
         };
     }
-    async function get_response<T>(url: string, opts: Opts){
-        return await rozfetch<T>(url, {headers: get_headers(opts), ...opts.fetch_opts});
+    async function get_response<T>(url: string, opts: Opts) {
+        return await rozfetch<T>(url, { headers: get_headers(opts), ...opts.fetch_opts });
     }
-    
-    function post_headers(opts: Opts){
+
+    function post_headers(opts: Opts) {
         return {
             ...base_post_headers(opts),
             "Referer": "https://music.amazon.com/",
         };
     }
-    async function post_response<T>(url: string, opts: Opts, body: RequestInit['body']){
-        return await rozfetch<T>(url, {headers: post_headers(opts), method: "POST", body: body, ...opts.fetch_opts});
+    async function post_response<T>(url: string, opts: Opts, body: RequestInit['body']) {
+        return await rozfetch<T>(url, { headers: post_headers(opts), method: "POST", body: body, ...opts.fetch_opts });
     }
     function get_x_amzn_auth(amzn_music: Config) {
         return {
@@ -99,7 +99,7 @@ export namespace AmazonMusic {
     function get_user_hash() {
         return { level: 'SONIC_RUSH_MEMBER' };
     }
-    function get_deeplink(url: string){
+    function get_deeplink(url: string) {
         const trimmed_url = urlid(url, "music.amazon.com");
         return {
             interface: "DeeplinkInterface.v1_0.DeeplinkClientInformation",
@@ -107,27 +107,27 @@ export namespace AmazonMusic {
         };
     }
 
-    export function playlist_urlid(playlist_url: string){
+    export function playlist_urlid(playlist_url: string) {
         return urlid(playlist_url, "music.amazon.com/", "my/playlists/", /.+?\//);
     }
 
     export async function get_amzn_music_data(opts: Opts): PromiseResult<Config> {
-        if(client_cache_full()) return client_cache.client!;
+        if (client_cache_full()) return client_cache.client!;
         const response = await get_response<Config>("https://music.amazon.com/config.json", opts);
-        if("error" in response) return response;
+        if ("error" in response) return response;
         const config = await response.json();
-        if("error" in config) return config;
-        if(client_cache.enabled) client_cache.client = config;
+        if ("error" in config) return config;
+        if (client_cache.enabled) client_cache.client = config;
         return config;
     }
 
     async function get_show_home_data(url: string, amzn_music: Config, opts: Opts): PromiseResult<ShowHome> {
         const deeplink = get_deeplink(url);
-        
+
         const body = JSON.stringify({ deeplink: JSON.stringify(deeplink), headers: JSON.stringify(get_x_amzn_body_headers(amzn_music, undefined, url)) });
 
         const show_home_response = await post_response<ShowHome>("https://na.mesk.skill.music.a2z.com/api/showHome", opts, body);
-        if("error" in show_home_response) return show_home_response;
+        if ("error" in show_home_response) return show_home_response;
         const show_home = await show_home_response.json();
         return show_home;
     }
@@ -136,8 +136,8 @@ export namespace AmazonMusic {
         const show_home = await get_show_home_data(playlist_url, amzn_music, opts);
         if ("error" in show_home) return show_home;
         const auth_header = "header" in show_home.methods[0] ? try_json_parse<AuthHeader>(show_home.methods[0].header) : undefined;
-        if(auth_header === undefined) return generror("Auth Header is undefined", {playlist_url, amzn_music, opts});
-        if("error" in auth_header) return auth_header;
+        if (auth_header === undefined) return generror("Auth Header is undefined", "CRITICAL", { playlist_url, amzn_music, opts });
+        if ("error" in auth_header) return auth_header;
         const body_headers = get_x_amzn_body_headers(amzn_music, auth_header, playlist_url);
         return body_headers;
     }
@@ -150,11 +150,11 @@ export namespace AmazonMusic {
         const user_hash = get_user_hash();
         const request_payload = { headers: JSON.stringify(request_headers), userHash: JSON.stringify(user_hash) };
         const show_library_response = await post_response<ShowLibraryHome>("https://na.mesk.skill.music.a2z.com/api/showLibraryHome", opts, JSON.stringify(request_payload));
-        if("error" in show_library_response) return show_library_response;
+        if ("error" in show_library_response) return show_library_response;
         const show_library = await show_library_response.json();
-        if("error" in show_library) return show_library;
+        if ("error" in show_library) return show_library;
         if (show_library.methods[0].interface !== "TemplateListInterface.v1_0.BindTemplateMethod")
-            return generror("TemplateListInterface not found in Show Library Home method interface", {opts});
+            return generror("TemplateListInterface not found in Show Library Home method interface", "CRITICAL", { opts });
         const playlists = show_library.methods[0].template?.widgets?.[1]?.items ?? [];
         return playlists;
     }
@@ -163,14 +163,14 @@ export namespace AmazonMusic {
         return track.primaryLink.deeplink.replace(/\/.+?\/.+?\?trackAsin=/, '');
     }
 
-    export async function get_playlist(playlist_url: string, opts: Opts): PromiseResult<{title: string, tracks: AmazonTrack[]}> {
+    export async function get_playlist(playlist_url: string, opts: Opts): PromiseResult<{ title: string, tracks: AmazonTrack[] }> {
         const amzn_music = opts.client ?? await get_amzn_music_data(opts);
         if ("error" in amzn_music) return amzn_music;
         const show_home = await get_show_home_data(playlist_url, amzn_music, opts);
         if ("error" in show_home) return show_home;
 
         const template_list_index = show_home.methods.findIndex(method => method.interface === "TemplateListInterface.v1_0.CreateAndBindTemplateMethod");
-        if (template_list_index === -1) return generror("Unable to find TemplateListInterface.v1_0.CreateAndBindTemplateMethod", {playlist_url, opts});
+        if (template_list_index === -1) return generror("Unable to find TemplateListInterface.v1_0.CreateAndBindTemplateMethod", "CRITICAL", { playlist_url, opts });
         const create_and_bind_method = show_home.methods[template_list_index] as CreateAndBindMethod;
         const amzn_track_data = create_and_bind_method.template.widgets[0].items;
 
@@ -200,9 +200,9 @@ export namespace AmazonMusic {
             headers: JSON.stringify(body_headers)
         }
         const response = await post_response<SearchResult>("https://na.mesk.skill.music.a2z.com/api/showSearch", opts, JSON.stringify(request_payload));
-        if("error" in response) return response;
+        if ("error" in response) return response;
         const search_result = await response.json();
-        if("error" in search_result) return search_result;
+        if ("error" in search_result) return search_result;
 
         let song_widgets_index = 2;
         const widgets = search_result.methods[0].template.widgets
@@ -286,7 +286,7 @@ export namespace AmazonMusic {
         };
         const response = await post_response<CreatePlaylist>("https://na.mesk.skill.music.a2z.com/api/create_playlist", opts, JSON.stringify(request_payload));
         // https://na.mesk.skill.music.a2z.com/api/addTracksToPlaylist?playlistId=df292c92-5c59-4a76-aa65-e893f7fbdf48&playlistTitle=Lafou&version=1&rejectDuplicate=false&userHash=%7B%22level%22%3A%22SONIC_RUSH_MEMBER%22%7D
-        if("error" in response) return response;
+        if ("error" in response) return response;
         return await response.json();
     }
     export async function delete_playlist(playlist_url: string, opts: Opts) {

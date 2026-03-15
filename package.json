@@ -54,6 +54,7 @@
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-documents/picker": "^10.1.5",
     "@react-navigation/native": "^7.1.26",
+    "@sentry/react-native": "^8.4.0",
     "@supabase/supabase-js": "^2.89.0",
     "@types/adm-zip": "^0.5.7",
     "@types/better-sqlite3": "^7.6.13",

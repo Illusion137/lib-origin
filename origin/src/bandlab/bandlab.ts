@@ -94,9 +94,9 @@ export namespace BandLab {
     }
 
     export async function self_projects_list(opts: Opts & { limit?: number; offset?: number }) {
-        if (!opts.cookie_jar) return generror("Bandlab Self-Projects-List requires cookie jar");
+        if (!opts.cookie_jar) return generror("Bandlab Self-Projects-List requires cookie jar", "INFO");
         const user_id_cookie = get_user_id_cookie(opts.cookie_jar);
-        if (!user_id_cookie) return generror("Bandlab Self-Projects-List requires cookies");
+        if (!user_id_cookie) return generror("Bandlab Self-Projects-List requires cookies", "INFO");
         return await projects_list(get_user_uuid(opts.cookie_jar) ?? "", opts);
     }
 

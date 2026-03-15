@@ -63,9 +63,9 @@ export namespace WitchcultTranslations {
         chapter: RozChapterContents;
     }
 
-    export async function get_arcs_list(opts: Opts): PromiseResult<HomeArc[]>{
-        const response = await rozfetch("https://witchculttranslation.com/", {...opts.fetch_opts});
-        if("error" in response) return response;
+    export async function get_arcs_list(opts: Opts): PromiseResult<HomeArc[]> {
+        const response = await rozfetch("https://witchculttranslation.com/", { ...opts.fetch_opts });
+        if ("error" in response) return response;
         const html = await response.text();
         const document = jsdom_document(html);
         // TODO this is a pain in the ass due to damn near nothing being put into divs or shit
@@ -73,11 +73,11 @@ export namespace WitchcultTranslations {
         return [];
     }
 
-    export async function get_arc_chapter_list_data(arc_href_or_no: string|number, opts: Opts): PromiseResult<ArcChapterlist>{
-        const href = typeof arc_href_or_no === "string" ? arc_href_or_no : 
+    export async function get_arc_chapter_list_data(arc_href_or_no: string | number, opts: Opts): PromiseResult<ArcChapterlist> {
+        const href = typeof arc_href_or_no === "string" ? arc_href_or_no :
             arc_href_or_no <= 3 ? "https://witchculttranslation.com/table-of-content/" : `https://witchculttranslation.com/arc-${arc_href_or_no}/`;
-        const chapter_list_response = await rozfetch(href, {...opts.fetch_opts});
-        if("error" in chapter_list_response) return chapter_list_response;
+        const chapter_list_response = await rozfetch(href, { ...opts.fetch_opts });
+        if ("error" in chapter_list_response) return chapter_list_response;
         const chapter_list_html = await chapter_list_response.text();
         return {
             arc_title: "",
@@ -87,9 +87,9 @@ export namespace WitchcultTranslations {
         };
     }
 
-    export async function parse_chapter(href: string, opts: Opts): PromiseResult<Chapter>{
-        const chapter_response = await rozfetch(href, {...opts.fetch_opts});
-        if("error" in chapter_response) return chapter_response;
+    export async function parse_chapter(href: string, opts: Opts): PromiseResult<Chapter> {
+        const chapter_response = await rozfetch(href, { ...opts.fetch_opts });
+        if ("error" in chapter_response) return chapter_response;
         const chapter_html = await chapter_response.text();
         const chapter_dom = jsdom_document(chapter_html);
         const entry_content = chapter_dom.querySelector(".entry-content");
@@ -100,7 +100,7 @@ export namespace WitchcultTranslations {
         const cat_links_words = entry_cat_link?.textContent.split(' ');
 
         return {
-            chapter: {chapter: {title: "", uuid: gen_uuid()}, contents: []},
+            chapter: { chapter: { title: "", uuid: gen_uuid() }, contents: [] },
             metadata: {
                 chapter: 0,
                 chapter_title: "",
@@ -113,29 +113,29 @@ export namespace WitchcultTranslations {
         };
     }
 
-    export async function arcno_to_roz(no: number, opts: ArcNoToRozOpts): PromiseResult<Roz>{
-        const chapter_list_data = await get_arc_chapter_list_data(no, {fetch_opts: opts.chapter_fetch_opts});
-        if("error" in chapter_list_data) return chapter_list_data;
-        let first_found_chapter_metadata_c: ChapterMetadata|undefined = undefined; 
-        const promised_chapters =  chapter_list_data.sections.map(section => section.chapters.map(async(section_chapter) => {
-            const chapter = await parse_chapter(section_chapter.href, {fetch_opts: opts.chapter_fetch_opts});
-            if("error" in chapter) return chapter;
-            if(!first_found_chapter_metadata_c) first_found_chapter_metadata_c = chapter.metadata; 
+    export async function arcno_to_roz(no: number, opts: ArcNoToRozOpts): PromiseResult<Roz> {
+        const chapter_list_data = await get_arc_chapter_list_data(no, { fetch_opts: opts.chapter_fetch_opts });
+        if ("error" in chapter_list_data) return chapter_list_data;
+        let first_found_chapter_metadata_c: ChapterMetadata | undefined = undefined;
+        const promised_chapters = chapter_list_data.sections.map(section => section.chapters.map(async (section_chapter) => {
+            const chapter = await parse_chapter(section_chapter.href, { fetch_opts: opts.chapter_fetch_opts });
+            if ("error" in chapter) return chapter;
+            if (!first_found_chapter_metadata_c) first_found_chapter_metadata_c = chapter.metadata;
             opts.on_chapter_fetch?.(chapter);
             return chapter;
         })).flat();
-        if(first_found_chapter_metadata_c === undefined) return generror("Found no chapters", {no, opts});
+        if (first_found_chapter_metadata_c === undefined) return generror("Found no chapters", "MEDIUM", { no, opts });
         const first_found_chapter_metadata = first_found_chapter_metadata_c as ChapterMetadata;
         const resolved_chapters = await Promise.all(promised_chapters);
-        for(const resolved_chapter of resolved_chapters){
-            if("error" in resolved_chapter) return resolved_chapter;
+        for (const resolved_chapter of resolved_chapters) {
+            if ("error" in resolved_chapter) return resolved_chapter;
         }
         const filtered_resolved_chapters: Chapter[] = resolved_chapters.filter(chapter_err => !("error" in chapter_err)) as Chapter[];
-        const chapters = filtered_resolved_chapters.map(({chapter}) => chapter);
-        if(chapters.length === 0) return generror("Arc has no chapters", {no, opts});
-        
+        const chapters = filtered_resolved_chapters.map(({ chapter }) => chapter);
+        if (chapters.length === 0) return generror("Arc has no chapters", "MEDIUM", { no, opts });
+
         const cover = chapter_list_data.artwork_url ? await image_url_to_base_64(chapter_list_data.artwork_url) : null;
-        if(cover !== null && typeof cover === "object") return cover;
+        if (cover !== null && typeof cover === "object") return cover;
 
         return {
             version: 1,

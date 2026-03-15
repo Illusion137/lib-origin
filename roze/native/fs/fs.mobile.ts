@@ -11,14 +11,14 @@ export const mobile_fs: FileSystem = {
 		try {
 			return await expo_fs.readAsStringAsync(path, opts);
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", { path, opts });
+			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path, opts });
 		}
 	},
 	read_directory: async (path: string) => {
 		try {
 			return await expo_fs.readDirectoryAsync(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to read directory", { path });
+			return generror_catch(error, "Failed to read directory", "MEDIUM", { path });
 		}
 	},
 	get_info: async (path: string) => {
@@ -52,35 +52,35 @@ export const mobile_fs: FileSystem = {
 			await expo_fs.writeAsStringAsync(path, contents, opts);
 			return;
 		} catch (error) {
-			return generror_catch(error, "Failed to write file", { path, opts, contents });
+			return generror_catch(error, "Failed to write file", "MEDIUM", { path, opts, contents });
 		}
 	},
 	move: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await expo_fs.moveAsync({ from: from_path, to: to_path });
 		} catch (error) {
-			return generror_catch(error, "Failed to move file/directory", { from_path, to_path, opts });
+			return generror_catch(error, "Failed to move file/directory", "MEDIUM", { from_path, to_path, opts });
 		}
 	},
 	copy: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await expo_fs.copyAsync({ from: from_path, to: to_path });
 		} catch (error) {
-			return generror_catch(error, "Failed to copy file/directory", { from_path, to_path, opts });
+			return generror_catch(error, "Failed to copy file/directory", "MEDIUM", { from_path, to_path, opts });
 		}
 	},
 	make_directory: async (path: string) => {
 		try {
 			return await expo_fs.makeDirectoryAsync(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to make directory", { path });
+			return generror_catch(error, "Failed to make directory", "MEDIUM", { path });
 		}
 	},
 	remove: async (path: string) => {
 		try {
 			return await expo_fs.deleteAsync(path, { idempotent: true });
 		} catch (error) {
-			return generror_catch(error, "Failed to remove file/directory", { path });
+			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
 		}
 	},
 	download_to_file: async (uri: string, to_path?: string) => {
@@ -89,7 +89,7 @@ export const mobile_fs: FileSystem = {
 			await expo_fs.downloadAsync(uri, to_path, {});
 			return to_path;
 		} catch (error) {
-			return generror_catch(error, "Failed to download_to_file", { uri, to_path });
+			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });
 		}
 	}
 };

@@ -86,7 +86,7 @@ export namespace AppleMusic {
 	}
 	type CheckCookies = "CHECK_COOKIES" | "NO_CHECK_COOKIES";
 	async function api_check_response<T>(opts: Opts, check_cookies: CheckCookies, bearer: string, path: string, params: Record<string, unknown>, payload: null | object, method: FetchMethod = "GET") {
-		if (check_cookies === "CHECK_COOKIES" && opts.cookie_jar === undefined) return generror("CookieJar is empty", { opts, bearer, path, params, payload, method });
+		if (check_cookies === "CHECK_COOKIES" && opts.cookie_jar === undefined) return generror("CookieJar is empty", "INFO", { opts, bearer, path, params, payload, method });
 		const url = `https://amp-api.music.apple.com/v1/${path}?${encode_params(params)}`;
 		return await rozfetch<T>(url, { method, body: payload === null ? null : JSON.stringify(payload), credentials: "include", referrerPolicy: "strict-origin", headers: get_api_headers(bearer, opts), ...opts.fetch_opts });
 	}

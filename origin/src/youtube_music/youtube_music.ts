@@ -9,13 +9,12 @@ import type { Continuation } from "@origin/youtube_music/types/Continuation";
 import type { ContinuedResults_0 } from '@origin/youtube_music/types/ContinuedResults_0';
 import type { InitialData } from '@origin/youtube_music/types/types';
 import type { YTCFG } from '@origin/youtube_music/types/YTCFG';
-import type { YTError } from "@origin/youtube_music/types/Error";
 import type { Proxy } from "@origin/proxy/proxy";
 import type { ContinuationItemRenderer } from "@origin/youtube_music/types/PlaylistResults_0";
 import type { SearchSuggestions } from "@origin/youtube_music/types/SearchSuggestions";
 import { sapisid_hash_auth0, sapisid_hash_auth1 } from "@common/utils/auth_utilt";
 import { generror, generror_catch, generror_fetch } from "@common/utils/error_util";
-import { parse_runs, try_json_eval,try_json_parse } from "@common/utils/parse_util";
+import { parse_runs, try_json_eval, try_json_parse } from "@common/utils/parse_util";
 import { encode_params, google_query } from "@common/utils/fetch_util";
 import { get_native_platform } from "@native/native_mode";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
@@ -66,7 +65,7 @@ export namespace YouTubeMusic {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, "music.youtube.com/", "playlist?list=", /&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar|undefined, epoch: Date, ytcfg: YTCFG): Record<string, any> {
+	export function get_post_headers(cookie_jar: CookieJar | undefined, epoch: Date, ytcfg: YTCFG): Record<string, any> {
 		const SAPISID = cookie_jar?.getCookie("SAPISID")?.getData()?.value;
 		return {
 			"User-Agent": user_agent,
@@ -125,34 +124,34 @@ export namespace YouTubeMusic {
 				params: object,
 				data: string
 			}>(imatch);
-            if("error" in try_route) return [];
+			if ("error" in try_route) return [];
 			const data = try_json_parse<InitialData>(try_route.data);
-			if(!("error" in data)) initial_data.push(data);
+			if (!("error" in data)) initial_data.push(data);
 		}
 		return initial_data;
 	}
-	function extract_ytcfg(html: string): YTCFG|ResponseError {
+	function extract_ytcfg(html: string): YTCFG | ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
 		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
 		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}
 
-	export type PlaylistType = "DEFAULT_PLAYLIST"|"PLAYLIST"|"ALBUM"|"MOODS"|"YTMUSIC_PLAYLIST"|"BROWSE_ID";
+	export type PlaylistType = "DEFAULT_PLAYLIST" | "PLAYLIST" | "ALBUM" | "MOODS" | "YTMUSIC_PLAYLIST" | "BROWSE_ID";
 	export function playlist_type(id: string): PlaylistType {
 		id = playlist_urlid(id);
-		if(id.includes('OLAK5uy')) return "ALBUM";
-		if(id === "LM" || id === "WL" || id === "LL") return "DEFAULT_PLAYLIST";
-		if(id.includes('PLnIB0XeUqT')) return "PLAYLIST";
-		if(id.includes('RDCLAK5uy')) return "MOODS";
-		if(id.includes('PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq')) return "YTMUSIC_PLAYLIST";
+		if (id.includes('OLAK5uy')) return "ALBUM";
+		if (id === "LM" || id === "WL" || id === "LL") return "DEFAULT_PLAYLIST";
+		if (id.includes('PLnIB0XeUqT')) return "PLAYLIST";
+		if (id.includes('RDCLAK5uy')) return "MOODS";
+		if (id.includes('PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq')) return "YTMUSIC_PLAYLIST";
 		return "BROWSE_ID";
 	}
 
-	function playlist_url_or_browse_url(id: string): string{
+	function playlist_url_or_browse_url(id: string): string {
 		id = playlist_urlid(id);
 		const type = playlist_type(id);
-		if(type !== "BROWSE_ID"){
+		if (type !== "BROWSE_ID") {
 			return `https://music.youtube.com/playlist?list=${id}`;
 		}
 		return `https://music.youtube.com/browse/${id}`;
@@ -194,19 +193,19 @@ export namespace YouTubeMusic {
 				method: "GET",
 				proxy: opts.proxy
 			});
-			if("error" in page_response) return page_response;
+			if ("error" in page_response) return page_response;
 			const page_html = await page_response.text();
-            const ytcfg = extract_ytcfg(page_html);
-            if("error" in ytcfg) return ytcfg;
+			const ytcfg = extract_ytcfg(page_html);
+			if ("error" in ytcfg) return ytcfg;
 			return {
 				initial_data: extract_initial_data(page_html),
 				ytcfg
 			};
 		} catch (error) {
-			return { error: error as Error }; 
+			return { error: error as Error };
 		}
 	}
-    interface ICFGData<T> { icfg: ICFG, data: T }
+	interface ICFGData<T> { icfg: ICFG, data: T }
 	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
 	type SearchMode = "All" | "Songs" | "Videos" | "Albums" | "Community playlists" | "Artists" | "Episodes" | "Profiles";
 	interface Endpoint { "query": string, "params": string }
@@ -219,12 +218,12 @@ export namespace YouTubeMusic {
 				data: parser(icfg.initial_data)
 			};
 		}
-		catch(error) {
-			return generror_catch(error, "Failed to parse YouTube Music", {opts, init_url});
+		catch (error) {
+			return generror_catch(error, "Failed to parse YouTube Music", "CRITICAL", { opts, init_url });
 		}
 	}
-    async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
-        // if (opts.cookie_jar === undefined) return generror("YouTube Music post_check_response CookieJar is empty");
+	async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object) {
+		// if (opts.cookie_jar === undefined) return generror("YouTube Music post_check_response CookieJar is empty");
 		const epoch = new Date();
 		const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
 		const url = `https://music.youtube.com/youtubei/v1/${path}`;
@@ -232,15 +231,15 @@ export namespace YouTubeMusic {
 		const response = await rozfetch<T>(url, { ...opts.fetch_opts, method: "POST", proxy: opts.proxy, headers, body: JSON.stringify(merged_payload) });
 		return response;
 	}
-    
+
 	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://music.youtube.com/", Parser.parse_home_contents); }
-    export async function fetch_initial_data(opts: Opts){
-        if(ytcfg_cache !== undefined) return {ok: true, ytcfg: ytcfg_cache};
-        const home = await get_home(opts);
-        if("error" in home) return {ok: false};
-        ytcfg_cache = home.icfg.ytcfg;
-        return {ok: true, ytcfg: home.icfg.ytcfg};
-    } 
+	export async function fetch_initial_data(opts: Opts) {
+		if (ytcfg_cache !== undefined) return { ok: true, ytcfg: ytcfg_cache };
+		const home = await get_home(opts);
+		if ("error" in home) return { ok: false };
+		ytcfg_cache = home.icfg.ytcfg;
+		return { ok: true, ytcfg: home.icfg.ytcfg };
+	}
 	export async function get_explore(opts: Opts): PromiseICFGData<typeof Parser.parse_explore_contents> { return await parse_initial(opts, "https://music.youtube.com/explore", Parser.parse_explore_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, playlist_url_or_browse_url(playlist_id), Parser.parse_playlist_contents); }
 	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_artist_contents> { return await parse_initial(opts, `https://music.youtube.com/channel/${artist_id.replace('/channel/', '')}`, Parser.parse_artist_contents); }
@@ -252,8 +251,8 @@ export namespace YouTubeMusic {
 		return playlist_response;
 	}
 	export async function get_only_artist_tracks(opts: Opts, artist_response: ICFGData<ReturnType<typeof Parser.parse_artist_contents>>) {
-		const music_shelf_renderer_endpoint_id: string|undefined = artist_response.data.top_shelf?.bottomEndpoint?.browseEndpoint?.browseId?.replace("VL", "");
-		if(music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", {opts}); 
+		const music_shelf_renderer_endpoint_id: string | undefined = artist_response.data.top_shelf?.bottomEndpoint?.browseEndpoint?.browseId?.replace("VL", "");
+		if (music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", "MEDIUM", { opts });
 		const playlist_response = await get_playlist(opts, music_shelf_renderer_endpoint_id);
 		return playlist_response;
 	}
@@ -275,7 +274,7 @@ export namespace YouTubeMusic {
 		const browse_response = await post_check_response<ArtistResults_1>(opts, artist_response.icfg.ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
 		const browse_data = await browse_response.json();
-		if("error" in browse_data) return browse_data;
+		if ("error" in browse_data) return browse_data;
 		return browse_data.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].gridRenderer.items.map(item => item.musicTwoRowItemRenderer);
 	}
 	export async function get_only_artist_albums(opts: Opts, ytcfg: YTCFG, artist_id: string) {
@@ -284,22 +283,22 @@ export namespace YouTubeMusic {
 		const browse_response = await post_check_response<ArtistResults_1>(opts, ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
 		const browse_data = await browse_response.json();
-		if("error" in browse_data) return browse_data;
-		if(browse_data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items === undefined) {
-			return generror("YouTube Music Only Artist Albums: couldn't find albums", {opts, artist_id});
+		if ("error" in browse_data) return browse_data;
+		if (browse_data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items === undefined) {
+			return generror("YouTube Music Only Artist Albums: couldn't find albums", "MEDIUM", { opts, artist_id });
 		}
 		return {
 			title: parse_runs(browse_data.header.musicHeaderRenderer.title.runs),
 			data: browse_data.contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].gridRenderer.items.map(item => item.musicTwoRowItemRenderer)
 		};
 	}
-	export async function get_browse(opts: Opts, browse_id: string){
+	export async function get_browse(opts: Opts, browse_id: string) {
 		return await parse_initial(opts, `https://music.youtube.com/browse/${browse_id}`, () => null);
 	}
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://music.youtube.com/search?q=${google_query(search_query)}`, Parser.parse_search_contents); }
 	export async function new_releases_albums(opts: Opts): PromiseICFGData<typeof Parser.parse_new_releases_albums> { return await parse_initial(opts, `https://music.youtube.com/new_releases/albums`, Parser.parse_new_releases_albums); }
 	export async function search_mode(opts: Opts, endpoint: Endpoint, ytcfg: YTCFG) {
-		if (endpoint === undefined) return generror("YouTube Music Search Mode Endpoint undefined", {opts});
+		if (endpoint === undefined) return generror("YouTube Music Search Mode Endpoint undefined", "CRITICAL", { opts });
 		const payload = endpoint;
 		const search_response = await post_check_response(opts, ytcfg, "search?prettyPrint=false", payload);
 		if ("error" in search_response) return search_response;
@@ -313,28 +312,28 @@ export namespace YouTubeMusic {
 		return search_mode(opts, all_search.data.mode_endpoints.find(endpoint => endpoint.id == mode)?.endpoint as Endpoint, all_search.icfg.ytcfg);
 	}
 
-	export async function search_suggestions(opts: Opts, search_query: string, ytcfg?: YTCFG){
-		if(is_empty(search_query)) return [];
-		if(ytcfg === undefined) ytcfg = (await fetch_initial_data(opts)).ytcfg;
-		if(ytcfg === undefined) return [];
-		const search_suggestions_response = await post_check_response<SearchSuggestions>(opts, ytcfg, 'music/get_search_suggestions', {input: search_query});
-		if("error" in search_suggestions_response) return [];
-		if(!search_suggestions_response.ok) return [];
+	export async function search_suggestions(opts: Opts, search_query: string, ytcfg?: YTCFG) {
+		if (is_empty(search_query)) return [];
+		if (ytcfg === undefined) ytcfg = (await fetch_initial_data(opts)).ytcfg;
+		if (ytcfg === undefined) return [];
+		const search_suggestions_response = await post_check_response<SearchSuggestions>(opts, ytcfg, 'music/get_search_suggestions', { input: search_query });
+		if ("error" in search_suggestions_response) return [];
+		if (!search_suggestions_response.ok) return [];
 		const search_suggestions_data = await search_suggestions_response.json();
-		if("error" in search_suggestions_data) return [];
+		if ("error" in search_suggestions_data) return [];
 		return search_suggestions_data?.contents?.map(top_content => {
 			return top_content.searchSuggestionsSectionRenderer.contents.filter(content => !("historySuggestionRenderer" in content)).map(content => {
-				if("searchSuggestionRenderer" in content){
+				if ("searchSuggestionRenderer" in content) {
 					return parse_runs(content.searchSuggestionRenderer.suggestion.runs, '');
 				}
-				else if("musicResponsiveListItemRenderer" in content){
+				else if ("musicResponsiveListItemRenderer" in content) {
 					try {
 						return Parser.parse_track_search_suggestion(content.musicResponsiveListItemRenderer);
 					}
 					catch { return undefined; }
 				}
-				else 
-				return undefined;
+				else
+					return undefined;
 			}).filter(content => content !== undefined);
 		}).flat() ?? [];
 	}
@@ -343,17 +342,17 @@ export namespace YouTubeMusic {
 		const icfg = await get_initial_data_config(opts, "https://music.youtube.com/library");
 		if ("error" in icfg) return icfg;
 		const payload = { browseId: "FEmusic_liked_playlists" };
-		const browse_response = await post_check_response(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
+		const browse_response = await post_check_response<InitialData | ResponseError>(opts, icfg.ytcfg, "browse?prettyPrint=false", payload);
 		if ("error" in browse_response) return browse_response;
-		const browse_data = await browse_response.json() as InitialData|YTError;
-        if("error" in browse_data) return generror(browse_data.error.message);
+		const browse_data = await browse_response.json();
+		if ("error" in browse_data) return browse_data;
 		return {
 			icfg,
 			data: Parser.parse_library_contents(browse_data)
 		};
 	}
 
-	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation|ContinuationItemRenderer) {
+	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation | ContinuationItemRenderer) {
 		const query_params = Array.isArray(next_con) ? {
 			ctoken: next_con[0].nextContinuationData.continuation,
 			continutation: next_con[0].nextContinuationData.continuation,
@@ -403,7 +402,7 @@ export namespace YouTubeMusic {
 		}
 		const response = await post_check_response(opts, ytcfg, "playlist/create?prettyPrint=false", payload);
 		if ("error" in response) return response;
-		if (!response.ok) return generror_fetch(response, 'Failed to create YouTube Music playlist', opts, {title, privacy});
+		if (!response.ok) return generror_fetch(response, 'Failed to create YouTube Music playlist', "LOW", opts, { title, privacy });
 		return await response.json() as CreatePlaylist;
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {

@@ -41,9 +41,9 @@ export const SayPlatformDarwin: SayPlatformBase = {
 				cmd.stdin.end(text);
 				cmd.stdout.on("data", (data) => console.log(`[TTS] ${data}`));
 				cmd.stderr.on("data", (data) => console.error(`[TTS ERROR] ${data}`));
-				cmd.on("close", (code) => (code === 0 ? resolve(code) : generror("Failed to speak tts", { code })));
+				cmd.on("close", (code) => (code === 0 ? resolve(code) : generror("Failed to speak tts", "CRITICAL", { code })));
 			} catch (e) {
-				resolve(generror_catch(e, "Failed to speak tts", { text, voice, speed }));
+				resolve(generror_catch(e, "Failed to speak tts", "CRITICAL", { text, voice, speed }));
 			}
 		});
 	},
@@ -62,12 +62,12 @@ export const SayPlatformDarwin: SayPlatformBase = {
 						cmd.on("close", (code) => {
 							const stamp = gen_uuid();
 							on_text_export?.(stamp, stamp);
-							code === 0 ? resolve(code) : resolve(generror("Failed to speak tts", { code }));
+							code === 0 ? resolve(code) : resolve(generror("Failed to speak tts", "CRITICAL", { code }));
 						});
 					} catch (e) {
 						const stamp = gen_uuid();
 						on_text_export?.(stamp, stamp);
-						resolve(generror_catch(e, "Failed to speak tts", { texts, voice, speed }));
+						resolve(generror_catch(e, "Failed to speak tts", "CRITICAL", { texts, voice, speed }));
 					}
 				});
 			}),

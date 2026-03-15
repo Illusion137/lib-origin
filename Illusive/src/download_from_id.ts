@@ -30,7 +30,7 @@ export async function youtube_download_from_id(video_id: string, quality: string
             on_refresh_po_token: sabr_result.on_refresh_po_token,
             on_reload_player_response: sabr_result.on_reload_player_response,
         };
-    } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", { video_id, quality }); }
+    } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", "MEDIUM", { video_id, quality }); }
 }
 
 export async function bandlab_download_from_id(song_id: string, _: string): Promise<DownloadFromIdResult | ResponseError> {

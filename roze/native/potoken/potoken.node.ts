@@ -45,20 +45,20 @@ export const node_potoken: PoTokenGenerator = {
         const visitor_data = content_binding || '';
 
         if (!content_binding) {
-            return generror('No identifier provided and no visitorData on the Innertube session.', { identifier: content_binding });
+            return generror('No identifier provided and no visitorData on the Innertube session.', "CRITICAL", { identifier: content_binding });
         }
 
         const challenge_response = await innertube.getAttestationChallenge('ENGAGEMENT_TYPE_UNBOUND');
 
         if (!challenge_response.bg_challenge) {
-            return generror('Could not get BotGuard challenge');
+            return generror('Could not get BotGuard challenge', "CRITICAL");
         }
 
         let interpreter_url: string =
             challenge_response.bg_challenge.interpreter_url.private_do_not_access_or_else_trusted_resource_url_wrapped_value ?? '';
 
         if (!interpreter_url) {
-            return generror('Could not get interpreter URL from BotGuard challenge');
+            return generror('Could not get interpreter URL from BotGuard challenge', "CRITICAL");
         }
 
         if (interpreter_url.startsWith('//')) interpreter_url = `https:${interpreter_url}`;
@@ -67,7 +67,7 @@ export const node_potoken: PoTokenGenerator = {
         const interpreter_javascript = await bg_script_response.text();
 
         if (!interpreter_javascript) {
-            return generror('Could not load VM');
+            return generror('Could not load VM', "CRITICAL");
         }
 
         // eslint-disable-next-line @typescript-eslint/no-implied-eval
@@ -96,7 +96,7 @@ export const node_potoken: PoTokenGenerator = {
         const integrity_token_data = await integrity_token_response.json() as unknown[];
 
         if (typeof integrity_token_data[0] !== 'string') {
-            return generror('Could not get integrity token');
+            return generror('Could not get integrity token', "CRITICAL");
         }
 
         const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);

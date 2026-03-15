@@ -3,7 +3,7 @@ import {
     generror_catch
 } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { ClientType, Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
 import {
@@ -14,7 +14,6 @@ import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { RCache } from './rcache';
-import type { PoTokenResult } from '@native/potoken/potoken.base';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -69,7 +68,7 @@ export namespace YouTubeDL {
             const info = await client.getShortsVideoInfo(link, 'ANDROID');
             return info as unknown;
         } catch (error) {
-            return generror_catch(error, "YTDL Failed", { link });
+            return generror_catch(error, "YTDL Failed", "MEDIUM", { link });
         }
     };
 
@@ -148,10 +147,10 @@ export namespace YouTubeDL {
 
             const player_response = await make_player_request(client, video_id);
             const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
-            if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", { video_id });
+            if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", "MEDIUM", { video_id });
 
             const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
-            if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", { video_id });
+            if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "MEDIUM", { video_id });
 
             const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -202,7 +201,7 @@ export namespace YouTubeDL {
                 },
             };
         } catch (error) {
-            return generror_catch(error, "Failed to resolve SABR URL", { video_id });
+            return generror_catch(error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
         }
     }
 }

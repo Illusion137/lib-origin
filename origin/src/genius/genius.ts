@@ -9,7 +9,7 @@ import { try_json_eval, try_json_parse } from "@common/utils/parse_util";
 
 export namespace Genius {
     interface Opts { fetch_opts?: RoZFetchRequestInit }
-    export async function search(query: string, opts: Opts){
+    export async function search(query: string, opts: Opts) {
         const search_response = await rozfetch<Search>(`https://genius.com/api/search/multi?per_page=5&q=${encodeURIComponent(query).split("%20").join("+")}`, {
             headers: {
                 ...base_get_headers({}),
@@ -21,17 +21,17 @@ export namespace Genius {
             method: "GET",
             ...opts.fetch_opts
         });
-        if("error" in search_response) return search_response;
+        if ("error" in search_response) return search_response;
         const search_result = await search_response.json();
         return search_result;
     }
     export async function search_songs(query: string, opts: Opts) {
         const search_result = await search(query, opts);
-        if("error" in search_result) return search_result;
+        if ("error" in search_result) return search_result;
 
         const top_result_hits = search_result.response.sections.find(item => item.type === "top_hit")?.hits;
         const song_top_result_hits = top_result_hits?.filter(hit => hit.index === "song");
-        
+
         const all_songs = song_top_result_hits ?? [];
         const song_hits = search_result.response.sections.find(item => item.type === "song")?.hits;
         return all_songs.concat(song_hits ?? []);
@@ -50,34 +50,32 @@ export namespace Genius {
                 method: "GET",
                 ...opts.fetch_opts
             });
-            if("error" in lyric_response) return lyric_response;
+            if ("error" in lyric_response) return lyric_response;
             const html: string = await lyric_response.text();
             const extract_preloaded_state = /window\.__PRELOADED_STATE__ ?= ?JSON.parse\(('.+?')\);/gis;
             const preloaded_state_string = extract_string_from_pattern(html, extract_preloaded_state);
-            if(typeof preloaded_state_string === 'object') return generror(lyrics_fail_message, {path: search_result.path});
+            if (typeof preloaded_state_string === 'object') return generror(lyrics_fail_message, "CRITICAL", { path: search_result.path });
             const eval_preloaded_state_string = try_json_eval<string>(preloaded_state_string);
-            if(typeof eval_preloaded_state_string === "object") return eval_preloaded_state_string;
+            if (typeof eval_preloaded_state_string === "object") return eval_preloaded_state_string;
             const preloaded_state = try_json_parse<LyricsPreloadedState>(eval_preloaded_state_string);
-            if("error" in preloaded_state) return generror(lyrics_fail_message, {path: search_result.path});
+            if ("error" in preloaded_state) return generror(lyrics_fail_message, "CRITICAL", { path: search_result.path });
             return preloaded_state;
         }
-        catch(e){
-            return generror_catch(e, lyrics_no_continue_fail_message, {});
+        catch (e) {
+            return generror_catch(e, lyrics_no_continue_fail_message, "MEDIUM", {});
         }
     }
-    export async function get_lyrics(search_result: Result, opts: Opts): PromiseResult<string> {
+    function parse_preloaded_state_lyrics(preloaded_state: LyricsPreloadedState) {
         try {
-            const preloaded_state = await get_lyrics_preloaded_state(search_result, opts);
-            if("error" in preloaded_state) return preloaded_state;
             const all_strings: string[][] = [];
             const initial_children: Children[] = preloaded_state.songPage.lyricsData.body.children as unknown as Children[];
-            function recursive_parse(child: Children|string, collected: string[]): string[]{
-                if(typeof child === "string") return collected.concat([child]);
-                if(typeof child === "object" && "children" in child){
+            function recursive_parse(child: Children | string, collected: string[]): string[] {
+                if (typeof child === "string") return collected.concat([child]);
+                if (typeof child === "object" && "children" in child) {
                     return collected.concat(child.children.map(c => recursive_parse(c, [])).flat());
                 }
-                if(typeof child === "object" && "tag" in child && !("children" in child)){
-                    if((child as {tag: string}).tag === "br") return collected.concat(['\n']);
+                if (typeof child === "object" && "tag" in child && !("children" in child)) {
+                    if ((child as { tag: string }).tag === "br") return collected.concat(['\n']);
                     return collected.concat([""]);
                 }
                 return collected.concat([""]);
@@ -85,8 +83,13 @@ export namespace Genius {
             all_strings.push(...initial_children.map(c => recursive_parse(c, [])));
             return all_strings.flat().join('');
         }
-        catch(_){
-            return generror(lyrics_no_continue_fail_message);
+        catch (e) {
+            return generror_catch(e, "Error in parsing Genius preloaded state", "CRITICAL");
         }
+    }
+    export async function get_lyrics(search_result: Result, opts: Opts): PromiseResult<string> {
+        const preloaded_state = await get_lyrics_preloaded_state(search_result, opts);
+        if ("error" in preloaded_state) return preloaded_state;
+        return parse_preloaded_state_lyrics(preloaded_state);
     }
 }

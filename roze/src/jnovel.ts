@@ -29,28 +29,28 @@ export namespace JNovel {
 
 	async function get_response(url: string, opts: Opts) {
 		return await rozfetch(url, {
-            headers: RozeHeaders.get_document_headers(opts.cookie_jar),
-            referrerPolicy: "strict-origin-when-cross-origin",
-            cache_opts: {
-                cache_ms: milliseconds_of({days: 1}),
-                cache_ms_fail: milliseconds_of({}),
-                cache_mode: "all"
-            },
-            ...opts.fetch_opts
-        });
+			headers: RozeHeaders.get_document_headers(opts.cookie_jar),
+			referrerPolicy: "strict-origin-when-cross-origin",
+			cache_opts: {
+				cache_ms: milliseconds_of({ days: 1 }),
+				cache_ms_fail: milliseconds_of({}),
+				cache_mode: "all"
+			},
+			...opts.fetch_opts
+		});
 	}
 	async function get_response_text(url: string, opts: Opts) {
 		const response = await get_response(url, opts);
-        if("error" in response) return generror_catch(response, "get_response_text failed", {url, opts});
+		if ("error" in response) return generror_catch(response, "get_response_text failed", "MEDIUM", { url, opts });
 		return await response.text();
 	}
-	export function __next_data__<T>(html: string | ResponseError): T|ResponseError {
+	export function __next_data__<T>(html: string | ResponseError): T | ResponseError {
 		if (typeof html === "object") return html;
 		const next_data_string = extract_string_from_pattern(html, /<script id="__NEXT_DATA__" type="application\/json">.*?({.+?})<\/script>/igs);
 		if (typeof next_data_string === "object") return next_data_string;
 		return try_json_parse<T>(next_data_string);
 	}
-	export async function next_response<T>(url: string, opts: Opts): PromiseResult<T>{
+	export async function next_response<T>(url: string, opts: Opts): PromiseResult<T> {
 		return __next_data__<T>(await get_response_text(url, opts));
 	}
 	export async function home(opts: Opts) { return await next_response<JNovel_Home>("https://j-novel.club/", opts); }
@@ -59,11 +59,11 @@ export namespace JNovel {
 	export async function calender(opts: Opts) { return await next_response<JNovel_Calender>("https://j-novel.club/calendar", opts); }
 	export async function user(opts: Opts) {
 		const access_token_expired = opts.cookie_jar?.getCookie("access_token")?.hasExpired() ?? true;
-		if (access_token_expired) return generror("Access token is expired or doesn't exist");
+		if (access_token_expired) return generror("Access token is expired or doesn't exist", "LOW");
 		return await next_response<JNovel_User>("https://j-novel.club/user", opts);
 	}
 
-	function extract_from_pattern_cleaned_to_json<T>(text: string, regex: RegExp): T|ResponseError{
+	function extract_from_pattern_cleaned_to_json<T>(text: string, regex: RegExp): T | ResponseError {
 		const strerr = extract_string_from_pattern(text, regex);
 		if (typeof strerr === "object") return strerr;
 		return try_json_parse<T>(clean_html_text(strerr));
@@ -111,7 +111,7 @@ export namespace JNovel {
 	}
 	export async function reader_volume(opts: Opts & { legacy_id: string, on_uuid_count?: (count: number) => any, on_reader_complete?: () => any }): PromiseResult<JNovel_Reader[]> {
 		const reader_result = await reader(opts);
-        opts.on_reader_complete?.();
+		opts.on_reader_complete?.();
 		if ("error" in reader_result) return reader_result;
 		const parts = [reader_result];
 		const uuids: string[] = [opts.legacy_id];
@@ -122,7 +122,7 @@ export namespace JNovel {
 				uuids.push(volume_part.uuid);
 		for (const uuid of uuids) {
 			const temp_reader = await reader({ ...opts, legacy_id: uuid });
-            opts.on_reader_complete?.();
+			opts.on_reader_complete?.();
 			if ("error" in temp_reader) return temp_reader;
 			parts.push(temp_reader);
 		}
@@ -130,21 +130,21 @@ export namespace JNovel {
 	}
 
 
-    export function readers_to_roz(readers: JNovel_Reader[]): Roz{
-        const metadata: JNovel_Reader|undefined = readers[0];
-        return {
+	export function readers_to_roz(readers: JNovel_Reader[]): Roz {
+		const metadata: JNovel_Reader | undefined = readers[0];
+		return {
 			version: 1,
-            uuid: gen_uuid(),
-            source_file: metadata.part.legacy_id,
-            source_file_type: "JNOVEL",
-            title: metadata.part.title,
-            cover: metadata.volume_img_uri,
-            author: null,
-            publisher: null,
-            date: new Date(metadata.serie.created.seconds * 1000).toISOString(),
-            series_name: metadata.part.title,
-            series_no: metadata.part.number,
-            chapters: readers.map<RozChapterContents[]>(jreader => roz_contents_to_roz_chapters_contents(jreader.content)).flat()
-        };
-    }
+			uuid: gen_uuid(),
+			source_file: metadata.part.legacy_id,
+			source_file_type: "JNOVEL",
+			title: metadata.part.title,
+			cover: metadata.volume_img_uri,
+			author: null,
+			publisher: null,
+			date: new Date(metadata.serie.created.seconds * 1000).toISOString(),
+			series_name: metadata.part.title,
+			series_no: metadata.part.number,
+			chapters: readers.map<RozChapterContents[]>(jreader => roz_contents_to_roz_chapters_contents(jreader.content)).flat()
+		};
+	}
 }

@@ -18,7 +18,7 @@ export namespace SoundCloud {
     export function client_cache_user_full() { return client_cache.enabled && client_cache.client.user_id !== null; }
 
     function requires_cookies(opts: Opts): ResponseError | ResponseSuccess {
-        if (opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return generror("No cookies supplied", { opts });
+        if (opts.cookie_jar === undefined || opts.cookie_jar.getCookies().length === 0) return generror("No cookies supplied", "INFO", { opts });
         return { success: true };
     }
     export function clean_permalink(permalink?: string) {
@@ -119,14 +119,14 @@ export namespace SoundCloud {
             if (typeof extracted === "object") continue;
             return { client_id: extracted, hydration };
         }
-        return generror("Can't find client_id", { opts });
+        return generror("Can't find client_id", "MEDIUM", { opts });
     }
     export async function extract_from_page(url: string, pattern: RegExp, opts: Opts): PromiseResult<{ extracted: string, full: string }> {
         const response = await rozfetch(url, page_method_options(opts));
         if ("error" in response) return response;
         const text = await response.text();
         const exec = pattern.exec(text);
-        if (exec?.[1] === undefined) return generror("Couldn't extract pattern: extractFromPage", { url, pattern, opts });
+        if (exec?.[1] === undefined) return generror("Couldn't extract pattern: extractFromPage", "MEDIUM", { url, pattern, opts });
         return { extracted: exec[1], full: text };
     }
     export async function get_hydration(url: string, opts: Opts): PromiseResult<{ hydration: Hydration, scripts_urls: string[] }> {
@@ -402,7 +402,7 @@ export namespace SoundCloud {
         if ("error" in has_cookies) return has_cookies;
         const redirect_response = await rozfetch("https://soundcloud.com/you", page_method_options(opts));
         if ("error" in redirect_response) return redirect_response;
-        if (!redirect_response.redirected) return generror("Response not redirected", { opts });
+        if (!redirect_response.redirected) return generror("Response not redirected", "MEDIUM", { opts });
         return redirect_response.headers.get("Location")?.replace("//", "");
     }
     function extract_playlist_name(permalink: string) {

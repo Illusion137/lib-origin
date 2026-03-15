@@ -166,7 +166,7 @@ function spinner_result(spinner: Ora, result: unknown) {
 }
 
 async function get_roz(source_file_type: RozSourceFileType, input_options: string[]): PromiseResult<Roz> {
-	const no_roz: Roz = generror("No Roz", { source_file_type, input_options }) as never;
+	const no_roz: Roz = generror("No Roz", "INFO", { source_file_type, input_options }) as never;
 	if (input_options.length < MIN_ARGS_TABLE[source_file_type]) {
 		log_input_error(`Not enough arguments provided for ${source_file_type}`, "__START__");
 		return no_roz;

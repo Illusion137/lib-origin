@@ -240,7 +240,7 @@ export namespace Illusive {
             return download_url_timed_cache.update(key, await music_service.get("BandLab")!.download_from_id!(track.bandlab_id!, quality!));
         const new_track_data = await convert_track(track, {});
         if ("error" in new_track_data) return new_track_data;
-        if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting download_url", { track, quality, redownload_mode });
+        if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting download_url", "CRITICAL", { track, quality, redownload_mode });
         const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
         const convert_response = await music_service.get(mode)!.download_from_id!(mode === "YouTube" ? new_track_data.track!.youtube_id! : new_track_data.track!.soundcloud_permalink!, quality ?? "highestaudio");
         if ("error" in convert_response) return convert_response;
@@ -256,7 +256,7 @@ export namespace Illusive {
         const to_service: MusicServiceType = "YouTube Music";
         const new_track_data = await convert_track(track, { to_music_service: to_service });
         if ("error" in new_track_data) return new_track_data;
-        if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting track_mix", { track });
+        if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting track_mix", "CRITICAL", { track });
         const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
         const mix_response = await music_service.get(to_service)!.get_track_mix!(mode === "YouTube" ? new_track_data.track!.youtube_id! : new_track_data.track!.soundcloud_permalink!);
         if ("error" in mix_response) return mix_response;
@@ -354,7 +354,7 @@ export namespace Illusive {
             );
             return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5
         });
-        if (best_result === undefined) return generror("Unable to find a good lyrics result", { track: small_track(track), search_query });
+        if (best_result === undefined) return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_query });
         return best_result.result;
     }
     async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
@@ -363,7 +363,7 @@ export namespace Illusive {
             if ("error" in result) continue;
             return result;
         }
-        return generror("Unable to find a good lyrics result", { track: small_track(track), search_queries });
+        return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_queries });
     }
     export async function get_track_lryics(track: Track): PromiseResult<string> {
         const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
@@ -483,7 +483,7 @@ export namespace Illusive {
         const opts = convert_track_default_opts(track, _opts_);
         const convert_to_music_service = music_service.get(opts.to_music_service);
 
-        if (convert_to_music_service?.search === undefined) return generror(`Can't convert to this music-service; ${opts.to_music_service} lacks a search property`, { track, opts });
+        if (convert_to_music_service?.search === undefined) return generror(`Can't convert to this music-service; ${opts.to_music_service} lacks a search property`, "MEDIUM", { track, opts });
 
         opts.possible_services = opts.possible_services.filter(service => service !== opts.to_music_service);
 
@@ -494,7 +494,7 @@ export namespace Illusive {
         const search_tracks = await convert_to_music_service.search(query, { proxy: random_of(opts.proxies) });
         if (search_tracks.tracks.length === 0) {
             return opts.possible_services.length === 0 ?
-                generror("Unable to convert track; No tracks found", { track, opts }) :
+                generror("Unable to convert track; No tracks found", "CRITICAL", { track, opts }) :
                 convert_track(track, { ...opts, to_music_service: opts.possible_services[0] });
         }
         if ("error" in search_tracks) {
@@ -512,7 +512,7 @@ export namespace Illusive {
 
         if (all_negative_values) {
             if (opts.possible_services.length === 0)
-                return generror("Unable to find good track conversion", { track, opts });
+                return generror("Unable to find good track conversion", "CRITICAL", { track, opts });
             else return convert_track(track, { ...opts, to_music_service: opts.possible_services[0] });
         }
         else if (opts.deep_convert) {
