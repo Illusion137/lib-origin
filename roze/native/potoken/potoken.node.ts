@@ -42,7 +42,7 @@ export const node_potoken: PoTokenGenerator = {
     generate_potoken: async (innertube: Innertube, content_binding?: string) => {
         setup_botguard_environment();
 
-        const visitor_data = content_binding || '';
+        const visitor_data = content_binding ?? '';
 
         if (!content_binding) {
             return generror('No identifier provided and no visitorData on the Innertube session.', "CRITICAL", { identifier: content_binding });

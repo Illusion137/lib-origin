@@ -3,7 +3,7 @@ import {
     generror_catch
 } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, UniversalCache, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
 import {
@@ -13,25 +13,13 @@ import {
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
-import { RCache } from './rcache';
+import { jseval, load_native_jseval } from '@native/jseval/jseval';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
-Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
-    const properties: string[] = [];
-
-    if (env.n) {
-        properties.push(`n: exportedVars.nFunction("${env.n}")`);
-    }
-
-    if (env.sig) {
-        properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
-    }
-
-    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-implied-eval
-    return new Function(code)();
+Platform.shim.eval = async (data: Types.BuildScriptResult, _: Record<string, Types.VMPrimative>) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return jseval().eval_in_webview(data.output);
 };
 
 export namespace YouTubeDL {
@@ -43,9 +31,9 @@ export namespace YouTubeDL {
         if (innertube_client) return innertube_client;
         await load_native_fs();
         await load_native_potoken();
+        await load_native_jseval();
         innertube_client = await Innertube.create({
-            cache: new RCache(true, await fs().temp_directory()),
-            player_id: '6c5cb4f4'
+            cache: new UniversalCache(true, await fs().temp_directory()),
         });
         return innertube_client;
     }
@@ -106,7 +94,7 @@ export namespace YouTubeDL {
     }
 
     export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
-        const watchEndpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId } });
+        const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId } });
 
         const extraArgs: Record<string, any> = {
             playbackContext: {
@@ -125,7 +113,7 @@ export namespace YouTubeDL {
             extraArgs.playbackContext.reloadPlaybackContext = reloadPlaybackContext;
         }
 
-        return await watchEndpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
+        return await watch_endpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
     }
 
     /**

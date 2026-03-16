@@ -33,9 +33,9 @@ export const node_sabr_downloader: SabrDownloader = {
 		const sabr_stream = new SabrStream({
 			serverAbrStreamingUrl: sabrServerUrl,
 			videoPlaybackUstreamerConfig: sabrUstreamerConfig,
-			formats: sabrFormats as any,
+			formats: sabrFormats,
 			poToken: initial_token,
-			clientInfo: clientInfo as any,
+			clientInfo: clientInfo,
 			fetch: sabr_fetch,
 		});
 
@@ -65,6 +65,9 @@ export const node_sabr_downloader: SabrDownloader = {
 				}
 			} catch (e) { console.error('[SABR] Failed to reload player response:', e); }
 		});
+
+		sabr_stream.on('error', (e: any) => console.log('[SABR] error:', e));
+		// try logging ALL events if SabrStream extends EventEmitter:
 
 		const { audioStream, selectedFormats } = await sabr_stream.start({
 			enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
@@ -98,6 +101,7 @@ export const node_sabr_downloader: SabrDownloader = {
 						pump();
 					});
 				}).catch((err) => {
+					console.warn(err);
 					write_stream.destroy(err);
 					reject(err as Error);
 				});
