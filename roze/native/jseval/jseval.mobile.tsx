@@ -8,7 +8,7 @@ interface PendingRequest {
 	timer: ReturnType<typeof setTimeout>;
 }
 
-const WEBVIEW_INJECTED_JS = `
+export const WEBVIEW_INJECTED_JS = `
 (function() {
     window.addEventListener('message', function(event) {
         var data;
@@ -16,11 +16,19 @@ const WEBVIEW_INJECTED_JS = `
         if (data.type !== 'EVAL_CODE') return;
         try {
             var result = new Function(data.code)();
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'EVAL_RESULT',
-                request_id: data.request_id,
-                result: result !== undefined ? result : null
-            }));
+            Promise.resolve(result).then(function(resolved) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'EVAL_RESULT',
+                    request_id: data.request_id,
+                    result: resolved !== undefined ? resolved : null
+                }));
+            }).catch(function(err) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'EVAL_ERROR',
+                    request_id: data.request_id,
+                    error: err.message || String(err)
+                }));
+            });
         } catch(e) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'EVAL_ERROR',
@@ -33,11 +41,6 @@ const WEBVIEW_INJECTED_JS = `
 })();
 true;
 `;
-
-const WEBVIEW_SOURCE = {
-	html: "<html><body></body></html>",
-	baseUrl: "https://www.youtube.com/"
-};
 
 const WEBVIEW_ORIGIN_WHITELIST = ["*"];
 
@@ -122,7 +125,13 @@ export async function eval_in_webview(code: string, timeout_ms = 15_000): Promis
 	});
 }
 
-export function JSEvaluatorWebView() {
+interface JSEvaluatorWebViewProps {
+	baseUrl?: string;
+}
+
+export function JSEvaluatorWebView({ baseUrl = "https://www.youtube.com/" }: JSEvaluatorWebViewProps) {
+	const source = { html: "<html><body></body></html>", baseUrl };
+
 	const on_ref = useCallback((instance: WebView | null) => {
 		_jseval_webview_ref = instance;
 		if (instance) reset_ready();
@@ -130,7 +139,7 @@ export function JSEvaluatorWebView() {
 
 	return (
 		<View style={styles.hidden} pointerEvents="none">
-			<WebView ref={on_ref} originWhitelist={WEBVIEW_ORIGIN_WHITELIST} source={WEBVIEW_SOURCE} injectedJavaScript={WEBVIEW_INJECTED_JS} onMessage={handle_message} javaScriptEnabled cacheEnabled={false} incognito style={styles.webview} />
+			<WebView ref={on_ref} originWhitelist={WEBVIEW_ORIGIN_WHITELIST} source={source} injectedJavaScript={WEBVIEW_INJECTED_JS} onMessage={handle_message} javaScriptEnabled cacheEnabled={false} style={styles.webview} />
 		</View>
 	);
 }

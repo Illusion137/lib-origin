@@ -33,7 +33,7 @@ export namespace YouTubeDL {
         await load_native_potoken();
         await load_native_jseval();
         innertube_client = await Innertube.create({
-            cache: new UniversalCache(true, await fs().temp_directory()),
+            cache: new UniversalCache(true),
         });
         return innertube_client;
     }
@@ -164,11 +164,20 @@ export namespace YouTubeDL {
                 clientInfo: client_info,
                 cookie: client.session.cookie,
                 duration: player_response.video_details?.duration ?? 0,
-                on_refresh_po_token: async () => {
-                    const potoken_result = await potoken().generate_potoken(client, video_id);
-                    if ('error' in potoken_result) throw potoken_result.error;
-                    return potoken_result.po_token;
-                },
+                on_refresh_po_token: (() => {
+                    // Mirror node.ts real_token_applied: first SPS=2 returns the already-generated
+                    // token instantly. Only subsequent SPS=2 events trigger a fresh generation.
+                    let first_applied = false;
+                    return async () => {
+                        if (!first_applied) {
+                            first_applied = true;
+                            return content_pot_result.po_token;
+                        }
+                        const potoken_result = await potoken().generate_potoken(client, video_id);
+                        if ('error' in potoken_result) throw potoken_result.error;
+                        return potoken_result.po_token;
+                    };
+                })(),
                 on_reload_player_response: async (reload_ctx: any) => {
                     const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
                     const watch_response = await watch_endpoint.call(client.actions, {

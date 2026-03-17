@@ -26,13 +26,18 @@ export const mobile_sabr_downloader: SabrDownloader = {
 			});
 		}
 		if (params.on_refresh_po_token) {
+			let token_refresh_in_flight = false;
 			unsub_refresh = TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (event: { outputPath: string }) => {
 				if (event.outputPath !== output_path) return;
+				if (token_refresh_in_flight) return;
+				token_refresh_in_flight = true;
 				try {
 					const token = await params.on_refresh_po_token!();
 					await TrackPlayer.updateSabrPoToken(output_path, token);
 				} catch {
 					// ignore — stream will fail naturally if token can't be refreshed
+				} finally {
+					token_refresh_in_flight = false;
 				}
 			});
 		}

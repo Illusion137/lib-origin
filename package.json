@@ -9,6 +9,7 @@
     "discord:win": "@powershell ./illusicord/build/discord_start.ps1",
     "discord:osx": "sh ./illusicord/build/discord_start.sh",
     "gen_native": "ts-node ./scripts/gen_native.ts",
+    "gen_bgutils_bundle": "ts-node -T ./scripts/gen_bgutils_bundle.ts",
     "check-types": "tsc --noEmit",
     "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
     "postinstall": "patch-package && husky",

@@ -6,8 +6,7 @@ import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 import { JSDOM } from "jsdom";
 import * as fs from "fs";
 import * as path from "path";
-import Innertube, { Constants, Platform } from "youtubei.js";
-import { buildSabrFormat } from "googlevideo/utils";
+import Innertube, { Constants } from "youtubei.js";
 
 // Mocks for React Native and WebView
 vi.mock("react-native", () => ({
@@ -29,9 +28,16 @@ vi.mock("react-native-webview", () => ({
 	WebView: () => null // Dummy component
 }));
 
-// Import target modules after mocks
-import { mobile_potoken, PoTokenWebView, WEBVIEW_INJECTED_JS, _webview_ref, _pending } from "../roze/native/potoken/potoken.mobile";
-import { node_sabr_downloader } from "../roze/native/sabr_downloader/sabr_downloader.node";
+vi.mock("@native/native_mode", () => ({
+	get_native_platform: () => "REACT_NATIVE"
+}));
+
+import { mobile_potoken, PoTokenWebView, POTOKEN_INJECTED_JS } from "@native/potoken/potoken.mobile";
+import { BGUTILS_BUNDLE_JS } from "@native/potoken/bgutils_bundle";
+import { node_sabr_downloader } from "@native/sabr_downloader/sabr_downloader.node";
+import { load_native_jseval } from "@native/jseval/jseval";
+import { YouTubeDL } from "@origin/youtube_dl";
+import { load_native_fs } from "@native/fs/fs";
 
 describe("PoToken Integration (Headless)", () => {
 	let innertube: Innertube;
@@ -41,19 +47,12 @@ describe("PoToken Integration (Headless)", () => {
 	const VIDEO_ID = "wf4kRfGzflo";
 
 	beforeAll(async () => {
-		// Shim for youtubei.js decipher
-		Platform.shim.eval = async (data: any, env: any) => {
-			const properties: string[] = [];
-			if (env.n) properties.push(`n: exportedVars.nFunction("${env.n}")`);
-			if (env.sig) properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
-			const code = `${data.output}\nreturn { ${properties.join(", ")} }`;
-			// eslint-disable-next-line @typescript-eslint/no-implied-eval
-			return new Function(code)();
-		};
+		await load_native_jseval();
+		await load_native_fs();
 
 		// Initialize Innertube
 		console.log("[Test] Initializing Innertube...");
-		innertube = await Innertube.create();
+		innertube = await YouTubeDL.get_innertube_client();
 		console.log("[Test] Innertube initialized.");
 
 		// Check connectivity
@@ -85,7 +84,7 @@ describe("PoToken Integration (Headless)", () => {
 		jsdom.window.atob = atob;
 
 		// Extract onMessage handler from PoTokenWebView
-		const componentTree: any = PoTokenWebView();
+		const componentTree: any = PoTokenWebView({});
 		const webviewProps = componentTree.props.children.props;
 		webviewOnMessage = webviewProps.onMessage;
 
@@ -108,23 +107,25 @@ describe("PoToken Integration (Headless)", () => {
 			}
 		};
 
-		// Set up the _webview_ref mock
+		// Inject bgutils bundle into JSDOM (mirrors what the WebView HTML source does)
+		const bundleEl = jsdom.window.document.createElement("script");
+		bundleEl.textContent = BGUTILS_BUNDLE_JS;
+		jsdom.window.document.body.appendChild(bundleEl);
+
+		// Set up the _potoken_webview_ref mock
+		// injectJavaScript executes the pipeline script directly in JSDOM (mirrors native evaluateJavaScript)
 		const mockWebView = {
-			postMessage: (dataStr: string) => {
-				console.log("[RN] Sending message to WebView:", dataStr.substring(0, 100));
-				// When mobile_potoken sends a message to WebView:
-				// We dispatch it to JSDOM window
+			postMessage: (_dataStr: string) => {},
+			injectJavaScript: (script: string) => {
+				console.log("[RN] injectJavaScript called, script length:", script.length);
 				try {
-					const event = new jsdom.window.MessageEvent("message", {
-						data: dataStr,
-						origin: "https://www.youtube.com" // Match expected origin?
-					});
-					jsdom.window.dispatchEvent(event);
+					const scriptEl = jsdom.window.document.createElement("script");
+					scriptEl.textContent = script;
+					jsdom.window.document.body.appendChild(scriptEl);
 				} catch (e) {
-					console.error("[Test] Error dispatching message to JSDOM:", e);
+					console.error("[Test] injectJavaScript error:", e);
 				}
 			},
-			injectJavaScript: () => {},
 			requestFocus: () => {},
 			goBack: () => {},
 			goForward: () => {},
@@ -135,9 +136,9 @@ describe("PoToken Integration (Headless)", () => {
 		const onRef = componentTree.props.children.ref;
 		onRef(mockWebView);
 
-		// Inject the BotGuard logic script
+		// Inject POTOKEN_INJECTED_JS to trigger POTOKEN_READY (signals WebView is ready)
 		const scriptEl = jsdom.window.document.createElement("script");
-		scriptEl.textContent = WEBVIEW_INJECTED_JS;
+		scriptEl.textContent = POTOKEN_INJECTED_JS;
 		jsdom.window.document.body.appendChild(scriptEl);
 	}, 120000);
 
@@ -164,17 +165,19 @@ describe("PoToken Integration (Headless)", () => {
 
 		// 2. Prepare for Download
 		console.log("Fetching video info for download...");
-		const videoInfo = await innertube.getInfo(VIDEO_ID);
-		const streamingData = videoInfo.streaming_data;
+		const sabr_params = await YouTubeDL.resolve_sabr_url(VIDEO_ID);
+		if ("error" in sabr_params) throw sabr_params.error;
+		// const videoInfo = await innertube.getInfo(VIDEO_ID);
+		// const streamingData = videoInfo.streaming_data;
 
-		if (!streamingData) throw new Error("No streaming data found");
+		// if (!streamingData) throw new Error("No streaming data found");
 
-		const sabrServerUrl = await innertube.session.player?.decipher(streamingData.server_abr_streaming_url);
-		const playerConfig = videoInfo.player_config;
-		const sabrUstreamerConfig = playerConfig?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
+		// const sabrServerUrl = await innertube.session.player?.decipher(streamingData.server_abr_streaming_url);
+		// const playerConfig = videoInfo.player_config;
+		// const sabrUstreamerConfig = playerConfig?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
 
-		if (!sabrServerUrl) throw new Error("No SABR server URL found");
-		if (!sabrUstreamerConfig) throw new Error("No SABR ustreamer config found");
+		// if (!sabrServerUrl) throw new Error("No SABR server URL found");
+		// if (!sabrUstreamerConfig) throw new Error("No SABR ustreamer config found");
 
 		// 3. Download using node_sabr_downloader
 		const outputDir = path.join(__dirname, "temp_downloads");
@@ -187,17 +190,19 @@ describe("PoToken Integration (Headless)", () => {
 
 		console.log(`Downloading to ${outputPath}...`);
 
-		const sabrFormats = streamingData.adaptive_formats.map((f: any) => buildSabrFormat(f));
+		const sabrFormats = sabr_params.sabrFormats;
 
 		const ctx = innertube.session.context.client;
 		const clientName = parseInt((Constants.CLIENT_NAME_IDS as Record<string, string>)[ctx.clientName] ?? "1");
 		const clientInfo = { clientName, clientVersion: ctx.clientVersion };
 
+		console.log(sabrFormats);
+
 		await node_sabr_downloader.download_sabr(
 			{
-				sabrServerUrl,
-				sabrUstreamerConfig,
-				sabrFormats: sabrFormats as any,
+				sabrServerUrl: sabr_params.sabrServerUrl,
+				sabrUstreamerConfig: sabr_params.sabrUstreamerConfig,
+				sabrFormats: sabrFormats,
 				poToken: result.po_token,
 				placeholder_po_token: result.placeholder_po_token,
 				clientInfo
