@@ -83,7 +83,7 @@ export namespace YouTubeDL {
         clientInfo?: SabrClientInfo;
         cookie?: string;
         duration?: number;
-        on_refresh_po_token: () => Promise<string>;
+        on_refresh_po_token: (reason: 'proactive' | 'expired') => Promise<string>;
         on_reload_player_response: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
     }
 
@@ -157,7 +157,7 @@ export namespace YouTubeDL {
                 clientInfo: client_info,
                 cookie: client.session.cookie,
                 duration: player_response.video_details?.duration ?? 0,
-                on_refresh_po_token: async () => {
+                on_refresh_po_token: async (_reason) => {
                     const potoken_result = await potoken().generate_potoken(client, video_id);
                     if ('error' in potoken_result) throw potoken_result.error;
                     return potoken_result.po_token;

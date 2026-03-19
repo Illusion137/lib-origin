@@ -1,5 +1,5 @@
 import TrackPlayer, { Event } from 'react-native-track-player';
-import type { SabrDownloader } from "./sabr_downloader.base";
+import type { SabrDownloader, SabrTokenCallbackReason } from "./sabr_downloader.base";
 
 export const mobile_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params, output_path, on_progress) => {
@@ -27,12 +27,12 @@ export const mobile_sabr_downloader: SabrDownloader = {
 		}
 		if (params.on_refresh_po_token) {
 			let token_refresh_in_flight = false;
-			unsub_refresh = TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (event: { outputPath: string }) => {
+			unsub_refresh = TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (event: { outputPath: string, reason: SabrTokenCallbackReason }) => {
 				if (event.outputPath !== output_path) return;
 				if (token_refresh_in_flight) return;
 				token_refresh_in_flight = true;
 				try {
-					const token = await params.on_refresh_po_token!();
+					const token = await params.on_refresh_po_token!(event.reason);
 					await TrackPlayer.updateSabrPoToken(output_path, token);
 				} catch {
 					// ignore — stream will fail naturally if token can't be refreshed

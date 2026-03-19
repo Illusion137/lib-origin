@@ -1,5 +1,7 @@
 import type { YouTubeDL } from '@origin/youtube_dl/index';
 
+export type SabrTokenCallbackReason = 'proactive' | 'expired';
+
 export interface SabrDownloadParams {
 	sabrServerUrl: string;
 	sabrUstreamerConfig: string;
@@ -8,7 +10,7 @@ export interface SabrDownloadParams {
 	placeholder_po_token?: string;
 	clientInfo?: YouTubeDL.SabrClientInfo;
 	cookie?: string;
-	on_refresh_po_token?: () => Promise<string>;
+	on_refresh_po_token?: (reason: SabrTokenCallbackReason) => Promise<string>;
 	on_reload_player_response?: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
 }
 
