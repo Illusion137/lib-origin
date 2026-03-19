@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import { BGUTILS_BROWSER_BUNDLE } from "./bgutils-browser-bundle";
 
 interface PendingRequest {
 	resolve: (result: any) => void;
@@ -8,7 +9,26 @@ interface PendingRequest {
 	timer: ReturnType<typeof setTimeout>;
 }
 
-export const WEBVIEW_INJECTED_JS = `
+const BGUTILS_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)";
+
+export const WEBVIEW_INJECTED_JS = BGUTILS_BROWSER_BUNDLE + `\n` + `
+(function() {
+    var _wv_log = function(level, args) {
+        try {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'WV_LOG',
+                level: level,
+                msg: Array.prototype.slice.call(args).map(function(a) {
+                    try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); }
+                }).join(' ')
+            }));
+        } catch(e) {}
+    };
+    var _orig_log = console.log, _orig_warn = console.warn, _orig_error = console.error;
+    console.log   = function() { _orig_log.apply(console, arguments);   _wv_log('log',   arguments); };
+    console.warn  = function() { _orig_warn.apply(console, arguments);  _wv_log('warn',  arguments); };
+    console.error = function() { _orig_error.apply(console, arguments); _wv_log('error', arguments); };
+})();
 (function() {
     window.addEventListener('message', function(event) {
         var data;
@@ -65,6 +85,14 @@ function handle_message(event: WebViewMessageEvent) {
 	try {
 		data = JSON.parse(event.nativeEvent.data);
 	} catch {
+		return;
+	}
+
+	if (data.type === "WV_LOG") {
+		const prefix = `[WebView:${data.level}]`;
+		if (data.level === "error") console.error(prefix, data.msg);
+		else if (data.level === "warn") console.warn(prefix, data.msg);
+		else console.log(prefix, data.msg);
 		return;
 	}
 
@@ -129,8 +157,24 @@ interface JSEvaluatorWebViewProps {
 	baseUrl?: string;
 }
 
+// Richer HTML that resembles a real YouTube page structure.
+// BotGuard fingerprints the DOM (canvas, document.body, language, etc.),
+// so a near-blank page produces weak/invalid snapshots.
+const JSEVAL_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YouTube</title>
+</head>
+<body>
+<div id="app"></div>
+<canvas id="c" style="display:none"></canvas>
+</body>
+</html>`;
+
 export function JSEvaluatorWebView({ baseUrl = "https://www.youtube.com/" }: JSEvaluatorWebViewProps) {
-	const source = { html: "<html><body></body></html>", baseUrl };
+	const source = { html: JSEVAL_HTML, baseUrl };
 
 	const on_ref = useCallback((instance: WebView | null) => {
 		_jseval_webview_ref = instance;
@@ -139,7 +183,18 @@ export function JSEvaluatorWebView({ baseUrl = "https://www.youtube.com/" }: JSE
 
 	return (
 		<View style={styles.hidden} pointerEvents="none">
-			<WebView ref={on_ref} originWhitelist={WEBVIEW_ORIGIN_WHITELIST} source={source} injectedJavaScript={WEBVIEW_INJECTED_JS} onMessage={handle_message} javaScriptEnabled cacheEnabled={false} style={styles.webview} />
+			<WebView
+				ref={on_ref}
+				originWhitelist={WEBVIEW_ORIGIN_WHITELIST}
+				source={source}
+				injectedJavaScript={WEBVIEW_INJECTED_JS}
+				onMessage={handle_message}
+				javaScriptEnabled
+				sharedCookiesEnabled={true}
+				userAgent={BGUTILS_USER_AGENT}
+				cacheEnabled={true}
+				style={styles.webview}
+			/>
 		</View>
 	);
 }

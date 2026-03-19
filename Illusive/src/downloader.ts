@@ -98,7 +98,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
     if ("error" in download_uri) {
         if (download_uri.error.message.toLowerCase().includes("unavailable"))
             await SQLBackpack.add_to_backpack(downloading.track.uid);
-        return generror("Couldn't find the file", "MEDIUM", downloading);
+        return download_uri;
     }
     if ("url" in download_uri && download_uri.url.includes("file://")) {
         return generror("File already exists", "CRITICAL", downloading);
@@ -175,7 +175,7 @@ export const track_downloader = new AsyncFNQueue<Downloading, Awaited<ReturnType
     Constants.download_queue_max_length,
     o => o.uid,
     download_track_base,
-    () => GLOBALS.global_var.bottom_alert("Download Queue Finished", "INFO")
+    (err) => err ? GLOBALS.global_var.bottom_alert("Download Queue Ended With Failure", "ERROR", err) : GLOBALS.global_var.bottom_alert("Download Queue Finished", "INFO")
 );
 
 export async function download_track(track: Track, redownload?: boolean): Promise<DownloadTrackResult> {

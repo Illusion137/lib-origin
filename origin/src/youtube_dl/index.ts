@@ -1,15 +1,9 @@
-import {
-    generror,
-    generror_catch
-} from '@common/utils/error_util';
+import { generror, generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import Innertube, { Constants, Log, Platform, UniversalCache, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
-import {
-    fs,
-    load_native_fs
-} from '@native/fs/fs';
+import { load_native_fs } from '@native/fs/fs';
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
@@ -129,7 +123,6 @@ export namespace YouTubeDL {
             video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
             const client = await get_innertube_client();
 
-            // Generate po_token for the video_id content binding.
             const content_pot_result = await potoken().generate_potoken(client, video_id);
             if ("error" in content_pot_result) return content_pot_result;
 
@@ -164,20 +157,11 @@ export namespace YouTubeDL {
                 clientInfo: client_info,
                 cookie: client.session.cookie,
                 duration: player_response.video_details?.duration ?? 0,
-                on_refresh_po_token: (() => {
-                    // Mirror node.ts real_token_applied: first SPS=2 returns the already-generated
-                    // token instantly. Only subsequent SPS=2 events trigger a fresh generation.
-                    let first_applied = false;
-                    return async () => {
-                        if (!first_applied) {
-                            first_applied = true;
-                            return content_pot_result.po_token;
-                        }
-                        const potoken_result = await potoken().generate_potoken(client, video_id);
-                        if ('error' in potoken_result) throw potoken_result.error;
-                        return potoken_result.po_token;
-                    };
-                })(),
+                on_refresh_po_token: async () => {
+                    const potoken_result = await potoken().generate_potoken(client, video_id);
+                    if ('error' in potoken_result) throw potoken_result.error;
+                    return potoken_result.po_token;
+                },
                 on_reload_player_response: async (reload_ctx: any) => {
                     const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
                     const watch_response = await watch_endpoint.call(client.actions, {

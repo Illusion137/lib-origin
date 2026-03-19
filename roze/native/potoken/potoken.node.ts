@@ -42,9 +42,10 @@ export const node_potoken: PoTokenGenerator = {
     generate_potoken: async (innertube: Innertube, content_binding?: string) => {
         setup_botguard_environment();
 
-        const visitor_data = content_binding ?? '';
+        content_binding ??= "";
+        const visitor_data = innertube.session.context.client.visitorData ?? content_binding;
 
-        if (!content_binding) {
+        if (!visitor_data) {
             return generror('No identifier provided and no visitorData on the Innertube session.', "CRITICAL", { identifier: content_binding });
         }
 
@@ -56,6 +57,7 @@ export const node_potoken: PoTokenGenerator = {
 
         let interpreter_url: string =
             challenge_response.bg_challenge.interpreter_url.private_do_not_access_or_else_trusted_resource_url_wrapped_value ?? '';
+        console.log(interpreter_url);
 
         if (!interpreter_url) {
             return generror('Could not get interpreter URL from BotGuard challenge', "CRITICAL");
@@ -99,7 +101,9 @@ export const node_potoken: PoTokenGenerator = {
             return generror('Could not get integrity token', "CRITICAL");
         }
 
+        console.log("V!: ", web_po_signal_output)
         const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
+        console.log("V2: ", web_po_signal_output)
         const po_token = await web_po_minter.mintAsWebsafeString(content_binding);
 
         // generatePlaceholder throws if content_binding > 118 UTF-8 bytes (visitor_data can exceed this).

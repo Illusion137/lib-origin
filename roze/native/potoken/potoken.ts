@@ -3,7 +3,7 @@ import { get_native_platform } from "@native/native_mode";
 
 let potoken_instance: PoTokenGenerator;
 
-export async function load_native_potoken(): Promise<PoTokenGenerator>{
+export async function load_native_potoken(): Promise<PoTokenGenerator> {
 	if (potoken_instance) return potoken_instance;
 	switch (get_native_platform()) {
 		case "WEB":
@@ -16,7 +16,7 @@ export async function load_native_potoken(): Promise<PoTokenGenerator>{
 			break;
 		case "REACT_NATIVE":
 			try {
-				potoken_instance = (await import("./potoken.mobile.tsx")).mobile_potoken;
+				potoken_instance = (await import("./potoken.mobile.ts")).mobile_potoken;
 			} catch (e) { console.error(e); }
 			break;
 	}
@@ -25,6 +25,6 @@ export async function load_native_potoken(): Promise<PoTokenGenerator>{
 
 export function potoken(): PoTokenGenerator {
 	if (potoken_instance) return potoken_instance;
-    console.error(new Error("Native Module [potoken/PoTokenGenerator] is NOT loaded"));
+	console.error(new Error("Native Module [potoken/PoTokenGenerator] is NOT loaded"));
 	return potoken_instance;
 }
