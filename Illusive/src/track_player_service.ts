@@ -28,6 +28,7 @@ import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
+import { reinterpret_cast } from '../../dist-roze-native/common/cast';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const placeholder_mp3 = require('./assets/placeholder.mp3');
@@ -254,8 +255,8 @@ export async function track_player_next() {
     } catch (error) { alert_trackplayer_error({ error: error as Error }); }
 }
 
-export async function track_player_on_error(data: { code: string, message: string }) {
-    const error_msg = `C:${data.code}; ${data.message}`;
+export async function track_player_on_error(data: { error: string }) {
+    const error_msg = `TP: ${data.error}`;
     GLOBALS.global_var.bottom_alert(error_msg, "WARN");
     for (let i = 0; i < Constants.trackplayer_max_retries; i++) {
         try {
@@ -274,7 +275,7 @@ export async function track_player_on_error(data: { code: string, message: strin
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => { return });
     TrackPlayer.addEventListener(Event.PlaybackError, async (data) => {
-        await track_player_on_error(data);
+        await track_player_on_error(reinterpret_cast<{ error: string }>(data));
     });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
