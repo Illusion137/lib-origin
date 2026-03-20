@@ -14,19 +14,19 @@ vi.mock("expo-audio", () => {
 			try {
 				const out = execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${source.uri}" 2>/dev/null`).toString().trim();
 				dur = parseFloat(out) || 1.0;
-			} catch {}
+			} catch { }
 			const listeners: Array<(s: any) => void> = [];
 			const player = {
 				isLoaded: false,
 				duration: dur,
-				release: () => {},
+				release: () => { },
 				addListener: (_event: string, cb: (s: any) => void) => {
 					// Simulate async load
 					setTimeout(() => {
 						player.isLoaded = true;
 						cb({ duration: dur });
 					}, 10);
-					const handle = { remove: () => {} };
+					const handle = { remove: () => { } };
 					listeners.push(cb);
 					return handle;
 				}
@@ -37,7 +37,7 @@ vi.mock("expo-audio", () => {
 });
 
 import { node_get_audio_duration } from "../roze/native/get_audio_duration/get_audio_duration.node";
-import { mobile_get_audio_duration } from "../roze/native/get_audio_duration/get_audio_duration.mobile";
+import { mobile_get_audio_duration } from "../roze/native/get_audio_duration/get_audio_duration.mobile.expo";
 
 const TEST_DIR = path.join(os.tmpdir(), "native_audio_test_" + Date.now());
 let TEST_AUDIO_PATH: string;

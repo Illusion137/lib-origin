@@ -3,7 +3,7 @@ import { get_native_platform } from "@native/native_mode";
 
 let get_audio_duration_instance: GetAudioDuration;
 
-export async function load_native_get_audio_duration(): Promise<GetAudioDuration>{
+export async function load_native_get_audio_duration(): Promise<GetAudioDuration> {
     if (get_audio_duration_instance) return get_audio_duration_instance;
     switch (get_native_platform()) {
         case "WEB":

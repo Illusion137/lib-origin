@@ -12,6 +12,7 @@ export interface SabrDownloadParams {
 	cookie?: string;
 	on_refresh_po_token?: (reason: SabrTokenCallbackReason) => Promise<string>;
 	on_reload_player_response?: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
+	preferOpus?: boolean;
 }
 
 export interface SabrDownloader {
