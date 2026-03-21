@@ -27,7 +27,7 @@ EPub.createAsync('2d921902.epub', undefined, '')
 		console.log(epub.manifest);
 
 		console.log("\nlistImage:\n");
-		let imgs = epub.listImage();
+		const imgs = epub.listImage();
 		console.log(imgs);
 
 		await epub.getImageAsync(imgs[0].id!).then( function([data, mimeType]){

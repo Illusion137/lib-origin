@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+ 
 import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as os from "os";
 import * as path from "path";
@@ -15,7 +15,7 @@ vi.mock("expo-audio", () => {
 				const out = execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${source.uri}" 2>/dev/null`).toString().trim();
 				dur = parseFloat(out) || 1.0;
 			} catch { }
-			const listeners: Array<(s: any) => void> = [];
+			const listeners: ((s: any) => void)[] = [];
 			const player = {
 				isLoaded: false,
 				duration: dur,

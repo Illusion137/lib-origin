@@ -48,7 +48,7 @@ export const node_sabr_downloader: SabrDownloader = {
 					if (poToken) sabr_stream.setPoToken(poToken);
 				} else if (params.on_refresh_po_token) {
 					try {
-						const refreshed = await params.on_refresh_po_token();
+						const refreshed = await params.on_refresh_po_token("expired");
 						sabr_stream.setPoToken(refreshed);
 					} catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
 				}

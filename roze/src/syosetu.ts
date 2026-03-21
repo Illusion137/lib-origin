@@ -31,7 +31,7 @@ export namespace Syosetu {
 
     function href_to_page(href?: string): number {
         if (href === undefined) return 1;
-        const page_maybe = extract_string_from_pattern(href, /\/.+?\/\??p?=?(\d+)\/?/i);
+        const page_maybe = extract_string_from_pattern(href, /\/.+?\/\??p?=?(\d+)\/?/i, "MEDIUM");
         if (typeof page_maybe === "object") return 1;
         const page_no = parseInt(page_maybe);
         if (isNaN(page_no)) return 1;

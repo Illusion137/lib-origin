@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-extraneous-class */
-/* eslint-disable @typescript-eslint/member-ordering */
+ 
 import { db } from '../database';
 import { change_log_table } from '../schema';
 import { eq, and, inArray, asc, lt } from 'drizzle-orm';

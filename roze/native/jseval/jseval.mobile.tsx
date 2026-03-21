@@ -64,7 +64,7 @@ true;
 
 const WEBVIEW_ORIGIN_WHITELIST = ["*"];
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+ 
 export let _jseval_webview_ref: WebView | null = null;
 export let _jseval_is_ready = false;
 export let _jseval_ready_promise: Promise<void> | null = null;

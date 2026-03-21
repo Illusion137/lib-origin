@@ -1,6 +1,6 @@
 import { reinterpret_cast } from '@common/cast';
 import type { ResponseError } from '@common/types';
-import { generror } from '@common/utils/error_util';
+import { generror, type ErrorSeverity } from '@common/utils/error_util';
 import uuid from 'react-native-uuid';
 
 export function generate_new_uid(prefix_name: string) {
@@ -21,15 +21,15 @@ export function small_string(str: string, length = 50) {
     if (str.length < length) return str;
     return str?.slice(0, length) + '...';
 }
-export function extract_string_from_pattern(str: string, pattern: RegExp) {
+export function extract_string_from_pattern(str: string, pattern: RegExp, severity: ErrorSeverity) {
     const body_groups = pattern.exec(str);
-    if (body_groups === null) return generror('Unable to extract pattern NULL found', "MEDIUM", { str: small_string(str) });
-    if (body_groups.length < 2) return generror('Unable to extract pattern Not sufficient groups', "MEDIUM", { str: small_string(str) });
+    if (body_groups === null) return generror('Unable to extract pattern NULL found', severity, { str: small_string(str) });
+    if (body_groups.length < 2) return generror('Unable to extract pattern Not sufficient groups', severity, { str: small_string(str) });
     const extracted = body_groups[1];
     return extracted;
 }
 export function extract_string_undef(str: string, pattern: RegExp) {
-    return error_undefined(extract_string_from_pattern(str, pattern));
+    return error_undefined(extract_string_from_pattern(str, pattern, "LOW"));
 }
 export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const matched = str.matchAll(pattern);
@@ -122,12 +122,12 @@ export function safe_date_iso(date: Date): string {
 }
 
 export function has_file_extension(path: string) {
-    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i);
+    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i, "INFO");
     return typeof extracted === "string";
 }
 
 export function extract_file_extension(path: string, mime?: "photo" | "video" | "none") {
-    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i);
+    const extracted = extract_string_from_pattern(path, /(\.[0-9a-z]+$)/i, "LOW");
     if (typeof extracted === "object") {
         switch (mime) {
             case "none": return "";

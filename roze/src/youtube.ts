@@ -20,7 +20,7 @@ Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, T
 
     const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
 
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-return
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
     return new Function(code)() as typeof Platform.shim.eval;
 }
 

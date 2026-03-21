@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+ 
 import { vi, describe, it, expect } from "vitest";
 import { execSync } from "child_process";
 
@@ -14,12 +14,12 @@ vi.mock("ffmpeg-kit-react-native", () => {
 	const { spawn } = require("child_process");
 
 	class MockReturnCode {
-		constructor(private code: number) {}
+		constructor(private readonly code: number) {}
 		getValue() { return this.code; }
 	}
 
 	class MockSession {
-		private _args: string[];
+		private readonly _args: string[];
 		private _retcode = 0;
 		private _output = "";
 		constructor(args: string[]) { this._args = args; }

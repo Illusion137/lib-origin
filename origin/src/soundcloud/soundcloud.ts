@@ -115,7 +115,7 @@ export namespace SoundCloud {
         for (const asset_script of asset_scripts(opts.scripts)) {
             const response = await rozfetch(asset_script, api_method_options({ ...opts, fetch_opts: { ...opts.fetch_opts, cache_opts: undefined } }));
             if ("error" in response) return response;
-            const extracted = extract_string_from_pattern(await response.text(), /client_id: ?"(.+?)"/si);
+            const extracted = extract_string_from_pattern(await response.text(), /client_id: ?"(.+?)"/si, "INFO");
             if (typeof extracted === "object") continue;
             return { client_id: extracted, hydration };
         }
@@ -135,7 +135,7 @@ export namespace SoundCloud {
         const hydration = try_json_parse<Hydration>(hydration_text.extracted);
         if ("error" in hydration) return hydration;
 
-        const version_string = extract_string_from_pattern(hydration_text.full, /window.__sc_version ?= ?"(.+?)"/si);
+        const version_string = extract_string_from_pattern(hydration_text.full, /window.__sc_version ?= ?"(.+?)"/si, "MEDIUM");
         if (typeof version_string === "object") return version_string;
         app_version = parseInt(version_string);
 
@@ -406,7 +406,7 @@ export namespace SoundCloud {
         return redirect_response.headers.get("Location")?.replace("//", "");
     }
     function extract_playlist_name(permalink: string) {
-        return extract_string_from_pattern(clean_permalink(permalink), /\*+?\/sets\/(.+)/);
+        return extract_string_from_pattern(clean_permalink(permalink), /\*+?\/sets\/(.+)/, "MEDIUM");
     }
     export async function create_playlist(opts: Opts & ({ sharing: "public" | "private", title: string, track_uids: number[] })): PromiseResult<Playlist> {
         const payload = {

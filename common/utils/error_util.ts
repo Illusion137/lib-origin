@@ -1,6 +1,7 @@
 import type { ResponseError } from "@common/types";
 import { status_codes_descriptions } from "@common/status_codes";
 import type { CookieJar } from "@common/utils/cookie_util";
+import { get_native_platform } from "@native/native_mode";
 
 export function args_prettystring(args: object, indent = 2) {
     let str = '{\n';
@@ -15,7 +16,7 @@ function is_error_instance(e: unknown) {
     return e instanceof Error;
 }
 export function is_timeout_error(e: unknown) {
-    return e instanceof DOMException && e.name === "TimeoutError";
+    return get_native_platform() !== "REACT_NATIVE" && e instanceof DOMException && e.name === "TimeoutError";
 }
 
 function clean_error_trace(error: Error): Error {

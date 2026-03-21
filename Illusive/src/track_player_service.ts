@@ -134,6 +134,7 @@ export async function delete_track_from_player_queue(track_data: Track) {
 
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
+    if (track === undefined) return 'skip';
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
     if ("error" in url_data) {
         GLOBALS.global_var.bottom_alert("Failed to convert track to Illusive track", "WARN", url_data);

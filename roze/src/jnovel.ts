@@ -46,7 +46,7 @@ export namespace JNovel {
 	}
 	export function __next_data__<T>(html: string | ResponseError): T | ResponseError {
 		if (typeof html === "object") return html;
-		const next_data_string = extract_string_from_pattern(html, /<script id="__NEXT_DATA__" type="application\/json">.*?({.+?})<\/script>/igs);
+		const next_data_string = extract_string_from_pattern(html, /<script id="__NEXT_DATA__" type="application\/json">.*?({.+?})<\/script>/igs, "MEDIUM");
 		if (typeof next_data_string === "object") return next_data_string;
 		return try_json_parse<T>(next_data_string);
 	}
@@ -64,7 +64,7 @@ export namespace JNovel {
 	}
 
 	function extract_from_pattern_cleaned_to_json<T>(text: string, regex: RegExp): T | ResponseError {
-		const strerr = extract_string_from_pattern(text, regex);
+		const strerr = extract_string_from_pattern(text, regex, "MEDIUM");
 		if (typeof strerr === "object") return strerr;
 		return try_json_parse<T>(clean_html_text(strerr));
 	}
@@ -72,8 +72,8 @@ export namespace JNovel {
 		const reader_text = await get_response_text(`https://labs.j-novel.club/embed/${opts.legacy_id}`, opts);
 		if (typeof reader_text === "object") return reader_text;
 
-		const title = extract_string_from_pattern(reader_text, /<title>(.+?)<\/title>/gis);
-		const volume_img_uri = extract_string_from_pattern(reader_text, /<meta property="og:image" content="(.+?)">/gis);
+		const title = extract_string_from_pattern(reader_text, /<title>(.+?)<\/title>/gis, "MEDIUM");
+		const volume_img_uri = extract_string_from_pattern(reader_text, /<meta property="og:image" content="(.+?)">/gis, "MEDIUM");
 		if (typeof title === "object") return title;
 		if (typeof volume_img_uri === "object") return volume_img_uri;
 		const data_toc = extract_from_pattern_cleaned_to_json<JNovel_Toc>(reader_text, /data-toc="(.+?)"/gis);

@@ -113,9 +113,9 @@ export namespace YouTube {
 	function extract_initial_data(html: string) {
 		const initial_data_regex0 = /var ytInitialData ?= ?('.+?');/gs;
 		const initial_data_regex1 = /var ytInitialData ?= ?({.+?});/gs;
-		let extracted = extract_string_from_pattern(html, initial_data_regex0);
+		let extracted = extract_string_from_pattern(html, initial_data_regex0, "LOW");
 		if (typeof extracted === "object") {
-			extracted = extract_string_from_pattern(html, initial_data_regex1);
+			extracted = extract_string_from_pattern(html, initial_data_regex1, "LOW");
 			const initial_data = try_json_eval<InitialData>(extracted as string);
 			return initial_data;
 		}
@@ -125,7 +125,7 @@ export namespace YouTube {
 	}
 	function extract_ytcfg(html: string): YTCFG | ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
-		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
+		const extracted = extract_string_from_pattern(html, ytcfg_data_regex, "MEDIUM");
 		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}

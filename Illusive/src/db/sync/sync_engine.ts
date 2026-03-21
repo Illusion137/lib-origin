@@ -370,7 +370,7 @@ export class SyncEngine {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/member-ordering
+     
     destroy() {
         if (this.sync_interval) {
             clearInterval(this.sync_interval);

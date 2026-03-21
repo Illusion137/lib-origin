@@ -287,7 +287,7 @@ export namespace Illusive {
     // TODO investigate previous one to update new ones
     export async function get_highest_quality_service_thumbnail_uri(uri: string) {
         if (!/w\d{2,}-h\d{2,}/.test(uri)) return uri;
-        const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{2,})-h\d{2,}/g), extract_string_from_pattern(uri, /w\d{2,}-h(\d{2,})/g)];
+        const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{2,})-h\d{2,}/g, "MEDIUM"), extract_string_from_pattern(uri, /w\d{2,}-h(\d{2,})/g, "MEDIUM")];
         const [width, height] = [parseInt(width_str as string), parseInt(height_str as string)];
         const uris_descending = [
             uri.replace(/w\d{2,}-h\d{2,}/, 'w2000-h2000'),
