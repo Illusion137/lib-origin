@@ -1,9 +1,9 @@
 export namespace Constants {
-    export const sqlite_directory       = "SQLite/";
+    export const sqlite_directory = "SQLite/";
     export const custom_thumbnail_archive_path = "custom_thumbnail_archive/";
     export const thumbnail_archive_path = "thumbnail_archive/";
-    export const media_archive_path     = "media_archive/";
-    export const lyrics_archive_path    = "lyrics_archive/";
+    export const media_archive_path = "media_archive/";
+    export const lyrics_archive_path = "lyrics_archive/";
 
     export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path];
     export const default_directories_wsql = default_directories.concat(sqlite_directory);
@@ -24,7 +24,7 @@ export namespace Constants {
     export const spotify_playlist_limit = 100;
     export const new_releases_backdate_days = 4;
     export const new_releases_artist_watch_small_amount = 25;
-    export const download_queue_max_length = 5;
+    export const download_queue_max_length = 2;
     export const download_lyrics_queue_max_length = 1;
     export const tracks_per_sample = 3;
     export const long_press_delay = 250;
