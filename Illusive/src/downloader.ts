@@ -109,9 +109,13 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 
     const using_sabr = "isSabr" in download_uri && download_uri.isSabr;
 
-    const media_uri = downloading.track.uid + (using_sabr ? '.m4a' : '.webm');
+    const intermediate_media_uri = downloading.track.uid + '.webm';
+    const media_uri = downloading.track.uid + '.m4a';
+    const new_intermediate_uri = SQLfs.cache_directory(intermediate_media_uri);
     const new_uri = SQLfs.media_directory(media_uri);
 
+    let retcode = 1;
+    let logs = "";
     if (using_sabr) {
         await sabr_downloader().download_sabr(
             {
@@ -126,12 +130,28 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
                 on_reload_player_response: download_uri.on_reload_player_response,
                 preferOpus: true
             },
-            new_uri,
-            (progress) => track_downloader.update_key(downloading.uid, { ...downloading, progress })
+            new_intermediate_uri,
+            (progress) => track_downloader.update_key(downloading.uid, { ...downloading, progress: progress / 2.0 })
         );
+        const ffmpeg_result = await ffmpeg().execute_args([
+            '-i',
+            new_intermediate_uri,
+            '-vn',
+            '-c:a',
+            'aac',
+            new_uri,
+        ], (statistics) => {
+            const progress = statistics.time_seconds / downloading.track.duration;
+            track_downloader.update_key(downloading.uid, { ...downloading, progress: (progress / 2.0) + 0.5 });
+        });
+        track_downloader.update_key(downloading.uid, { ...downloading, execution_id: ffmpeg_result.session_id });
+
+        retcode = await ffmpeg_result.retcode;
+        await wait(100); // TODO what we doing here??
+        if (retcode !== Constants.ffmpeg_retcode_success) logs = await ffmpeg_result.logs();
+
+        if (retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n UID: ${downloading.track.uid}; LOG: ${logs}`, "CRITICAL");
     } else {
-        let retcode = 1;
-        let logs = "";
         for (let i = 0; i < 2 && retcode !== 0; i++) {
             const ffmpeg_result = await ffmpeg().execute_args([
                 '-y',
