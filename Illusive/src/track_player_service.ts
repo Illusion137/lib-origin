@@ -25,9 +25,9 @@ import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
+import { reinterpret_cast } from '@common/cast';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
-import { reinterpret_cast } from '../../dist-roze-native/common/cast';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const placeholder_mp3 = require('./assets/placeholder.mp3');
