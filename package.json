@@ -67,7 +67,7 @@
     "adm-zip": "^0.5.16",
     "axios": "^1.7.7",
     "base-64": "^1.0.0",
-    "bgutils-js": "3.1.0",
+    "bgutils-js": "^3.2.0",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
     "canvas": "^3.2.1",

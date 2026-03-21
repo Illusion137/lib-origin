@@ -3,7 +3,7 @@ import {
     generror_catch
 } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { Constants, Log, Platform, UniversalCache, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
 import {
@@ -14,9 +14,8 @@ import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { jseval, load_native_jseval } from '@native/jseval/jseval';
-import type { PoTokenResult } from '@native/potoken/potoken.base';
-import BG from 'bgutils-js';
 import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
+import { RCache } from './rcache';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -36,7 +35,7 @@ export namespace YouTubeDL {
         await load_native_potoken();
         await load_native_jseval();
         innertube_client = await Innertube.create({
-            cache: new UniversalCache(true),
+            cache: new RCache(true, await fs().temp_directory()),
         });
         return innertube_client;
     }

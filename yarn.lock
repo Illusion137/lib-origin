@@ -4040,10 +4040,10 @@ bcrypt-pbkdf@^1.0.0:
   dependencies:
     tweetnacl "^0.14.3"
 
-bgutils-js@3.1.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/bgutils-js/-/bgutils-js-3.1.0.tgz#b06484e40a653fb42bd75c261f31e499b18e865a"
-  integrity sha512-2S80c/B4OQFubJLD5ddRRp74utrvjA70x9U0RsIVK7gJaDnaPrbw+bnXWxnEnc0euLznmO9jxOtTTC7FxGmv6w==
+bgutils-js@^3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/bgutils-js/-/bgutils-js-3.2.0.tgz#bfc892b2a39db737827dd204bf7868214a6283f0"
+  integrity sha512-CacO15JvxbclbLeCAAm9DETGlLuisRGWpPigoRvNsccSCPEC4pwYwA2g2x/pv7Om/sk79d4ib35V5HHmxPBpDg==
 
 bidi-js@^1.0.3:
   version "1.0.3"

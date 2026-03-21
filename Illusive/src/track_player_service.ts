@@ -1,4 +1,3 @@
-
 import type { AddTrack } from 'react-native-track-player';
 import TrackPlayer, {
     AppKilledPlaybackBehavior,
@@ -137,6 +136,7 @@ export async function delete_track_from_player_queue(track_data: Track) {
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
     if ("error" in url_data) {
+        GLOBALS.global_var.bottom_alert("Failed to convert track to Illusive track", "WARN", url_data);
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
