@@ -31,7 +31,7 @@ export const mobile_potoken: PoTokenGenerator = {
 						return {
 							po_token: results.poToken,
 							identifier: content_binding,
-							placeholder_po_token: BG.PoToken.generatePlaceholder(content_binding),
+							placeholder_po_token: BG.PoToken.generateColdStartToken(content_binding),
 							visitor_data: content_binding
 						};
 					}
