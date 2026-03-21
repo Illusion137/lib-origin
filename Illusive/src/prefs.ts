@@ -9,11 +9,11 @@ import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
 import { force_json_parse_array } from "@common/utils/parse_util";
 
 export namespace Prefs {
-    export type OtherPrefTypes = "BIAS"|"LINKER_LINKS"|"PAST_QUEUE";
+    export type OtherPrefTypes = "BIAS" | "LINKER_LINKS" | "PAST_QUEUE";
 
     export type PossibleThemes = keyof typeof themes;
 
-    export async function load_mmkv_module(){
+    export async function load_mmkv_module() {
         await load_native_mmkv();
         await mmkv().load_mmkv({
             id: 'illusi.illusion.com',
@@ -65,58 +65,59 @@ export namespace Prefs {
     type Bias = typeof default_track_shuffle_bias;
 
     export const prefs = {
-        legacy_prefs:                          {default_value: "", current_value: "", type: "STRING"} as BasePref<string, OtherPrefTypes>,
-        youtube_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        youtube_music_cookie_jar:              {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        soundcloud_cookie_jar:                 {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        spotify_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        amazon_music_cookie_jar:               {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        apple_music_cookie_jar:                {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        bandlab_cookie_jar:                    {default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR"} as BasePref<CookieJar, OtherPrefTypes>,
-        user_uuid:                             {default_value: user_uuid, current_value: user_uuid, type: "STRING"} as BasePref<string, OtherPrefTypes>,
-        last_synced:                           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
-        automatic_new_releases_last_refreshed: {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
-        new_releases_last_refreshed:           {default_value: new Date(0), current_value: new Date(0), type: "DATE"} as BasePref<Date, OtherPrefTypes>,
-        discord_webhook_url:                   {default_value: '', current_value: '', type: "STRING"}       as BasePref<string, OtherPrefTypes>,
-        latest_version:                        {default_value: "16.2.5", current_value: "16.2.5", type: "STRING"} as BasePref<string, OtherPrefTypes>,
-        database_version:                        {default_value: "17.2.0", current_value: "17.2.0", type: "STRING"} as BasePref<string, OtherPrefTypes>,
-        recent_searches:                       {default_value: [], current_value: [], type: "STRING_ARRAY"}         as BasePref<string[], OtherPrefTypes>,
-        equalizer_preset:                      {default_value: "Default", current_value: "Default", type: "STRING"} as BasePref<EqualizerPreset, OtherPrefTypes>,
-        crossfade:                             {default_value: 0, current_value: 0, type: "NUMBER"}         as BasePref<number, OtherPrefTypes>,
-        past_queue:                            {default_value: {index: 0, tracks: []}, current_value: {index: 0, tracks: []}, type: "PAST_QUEUE"} as BasePref<PastQueue, OtherPrefTypes>,
-        last_sleep_timer_ms:                   {default_value: 0, current_value: 0, type: "NUMBER"}                 as BasePref<number, OtherPrefTypes>,
-        linker_links:                          {default_value: [], current_value: [], type: "LINKER_LINKS"} as BasePref<LinkerLink[], OtherPrefTypes>,
-        primary_color:                         {default_value: '#7400fe', current_value: '#7400fe', type: "STRING"}       as BasePref<HexColor, OtherPrefTypes>,
-        theme:                                 {default_value: 'dark', current_value: 'dark', type: "STRING"}       as BasePref<PossibleThemes, OtherPrefTypes>,
-        track_shuffle_bias:                    {default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS"}       as BasePref<Bias, OtherPrefTypes>,
-        
-        default_playlist_max_size:             {default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist"}       as BasePref<number, OtherPrefTypes>,
-        recently_played_max_size:              {default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist"}       as BasePref<number, OtherPrefTypes>,
-        fuzzy_search_threshold:                {default_value: 50, current_value: 100, type: "NUMBER", range: {start: 0, end: 100}, visible: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)"}       as BasePref<number, OtherPrefTypes>,
-        default_to_strict_search:              {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Your searches will default to the strict-search over fuzzy-search"} as BasePref<boolean, OtherPrefTypes>,
-        new_releases_hide_unknowns:            {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Hide all artists you've never seen in New-Releases"} as BasePref<boolean, OtherPrefTypes>,
-        compact_playlists:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller"} as BasePref<boolean, OtherPrefTypes>,
-        album_track_tinting:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate"}  as BasePref<boolean, OtherPrefTypes>,
-        only_play_downloaded:                  {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)"}  as BasePref<boolean, OtherPrefTypes>,
-        always_shuffle:                        {default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Interactions", description: "Always shuffle user-made playlists and library"}    as BasePref<boolean, OtherPrefTypes> ,
-        play_without_popup:                    {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Prevents Audioplayer from popping up when playing a new queue"} as BasePref<boolean, OtherPrefTypes>,
-        auto_download:                         {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track media whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
-        auto_cache_thumbnails:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track thumbnail whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
-        auto_cache_lyrics:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track lyrics whenever added to library"}  as BasePref<boolean, OtherPrefTypes>,
-        use_track_shuffle_bias:                {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Enabled shuffle settings from Shuffler"}    as BasePref<boolean, OtherPrefTypes>,
-        expensive_wifi_only:                   {default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi"}    as BasePref<boolean, OtherPrefTypes>,
-        warmup_youtube:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load YouTube Client on startup"}    as BasePref<boolean, OtherPrefTypes>,
-        warmup_soundcloud:                   {default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup"}    as BasePref<boolean, OtherPrefTypes>,
-        
+        legacy_prefs: { default_value: "", current_value: "", type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        youtube_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        youtube_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        soundcloud_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        spotify_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        amazon_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        apple_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        bandlab_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        user_uuid: { default_value: user_uuid, current_value: user_uuid, type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        last_synced: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
+        automatic_new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
+        new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
+        discord_webhook_url: { default_value: '', current_value: '', type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        latest_version: { default_value: "16.2.5", current_value: "16.2.5", type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        database_version: { default_value: "17.2.0", current_value: "17.2.0", type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        recent_searches: { default_value: [], current_value: [], type: "STRING_ARRAY" } as BasePref<string[], OtherPrefTypes>,
+        equalizer_preset: { default_value: "Default", current_value: "Default", type: "STRING" } as BasePref<EqualizerPreset, OtherPrefTypes>,
+        crossfade: { default_value: 0, current_value: 0, type: "NUMBER" } as BasePref<number, OtherPrefTypes>,
+        past_queue: { default_value: { index: 0, tracks: [] }, current_value: { index: 0, tracks: [] }, type: "PAST_QUEUE" } as BasePref<PastQueue, OtherPrefTypes>,
+        last_sleep_timer_ms: { default_value: 0, current_value: 0, type: "NUMBER" } as BasePref<number, OtherPrefTypes>,
+        linker_links: { default_value: [], current_value: [], type: "LINKER_LINKS" } as BasePref<LinkerLink[], OtherPrefTypes>,
+        primary_color: { default_value: '#7400fe', current_value: '#7400fe', type: "STRING" } as BasePref<HexColor, OtherPrefTypes>,
+        theme: { default_value: 'dark', current_value: 'dark', type: "STRING" } as BasePref<PossibleThemes, OtherPrefTypes>,
+        track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS" } as BasePref<Bias, OtherPrefTypes>,
+
+        default_playlist_max_size: { default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
+        recently_played_max_size: { default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
+        fuzzy_search_threshold: { default_value: 50, current_value: 100, type: "NUMBER", range: { start: 0, end: 100 }, visible: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)" } as BasePref<number, OtherPrefTypes>,
+        ignore_fat_finger_for_seconds: { default_value: 1, current_value: 1, type: "NUMBER", range: { start: 0, end: 30 }, visible: true, section: "Interactions", description: "How long to set a delay before you can press on another track for it to actually play. Ignores track inputs after a track press for x seconds." } as BasePref<number, OtherPrefTypes>,
+        default_to_strict_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Your searches will default to the strict-search over fuzzy-search" } as BasePref<boolean, OtherPrefTypes>,
+        new_releases_hide_unknowns: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Hide all artists you've never seen in New-Releases" } as BasePref<boolean, OtherPrefTypes>,
+        compact_playlists: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller" } as BasePref<boolean, OtherPrefTypes>,
+        album_track_tinting: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate" } as BasePref<boolean, OtherPrefTypes>,
+        only_play_downloaded: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)" } as BasePref<boolean, OtherPrefTypes>,
+        always_shuffle: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Interactions", description: "Always shuffle user-made playlists and library" } as BasePref<boolean, OtherPrefTypes>,
+        play_without_popup: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Prevents Audioplayer from popping up when playing a new queue" } as BasePref<boolean, OtherPrefTypes>,
+        auto_download: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track media whenever added to library" } as BasePref<boolean, OtherPrefTypes>,
+        auto_cache_thumbnails: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track thumbnail whenever added to library" } as BasePref<boolean, OtherPrefTypes>,
+        auto_cache_lyrics: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track lyrics whenever added to library" } as BasePref<boolean, OtherPrefTypes>,
+        use_track_shuffle_bias: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Enabled shuffle settings from Shuffler" } as BasePref<boolean, OtherPrefTypes>,
+        expensive_wifi_only: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi" } as BasePref<boolean, OtherPrefTypes>,
+        warmup_youtube: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load YouTube Client on startup" } as BasePref<boolean, OtherPrefTypes>,
+        warmup_soundcloud: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup" } as BasePref<boolean, OtherPrefTypes>,
+
         // Settings that have a chance of breaking things; use with caution; all disabled by default
-        enable_linker:                         {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
-        enable_sampler:                        {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
-        fastpack:                              {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation"}  as BasePref<boolean, OtherPrefTypes>,
-        quick_fixer_upper:                     {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary"}  as BasePref<boolean, OtherPrefTypes>,
-        use_cookies_on_download:               {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
-        use_cookies_on_search:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
-        use_cookies_on_artist:                 {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data"}  as BasePref<boolean, OtherPrefTypes>,
-        dev_mode:                              {default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)"}  as BasePref<boolean, OtherPrefTypes>,
+        enable_linker: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
+        enable_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
+        fastpack: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
+        quick_fixer_upper: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary" } as BasePref<boolean, OtherPrefTypes>,
+        use_cookies_on_download: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
+        use_cookies_on_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
+        use_cookies_on_artist: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
+        dev_mode: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
     };
     export type PrefOptions = keyof typeof prefs;
     const user_uuid_key: PrefOptions = "user_uuid";
@@ -125,20 +126,20 @@ export namespace Prefs {
 
     export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_load_map,
-        LINKER_LINKS: async(mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? "[]"),
-        PAST_QUEUE: async(mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
-        BIAS: async(mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias)),
+        LINKER_LINKS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? "[]"),
+        PAST_QUEUE: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
+        BIAS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias)),
     };
     export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
         ...base_save_map,
-        LINKER_LINKS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
-        PAST_QUEUE: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue)),
-        BIAS: async(mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as Bias))
+        LINKER_LINKS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
+        PAST_QUEUE: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue)),
+        BIAS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as Bias))
     };
 
     export async function load_prefs() {
         const storage_user_uuid = await mmkv().get_string(user_uuid_key);
-        if(storage_user_uuid === null) await mmkv().set_string(user_uuid_key, user_uuid);
+        if (storage_user_uuid === null) await mmkv().set_string(user_uuid_key, user_uuid);
         await generic_load_prefs<OtherPrefTypes, PrefOptions>(mmkv(), prefs, illusi_pref_load_map);
     }
     export async function save_pref<T extends PrefOptions>(pref_key: T, value: (typeof prefs)[T]['default_value']) {
@@ -281,7 +282,7 @@ export namespace Prefs {
     export async function try_remove_from_recent_searches(query: string) {
         const recent_searches: string[] = get_pref('recent_searches');
         const recent_search_index = recent_searches.findIndex(search => search === query);
-        if(recent_search_index !== -1) {
+        if (recent_search_index !== -1) {
             recent_searches.splice(recent_search_index, 1);
         }
         await save_pref('recent_searches', recent_searches);
@@ -289,14 +290,14 @@ export namespace Prefs {
     }
     export async function add_to_recent_searches(query: string) {
         let recent_searches = await try_remove_from_recent_searches(query);
-		      recent_searches.unshift(query);
+        recent_searches.unshift(query);
         recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
         await save_pref('recent_searches', recent_searches);
         return recent_searches;
     }
 
     export function snake_case_to_plain_text(text: string) {
-        text = text.replace(/_/g,' ')
+        text = text.replace(/_/g, ' ')
         const words = text.split(" ");
         for (let i = 0; i < words.length; i++) {
             words[i] = words[i][0].toUpperCase() + words[i].slice(1);
@@ -310,7 +311,7 @@ export namespace Prefs {
         await save_pref(key, value);
     }
 
-    export function pref_set_theme(set_theme: (_: Theme) => void){
+    export function pref_set_theme(set_theme: (_: Theme) => void) {
         const theme = get_theme(get_pref('theme'));
         set_theme(
             {
@@ -324,30 +325,30 @@ export namespace Prefs {
     }
     export function get_theme(key: PossibleThemes) {
         const fallback_theme = dark_theme;
-        if(key in themes) return themes[key];
+        if (key in themes) return themes[key];
         return fallback_theme;
     }
     export function all_themes() {
         return Object.keys(themes);
     }
-    export interface PrimaryColorDetails {color: HexColor, icon: string, name: string}
+    export interface PrimaryColorDetails { color: HexColor, icon: string, name: string }
     export const possible_primary_colors: PrimaryColorDetails[] = [
-        {color: '#7400fe', icon: '🔮', name: 'Illusi'},
-        {color: '#FFFAFA', icon: '❄️', name: 'Snow'},
-        {color: '#FFCCFF', icon: '🌔', name: 'Moon'},
-        {color: '#FF007F', icon: '🌹', name: 'Rose'},
-        {color: '#FF69B4', icon: '🌸', name: 'Hot'},
-        {color: '#14f727', icon: '📗', name: 'Science'},
-        {color: '#FF7F50', icon: '🪸', name: 'Coral'},
-        {color: '#EB6123', icon: '🎃', name: "Halloween"},
-        {color: '#4B0082', icon: '🫐', name: 'Indigo'},
-        {color: '#E6E6FA', icon: '💠', name: 'Lavender'},
-        {color: '#00FA9A', icon: '🍃', name: 'Spring'},
-        {color: '#87CEEB', icon: '🌌', name: 'Sky'},
-        {color: '#FF0000', icon: '🏢', name: 'YouTube'},
-        {color: '#1ED760', icon: '🏢', name: 'Spotify'},
-        {color: '#0077C1', icon: '🏢', name: 'Amazon'},
-        {color: '#FC3C44', icon: '🏢', name: 'Apple'},
-        {color: '#FF7700', icon: '🏢', name: 'SoundCloud'},
+        { color: '#7400fe', icon: '🔮', name: 'Illusi' },
+        { color: '#FFFAFA', icon: '❄️', name: 'Snow' },
+        { color: '#FFCCFF', icon: '🌔', name: 'Moon' },
+        { color: '#FF007F', icon: '🌹', name: 'Rose' },
+        { color: '#FF69B4', icon: '🌸', name: 'Hot' },
+        { color: '#14f727', icon: '📗', name: 'Science' },
+        { color: '#FF7F50', icon: '🪸', name: 'Coral' },
+        { color: '#EB6123', icon: '🎃', name: "Halloween" },
+        { color: '#4B0082', icon: '🫐', name: 'Indigo' },
+        { color: '#E6E6FA', icon: '💠', name: 'Lavender' },
+        { color: '#00FA9A', icon: '🍃', name: 'Spring' },
+        { color: '#87CEEB', icon: '🌌', name: 'Sky' },
+        { color: '#FF0000', icon: '🏢', name: 'YouTube' },
+        { color: '#1ED760', icon: '🏢', name: 'Spotify' },
+        { color: '#0077C1', icon: '🏢', name: 'Amazon' },
+        { color: '#FC3C44', icon: '🏢', name: 'Apple' },
+        { color: '#FF7700', icon: '🏢', name: 'SoundCloud' },
     ];
 }
