@@ -170,7 +170,8 @@ export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] }
         return parse_youtube_title_artist({
             uid: generate_new_uid(parse_runs(track.title.runs)),
             title: parse_runs(track.title.runs),
-            artists: [{ name: parse_runs(track.shortBylineText.runs), uri: track.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint?.browseId) }],
+            artists: track?.shortBylineText?.runs ? [{ name: parse_runs(track.shortBylineText.runs), uri: track.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint?.browseId) }]
+                : [{ name: "nullish", uri: null }],
             duration: parseInt(track.lengthSeconds),
             plays: youtube_views_number(track.videoInfo?.runs?.[0]?.text),
             youtube_id: track.videoId,
@@ -221,12 +222,12 @@ export function youtube_parse_playlist_header(header: { playlist_header_content_
         const playlist_data = header.playlist_header_renderer;
         if (playlist_data?.ownerText?.runs !== undefined)
             return {
-                title: playlist_data.title.simpleText,
-                creator: [{ name: parse_runs((playlist_data.ownerText.runs)), uri: create_uri("youtube", playlist_data.ownerEndpoint.browseEndpoint.browseId) }],
+                title: playlist_data?.title?.simpleText ?? "",
+                creator: [{ name: parse_runs((playlist_data?.ownerText?.runs)), uri: playlist_data?.ownerEndpoint?.browseEndpoint?.browseId ? create_uri("youtube", playlist_data.ownerEndpoint.browseEndpoint.browseId) : null }],
             };
         else
             return {
-                title: playlist_data.title.simpleText,
+                title: playlist_data.title.simpleText ?? "",
                 creator: [],
             };
     }
