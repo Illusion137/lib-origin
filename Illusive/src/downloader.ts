@@ -134,6 +134,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
             (progress) => track_downloader.update_key(downloading.uid, { ...downloading, progress: progress / 2.0 })
         );
         const ffmpeg_result = await ffmpeg().execute_args([
+            '-y',
             '-i',
             new_intermediate_uri,
             '-vn',
