@@ -1,12 +1,12 @@
 import type { DB, Scalar } from "@op-engineering/op-sqlite";
 import { generror_catch } from "./error_util";
 
-function is_error_failed_unique_contraint(error: unknown){
+function is_error_failed_unique_contraint(error: unknown) {
     return (error as Error).message.includes("UNIQUE constraint failed")
 }
-function log_error_if_not_unique_constraint_failed(error: unknown, source: string, what: string){
+function log_error_if_not_unique_constraint_failed(error: unknown, source: string, what: string) {
     if (!is_error_failed_unique_contraint(error)) {
-        console.error(generror_catch(error, `DB failed to ${what}`));
+        console.error(generror_catch(error, `DB failed to ${what}`, "MEDIUM", { source }));
         console.error(`SQL: ${source}`);
     }
 }
@@ -26,7 +26,7 @@ export class DrizzleUtils<SQLTables extends string> {
 
     async run_async(source: string, params?: Scalar[]) {
         try {
-            if(params !== undefined)
+            if (params !== undefined)
                 await this.db.execute(source, params);
             else await this.db.execute(source);
         } catch (error) {
@@ -51,14 +51,14 @@ export class DrizzleUtils<SQLTables extends string> {
         }
     }
 
-    async get_all_triggers(){
+    async get_all_triggers() {
         return await this.get_all_async<{ name: string }>("select name from sqlite_master where type = 'trigger';");
     }
 
-    async delete_all_triggers(){
+    async delete_all_triggers() {
         const triggers = await this.get_all_triggers();
         await this.db.transaction(async () => {
-            for(const trigger of triggers){
+            for (const trigger of triggers) {
                 await this.exec_async(`DROP TRIGGER IF EXISTS ${trigger.name};`);
             }
         });
@@ -83,9 +83,9 @@ export class DrizzleUtils<SQLTables extends string> {
     }
 
     // TODO get the only item in the deleted_table and use that as the only key to delete the shiznick
-    async create_on_delete_trigger_if_not_exists<T extends Record<string, any>>(watch_table: SQLTables, copy_table: SQLTables, obj: T){
-        const triggers = await this.get_all_async<{name: string}>("SELECT name from sqlite_master WHERE type = 'trigger';");
-        if(triggers.map(trigger => trigger.name).includes(`${watch_table}_deleted_Trigger`)) return;
+    async create_on_delete_trigger_if_not_exists<T extends Record<string, any>>(watch_table: SQLTables, copy_table: SQLTables, obj: T) {
+        const triggers = await this.get_all_async<{ name: string }>("SELECT name from sqlite_master WHERE type = 'trigger';");
+        if (triggers.map(trigger => trigger.name).includes(`${watch_table}_deleted_Trigger`)) return;
         const keys = Object.keys(obj).filter(key => obj[key] !== undefined);
         await this.exec_async(`
             CREATE TRIGGER IF NOT EXISTS ${watch_table}_deleted_Trigger

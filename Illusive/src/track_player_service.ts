@@ -1,4 +1,3 @@
-
 import type { AddTrack } from 'react-native-track-player';
 import TrackPlayer, {
     AppKilledPlaybackBehavior,
@@ -26,6 +25,7 @@ import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
+import { reinterpret_cast } from '@common/cast';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
@@ -40,7 +40,7 @@ export async function setup_track_player(): Promise<boolean> {
     let index = 0;
     try {
         index = await TrackPlayer.getActiveTrackIndex() ?? 0;
-    } catch (_) {}
+    } catch (_) { }
     GLOBALS.global_var.past_track_index = GLOBALS.global_var.playing_tracks.length === 0 ? GLOBALS.global_var.past_track_index : index;
     try {
         await TrackPlayer.getActiveTrackIndex();
@@ -136,6 +136,7 @@ export async function delete_track_from_player_queue(track_data: Track) {
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
     if ("error" in url_data) {
+        GLOBALS.global_var.bottom_alert("Failed to convert track to Illusive track", "WARN", url_data);
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
@@ -156,6 +157,13 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         headers: {},
         contentType: 'audio/mp4',
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+        ...(url_data.isSabr && {
+            isSabr: url_data.isSabr,
+            sabrServerUrl: url_data.sabrServerUrl,
+            sabrUstreamerConfig: url_data.sabrUstreamerConfig,
+            sabrFormats: (url_data.sabrFormats ?? []) as unknown as Record<string, unknown>[],
+            poToken: url_data.poToken,
+        }),
     };
 }
 
@@ -247,8 +255,8 @@ export async function track_player_next() {
     } catch (error) { alert_trackplayer_error({ error: error as Error }); }
 }
 
-export async function track_player_on_error(data: { code: string, message: string }) {
-    const error_msg = `C:${data.code}; ${data.message}`;
+export async function track_player_on_error(data: { error: string }) {
+    const error_msg = `TP: ${data.error}`;
     GLOBALS.global_var.bottom_alert(error_msg, "WARN");
     for (let i = 0; i < Constants.trackplayer_max_retries; i++) {
         try {
@@ -267,7 +275,7 @@ export async function track_player_on_error(data: { code: string, message: strin
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => { return });
     TrackPlayer.addEventListener(Event.PlaybackError, async (data) => {
-        await track_player_on_error(data);
+        await track_player_on_error(reinterpret_cast<{ error: string }>(data));
     });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {

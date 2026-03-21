@@ -4,50 +4,50 @@ import { wait_for } from "./utils/timed_util";
 
 export interface ResponseError { "error": Error }
 export interface ResponseSuccess { "success": true }
-export type PromiseResult<T> = Promise<ResponseError|T>;
-export type FetchMethod = "GET"|"POST"|"DELETE"|"PUT"|"OPTIONS";
+export type PromiseResult<T> = Promise<ResponseError | T>;
+export type FetchMethod = "GET" | "POST" | "DELETE" | "PUT" | "OPTIONS";
 
 export type HexColor = `#${string}`;
-export type FileExtension = ".txt"|".mp3"|".mp4"|".aac"|".mkv"|".ogg"|".m4a"|".wav"|".flv"|".epub"|".pdf"|".roz"|".ps1"|".json"|".srt"|".aiff"|".ytc"|".png"|"jpg"|".jpeg";
+export type FileExtension = ".txt" | ".mp3" | ".mp4" | ".aac" | ".mkv" | ".ogg" | ".m4a" | ".wav" | ".flv" | ".epub" | ".pdf" | ".roz" | ".ps1" | ".json" | ".srt" | ".aiff" | ".ytc" | ".png" | "jpg" | ".jpeg";
 
 export interface BaseOpts {
-    cookie_jar?: CookieJar; 
+    cookie_jar?: CookieJar;
     fetch_opts?: RoZFetchRequestInit;
 }
-export class Counter<T extends number|string|object> {
+export class Counter<T extends number | string | object> {
     readonly K!: T extends number ? number : string;
     counter: Map<typeof this.K, number>;
-    
-    constructor(){
+
+    constructor() {
         this.counter = new Map<typeof this.K, number>();
     }
-    keygen(value: T): typeof this.K{
-        if(typeof value === "number") return value as typeof this.K;
-        if(typeof value === "string") return value as typeof this.K;
+    keygen(value: T): typeof this.K {
+        if (typeof value === "number") return value as typeof this.K;
+        if (typeof value === "string") return value as typeof this.K;
         return JSON.stringify(value) as typeof this.K;
     }
-    add(value: T){
+    add(value: T) {
         const key = this.keygen(value);
         const current_count = this.counter.get(key);
-        if(current_count !== undefined) this.counter.set(key, current_count + 1);
+        if (current_count !== undefined) this.counter.set(key, current_count + 1);
         else this.counter.set(key, 1);
     }
-    get(value: T){
+    get(value: T) {
         const key = this.keygen(value);
         return this.counter.get(key);
     }
-    all(): [typeof this.K, number][]{
+    all(): [typeof this.K, number][] {
         return [...this.counter.entries()]
-            .map<[string|number,number]>(value => [isNaN(Number(value[0])) ? value[0] : Number(value[0]), value[1]])
-            .sort((a,b) => b[1] - a[1]) as [typeof this.K, number][];
+            .map<[string | number, number]>(value => [isNaN(Number(value[0])) ? value[0] : Number(value[0]), value[1]])
+            .sort((a, b) => b[1] - a[1]) as [typeof this.K, number][];
     }
-    first_non_zero(): [typeof this.K, number]|undefined {
+    first_non_zero(): [typeof this.K, number] | undefined {
         return this.all().find(item => item[0] !== 0);
     }
-    non_zero(nth: number){
+    non_zero(nth: number) {
         return this.all().filter(item => item[0] !== 0)[nth];
     }
-    reset(){
+    reset() {
         this.counter = new Map<typeof this.K, number>();
     }
 }
@@ -65,15 +65,15 @@ export class TimedCacheValue<V> {
     }
     set(value: V) {
         this.clear_expired();
-        this.store = {created_at: new Date(), value};
+        this.store = { created_at: new Date(), value };
     }
-    update(update_value: () => V): V{
+    update(update_value: () => V): V {
         this.clear_expired();
-        if(this.store === undefined) {this.store = {created_at: new Date(), value: update_value()};}
+        if (this.store === undefined) { this.store = { created_at: new Date(), value: update_value() }; }
         return this.store.value;
     }
     clear_expired() {
-        if((this.store?.created_at.getTime() ?? 0) + (this.lifespan_milliseconds) < Date.now()) {
+        if ((this.store?.created_at.getTime() ?? 0) + (this.lifespan_milliseconds) < Date.now()) {
             this.store = undefined;
         }
     }
@@ -88,7 +88,7 @@ export class TimedCache<K, V> {
     }
     add(key: K, value: V) {
         this.clear_expired();
-        this.store.push({created_at: new Date(), key, value});
+        this.store.push({ created_at: new Date(), key, value });
     }
     get(key: K) {
         this.clear_expired();
@@ -97,7 +97,7 @@ export class TimedCache<K, V> {
     update(key: K, value: V) {
         this.clear_expired();
         const i = this.store.findIndex(item => item.key === key);
-        if(i === -1) this.add(key, value);
+        if (i === -1) this.add(key, value);
         this.store[this.store.length - 1].value = value;
         return value;
     }
@@ -113,20 +113,20 @@ export class ItemTimedCache<K, V> {
     }
     add(key: K, value: V, lifespan_milliseconds: number) {
         this.clear_expired();
-        this.store.push({created_at: new Date(), key, value, lifespan_milliseconds});
+        this.store.push({ created_at: new Date(), key, value, lifespan_milliseconds });
     }
     get(key: K) {
         this.clear_expired();
         return this.store.find(item => item.key === key)?.value;
     }
-    get_raw(key: K){
+    get_raw(key: K) {
         this.clear_expired();
         return this.store.find(item => item.key === key);
     }
     update(key: K, value: V, lifespan_milliseconds: number) {
         this.clear_expired();
         const i = this.store.findIndex(item => item.key === key);
-        if(i === -1) this.add(key, value, lifespan_milliseconds);
+        if (i === -1) this.add(key, value, lifespan_milliseconds);
         this.store[this.store.length - 1].value = value;
         return value;
     }
@@ -138,42 +138,44 @@ export class ItemTimedCache<K, V> {
     }
 }
 
-export class AsyncFNQueue<T extends Record<string, any>, V = unknown>  {
-    readonly #finished_fn: () => any;
+export class AsyncFNQueue<T extends Record<string, any>, V = unknown> {
+    readonly #finished_fn: (err?: ResponseError) => any;
     readonly #fn: (obj: T) => Promise<V>;
     readonly #queue: T[];
     readonly #queue_max_length: number;
     readonly #key_extractor: (obj: T) => string;
-    constructor(queue_max_length: number, key_extractor: (obj: T) => string, fn: (obj: T) => Promise<V>, finished_fn?: () => any){
+    constructor(queue_max_length: number, key_extractor: (obj: T) => string, fn: (obj: T) => Promise<V>, finished_fn?: (err?: ResponseError) => any) {
         this.#queue = [];
         this.#queue_max_length = queue_max_length;
         this.#key_extractor = key_extractor;
         this.#fn = fn;
         this.#finished_fn = finished_fn ?? (() => { return });
     }
-    async push_into_queue(initial_obj: T){
+    async push_into_queue(initial_obj: T) {
         const id = this.#key_extractor(initial_obj);
-        if(this.#queue.find(item => this.#key_extractor(item) === id)) return "EXISTS";
+        if (this.#queue.find(item => this.#key_extractor(item) === id)) return "EXISTS";
         this.#queue.push(initial_obj);
         await wait_for(() => this.in_pop_range(id));
         const result = await this.#fn(initial_obj);
         const item_index = this.#queue.findIndex(item => this.#key_extractor(item) === id);
         this.#queue.splice(item_index, 1);
-        if(this.#queue.length === 0) {
-            this.#finished_fn();
+        if (this.#queue.length === 0) {
+            if (result && typeof result === "object" && "error" in result)
+                this.#finished_fn(result as ResponseError);
+            else this.#finished_fn();
         }
         return result;
     }
-    update_key(id: string, new_obj: T){
+    update_key(id: string, new_obj: T) {
         const index = this.#queue.findIndex(obj => this.#key_extractor(obj) === id);
-        if(index === -1) return;
+        if (index === -1) return;
         this.#queue[index] = new_obj;
     }
-    has_key(id: string){
+    has_key(id: string) {
         const index = this.#queue.findIndex(obj => this.#key_extractor(obj) === id);
         return index !== -1;
     }
-    get(id: string){
+    get(id: string) {
         return this.#queue.find(obj => this.#key_extractor(obj) === id);
     }
     in_pop_range(id: string) {

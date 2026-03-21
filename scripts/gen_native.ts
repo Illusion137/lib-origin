@@ -1,19 +1,39 @@
-import { fs } from "@native/fs/fs";
+import { fs,load_native_fs } from "@native/fs/fs";
 import pathlib from "path";
 
-const native_name = "sqlite";
-const native_iname = "SQLite";
+const native_name = "zip";
+const native_iname = "Zip";
 
 const base_path = "./roze/native/";
 
-const import_ts_contents = `import type { ${native_iname} } from "@native/${native_name}/${native_name}.base";
-import { get_native_platform } from "@native/native_mode";
+const import_ts_contents = `import { get_native_platform } from "@native/native_mode";
+import type { ${native_iname} } from "@native/${native_name}/${native_name}.base";
 
-export let ${native_name}: ${native_iname};
-switch(get_native_platform()){
-    case "WEB": console.error("Web Native ${native_iname} is NOT implemented"); break;
-    case "NODE": try {${native_name} = require("./${native_name}.node").node_${native_name};} catch(e) {} break;
-    case "REACT_NATIVE": try {${native_name} = require("./${native_name}.mobile").mobile_${native_name};} catch(e) {} break;
+let ${native_name}_instance: ${native_iname};
+
+export async function load_native_${native_name}(): Promise<${native_iname}>{
+	if (${native_name}_instance) return ${native_name}_instance;
+	switch (get_native_platform()) {
+		case "WEB":
+			console.error("Web Native ${native_iname} is NOT implemented");
+			break;
+		case "NODE":
+			try {
+				${native_name}_instance = (await import("./${native_name}.node.ts")).node_${native_name};
+			} catch (e) { console.error(e); }
+			break;
+		case "REACT_NATIVE":
+			try {
+				${native_name}_instance = (await import("./${native_name}.mobile.ts")).mobile_${native_name};
+			} catch (e) { console.error(e); }
+			break;
+	}
+	return ${native_name}_instance;
+}
+export function ${native_name}(): ${native_iname} {
+	if (${native_name}_instance) return ${native_name}_instance;
+    console.error(new Error("Native Module [${native_name}/${native_iname}] is NOT loaded"));
+	return ${native_name}_instance;
 }
 `;
 
@@ -37,6 +57,7 @@ export const node_${native_name}: ${native_iname} = {
 `;
 
 async function gen_native_main() {
+	await load_native_fs();
 	await fs().make_directory(pathlib.join(base_path, native_name));
 	await fs().write_file_as_string(pathlib.join(base_path, native_name, native_name + ".ts"), import_ts_contents, {});
 	await fs().write_file_as_string(pathlib.join(base_path, native_name, native_name + ".base.ts"), base_ts_contents, {});

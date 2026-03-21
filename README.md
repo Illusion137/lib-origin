@@ -1,7 +1,7 @@
-<p align="center">
+<div style="text-align: center;" align="center">
     <h1>Origin</h1>
     <img src="Illusive/src/assets/icon_transparent.png" height="100" alt="Origin-Logo" />
-</p>
+</div>
 
 Lib-Origin a internal general purpose TypeScript utility library and a web-scaping, data-extracting library. There are several utilities for bridging the native gap between Node.js and React Native through _Roze_. Illusive is built as both a library for extracting music data, but also as a backend to my React Native music app _Illusi_. _Roze_, more than just the native bridge, also is a backend to a audiobook generation app, similarly named [Roze](https://github.com/Illusion137/Roze).
 
@@ -86,7 +86,7 @@ module.exports = {
 To run the Discord music bot locally you can either run the development server with
 
 ```bash
-yarn run discord_dev:win #WINDOWS
+yarn run discord_dev:win # WINDOWS
 yarn run discord_dev:osx # OSX/Linux
 ```
 
@@ -132,6 +132,76 @@ async function main_() {
 		return;
 	}
 	console.log(playlist.data.tracks); // tracks: { playlist_video_renderer: PlaylistVideoRenderer[]; }
+}
+main_().catch(catch_log);
+```
+
+### Illusive
+
+```bash
+# Note that because Illusive imports op-sqlite, you need to mock it and drizzle
+npx tsx -r ./mock-op-sqlite.cjs ./scratch.ts
+```
+
+```typescript
+import { catch_log } from "@common/utils/error_util";
+import { Illusive } from "@illusive/illusive";
+
+async function _main_() {
+	const search_result = await Illusive.music_service.get("SoundCloud")!.search!("Lelo Groundhog Day");
+	if ("error" in search_result) return;
+	if (search_result.tracks.length === 0) return; // no tracks in result
+	const lyrics_result = await Illusive.get_track_lryics(search_result.tracks[0]);
+	if (typeof lyrics_result === "object") return; // ResponseError
+	console.log(lyrics_result);
+	/* lyrics_result ->
+	[Part I]
+	[Verse]
+	Ayy
+	(Shogun is the man)
+	*/
+}
+_main_().catch(catch_log);
+```
+
+### Extracting contents from an EPUB with Roz
+
+```typescript
+import { FileParser } from "@roze/file";
+import { TimeLog } from "@common/time_log";
+import { catch_log } from "@common/utils/error_util";
+import { load_native_zip } from "@native/zip/zip";
+
+async function main() {
+	await load_native_zip();
+	const roz = await FileParser.parse_epub("ascendance-of-a-bookworm-part-5-volume-9.epub", {});
+	if ("error" in roz) throw roz.error;
+	const novel_contents = roz.chapters
+		.map(({ contents }) => contents)
+		.flat()
+		.filter((c) => c.type !== "IMAGE")
+		.map(({ content }) => content)
+		.join("\n\n\n");
+	console.log(novel_contents);
+}
+main().catch(catch_log);
+```
+
+### Extracting webnovel contents, translating them, then turning them into an audiobook
+
+```typescript
+import { Syosetu } from "@roze/syosetu";
+import { load_native_fs } from "@native/fs/fs";
+import { AudiobookGen } from "@roze/audiobook_gen";
+
+async function main_() {
+	await load_native_fs(); // we need to native fs module because internally Syosetu's is cached
+	const bookworm_chapters = await Syosetu.webnovel_chapter_contents_range("n4830bu", { translate_contents: true, range_start: 1, range_end: 5 });
+	const roz = Syosetu.webnovel_chapters_contents_to_roz(bookworm_chapters);
+	// Many options in function sig: (roz: Roz, opts: RozFullAudioOpts, callbacks?: RozChapterToAudiobookCallbacks, voice_options?: VoiceOptions, clean_temp_files?: CleanTempFiles)
+	const result = await AudiobookGen.roz_full_audio(roz, { srt_subtitles: true }, {}, {}, "CLEAN_FILES");
+	if ("error" in result) return;
+	console.log(`FFMPEG Result: ${result.ffmpeg_gen_result.retcode} @ ${result.ffmpeg_gen_result.out_file_path}`);
 }
 main_().catch(catch_log);
 ```

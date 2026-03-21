@@ -16,14 +16,14 @@ export const node_fs: FileSystem = {
 		try {
 			return (await fs.readFile(path, opts)).toString();
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", { path, opts });
+			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path, opts });
 		}
 	},
 	read_directory: async (path: string) => {
 		try {
 			return await fs.readdir(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to read directory", { path });
+			return generror_catch(error, "Failed to read directory", "MEDIUM", { path });
 		}
 	},
 	get_info: async (path: string) => {
@@ -35,7 +35,7 @@ export const node_fs: FileSystem = {
 				is_directory: stats.isDirectory(),
 				uri: path
 			};
-		} catch(_) {
+		} catch (_) {
 			return {
 				exists: false,
 				file_modified_ms: 0,
@@ -49,35 +49,35 @@ export const node_fs: FileSystem = {
 			await fs.writeFile(path, contents, opts);
 			return;
 		} catch (error) {
-			return generror_catch(error, "Failed to write file", { path, opts, contents: contents.slice(0, 50) });
+			return generror_catch(error, "Failed to write file", "MEDIUM", { path, opts, contents: contents.slice(0, 50) });
 		}
 	},
 	move: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await fs.rename(from_path, to_path);
 		} catch (error) {
-			return generror_catch(error, "Failed to move file/directory", { from_path, to_path, opts });
+			return generror_catch(error, "Failed to move file/directory", "MEDIUM", { from_path, to_path, opts });
 		}
 	},
 	copy: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await fs.cp(from_path, to_path, { force: !opts.no_overwrite, recursive: true });
 		} catch (error) {
-			return generror_catch(error, "Failed to copy file/directory", { from_path, to_path, opts });
+			return generror_catch(error, "Failed to copy file/directory", "MEDIUM", { from_path, to_path, opts });
 		}
 	},
 	make_directory: async (path: string) => {
 		try {
 			return await fs.mkdir(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to make directory", { path });
+			return generror_catch(error, "Failed to make directory", "MEDIUM", { path });
 		}
 	},
 	remove: async (path: string) => {
 		try {
 			return fs.rm(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to remove file/directory", { path });
+			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
 		}
 	},
 	download_to_file: async (uri: string, to_path?: string) => {
@@ -96,7 +96,7 @@ export const node_fs: FileSystem = {
 			await finished(body.pipe(file_stream));
 			return to_path;
 		} catch (error) {
-			return generror_catch(error, "Failed to download_to_file", { uri, to_path });
+			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });
 		}
 	}
 };

@@ -19,5 +19,5 @@ describe("YouTube DL", () => {
 
 	test("get_info", async () => bail_no_error(await YouTubeDL.get_info(video_url)));
 
-	test("resolve_url", async () => bail_no_error(await YouTubeDL.resolve_url(video_url)));
+	test("resolve_sabr_url", async () => bail_no_error(await YouTubeDL.resolve_sabr_url(video_url)));
 });

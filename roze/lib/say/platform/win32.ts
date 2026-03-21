@@ -34,9 +34,9 @@ export const SayPlatformWin32: SayPlatformBase = {
 
 				powershell.stdin.end();
 
-				powershell.on("close", (code) => (code === 0 ? resolve(voices) : generror("Failed to get tts voices", { code })));
+				powershell.on("close", (code) => (code === 0 ? resolve(voices) : generror("Failed to get tts voices", "CRITICAL", { code })));
 			} catch (e) {
-				resolve(generror_catch(e, "Failed to get tts voices", {}));
+				resolve(generror_catch(e, "Failed to get tts voices", "CRITICAL", {}));
 			}
 		});
 	},
@@ -52,19 +52,19 @@ export const SayPlatformWin32: SayPlatformBase = {
 				ps.stdin.end(text);
 				ps.stdout.on("data", (data) => console.log(`[TTS] ${data}`));
 				ps.stderr.on("data", (data) => console.error(`[TTS ERROR] ${data}`));
-				ps.on("close", (code) => (code === 0 ? resolve(code) : generror("Failed to speak tts", { code })));
+				ps.on("close", (code) => (code === 0 ? resolve(code) : generror("Failed to speak tts", "CRITICAL", { code })));
 			} catch (e) {
-				resolve(generror_catch(e, "Failed to speak tts", { text, voice, speed }));
+				resolve(generror_catch(e, "Failed to speak tts", "CRITICAL", { text, voice, speed }));
 			}
 		});
 	},
-	export_batch: async (texts: { text: string; export_path: string }[], voice?: string, speed?: number, on_text_export?: (uuid:string, data: string) => any) => {
+	export_batch: async (texts: { text: string; export_path: string }[], voice?: string, speed?: number, on_text_export?: (uuid: string, data: string) => any) => {
 		const flush_limit = 2 * 1024 * 1024 * 1024;
 		const batch_size = 1;
 		const use_batch = true;
 		const throttle = Math.max(1, os.cpus().length);
 		const max_retries = 1000;
-		
+
 		// Windows SpeechSynthesizer rate is -10..10 — clamp it.
 		const rate = Math.max(-10, Math.min(10, speed ?? 0));
 		voice = voice ?? "";
@@ -267,11 +267,11 @@ export const SayPlatformWin32: SayPlatformBase = {
 			powershell.stdout.on("data", (data) => {
 				on_text_export?.(stamp, data.toString());
 			});
-			
+
 			powershell.stderr.on("data", (d) => {
 				process.stderr.write(`[TTS ERROR] ${d}`);
 			});
-			
+
 			powershell.on("close", async (code) => {
 				try {
 					await fs.unlink(script_path).catch(catch_ignore);
@@ -279,7 +279,7 @@ export const SayPlatformWin32: SayPlatformBase = {
 				} finally {
 					code === 0
 						? resolve(code)
-						: resolve(generror("Failed to export tts", { code }));
+						: resolve(generror("Failed to export tts", "CRITICAL", { code }));
 				}
 			});
 		});

@@ -17,7 +17,7 @@ import { Secret, TOTP } from "otpauth";
 import { encode_params } from "@common/utils/fetch_util";
 import BufferRN from "buffer/";
 import { generror } from "@common/utils/error_util";
-import rozfetch, { type RoZFetchRequestInit,type RoZFetchResponse } from "@common/rozfetch";
+import rozfetch, { type RoZFetchRequestInit, type RoZFetchResponse } from "@common/rozfetch";
 import spotify_secrets_bytes from "./data/secret_bytes.json";
 import type { SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLibrary, SpotifyAPI, SpotifyAPIOperationNames, SpotifyArtistOverview, SpotifyGetAlbum, SpotifyGetCollection, SpotifyGetPlaylist, SpotifyHome, SpotifyProfileAccountAttributes, SpotifyRemoveFromLibrary, SpotifyRemoveFromPlaylist, SpotifyRequiresCredentials, SpotifySearch, SpotifyTracksInLibrary, SPVar } from "./types/api";
 import { reinterpret_cast } from '../../../common/cast';
@@ -78,8 +78,8 @@ export namespace Spotify {
             'User-Agent': USER_AGENT,
             "upgrade-insecure-requests": "1",
             'Access-Control-Allow-Origin': '*',
-            'Cookies': undefined as undefined|string,
-            'authorization': undefined as undefined|string,
+            'Cookies': undefined as undefined | string,
+            'authorization': undefined as undefined | string,
         }
         if (cookie_jar !== undefined)
             default_headers.Cookies = cookie_jar.toString();
@@ -90,7 +90,7 @@ export namespace Spotify {
         return reinterpret_cast<Record<string, string>>(default_headers);
     }
 
-    export function post_headers(cookie_jar?: CookieJar){
+    export function post_headers(cookie_jar?: CookieJar) {
         return {
             "accept": "application/json",
             "accept-language": "en-US,en;q=0.9",
@@ -107,17 +107,17 @@ export namespace Spotify {
         };
     }
 
-    function extract_encoded_bullshit_from_id(id: string, page_html: string){
+    function extract_encoded_bullshit_from_id(id: string, page_html: string) {
         const regex = new RegExp(`<script ?id="${id}".+?>(.+?)</script>`, "gis");
         return regex.exec(page_html)?.[1] ?? "";
     }
-    function decode_spotify_bullshit<T>(inner_html: string): ResponseError|T {
-        if(is_empty(inner_html)) return {} as T;
+    function decode_spotify_bullshit<T>(inner_html: string): ResponseError | T {
+        if (is_empty(inner_html)) return {} as T;
         const uri_component = atob(inner_html).split('').map(e => `%${`00${e.charCodeAt(0).toString(16)}`.slice(-2)}`).join('');
         return try_json_parse<T>(decodeURIComponent(uri_component));
     }
 
-    export function get_random_secret(){
+    export function get_random_secret() {
         const secrets = spotify_secrets_bytes;
         return random_of(secrets);
     }
@@ -139,23 +139,23 @@ export namespace Spotify {
 
         const c_time = Date.now();
         let s_time = found_s_time;
-        if(s_time === undefined){
-            const server_time_response = await rozfetch<{serverTime: number}>("https://open.spotify.com/api/server-time/", {
+        if (s_time === undefined) {
+            const server_time_response = await rozfetch<{ serverTime: number }>("https://open.spotify.com/api/server-time/", {
                 headers: {
                     Referer: "https://open.spotify.com/",
                     Origin: "https://open.spotify.com",
                     "User-Agent": USER_AGENT,
                 },
             });
-            if("error" in server_time_response){
+            if ("error" in server_time_response) {
                 return server_time_response;
             }
             const server_time = await server_time_response.json();
-            if("error" in server_time){
+            if ("error" in server_time) {
                 return server_time;
             }
             s_time = server_time.serverTime;
-        } 
+        }
 
         const totp = new TOTP({
             secret: token,
@@ -198,13 +198,13 @@ export namespace Spotify {
             body: null,
             method: "GET",
             cache_opts: {
-                cache_ms: milliseconds_of({minutes: 30}),
+                cache_ms: milliseconds_of({ minutes: 30 }),
                 cache_mode: 'file',
                 cache_on: "request"
             }
         });
 
-        if("error" in page_response) return page_response;
+        if ("error" in page_response) return page_response;
 
         const page_html = await page_response.text();
 
@@ -213,13 +213,13 @@ export namespace Spotify {
         const seo_experiments = decode_spotify_bullshit<{}>(extract_encoded_bullshit_from_id("seoExperiments", page_html));
         const remote_config = decode_spotify_bullshit<RemoteConfig>(extract_encoded_bullshit_from_id("remoteConfig", page_html));
 
-        if("error" in app_server_config) { console.error(app_server_config); return app_server_config; }
-        if("error" in feature_flags) { console.error(feature_flags); return feature_flags; }
-        if("error" in seo_experiments) { console.error(seo_experiments); return seo_experiments; }
-        if("error" in remote_config) { console.error(remote_config); return remote_config; }
+        if ("error" in app_server_config) { console.error(app_server_config); return app_server_config; }
+        if ("error" in feature_flags) { console.error(feature_flags); return feature_flags; }
+        if ("error" in seo_experiments) { console.error(seo_experiments); return seo_experiments; }
+        if ("error" in remote_config) { console.error(remote_config); return remote_config; }
 
         const access_token_url = await get_access_token_url(app_server_config.serverTime);
-        if(typeof access_token_url === "object" && "error" in access_token_url) return access_token_url;
+        if (typeof access_token_url === "object" && "error" in access_token_url) return access_token_url;
         const access_token_response = await rozfetch<ClientSession>(access_token_url, {
             headers: {
                 Referer: "https://open.spotify.com/",
@@ -231,7 +231,7 @@ export namespace Spotify {
         if ("error" in access_token_response) return access_token_response;
 
         const session = await access_token_response.json();
-        if("error" in session) return session;
+        if ("error" in session) return session;
 
         const client_token_payload = {
             "client_data": {
@@ -254,14 +254,14 @@ export namespace Spotify {
             method: "POST",
         });
 
-        if("error" in client_token_response) {
+        if ("error" in client_token_response) {
             return client_token_response;
         }
 
         const client_token = await client_token_response.json();
-        if("error" in client_token){
+        if ("error" in client_token) {
             return client_token;
-        }        
+        }
 
 
         const client = { session: session, client_token: client_token };
@@ -272,36 +272,36 @@ export namespace Spotify {
         const split = uri.split(':');
         return split[split.length - 1];
     }
-    export function url_to_id(url: string){
+    export function url_to_id(url: string) {
         const id = urlid(url, /open.spotify.com\/.+?\//);
-        if(id.split(':').length > 1) return uri_to_id(id);
+        if (id.split(':').length > 1) return uri_to_id(id);
         return id;
     }
 
-    export async function getch_data_with_client<T>(url: string, credentials: SpotifyRequiresCredentials, opts: Opts){
-        if(credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
-            return generror(`Spotify(GET): url["${url}"] failed from lack of credentials`, {credentials, opts});
+    export async function getch_data_with_client<T>(url: string, credentials: SpotifyRequiresCredentials, opts: Opts) {
+        if (credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
+            return generror(`Spotify(GET): url["${url}"] failed from lack of credentials`, "INFO", { credentials, opts });
         }
         const client = opts.client !== undefined ? opts.client : await get_client("https://open.spotify.com/", opts.cookie_jar);
         if ("error" in client) return client;
-        
+
         const headers = get_headers(client, opts.cookie_jar);
 
-        const response = await rozfetch<T>(url, {headers, ...opts.fetch_opts});
-        if("error" in response) return response;
+        const response = await rozfetch<T>(url, { headers, ...opts.fetch_opts });
+        if ("error" in response) return response;
         return await response.json();
     }
-    export async function post_data_with_client<T>(url: string, payload: object, credentials: SpotifyRequiresCredentials, opts: Opts){
-        if(credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
-            return generror(`Spotify(POST): url["${url}"] failed from lack of credentials`, {credentials, opts});
+    export async function post_data_with_client<T>(url: string, payload: object, credentials: SpotifyRequiresCredentials, opts: Opts) {
+        if (credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
+            return generror(`Spotify(POST): url["${url}"] failed from lack of credentials`, "INFO", { credentials, opts });
         }
         const client = opts.client !== undefined ? opts.client : await get_client("https://open.spotify.com/", opts.cookie_jar);
         if ("error" in client) return client;
-        
+
         const headers = get_headers(client, opts.cookie_jar);
 
-        const response = await rozfetch<T>(url, {headers, ...opts.fetch_opts, body: JSON.stringify(payload)});
-        if("error" in response) return response;
+        const response = await rozfetch<T>(url, { headers, ...opts.fetch_opts, body: JSON.stringify(payload) });
+        if ("error" in response) return response;
         return await response.json();
     }
 
@@ -365,18 +365,18 @@ export namespace Spotify {
         removeFromLibrary: 1,
         removeFromPlaylist: 1,
     };
-    export async function internal_api_query<R, T extends SpotifyAPI>(operation_name: T['operation_name'], variables: T['var'], credentials: SpotifyRequiresCredentials, opts: Opts): PromiseResult<R>{
-        if(credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
-            return generror(`Spotify: op["${operation_name}"] failed from lack of credentials`, {credentials, variables, opts});
+    export async function internal_api_query<R, T extends SpotifyAPI>(operation_name: T['operation_name'], variables: T['var'], credentials: SpotifyRequiresCredentials, opts: Opts): PromiseResult<R> {
+        if (credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
+            return generror(`Spotify: op["${operation_name}"] failed from lack of credentials`, "INFO", { credentials, variables, opts });
         }
         const client = opts.client !== undefined ? opts.client : await get_client("https://open.spotify.com/", opts.cookie_jar);
         if ("error" in client) return client;
-        
+
         const headers = get_headers(client, opts.cookie_jar);
 
         const query_base_url = `https://api-partner.spotify.com/pathfinder/v${api_version[operation_name]}/query`;
-        const extensions = { 
-            persistedQuery: { 
+        const extensions = {
+            persistedQuery: {
                 version: 1,
                 sha256Hash: api_persistant_queries[operation_name]
             }
@@ -387,29 +387,29 @@ export namespace Spotify {
             extensions: extensions
         };
         const method = api_methods[operation_name];
-        let response: ResponseError|RoZFetchResponse<R>;
-        if(method === "GET"){
-            response = await rozfetch<R>(`${query_base_url}?${encode_params(params)}`, {headers, ...opts.fetch_opts, method});
+        let response: ResponseError | RoZFetchResponse<R>;
+        if (method === "GET") {
+            response = await rozfetch<R>(`${query_base_url}?${encode_params(params)}`, { headers, ...opts.fetch_opts, method });
         }
         else {
-            response = await rozfetch<R>(query_base_url, {headers, ...opts.fetch_opts, method, body: JSON.stringify(params)});
+            response = await rozfetch<R>(query_base_url, { headers, ...opts.fetch_opts, method, body: JSON.stringify(params) });
         }
-        if("error" in response) return response;
+        if ("error" in response) return response;
         const data = await response.json();
-        if(typeof data === "object" && data !== null && "error" in data) return data;
+        if (typeof data === "object" && data !== null && "error" in data) return data;
         return data;
     }
     export async function get_playlist(opts: SPVar<SpotifyGetPlaylist> & Opts): PromiseResult<UserPlaylist> {
-        opts.var = { 
-            uri: `spotify:playlist:${opts.var.uri.replace('spotify:playlist:', '')}`, 
+        opts.var = {
+            uri: `spotify:playlist:${opts.var.uri.replace('spotify:playlist:', '')}`,
             offset: opts.var.offset ?? 0,
             limit: opts.var.limit ?? 100
         };
         return await internal_api_query<UserPlaylist, SpotifyGetPlaylist>("fetchPlaylist", opts.var, "no_credentials", opts);
     }
-    
+
     export async function get_album(opts: SPVar<SpotifyGetAlbum> & Opts): Promise<Album | ResponseError> {
-        opts.var = { 
+        opts.var = {
             uri: `spotify:album:${url_to_id(opts.var.uri)}`,
             locale: "",
             offset: opts.var.offset ?? 0,
@@ -418,7 +418,7 @@ export namespace Spotify {
         return await internal_api_query<Album, SpotifyGetAlbum>("getAlbum", opts.var, "no_credentials", opts);
     }
     export async function get_collection(opts: SPVar<SpotifyGetCollection> & Opts): Promise<Collection | ResponseError> {
-        opts.var = { 
+        opts.var = {
             offset: opts.var.offset ?? 0,
             limit: opts.var.limit ?? 100
         };
@@ -477,30 +477,30 @@ export namespace Spotify {
             sp_t: opts.var.sp_t,
             country: opts.var.country ?? "US",
             facet: null,
-            sectionItemsLimit: opts.var.sectionItemsLimit ?? 10 
+            sectionItemsLimit: opts.var.sectionItemsLimit ?? 10
         };
         return await internal_api_query<Home, SpotifyHome>("home", opts.var, "no_credentials", opts);
     }
 
     export async function account_library(opts: SPVar<SpotifyAccountLibrary> & Opts) {
         opts.var = {
-                filters: opts.var.filters ?? [],
-                order: opts.var.order ?? null,
-                textFilter: opts.var.textFilter ?? "",
-                features: opts.var.features ?? ["LIKED_SONGS", "YOUR_EPISODES"],
-                limit: opts.var.limit ?? 10,
-                offset: opts.var.offset ?? 0,
-                flatten: opts.var.flatten ?? false,
-                expandedFolders: opts.var.expandedFolders ?? [],
-                folderUri: opts.var.folderUri ?? null,
-                includeFoldersWhenFlattening: opts.var.includeFoldersWhenFlattening ?? true,
-                withCuration: opts.var.withCuration ?? false
+            filters: opts.var.filters ?? [],
+            order: opts.var.order ?? null,
+            textFilter: opts.var.textFilter ?? "",
+            features: opts.var.features ?? ["LIKED_SONGS", "YOUR_EPISODES"],
+            limit: opts.var.limit ?? 10,
+            offset: opts.var.offset ?? 0,
+            flatten: opts.var.flatten ?? false,
+            expandedFolders: opts.var.expandedFolders ?? [],
+            folderUri: opts.var.folderUri ?? null,
+            includeFoldersWhenFlattening: opts.var.includeFoldersWhenFlattening ?? true,
+            withCuration: opts.var.withCuration ?? false
         };
         return await internal_api_query<Library, SpotifyAccountLibrary>("libraryV3", opts.var, "requires_credentials", opts);
     }
 
     export async function account_playlists(opts: SPVar<SpotifyAccountLibrary> & Opts) {
-        return await account_library({...opts, var: {...opts.var, filters: ["Playlists"]}});
+        return await account_library({ ...opts, var: { ...opts.var, filters: ["Playlists"] } });
     }
 
     export async function get_credits(opts: { "uri_id": string } & Opts) {

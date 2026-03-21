@@ -71,17 +71,17 @@ export namespace Instagram {
         if ("error" in response) return response;
         const response_result = await response.json();
         if ("error" in response_result) return response_result;
-        if(response_result.status !== "ok") return generror("Failed to GET", {opts});
+        if (response_result.status !== "ok") return generror("Failed to GET", "MEDIUM", { opts });
         return response_result;
     }
-    export async function fetch_api_post<T extends Record<string, any> & { status: "ok" | "fail" }>(opts: Opts & { base_path?: string, api_path: string, max_id?: string, params?: object, body?: any, no_params?: boolean}) {
+    export async function fetch_api_post<T extends Record<string, any> & { status: "ok" | "fail" }>(opts: Opts & { base_path?: string, api_path: string, max_id?: string, params?: object, body?: any, no_params?: boolean }) {
         const params = { ...opts.params, max_id: opts.max_id ?? "" }
-        const response = await rozfetch<T>((opts.base_path ?? base_api_path) + opts.api_path + ((opts.no_params??false) ? "" : "?" + encode_params(params)), { headers: api_post_headers(opts), method: "POST", body: opts.body ? encode_params(opts.body) : null, ...opts.fetch_opts });
+        const response = await rozfetch<T>((opts.base_path ?? base_api_path) + opts.api_path + ((opts.no_params ?? false) ? "" : "?" + encode_params(params)), { headers: api_post_headers(opts), method: "POST", body: opts.body ? encode_params(opts.body) : null, ...opts.fetch_opts });
         if ("error" in response) return response;
         const response_result = await response.json();
         if ("error" in response_result) return response_result;
         // & { status: "ok" | "fail" }
-        if(response_result.status !== "ok") return generror("Failed to POST", {opts});
+        if (response_result.status !== "ok") return generror("Failed to POST", "MEDIUM", { opts });
 
         return response_result;
     }

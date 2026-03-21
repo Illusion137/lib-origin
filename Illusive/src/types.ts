@@ -387,6 +387,17 @@ export interface DownloadFromIdResult {
         chapters: YouTubeDL.Chapter[];
         songs?: YTDescriptionSong[]
     };
+    // SABR streaming params (YouTube server-adaptive bitrate)
+    isSabr?: true;
+    sabrServerUrl?: string;
+    sabrUstreamerConfig?: string;
+    sabrFormats?: YouTubeDL.SabrFormat[];
+    poToken?: string;
+    placeholder_po_token?: string;
+    clientInfo?: YouTubeDL.SabrClientInfo;
+    cookie?: string;
+    on_refresh_po_token?: () => Promise<string>;
+    on_reload_player_response?: (ctx: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
 }
 
 export interface IllusiveExplore {

@@ -1,28 +1,28 @@
-import { RCache } from './rcache';
-import { generror, generror_catch } from '@common/utils/error_util';
+import {
+    generror,
+    generror_catch
+} from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { ClientType, Log, Platform, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
-import { fs, load_native_fs } from '@native/fs/fs';
+import {
+    fs,
+    load_native_fs
+} from '@native/fs/fs';
+import { load_native_potoken, potoken } from '@native/potoken/potoken';
+import { urlid } from '@common/utils/util';
+import type { ReloadPlaybackContext } from 'googlevideo/protos';
+import { jseval, load_native_jseval } from '@native/jseval/jseval';
+import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
+import { RCache } from './rcache';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
-Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
-    const properties: string[] = [];
-
-    if (env.n) {
-        properties.push(`n: exportedVars.nFunction("${env.n}")`)
-    }
-
-    if (env.sig) {
-        properties.push(`sig: exportedVars.sigFunction("${env.sig}")`)
-    }
-
-    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
-
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    return new Function(code)() as typeof Platform.shim.eval;
-}
+Platform.shim.eval = async (data: Types.BuildScriptResult, _: Record<string, Types.VMPrimative>) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return jseval().eval_in_webview(data.output);
+};
 
 export namespace YouTubeDL {
     export interface Chapter { title: string, start_time: number };
@@ -32,15 +32,10 @@ export namespace YouTubeDL {
         Log.setLevel(Log.Level.NONE);
         if (innertube_client) return innertube_client;
         await load_native_fs();
+        await load_native_potoken();
+        await load_native_jseval();
         innertube_client = await Innertube.create({
             cache: new RCache(true, await fs().temp_directory()),
-            generate_session_locally: false,
-            enable_session_cache: true,
-            fail_fast: true,
-            retrieve_player: true,
-            client_type: ClientType.MWEB,
-            // TODO further investigate cookies for YTDL
-            // cookie: GCC.dotenv_of("YOUTUBE_COOKIE_JAR")
         });
         return innertube_client;
     }
@@ -61,57 +56,142 @@ export namespace YouTubeDL {
         try {
             const client = await get_innertube_client();
             const info = await client.getShortsVideoInfo(link, 'ANDROID');
-            return info;
+            return info as unknown;
         } catch (error) {
-            return generror_catch(error, "YTDL Failed", { link });
+            return generror_catch(error, "YTDL Failed", "MEDIUM", { link });
         }
     };
 
-    // https://github.com/lovegaoshi/azusa-player-mobile/blob/1b0a00b77620804c863e78bda888b524b108134b/src/utils/mediafetch/ytbvideo.ytbi.ts#L42
-    export async function resolve_url(link: string, options?: Types.FormatOptions): Promise<string | ResponseError> {
+    export interface SabrFormat {
+        itag: number;
+        mimeType?: string;
+        bitrate: number;
+        approxDurationMs: number;
+        audioQuality?: string;
+        lastModified: string;
+        contentLength?: number;
+        averageBitrate?: number;
+    }
+
+    export interface SabrClientInfo {
+        clientName?: number;
+        clientVersion?: string;
+    }
+
+    export interface SabrTrackParams {
+        /** The SABR server URL — used as the track url and passed to the native SABR engine. */
+        url: string;
+        /** Flag consumed by the native player to activate SABR mode. */
+        isSabr: true;
+        sabrServerUrl: string;
+        sabrUstreamerConfig: string;
+        sabrFormats: SabrFormat[];
+        poToken: string;
+        placeholder_po_token: string;
+        clientInfo?: SabrClientInfo;
+        cookie?: string;
+        duration?: number;
+        preferOpus?: boolean;
+        on_refresh_po_token: (reason: SabrTokenCallbackReason) => Promise<string>;
+        on_reload_player_response: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
+    }
+
+    export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
+        const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId } });
+
+        const extraArgs: Record<string, any> = {
+            playbackContext: {
+                contentPlaybackContext: {
+                    vis: 0,
+                    splay: false,
+                    lactMilliseconds: '-1',
+                    signatureTimestamp: innertube.session.player?.signature_timestamp
+                }
+            },
+            contentCheckOk: true,
+            racyCheckOk: true
+        };
+
+        if (reloadPlaybackContext) {
+            extraArgs.playbackContext.reloadPlaybackContext = reloadPlaybackContext;
+        }
+
+        return await watch_endpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
+    }
+
+    /**
+     * Resolves a YouTube video into SABR (server-adaptive bitrate) stream parameters.
+     * The returned params are passed directly to TrackPlayer.load()
+     *
+     * Unlike resolve_url, this does NOT include serviceIntegrityDimensions in the player request.
+     * The po_token is supplied directly to SabrStream (placeholder on init, real on SPS=2).
+     * This matches the reference implementation in googlevideo/examples/downloader.
+     */
+    export async function resolve_sabr_url(video_id: string): Promise<SabrTrackParams | ResponseError> {
         try {
+            video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
             const client = await get_innertube_client();
 
-            const extracted_video_info = await client.getBasicInfo(link, { client: client.session.player?.po_token === undefined ? "WEB_EMBEDDED" : "MWEB" });
+            const content_pot_result = await potoken().generate_potoken(client, video_id);
+            if ("error" in content_pot_result) return content_pot_result;
 
-            const max_audio_quality_stream = extracted_video_info.chooseFormat({
-                quality: 'best',
-                type: 'audio',
-            });
-            const url = await max_audio_quality_stream.decipher(client.actions.session.player);
-            if (url) return url;
-            else return generror("No URL found", { link });
+            const player_response = await make_player_request(client, video_id);
+            const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
+            if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", "MEDIUM", { video_id });
 
-            // console.log(await maxAudioQualityStream.decipher(client.actions.session.player));
-            // const url = extractedVideoInfo.streaming_data?.hls_manifest_url;
-            // if(url) return url;
-            // else return generror("No HLS manifest URL found", {link});
+            const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
+            if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "MEDIUM", { video_id });
 
-            // const extractedVideoInfo = await client.getShortsVideoInfo(link, 'ANDROID');
-            // const maxAudioQualityStream = extractedVideoInfo.chooseFormat({
-            //     quality: 'best',
-            //     type: 'audio',
-            // });
-            // return await maxAudioQualityStream.decipher(client.actions.session.player);
+            const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                .map((f: any) => buildSabrFormat(f));
 
-            // const iOS = true;
-            // const hls_manifest_url = iOS ? (await client.getBasicInfo(link, {client: "IOS"})).streaming_data?.hls_manifest_url : undefined;
+            const ctx = client.session.context.client;
+            const client_name_id = parseInt(
+                (Constants.CLIENT_NAME_IDS as Record<string, string>)[ctx.clientName] ?? '1'
+            );
+            const client_info: SabrClientInfo = {
+                clientName: client_name_id,
+                clientVersion: ctx.clientVersion,
+            };
 
-            // if(hls_manifest_url){
-            //     return hls_manifest_url;
-            // }
-
-            // // client.session.po_token = await getPoT(link);
-            // const extracted_video_info = await client.getBasicInfo(link, {client: client.session.player?.po_token === undefined ? "WEB_EMBEDDED" : "MWEB"});
-            // const max_audio_quality_stream = extracted_video_info.chooseFormat({
-            //     itag: 18
-            //     // quality: 'best',
-            //     // type: 'audio',
-            // });
-
-            // return max_audio_quality_stream.decipher(client.actions.session.player);
+            return {
+                url: sabr_server_url,
+                isSabr: true,
+                sabrServerUrl: sabr_server_url,
+                sabrUstreamerConfig: video_playback_ustreamer_config,
+                sabrFormats: all_formats,
+                poToken: content_pot_result.po_token,
+                placeholder_po_token: content_pot_result.placeholder_po_token,
+                clientInfo: client_info,
+                cookie: client.session.cookie,
+                duration: player_response.video_details?.duration ?? 0,
+                on_refresh_po_token: async (_reason) => {
+                    const potoken_result = await potoken().generate_potoken(client, video_id);
+                    if ('error' in potoken_result) throw potoken_result.error;
+                    return potoken_result.po_token;
+                },
+                on_reload_player_response: async (reload_ctx: any) => {
+                    const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
+                    const watch_response = await watch_endpoint.call(client.actions, {
+                        playbackContext: {
+                            contentPlaybackContext: {
+                                vis: 0, splay: false, lactMilliseconds: '-1',
+                                signatureTimestamp: client.session.player?.signature_timestamp ?? 0,
+                            },
+                            reloadPlaybackContext: reload_ctx,
+                        },
+                        contentCheckOk: true, racyCheckOk: true,
+                    });
+                    const new_info = new YT.VideoInfo([watch_response], client.actions, '');
+                    const new_url = await client.session.player?.decipher(new_info.streaming_data?.server_abr_streaming_url);
+                    const new_config = new_info.player_config?.media_common_config?.media_ustreamer_request_config?.video_playback_ustreamer_config;
+                    if (!new_url || !new_config) return null;
+                    return { sabrServerUrl: new_url, sabrUstreamerConfig: new_config };
+                },
+            };
         } catch (error) {
-            return generror_catch(error, "Failed to choose a YTDL format", { options });
+            return generror_catch(error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
         }
     }
 }

@@ -54,7 +54,7 @@ export function load_database() {
     }
     catch (e) {
         console.error(e);
-        return generror_catch(e, "Unable to load main database", {});
+        return generror_catch(e, "Unable to load main database", "CRITICAL", {});
     }
 }
 
