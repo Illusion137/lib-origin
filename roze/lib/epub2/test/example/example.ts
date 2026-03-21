@@ -1,14 +1,13 @@
+/* eslint-disable */
 import EPub from '../../epub';
 
 const epub = new EPub("alice.epub", "/imagewebroot/", "/articlewebroot/");
-epub.on("error", function (err)
-{
+epub.on("error", function (err) {
 	console.log("ERROR\n-----");
 	throw err;
 });
 
-epub.on("end", function (_err)
-{
+epub.on("end", function (_err) {
 	console.log("METADATA:\n");
 	console.log(epub.metadata);
 
@@ -19,10 +18,8 @@ epub.on("end", function (_err)
 	console.log(epub.toc);
 
 	// get first chapter
-	epub.getChapter(epub.spine.contents[0].id!, function (err, data)
-	{
-		if (err)
-		{
+	epub.getChapter(epub.spine.contents[0].id!, function (err, data) {
+		if (err) {
 			console.log(err);
 			return;
 		}

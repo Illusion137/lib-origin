@@ -1,5 +1,5 @@
-/* eslint-disable no-empty-function */
-/* eslint-disable @typescript-eslint/no-empty-function */
+ 
+ 
 import { vi, describe, it, expect } from "vitest";
 
 // Mock react-native-track-player for mobile impl
