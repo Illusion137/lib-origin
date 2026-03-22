@@ -142,6 +142,9 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
     }
+    if("duration" in url_data && url_data.duration && !isNaN(url_data.duration) && is_empty(track.duration)){
+        track.duration = url_data.duration;
+    }
     const nt_response = await handle_new_track_data(track, url_data);
     if (!("error" in nt_response)) track = nt_response;
     // TODO if file doesn't exist might as well just remove it from the queue and skip

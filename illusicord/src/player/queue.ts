@@ -160,7 +160,7 @@ export class Queue<T = unknown> {
         if(opts?.immediate === true || queue_size === 0){
             const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
             if("error" in download_url){
-                console.log(download_url);
+                console.error(download_url);
             }
             const origin_dir = process.env.LORIGIN ?? "/lib-origin";
             const resource = "error" in download_url ? this.connection.create_audio_stream(path.join(origin_dir, "/illusicord/media/5-seconds-of-silence.mp3"), {

@@ -72,6 +72,9 @@ export async function handle_track_meta_data(track: Track, metadata: undefined |
 }
 export async function handle_new_track_data(track: Track, dl_uri: Awaited<ReturnType<typeof Illusive.get_download_url>>) {
     if ("error" in dl_uri) return dl_uri;
+    if("duration" in dl_uri && dl_uri.duration && !isNaN(dl_uri.duration) && is_empty(track.duration)){
+        track.duration = dl_uri.duration;
+    }
     if (!track_exists(track, GLOBALS.global_var.sql_tracks))
         if (dl_uri.new_track_data !== undefined)
             return SQLTracks.add_playback_saved_data_to_track(

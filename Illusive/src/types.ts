@@ -390,6 +390,7 @@ export interface DownloadFromIdResult {
     };
     // SABR streaming params (YouTube server-adaptive bitrate)
     isSabr?: true;
+    duration?: number;
     sabrServerUrl?: string;
     sabrUstreamerConfig?: string;
     sabrFormats?: YouTubeDL.SabrFormat[];

@@ -153,10 +153,6 @@ export async function eval_in_webview(code: string, timeout_ms = 15_000): Promis
 	});
 }
 
-interface JSEvaluatorWebViewProps {
-	baseUrl?: string;
-}
-
 // Richer HTML that resembles a real YouTube page structure.
 // BotGuard fingerprints the DOM (canvas, document.body, language, etc.),
 // so a near-blank page produces weak/invalid snapshots.
@@ -173,8 +169,8 @@ const JSEVAL_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-export function JSEvaluatorWebView({ baseUrl = "https://www.youtube.com/" }: JSEvaluatorWebViewProps) {
-	const source = { html: JSEVAL_HTML, baseUrl };
+export function JSEvaluatorWebView() {
+	const source = { html: JSEVAL_HTML };
 
 	const on_ref = useCallback((instance: WebView | null) => {
 		_jseval_webview_ref = instance;
