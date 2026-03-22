@@ -244,7 +244,7 @@ export namespace Illusive {
         const mode: MusicServiceType = new_track_data.track!.youtube_id ? "YouTube" : "SoundCloud";
         const convert_response = await music_service.get(mode)!.download_from_id!(mode === "YouTube" ? new_track_data.track!.youtube_id! : new_track_data.track!.soundcloud_permalink!, quality ?? "highestaudio");
         if ("error" in convert_response) return convert_response;
-        return download_url_timed_cache.update(key, { url: convert_response.url, metadata: convert_response.metadata, new_track_data: new_track_data.track });
+        return download_url_timed_cache.update(key, { ...convert_response, metadata: convert_response.metadata, new_track_data: new_track_data.track });
     }
 
     interface ExportMix { "tracks": Track[], "new_track_data"?: Track }
