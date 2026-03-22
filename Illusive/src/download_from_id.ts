@@ -19,6 +19,7 @@ export async function youtube_download_from_id(video_id: string, quality: string
         if ("error" in sabr_result) return sabr_result;
         return {
             url: sabr_result.url,
+            duration: sabr_result.duration,
             isSabr: sabr_result.isSabr,
             sabrServerUrl: sabr_result.sabrServerUrl,
             sabrUstreamerConfig: sabr_result.sabrUstreamerConfig,

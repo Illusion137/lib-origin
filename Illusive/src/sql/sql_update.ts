@@ -122,7 +122,7 @@ export namespace SQLUpdate {
                 if (!t.artwork_url) return false;
                 if (!t.youtube_id) return false;
                 if (t.spotify_id || t.amazonmusic_id || t.applemusic_id || t.soundcloud_id) return false;
-                const [width_str, height_str] = [extract_string_from_pattern(t.artwork_url, /w(\d{2,})/g), extract_string_from_pattern(t.artwork_url, /h(\d{2,})/g)];
+                const [width_str, height_str] = [extract_string_from_pattern(t.artwork_url, /w(\d{2,})/g, "LOW"), extract_string_from_pattern(t.artwork_url, /h(\d{2,})/g, "LOW")];
                 if (width_str === height_str) return false;
                 return true;
             }

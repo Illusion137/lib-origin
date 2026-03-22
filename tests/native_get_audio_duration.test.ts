@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+
 import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as os from "os";
 import * as path from "path";
@@ -15,7 +15,7 @@ vi.mock("expo-audio", () => {
 				const out = execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${source.uri}" 2>/dev/null`).toString().trim();
 				dur = parseFloat(out) || 1.0;
 			} catch { }
-			const listeners: Array<(s: any) => void> = [];
+			const listeners: ((s: any) => void)[] = [];
 			const player = {
 				isLoaded: false,
 				duration: dur,
@@ -41,7 +41,7 @@ import { mobile_get_audio_duration } from "../roze/native/get_audio_duration/get
 
 const TEST_DIR = path.join(os.tmpdir(), "native_audio_test_" + Date.now());
 let TEST_AUDIO_PATH: string;
-let HAS_FFMPEG = false;
+let _HAS_FFMPEG = false;
 let HAS_TEST_AUDIO = false;
 
 beforeAll(() => {
@@ -51,10 +51,10 @@ beforeAll(() => {
 	// Try to generate a short audio file with ffmpeg
 	try {
 		execSync(`ffmpeg -y -f lavfi -i "sine=frequency=440:duration=1" "${TEST_AUDIO_PATH}" 2>/dev/null`);
-		HAS_FFMPEG = true;
+		_HAS_FFMPEG = true;
 		HAS_TEST_AUDIO = fs.existsSync(TEST_AUDIO_PATH) && fs.statSync(TEST_AUDIO_PATH).size > 0;
 	} catch {
-		HAS_FFMPEG = false;
+		_HAS_FFMPEG = false;
 	}
 });
 

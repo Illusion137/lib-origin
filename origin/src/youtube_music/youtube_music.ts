@@ -132,7 +132,7 @@ export namespace YouTubeMusic {
 	}
 	function extract_ytcfg(html: string): YTCFG | ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
-		const extracted = extract_string_from_pattern(html, ytcfg_data_regex);
+		const extracted = extract_string_from_pattern(html, ytcfg_data_regex, "MEDIUM");
 		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}

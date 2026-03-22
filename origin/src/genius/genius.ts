@@ -53,7 +53,7 @@ export namespace Genius {
             if ("error" in lyric_response) return lyric_response;
             const html: string = await lyric_response.text();
             const extract_preloaded_state = /window\.__PRELOADED_STATE__ ?= ?JSON.parse\(('.+?')\);/gis;
-            const preloaded_state_string = extract_string_from_pattern(html, extract_preloaded_state);
+            const preloaded_state_string = extract_string_from_pattern(html, extract_preloaded_state, "MEDIUM");
             if (typeof preloaded_state_string === 'object') return generror(lyrics_fail_message, "CRITICAL", { path: search_result.path });
             const eval_preloaded_state_string = try_json_eval<string>(preloaded_state_string);
             if (typeof eval_preloaded_state_string === "object") return eval_preloaded_state_string;

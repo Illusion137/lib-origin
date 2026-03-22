@@ -35,12 +35,12 @@ export namespace AppleMusic {
 	}
 	async function extract_serialized_server_data(html: string, opts: Opts) {
 		const serialized_server_data_regex = /<script type="application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
-		const extraction = extract_string_from_pattern(html, serialized_server_data_regex);
+		const extraction = extract_string_from_pattern(html, serialized_server_data_regex, "MEDIUM");
 		if (typeof extraction === "object") return extraction;
 		const data = try_json_parse<SerializedServerData>(extraction);
 		if ("error" in data) return data;
 		if (client_cache_full()) return { authorization: client_cache.client.authorization!, data: data };
-		const bearer_path = extract_string_from_pattern(html, /<script type="module" crossorigin src="(.+?)"><\/script>/);
+		const bearer_path = extract_string_from_pattern(html, /<script type="module" crossorigin src="(.+?)"><\/script>/, "MEDIUM");
 		if (typeof bearer_path === "object") return bearer_path;
 		const bearer = await get_bearer(bearer_path, opts);
 		if (typeof bearer === "object") return bearer;
@@ -81,7 +81,7 @@ export namespace AppleMusic {
 		const response = await get_response(`https://music.apple.com${path}`, opts);
 		if ("error" in response) return response;
 		const js = await response.text();
-		const bearer = extract_string_from_pattern(js, /const .+? ?= ?["'`]([a-zA-Z0-9-._]{200,})["'`]/i);
+		const bearer = extract_string_from_pattern(js, /const .+? ?= ?["'`]([a-zA-Z0-9-._]{200,})["'`]/i, "MEDIUM");
 		return bearer;
 	}
 	type CheckCookies = "CHECK_COOKIES" | "NO_CHECK_COOKIES";

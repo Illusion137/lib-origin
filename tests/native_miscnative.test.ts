@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+
 import { vi, describe, it, expect } from "vitest";
 
 // Mock expo-keep-awake for mobile impl
 vi.mock("expo-keep-awake", () => ({
-	activateKeepAwakeAsync: async () => {}
+	activateKeepAwakeAsync: async () => { return }
 }));
 
 import { node_miscnative } from "../roze/native/miscnative/miscnative.node";

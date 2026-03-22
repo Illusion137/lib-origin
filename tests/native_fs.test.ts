@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+ 
 import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as os from "os";
 import * as path from "path";

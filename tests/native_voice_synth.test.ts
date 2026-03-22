@@ -1,5 +1,5 @@
-/* eslint-disable no-empty-function */
-/* eslint-disable @typescript-eslint/no-empty-function */
+ 
+ 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { vi, describe, it, expect } from "vitest";
 

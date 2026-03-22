@@ -134,12 +134,16 @@ export async function delete_track_from_player_queue(track_data: Track) {
 
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
+    if (track === undefined) return 'skip';
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
     if ("error" in url_data) {
         GLOBALS.global_var.bottom_alert("Failed to convert track to Illusive track", "WARN", url_data);
         if (url_data.error.message.includes("Video unavailable"))
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
+    }
+    if("duration" in url_data && url_data.duration && !isNaN(url_data.duration) && is_empty(track.duration)){
+        track.duration = url_data.duration;
     }
     const nt_response = await handle_new_track_data(track, url_data);
     if (!("error" in nt_response)) track = nt_response;

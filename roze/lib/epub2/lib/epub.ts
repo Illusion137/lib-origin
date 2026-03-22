@@ -1136,7 +1136,7 @@ export class EPub extends EventEmitter
 	static readonly ELEM_MEDIA_TYPE = 'media-type';
 	static readonly ELEM_MEDIA_TYPE2 = 'mediaType';
 
-	static xml2jsOptions = Object.assign({}, xml2js.defaults['0.1']) as xml2js.Options;
+	static xml2jsOptions = Object.assign({}, xml2js.defaults['0.1']);
 }
 
 export default EPub

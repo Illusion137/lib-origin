@@ -37,7 +37,7 @@ export const mobile_potoken: PoTokenGenerator = {
 					}
 				}
 			}
-			return generror(`Failed to get PoT for ${content_binding} via node`, "MEDIUM");
+			return generror(`Failed to get PoT for ${content_binding} via node`, "LOW");
 		} catch (e: any) {
 			return generror(`Node potoken generation failed: ${e.message}`, "CRITICAL");
 		}

@@ -11,9 +11,9 @@ export function parse_amazon_music_playlist_track(track: AmazonTrack): Track {
     return {
         uid: generate_new_uid(track.primaryText),
         title: track.primaryText,
-        artists: [{name: track.secondaryText1, uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
+        artists: [{ name: track.secondaryText1, uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)\/.+/, "MEDIUM") as string) }],
         duration: parse_time(track.secondaryText3),
-        album: {name: extract_string_from_pattern(track.secondaryText2, album_regex) as string, uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)/) as string)},
+        album: { name: extract_string_from_pattern(track.secondaryText2, album_regex, "MEDIUM") as string, uri: create_uri("amazonmusic", extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)/, "MEDIUM") as string) },
         explicit: track.secondaryText2.includes("[Explicit]") ? "EXPLICIT" : "NONE",
         amazonmusic_id: Origin.AmazonMusic.get_track_id(track)
     }
@@ -24,7 +24,7 @@ export function parse_amazon_music_search_track(track: AmazonSearchTrack): Track
     return {
         uid: generate_new_uid(title),
         title: title,
-        artists: [{name: is_empty(track.secondaryText) ? "" : track.secondaryText!, uri: track.secondaryLink?.deeplink === undefined ? null : create_uri("amazonmusic", extract_string_from_pattern(track.secondaryLink.deeplink, /\/.+?\/(.+)\/.+/) as string)}],
+        artists: [{ name: is_empty(track.secondaryText) ? "" : track.secondaryText!, uri: track.secondaryLink?.deeplink === undefined ? null : create_uri("amazonmusic", extract_string_from_pattern(track.secondaryLink.deeplink, /\/.+?\/(.+)\/.+/, "MEDIUM") as string) }],
         duration: NaN,
         explicit: track.tags.includes("E") ? "EXPLICIT" : "NONE",
         amazonmusic_id: Origin.AmazonMusic.get_track_id(track)

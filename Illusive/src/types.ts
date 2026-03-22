@@ -1,6 +1,6 @@
 import type * as Origin from "@origin/index";
 import type { CookieJar } from "@common/utils/cookie_util"
-import type { ResponseError} from "@common/types";
+import type { ResponseError } from "@common/types";
 import { TimedCache } from "@common/types"
 // import type { Chapter } from "@origin/youtube_dl/types";
 import { Constants } from "@illusive/constants";
@@ -9,14 +9,15 @@ import { remove } from "@common/utils/clean_util";
 import type { BasePref } from "@native/mmkv/mmkv_utils";
 import type { RoZFetchRequestInit } from "@common/rozfetch";
 import type { YouTubeDL } from '@origin/youtube_dl/index';
+import type { SabrTokenCallbackReason } from "@native/sabr_downloader/sabr_downloader.base";
 
 type ArtworkCacheType = 'force-cache';
 
 export type SQLTables = "sqlite_master"
     | "new_releases" | "artists"
-    | "tracks" | "tracks_deleted" 
-    | "recently_played_tracks" | "recently_played_tracks_deleted" 
-    | "backpack" | "backpack_deleted" 
+    | "tracks" | "tracks_deleted"
+    | "recently_played_tracks" | "recently_played_tracks_deleted"
+    | "backpack" | "backpack_deleted"
     | "playlists" | "playlists_deleted"
     | "playlists_tracks" | "playlists_tracks_deleted";
 export interface ImageArtwork {
@@ -26,24 +27,24 @@ export interface ImageArtwork {
 export type Artwork = ImageArtwork | string | number
 export type Promises = Promise<unknown>[]
 
-export interface Route<T> {"key": string, "name": string, "params": T, path: string}
+export interface Route<T> { "key": string, "name": string, "params": T, path: string }
 
 export type SQLType = "INTEGER" | "TEXT" | "BOOLEAN" | "DATETIME";
-export type SQLAlter = {"table": SQLTables, "action": "DROP",   'column_name': string} | 
-                       {"table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string} |
-                       {"table": SQLTables, "action": "ADD",    'column_name': string, 'type': SQLType}
+export type SQLAlter = { "table": SQLTables, "action": "DROP", 'column_name': string } |
+{ "table": SQLTables, "action": "RENAME", 'column_name': string, 'new_column_name': string } |
+{ "table": SQLTables, "action": "ADD", 'column_name': string, 'type': SQLType }
 
 export type LoadingState = "NONE" | "LOADING" | "COMPLETE";
 export type PlayingState = "OFF" | "LOADING" | "ON";
 export type EditMode = "NONE" | "DOWNLOAD" | "DELETE" | "EDIT";
 export type DownloadTrackResult = "GOOD" | "EXISTS" | ResponseError;
 export type SetState = any;
-export interface SQLCount {"COUNT(1)": number}
+export interface SQLCount { "COUNT(1)": number }
 
-export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE" 
-    | "NEWEST" | "OLDEST" 
-    | "DURATION_HILOW" | "DURATION_LOWHI" 
-    | "PLAYS_HILOW" | "PLAYS_LOWHI" 
+export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE"
+    | "NEWEST" | "OLDEST"
+    | "DURATION_HILOW" | "DURATION_LOWHI"
+    | "PLAYS_HILOW" | "PLAYS_LOWHI"
     | "VIEWS_HILOW" | "VIEWS_LOWHI"
     | "ADDED_DATE_HILOW" | "ADDED_DATE_LOWHI"
     | "DOWNLOAD_DATE_HILOW" | "DOWNLOAD_DATE_LOWHI"
@@ -53,7 +54,7 @@ export type SortType = "ALPHABETICAL" | "ALPHABETICAL_REVERSE"
 
 export type OnErrorCallback = (err: ResponseError) => void
 
-export type BottomAlertType = "GOOD"|"INFO"|"WARN"|"ERROR";
+export type BottomAlertType = "GOOD" | "INFO" | "WARN" | "ERROR";
 
 export interface SQLTable {
     name: string
@@ -62,18 +63,18 @@ export interface SQLTable {
     tbl_name: string
     type: string
 }
-export type Runs = {text: string, navigationEndpoint: any}[];
+export type Runs = { text: string, navigationEndpoint: any }[];
 
 export type PrefEntry = [Prefs.PrefOptions, BasePref<unknown>];
-export interface GroupSection<T> {title: string, data: T[]};
+export interface GroupSection<T> { title: string, data: T[] };
 
 export type HexColor = `#${string}`;
 export type IntString = `${number}`;
 export type ISOString = `${IntString}-${IntString}-${IntString}T${IntString}:${IntString}:${IntString}.${IntString}Z`;
-export type Primitives = string|boolean|number;
+export type Primitives = string | boolean | number;
 
-export type ArtistSortMode = "NEWEST"|"OLDEST"|"MOST_PLAYED"|"LEAST_PLAYED";
-export type AlbumSortMode = "NEWEST"|"OLDEST"|"MOST_PLAYED_ARTISTS"|"LEAST_PLAYED_ARTISTS";
+export type ArtistSortMode = "NEWEST" | "OLDEST" | "MOST_PLAYED" | "LEAST_PLAYED";
+export type AlbumSortMode = "NEWEST" | "OLDEST" | "MOST_PLAYED_ARTISTS" | "LEAST_PLAYED_ARTISTS";
 
 export interface QueryFlag<T> {
     flag: string;
@@ -97,10 +98,10 @@ export interface BaseLinkerLink {
     full_service_playlist: boolean;
     on_startup: boolean;
 }
-export interface IncomingLinkerLink extends BaseLinkerLink{
+export interface IncomingLinkerLink extends BaseLinkerLink {
     type: "INCOMING";
 }
-export interface OutgoingLinkerLink extends BaseLinkerLink{
+export interface OutgoingLinkerLink extends BaseLinkerLink {
     type: "OUTGOING";
 }
 export type LinkerLink = IncomingLinkerLink | OutgoingLinkerLink;
@@ -121,7 +122,7 @@ export interface ResolvedDefaultPlaylist {
 
 export interface QueueTrack {
     uid: string
-    playback: {artwork: Artwork}
+    playback: { artwork: Artwork }
     artists: NamedUUID[]
     title: string
 };
@@ -142,13 +143,13 @@ export interface Downloading {
     duration: number
 }
 export interface LyricsDownloading {
-    track: Track; 
+    track: Track;
     uid: string;
 }
 export type LyricsDownloadingResult = ResponseError | string;
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
-export type NamedUUID = {name: string, uuid: string, uri?: never} | {name: string, uuid?: never, uri: IllusiveURI|null};
+export type NamedUUID = { name: string, uuid: string, uri?: never } | { name: string, uuid?: never, uri: IllusiveURI | null };
 
 export interface SQLArtist {
     uri: string;
@@ -269,7 +270,7 @@ interface Basic_Playlist<T, U, V, X> {
     visual_data?: V
     date?: string
 }
-export type SQLPlaylistArray = [ string, string, string, boolean, boolean, string, SortType, boolean, string, string, string, string, string ];
+export type SQLPlaylistArray = [string, string, string, boolean, boolean, string, SortType, boolean, string, string, string, string, string];
 
 export type SQLPlaylist = Basic_Playlist<string, string, string, string>
 export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], PlaylistVisualData, InheritedSearch[]>
@@ -277,7 +278,7 @@ export type Playlist = Basic_Playlist<InheritedPlaylist[], LinkedPlaylist[], Pla
 export interface CompactPlaylistData {
     title: string
     four_track: Track[]
-	check_existing_tracks?: boolean;
+    check_existing_tracks?: boolean;
     track_count: number
     type: "PLAYLIST" | "LIBRARY"
     track_callback: () => Promise<Track[]>
@@ -307,7 +308,7 @@ export interface Basic_CompactPlaylist<T, U, V, W> {
     explicit?: ExplicitMode
     type?: CompactPlaylistType
     album_type?: CompactPlaylistAlbumType
-    song_track?: W|null
+    song_track?: W | null
 }
 export type SQLCompactPlaylist = Basic_CompactPlaylist<string, string, string, string>;
 export type CompactPlaylist = Basic_CompactPlaylist<NamedUUID, NamedUUID[], IllusiveThumbnail[], Track>;
@@ -322,7 +323,7 @@ export interface CompactArtist {
     profile_artwork_url?: Artwork
     is_official_artist_channel: boolean
 }
-export type SearchSuggestion = string|Track;
+export type SearchSuggestion = string | Track;
 export interface MusicServicePlaylistBase {
     title: string
     creator?: NamedUUID[]
@@ -356,7 +357,7 @@ export interface MusicSearchResponse {
 }
 
 export interface StatefullMusicSearchResponse {
-    state: "NONE"|"LOADING"|"FUFILLED";
+    state: "NONE" | "LOADING" | "FUFILLED";
     search_data: MusicSearchResponse;
 }
 
@@ -389,6 +390,7 @@ export interface DownloadFromIdResult {
     };
     // SABR streaming params (YouTube server-adaptive bitrate)
     isSabr?: true;
+    duration?: number;
     sabrServerUrl?: string;
     sabrUstreamerConfig?: string;
     sabrFormats?: YouTubeDL.SabrFormat[];
@@ -396,7 +398,7 @@ export interface DownloadFromIdResult {
     placeholder_po_token?: string;
     clientInfo?: YouTubeDL.SabrClientInfo;
     cookie?: string;
-    on_refresh_po_token?: () => Promise<string>;
+    on_refresh_po_token?: (_reason: SabrTokenCallbackReason) => Promise<string>;
     on_reload_player_response?: (ctx: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
 }
 
@@ -412,16 +414,16 @@ export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
 
-export type CompactPlaylistsResult = {"playlists": CompactPlaylist[]} | ResponseError;
+export type CompactPlaylistsResult = { "playlists": CompactPlaylist[] } | ResponseError;
 export type TrackMix = { "tracks": Track[], "error"?: Error } | ResponseError;
 
-export interface MusicServiceMappedPlaylist {url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist}
-export interface SearchOpts {limit?: number; proxy?: Origin.Proxy.Proxy}
-export interface ArtistOpts {proxy?: Origin.Proxy.Proxy}
+export interface MusicServiceMappedPlaylist { url: MusicServicePlaylistURL, compact_playlist: CompactPlaylist }
+export interface SearchOpts { limit?: number; proxy?: Origin.Proxy.Proxy }
+export interface ArtistOpts { proxy?: Origin.Proxy.Proxy }
 
 const search_cache: TimedCache<string, MusicSearchResponse> = new TimedCache<string, MusicSearchResponse>(Constants.playlist_cache_duration_seconds * 1000);
 export class MusicService {
-    app_icon: string|number
+    app_icon: string | number
     web_view_url?: string
     pref_cookie_jar?: Prefs.PrefOptions
     link_text: string
@@ -442,9 +444,9 @@ export class MusicService {
     get_track_mix?: (id: string) => Promise<TrackMix>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
     get_new_releases?: () => Promise<CompactPlaylist[]>
-    get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>
+    get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[] | undefined>
     constructor(s: {
-        app_icon: string|number,
+        app_icon: string | number,
         web_view_url?: string,
         pref_cookie_jar?: Prefs.PrefOptions
         link_text: string,
@@ -465,7 +467,7 @@ export class MusicService {
         get_track_mix?: (id: string) => Promise<TrackMix>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
         get_new_releases?: () => Promise<CompactPlaylist[]>
-        get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[]|undefined>,
+        get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[] | undefined>,
     }) {
         this.app_icon = s.app_icon
         this.web_view_url = s.web_view_url;
@@ -474,21 +476,21 @@ export class MusicService {
         this.required_cookie_credentials = s.required_cookie_credentials;
         this.link_text = s.link_text;
         this.cookie_jar_callback = s.cookie_jar_callback;
-        this.search = Constants.use_illusive_cahce ? async(query: string, opts?: SearchOpts) => {
+        this.search = Constants.use_illusive_cahce ? async (query: string, opts?: SearchOpts) => {
             const key = query + ":MS:" + String(this.app_icon);
-            if(search_cache.get(key)) return search_cache.get(key)!;
+            if (search_cache.get(key)) return search_cache.get(key)!;
             return search_cache.update(key, await s.search!(query, opts));
         } : s.search;
         this.search_continuation = s.search_continuation;
         this.explore = s.explore;
         this.create_playlist = s.create_playlist;
         this.delete_playlist = s.delete_playlist;
-        this.add_tracks_to_playlist = s.add_tracks_to_playlist !== undefined ? async(tracks: Track[], playlist_uri: string) =>  {
-            if(tracks.length === 0) return true;
+        this.add_tracks_to_playlist = s.add_tracks_to_playlist !== undefined ? async (tracks: Track[], playlist_uri: string) => {
+            if (tracks.length === 0) return true;
             return await s.add_tracks_to_playlist!(tracks, playlist_uri);
         } : undefined;
-        this.delete_tracks_from_playlist = s.delete_tracks_from_playlist !== undefined ? async(tracks: Track[], playlist_uri: string) =>  {
-            if(tracks.length === 0) return true;
+        this.delete_tracks_from_playlist = s.delete_tracks_from_playlist !== undefined ? async (tracks: Track[], playlist_uri: string) => {
+            if (tracks.length === 0) return true;
             return await s.delete_tracks_from_playlist!(tracks, playlist_uri);
         } : undefined;
         this.get_user_playlists = s.get_user_playlists;
@@ -508,11 +510,11 @@ export class MusicService {
         }
         return true;
     }
-    async user_playlists_map(): Promise<{map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError}> {
+    async user_playlists_map(): Promise<{ map: Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>, error?: ResponseError }> {
         const map = new Map<MusicServicePlaylistTitle, MusicServiceMappedPlaylist>();
-        if(this.get_user_playlists === undefined) return {error: {error: new Error("get_user_playlist is undefined")}, map};
+        if (this.get_user_playlists === undefined) return { error: { error: new Error("get_user_playlist is undefined") }, map };
         const account_playlists = await this.get_user_playlists();
-        if("error" in account_playlists) return {error: account_playlists, map};
+        if ("error" in account_playlists) return { error: account_playlists, map };
         const service_domain_map: Record<MusicServiceURI, string> = {
             illusi: "",
             musi: "",
@@ -525,26 +527,26 @@ export class MusicService {
             bandlab: "https://www.bandlab.com/",
             api: "",
         };
-        for(const playlist of account_playlists.playlists) {
+        for (const playlist of account_playlists.playlists) {
             // eslint-disable-next-line prefer-const
             let [service, endpoint] = playlist.title.uri!.split(':') as [MusicServiceURI, string];
-            if((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return {error: {error: new Error("Service lacks playlist list")}, map};
+            if ((["illusi", "musi", "api"] as MusicServiceURI[]).includes(service)) return { error: { error: new Error("Service lacks playlist list") }, map };
             endpoint = remove(endpoint, "m.soundcloud.com/", "soundcloud.com/")
-            if(service === "spotify") {
-                if(playlist.type === undefined) return {error: {error: new Error("Playlist Type is undefined")}, map};
+            if (service === "spotify") {
+                if (playlist.type === undefined) return { error: { error: new Error("Playlist Type is undefined") }, map };
                 const type = playlist.type === "PLAYLIST" ? "playlist" : playlist.type === "ALBUM" ? "album" : "collection";
-                map.set(playlist.title.name, {url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist});
+                map.set(playlist.title.name, { url: `${service_domain_map[service]}${type}/${endpoint}`, compact_playlist: playlist });
             } else
-                map.set(playlist.title.name, {url: service_domain_map[service] + endpoint, compact_playlist: playlist});
+                map.set(playlist.title.name, { url: service_domain_map[service] + endpoint, compact_playlist: playlist });
         }
-        return {map};
+        return { map };
     }
     async get_rest_of_playlist(continuation_data: any) {
         const continued_tracks: Track[] = [];
         let i = 0;
-        while(i++ <= Constants.safe_max_fetch_continues && continuation_data !== null) {
+        while (i++ <= Constants.safe_max_fetch_continues && continuation_data !== null) {
             const continuation = await this.get_playlist_continuation!(continuation_data);
-            if("error" in continuation) break;
+            if ("error" in continuation) break;
             continued_tracks.push(...continuation.tracks);
             continuation_data = continuation.continuation;
         }
@@ -552,7 +554,7 @@ export class MusicService {
     }
     async get_full_playlist(url: string) {
         const initial = await this.get_playlist(url);
-        if("error" in initial) return initial;
+        if ("error" in initial) return initial;
         initial.tracks.push(...await this.get_rest_of_playlist(initial.continuation));
         return initial;
     }

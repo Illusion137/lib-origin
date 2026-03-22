@@ -1,25 +1,25 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+
 import { vi, describe, it, expect } from "vitest";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 
 // Check if ffmpeg is available
 let HAS_FFMPEG = false;
 try {
 	execSync("ffmpeg -version 2>/dev/null", { stdio: "pipe" });
 	HAS_FFMPEG = true;
-} catch {}
+} catch { }
 
 // Mock ffmpeg-kit-react-native for mobile impl
 vi.mock("ffmpeg-kit-react-native", () => {
-	const { spawn } = require("child_process");
 
 	class MockReturnCode {
-		constructor(private code: number) {}
+		private readonly code: number;
+		constructor(code: number) { this.code = code; }
 		getValue() { return this.code; }
 	}
 
 	class MockSession {
-		private _args: string[];
+		private readonly _args: string[];
 		private _retcode = 0;
 		private _output = "";
 		constructor(args: string[]) { this._args = args; }

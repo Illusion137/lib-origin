@@ -1,14 +1,13 @@
+/* eslint-disable */
 import EPub from '../../epub';
 
-var epub = new EPub("alice.epub", "/imagewebroot/", "/articlewebroot/");
-epub.on("error", function (err)
-{
+const epub = new EPub("alice.epub", "/imagewebroot/", "/articlewebroot/");
+epub.on("error", function (err) {
 	console.log("ERROR\n-----");
 	throw err;
 });
 
-epub.on("end", function (_err)
-{
+epub.on("end", function (_err) {
 	console.log("METADATA:\n");
 	console.log(epub.metadata);
 
@@ -19,10 +18,8 @@ epub.on("end", function (_err)
 	console.log(epub.toc);
 
 	// get first chapter
-	epub.getChapter(epub.spine.contents[0].id!, function (err, data)
-	{
-		if (err)
-		{
+	epub.getChapter(epub.spine.contents[0].id!, function (err, data) {
+		if (err) {
 			console.log(err);
 			return;
 		}
@@ -30,7 +27,7 @@ epub.on("end", function (_err)
 		console.log((data ?? "").substr(0, 512) + "..."); // first 512 bytes
 	});
 
-	console.log(epub.manifest['cover']);
+	console.log(epub.manifest.cover);
 
 	/*
 	epub.getImage(image_id, function(err, data, mimeType){
