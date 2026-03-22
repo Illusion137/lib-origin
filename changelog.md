@@ -1,44 +1,22 @@
 # Illusi 20.0.0
   - [ ] Illusi-CLI
   - [ ] Illusi desktop based on React-Native
-# Illusi 19.0.0
-  - [ ] Added Illusi server (Supabase)
-  - [ ] Fixed remaining bugs
-  - [ ] Added Unit Tests
-# Illusi 18.2.0
-  
-# Illusi 18.1.0
-  -  Fixed bug relating to duplicate new releases
   - [ ] Fixed bug relating to YouTube Music playlist parsing
-  - [ ] Fixed bug relating to ContextMenu and Track-refreshing
-  - [ ] Fixed bug related to SoundCloud related tracks fr
-  - Fixed CompactArtistComponent
   - [ ] Fixed YouTube Music Search album being put into playlists tab
   - [ ] Fixed latest release SQLArtist integration
   - [ ] Fixed search SQLArtist integration
-  - [ ] Fixed SQLArtist integration re-chaching
-  - Fixed Spotify client integration
-  - Fixed Queryflag `prod`
-  - Fixed Queryflag `prodby`
-  - [ ] Fixed YouTube (Music) artwork not being square for lock-screen // https://docs.expo.dev/versions/latest/sdk/imagemanipulator/
+  - [ ] Fixed SQLArtist integration re-caching
+  - [ ] Fixed YouTube (Music) artwork not being square for lock-screen
   - [ ] FourTrackArtwork Album tinting
-  - Added Caching to Album-Playlists as they are mostly static
-  - [ ] Added Edit-Track
   - [ ] Added specialized playlists to explore
-  - Added Illusi custom shuffle algorithm
-  - [ ] Added Extra-Linker
-  - [ ] Added Keep-Delete
   - [ ] Added Playlist-Converter
   - [ ] Added Extras-Help
   - [ ] Added Watch Artist
   - [ ] Added SQLTrackSkips
   - [ ] Added SQLTrackPlays
-  - Added Equalizer
-  - [ ] Added Crossafade
-  - Added Bandlab integration
-  - [ ] Added Sharing intents // https://www.devas.life/supporting-ios-share-extensions-android-intents-on-react-native/
-  - [ ] Added Explore Soundcloud new tracks integration
-  - [ ] Added ExtraDevScreen
+  - [ ] Added Crossfade
+  - [ ] Added Sharing intents
+  - [ ] Added Explore SoundCloud new tracks integration
   - [ ] Added Trim-Silence
   - [ ] Added Audio Normalizer
   - [ ] Added Synced Lyrics
@@ -48,28 +26,83 @@
   - [ ] Added custom secondary color to themes
   - [ ] Added custom AudioPlayer backgrounds
   - [ ] Added ContextMenu to RowArtist and CompactArtistComponents
-  - [ ] Added Illusi-Rewind context
   - [ ] Slightly modify PlaylistBase by moving artist-data to center of artwork and searchbar
   - [ ] Refactored Illusive.Illusi to support get-playlist
   - [ ] Refactored Illusive.Illusi to support create-playlist
   - [ ] Refactored Illusive.Illusi to support add-tracks-to-playlist
   - [ ] Refactored Illusive.Illusi to support delete-tracks-to-playlist
   - [ ] Refactored Extras-Settings UI
-  - Redesigned TrackTagIcons
   - [ ] Redesigned Explore UI
   - [ ] Redesigned Search Screen UI
-  - Redesigned Trim-Track UI
-  - Redesigned Track-Info UI
   - [ ] Redesigned Batch-Downloader UI
   - [ ] Redesigned Backpack UI
   - [ ] Redesigned Themes UI
-  - Redesigned **Sudo** Artist
   - [ ] Redesigned Statistics UI
-  - [ ] Redesigned Changlog UI
+  - [ ] Redesigned Changelog UI
   - [ ] Redesigned CompactArtistComponent
-  - Redesigned BottomAlert
-  -  Update Audioplayer UI
   - [ ] Update Lyrics UI
+  - [ ] Added Illusi server (Supabase)
+# Illusi 19.0.1
+  - Fixed better shared track linking
+  - Fixed bug related to tracks without proper duration being broken
+  - Fixed bug related to downloading a converted track
+  - Fixed YouTube playlist track parsing where track has no artist
+  - Fixed overwriting issue with SABR stream download
+  - Added pref: `ignore_fat_finger_for_seconds` (default: 0)
+  - Cached PO token challenge
+# Illusi 19.0.0
+  - Fixed working PO token generation for YouTube
+  - Fixed External Services cookie management
+  - Added native PO token generation via Node.js bridge
+  - Added SABR stream downloading for YouTube
+  - Added FFmpeg webm -> m4a conversion for better compatibility
+  - Added native FFPROBE support for opus downloading
+  - Added get_audio_duration split into .mobile and .mobile.expo
+  - Added Illusi Rewind screen (WIP)
+  - Added ExtraDevScreen
+  - Added Edit-Track screen improvements
+  - Improved Keep-Delete feature
+  - Improved track refresh hooks
+  - Improved BottomAlert
+  - Added Unit Tests
+  - Added Sentry severity handler for logging everything
+# Illusi 18.2.2
+  - Fixed ContextMenuView
+  - Fixed Audioplayer push to queue doubling glitch
+  - Fixed Audioplayer push to queue
+  - Added basic Illusi deep link support
+  - Improved shuffler UI
+  - Patched autoplay in SwiftAudioEx
+# Illusi 18.2.0
+  - Fixed lyrics not displaying
+  - Fixed Sudo Artist not displaying import plays properly
+  - Fixed duration_to_string and SQL track-likes failing to insert tracks without a proper duration
+  - Fixed sql_update ignoring missing legacy entries
+  - Fixed new releases insert and flushed reactiveQuery on recently played insert
+  - Reduced Genius lyrics API calls; improved pruning
+# Illusi 18.1.0
+  - Fixed bug relating to duplicate new releases
+  - Fixed bug relating to ContextMenu and Track-refreshing
+  - Fixed bug related to SoundCloud related tracks
+  - Fixed CompactArtistComponent
+  - Fixed Spotify client integration
+  - Fixed Queryflag `prod`
+  - Fixed Queryflag `prodby`
+  - Added Caching to Album-Playlists as they are mostly static
+  - Added Edit-Track
+  - Added Illusi custom shuffle algorithm
+  - Added Extra-Linker
+  - Added Keep-Delete
+  - Added Equalizer
+  - Added Bandlab integration
+  - Added ExtraDevScreen
+  - Added Illusi-Rewind context
+  - Redesigned TrackTagIcons
+  - Redesigned Trim-Track UI
+  - Redesigned Track-Info UI
+  - Redesigned **Sudo** Artist
+  - Redesigned BottomAlert
+  - Updated Audioplayer UI
   - Improved Spotify integration (get_artist, latest_release, etc)
 # Illusi 17.2.0
   - Fixed bug relating to Audioplayer not handling NaN durations
