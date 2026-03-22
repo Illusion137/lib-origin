@@ -22,7 +22,6 @@ const ignore_sources: string[] = [
     "babel",
     "jest",
     "LICENSE",
-    "README",
     "gitignore",
     ".git",
     ".history",
