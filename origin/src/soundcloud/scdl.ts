@@ -23,7 +23,7 @@ export namespace SoundCloudDL {
         const sound_hyrdration: HydratableSound = hydration.hydration.find((hydratable) => hydratable.hydratable === "sound") as HydratableSound;
         if (sound_hyrdration?.data?.media?.transcodings === undefined || sound_hyrdration.data.media.transcodings.length === 0) return generror("No transcodings available", "MEDIUM", { permalink, cookie_jar });
         const filtered_transcodings = sound_hyrdration.data.media.transcodings.filter(transcoding => transcoding.format.protocol === "hls");
-        let dl_url: Awaited<ReturnType<typeof get_download_url>> = generror("Unable to find good transcoding", "MEDIUM", { permalink, cookie_jar });
+        let dl_url: Awaited<ReturnType<typeof get_download_url>> | undefined = undefined;
         for (const transcoding of filtered_transcodings) {
             const potential_dl_url = await get_download_url(transcoding.url, {
                 track_authorization: sound_hyrdration.data.track_authorization,
@@ -33,7 +33,7 @@ export namespace SoundCloudDL {
             dl_url = potential_dl_url;
             break;
         }
-        if (typeof dl_url === "object") return dl_url;
+        if(dl_url === undefined) return generror("Unable to find good transcoding", "MEDIUM", { permalink, cookie_jar });
         if (dl_cache_full() && is_empty(dl_cache.dls.find(item => item.permalink === permalink)))
             dl_cache.dls.push({ permalink, url: dl_url });
         return dl_url;
