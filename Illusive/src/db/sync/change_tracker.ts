@@ -8,6 +8,12 @@ import type { CompressedChange, LocalTableName } from './types';
 type ChangeLogRow = typeof change_log_table.$inferSelect;
 
 export class ChangeTracker {
+    private static on_change_callback?: () => void;
+
+    static set_on_change(callback: () => void) {
+        ChangeTracker.on_change_callback = callback;
+    }
+
     /**
      * Log a change to the change log table
      */
@@ -21,10 +27,11 @@ export class ChangeTracker {
             table_name,
             operation,
             record_id: String(record_id),
-            data: JSON.stringify(data),
+            data: data,
             synced: false,
         });
         db.$client.flushPendingReactiveQueries();
+        ChangeTracker.on_change_callback?.();
     }
 
     /**
@@ -61,7 +68,9 @@ export class ChangeTracker {
         const compressed: CompressedChange[] = [];
         
         for (const [key, record_changes] of changes_by_record.entries()) {
-            const [table_name, record_id] = key.split(':');
+            const colon_idx = key.indexOf(':');
+            const table_name = key.substring(0, colon_idx);
+            const record_id = key.substring(colon_idx + 1);
             const compressed_change = this.compress_record_changes(
                 table_name as LocalTableName,
                 record_id,
@@ -185,7 +194,7 @@ export class ChangeTracker {
         }
         
         // Always include modified_at for tracking
-        minimal.modified_at = data.modified_at || new Date().toISOString();
+        minimal.modified_at = data.modified_at || Date.now();
         
         return minimal;
     }

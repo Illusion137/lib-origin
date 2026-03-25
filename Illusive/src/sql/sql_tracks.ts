@@ -243,6 +243,7 @@ export namespace SQLTracks {
         const new_track = {
             ...track,
             duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration,
+            plays: isNaN(track.plays as number) ? 0 : (track.plays ?? 0),
             meta: new_track_meta
         };
         await db.insert(tracks_table).values(new_track);
@@ -256,7 +257,12 @@ export namespace SQLTracks {
         if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
-        await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track_uid));
+        const sanitized_track = {
+            ...new_track,
+            duration: isNaN(new_track.duration) || new_track.duration <= 0 ? 0 : new_track.duration,
+            plays: isNaN(new_track.plays as number) ? 0 : (new_track.plays ?? 0),
+        };
+        await db.update(tracks_table).set(sanitized_track).where(eq(tracks_table.uid, track_uid));
         await ChangeTracker.log_change('tracks', 'update', track_uid, new_track);
         SQLGlobal.update_global_track_item(track_uid, new_track);
     }

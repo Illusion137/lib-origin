@@ -24,11 +24,13 @@ export class NetworkMonitor {
         const has_good_connection: boolean =
             (net_state.isConnected ?? false) &&
             (net_state.type === NetInfoStateType.wifi ||
+                net_state.type === NetInfoStateType.unknown ||
+                net_state.type === NetInfoStateType.other ||
                 (net_state.type === NetInfoStateType.cellular && net_state.details?.cellularGeneration === NetInfoCellularGeneration['4g']));
 
         const has_sufficient_battery =
             battery_level > 0.2 ||
-            battery_state === Battery.BatteryState.CHARGING;
+            battery_state === Battery.BatteryState.CHARGING || battery_state === Battery.BatteryState.UNKNOWN;
 
         return has_good_connection && has_sufficient_battery;
     }

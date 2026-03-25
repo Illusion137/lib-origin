@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { createClient, type SupportedStorage } from "@supabase/supabase-js";
 import { MMKV } from 'react-native-mmkv';
 import type { Database } from './database.types';
@@ -11,7 +10,7 @@ const mmkv_storage_config = {
     removeItem: (key) => storage.delete(key),
 } satisfies SupportedStorage;
 
-export const supabase = createClient<Database>(process.env.SUPABASE_PROJECT_URL ?? '', process.env.SUPABASE_PUBLIC_KEY ?? '', {
+export const supabase = createClient<Database>(process.env.EXPO_PUBLIC_SUPABASE_PROJECT_URL ?? '', process.env.EXPO_PUBLIC_SUPABASE_PUBLIC_KEY ?? '', {
     auth: {
         storage: mmkv_storage_config,
         autoRefreshToken: true,

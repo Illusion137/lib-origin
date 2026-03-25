@@ -232,8 +232,13 @@ export async function check_push_next_track(queue_index: number) {
         } else if (react_native_track === 'skip') {
             GLOBALS.global_var.playing_tracks.splice(next_track_index, 1);
         } else {
-            GLOBALS.global_var.playing_tracks[next_track_index].playback!.successful = true;
-            await TrackPlayer.add(react_native_track, next_track_index);
+            next_illusi_track.playback!.successful = true;
+            try {
+                await TrackPlayer.add(react_native_track, next_track_index);
+            } catch (error) {
+                next_illusi_track.playback!.successful = false;
+                GLOBALS.global_var.bottom_alert("Failed to add track to queue", "WARN", { error: error as Error });
+            }
         }
     }
     // if (prev_illusi_track && prev_illusi_track.playback!.added === false && prev_illusi_track.playback!.successful === false) {
