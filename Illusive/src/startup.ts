@@ -23,6 +23,9 @@ import { SQLArtists } from './sql/sql_artists';
 import { catch_log } from '@common/utils/error_util';
 import { migrate } from 'drizzle-orm/op-sqlite/migrator';
 import migrations from './drizzle/mobile/migrations';
+import { supabase } from './db/supabase';
+import { SyncEngine } from './db/sync/sync_engine';
+import { NetworkMonitor } from './db/sync/network_monitor';
 import { FutsalShuffle } from './futsal_shuffle';
 import { fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
@@ -59,6 +62,17 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         };
 
         await migrate(db, migrations).catch(catch_log);
+
+        // Start sync if already authenticated; otherwise listen for sign-in.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            new SyncEngine(supabase, NetworkMonitor.get_instance()).initialize().catch(catch_log);
+        }
+        supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_IN') {
+                new SyncEngine(supabase, NetworkMonitor.get_instance()).initialize().catch(catch_log);
+            }
+        });
 
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;

@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-extraneous-class */
- 
+
 import { db } from '../database';
 import { change_log_table } from '../schema';
 import { eq, and, inArray, asc, lt } from 'drizzle-orm';
 import type { CompressedChange, LocalTableName } from './types';
+
+type ChangeLogRow = typeof change_log_table.$inferSelect;
 
 export class ChangeTracker {
     /**
@@ -14,7 +15,7 @@ export class ChangeTracker {
         table_name: LocalTableName,
         operation: 'insert' | 'update' | 'delete',
         record_id: string | number,
-        data: any
+        data: unknown
     ) {
         await db.insert(change_log_table).values({
             table_name,
@@ -82,7 +83,7 @@ export class ChangeTracker {
     private static compress_record_changes(
         table_name: LocalTableName,
         record_id: string,
-        changes: any[]
+        changes: ChangeLogRow[]
     ): CompressedChange | null {
         if (changes.length === 0) return null;
 
@@ -137,7 +138,7 @@ export class ChangeTracker {
             table: table_name,
             operation: latest.operation,
             record_id,
-            data: JSON.parse(latest.data),
+            data: latest.data as Record<string, unknown>,
             change_ids,
         };
     }
@@ -146,14 +147,14 @@ export class ChangeTracker {
      * Merge multiple change records into a single data object
      * Later changes override earlier ones
      */
-    private static merge_changes(changes: any[]): any {
-        let merged = {};
-        
+    private static merge_changes(changes: ChangeLogRow[]): Record<string, unknown> {
+        let merged: Record<string, unknown> = {};
+
         for (const change of changes) {
-            const data = JSON.parse(change.data);
+            const data = change.data as Record<string, unknown>;
             merged = { ...merged, ...data };
         }
-        
+
         return merged;
     }
 
@@ -161,8 +162,8 @@ export class ChangeTracker {
      * Extract only the fields that were actually modified
      * Remove metadata fields that don't need to sync
      */
-    private static extract_minimal_update(data: any): any {
-        const minimal: any = {};
+    private static extract_minimal_update(data: Record<string, unknown>): Record<string, unknown> {
+        const minimal: Record<string, unknown> = {};
         
         // Fields to always exclude from updates (managed server-side)
         const excluded_fields = ['id', 'created_at'];
