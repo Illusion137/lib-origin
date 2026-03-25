@@ -4,6 +4,7 @@ import { Constants } from '@illusive/constants';
 import { Prefs } from '@illusive/prefs';
 import type { Track } from '@illusive/types';
 import type { ResponseError } from '@common/types';
+import { supabase } from '@illusive/db/supabase';
 
 export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -124,4 +125,22 @@ export async function soundcloud_delete_tracks_from_playlist(tracks: Track[], pl
     const deletion_response = await Origin.SoundCloud.add_tracks_to_playlist({cookie_jar: cookie_jar, playlist_name: playlist_url, track_ids: uris});
     if("error" in deletion_response) return false;
     return deletion_response.data.ok;
+}
+
+export async function illusi_add_tracks_to_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const uuid = playlist_uri.split(':')[1];
+    const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
+    return await Origin.Illusi.add_tracks_to_playlist(rows, { jwt: session.access_token });
+}
+
+export async function illusi_delete_tracks_from_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const uuid = playlist_uri.split(':')[1];
+    const track_uids = tracks.map(track => track.uid);
+    return await Origin.Illusi.delete_tracks_from_playlist(uuid, track_uids, { jwt: session.access_token });
 }

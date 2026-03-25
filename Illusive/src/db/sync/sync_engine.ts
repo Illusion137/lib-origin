@@ -3,6 +3,7 @@ import { ChangeTracker } from './change_tracker';
 import type { NetworkMonitor } from './network_monitor';
 import { db } from '../database';
 import {
+    change_log_table,
     new_releases_table,
     playlists_table,
     playlists_tracks_table,
@@ -28,6 +29,8 @@ import { LOCAL_TO_REMOTE_TABLE_MAP } from './types';
 import { Prefs } from '@illusive/prefs';
 import type { Database } from '../database.types';
 import { catch_log } from '@common/utils/error_util';
+import { GLOBALS } from '@illusive/globals';
+import { SQLGlobal } from '../../sql/sql_global';
 
 type SyncableLocalTableName = 'tracks' | 'playlists' | 'playlists_tracks' | 'new_releases';
 const SYNCABLE_TABLES: SyncableLocalTableName[] = ['tracks', 'playlists', 'playlists_tracks', 'new_releases'];
@@ -44,10 +47,6 @@ function safe_to_epoch(value: unknown): number {
     if (value == null) return Date.now();
     const d = new Date(value as number | string);
     return isNaN(d.getTime()) ? Date.now() : d.getTime();
-}
-
-function strip_undefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
-    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
 
 async function get_authed_user_uid(supabase: SupabaseClient<Database>): Promise<string | null> {
@@ -107,7 +106,8 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     // INITIAL SYNC
     // For users with large existing libraries that have never synced.
-    // Reads all local rows and batch-upserts to remote, bypassing change_log.
+    // Uses the resolve_or_insert_tracks RPC to atomically handle service ID
+    // collisions and UID canonicalization.
     // -------------------------------------------------------------------------
     private async initial_sync() {
         const user_uid = await get_authed_user_uid(this.supabase);
@@ -130,13 +130,43 @@ export class SyncEngine {
 
     private async initial_sync_tracks(user_uid: string) {
         const all = await db.select().from(tracks_table);
+
         for (let i = 0; i < all.length; i += BATCH_SIZE) {
             const batch = all.slice(i, i + BATCH_SIZE);
-            const { error: te } = await this.supabase.from('tracks')
-                .upsert(batch.map(t => this.track_to_global_insert(t)), { onConflict: 'uid' });
-            if (te) throw te;
+
+            // Use RPC to atomically resolve service ID collisions
+            const tracks_json = batch.map(t => this.track_to_global_insert(t));
+            const { data: mappings, error: rpc_err } = await this.supabase
+                .rpc('resolve_or_insert_tracks', { tracks_json: JSON.stringify(tracks_json) });
+
+            if (rpc_err) throw rpc_err;
+
+            // Remap any UIDs that were resolved to a canonical UID
+            if (mappings) {
+                for (const mapping of mappings) {
+                    if (mapping.local_uid !== mapping.canonical_uid) {
+                        await this.remap_local_uid(mapping.local_uid, mapping.canonical_uid);
+                    }
+                }
+            }
+
+            // Re-read the batch after potential UID remaps to get canonical UIDs
+            const remapped_batch = await Promise.all(
+                batch.map(async t => {
+                    const remapped = mappings?.find(m => m.local_uid === t.uid);
+                    const uid = remapped?.canonical_uid ?? t.uid;
+                    const current = await db.select().from(tracks_table)
+                        .where(eq(tracks_table.uid, uid)).get();
+                    return current ?? { ...t, uid };
+                })
+            );
+
+            // Upsert utracks with canonical UIDs
             const { error: ue } = await this.supabase.from('utracks')
-                .upsert(batch.map(t => this.track_to_utrack_insert(t, user_uid)), { onConflict: 'user_uid,track_uid' });
+                .upsert(
+                    remapped_batch.map(t => this.track_to_utrack_insert(t, user_uid)),
+                    { onConflict: 'user_uid,track_uid' }
+                );
             if (ue) throw ue;
         }
     }
@@ -225,83 +255,53 @@ export class SyncEngine {
 
     // -------------------------------------------------------------------------
     // Track push — dual-write to `tracks` (global) + `utracks` (per-user)
+    // Global tracks are NEVER deleted — only utracks can be soft-deleted.
     // -------------------------------------------------------------------------
     private async push_track_change(change: CompressedChange, user_uid: string) {
         if (change.operation === 'delete') {
-            await this.supabase.from('tracks')
-                .update({ deleted: true })
-                .eq('uid', change.record_id);
+            // Only mark the user's utrack as deleted — global tracks pool is permanent
+            const local_track = await db.select().from(tracks_table)
+                .where(eq(tracks_table.uid, change.record_id)).get();
+
+            const uid = local_track
+                ? (await this.resolve_canonical_uid(local_track)) || change.record_id
+                : change.record_id;
+
             await this.supabase.from('utracks')
                 .update({ deleted: true })
                 .eq('user_uid', user_uid)
-                .eq('track_uid', change.record_id);
+                .eq('track_uid', uid);
             return;
         }
 
-        const track = change.data as Partial<LocalTrack>;
-        const track_uid = track.uid ?? change.record_id;
+        // Always read the full local track so we have all service IDs for resolution
+        const full_track = await db.select().from(tracks_table)
+            .where(eq(tracks_table.uid, change.record_id)).get();
+        if (!full_track) return; // Track no longer exists locally, skip
+
+        // Merge any changed fields from compressed change on top of the full local track
+        const track: LocalTrack = change.operation === 'update'
+            ? { ...full_track, ...(change.data as Partial<LocalTrack>) }
+            : full_track;
 
         // Dedup: if another track in the global pool shares a service ID,
         // adopt its uid as the canonical one and update local references.
         const canonical_uid = await this.resolve_canonical_uid(track);
-        if (canonical_uid !== track_uid) {
-            await db.update(tracks_table)
-                .set({ uid: canonical_uid })
-                .where(eq(tracks_table.uid, track_uid));
-            await db.update(playlists_tracks_table)
-                .set({ track_uid: canonical_uid })
-                .where(eq(playlists_tracks_table.track_uid, track_uid));
+        if (canonical_uid !== track.uid) {
+            await this.remap_local_uid(track.uid, canonical_uid);
             track.uid = canonical_uid;
         }
 
-        const resolved_uid = track.uid ?? canonical_uid;
-
-        if (change.operation === 'insert') {
-            await this.supabase.from('tracks')
-                .upsert(this.track_to_global_insert(track as LocalTrack), { onConflict: 'uid' });
-            await this.supabase.from('utracks')
-                .upsert(this.track_to_utrack_insert(track as LocalTrack, user_uid), { onConflict: 'user_uid,track_uid' });
-        } else {
-            // update — the enrichment trigger on the remote handles field-level merging
-            const global_upd = strip_undefined<Database['public']['Tables']['tracks']['Update']>({
-                title:                track.title,
-                alt_title:            track.alt_title,
-                artists:              track.artists,
-                duration:             track.duration,
-                prods:                track.prods,
-                genre:                track.genre,
-                tags:                 track.tags,
-                explicit:             track.explicit,
-                unreleased:           track.unreleased,
-                album:                track.album,
-                illusi_id:            track.illusi_id,
-                imported_id:          track.imported_id,
-                youtube_id:           track.youtube_id,
-                youtubemusic_id:      track.youtubemusic_id,
-                soundcloud_id:        track.soundcloud_id,
-                soundcloud_permalink: track.soundcloud_permalink,
-                spotify_id:           track.spotify_id,
-                amazonmusic_id:       track.amazonmusic_id,
-                applemusic_id:        track.applemusic_id,
-                bandlab_id:           track.bandlab_id,
-                artwork_url:          track.artwork_url,
-            });
-            await this.supabase.from('tracks').update(global_upd).eq('uid', resolved_uid);
-
-            const utrack_upd = strip_undefined<Database['public']['Tables']['utracks']['Update']>({
-                plays: track.plays,
-                meta:  track.meta,
-            });
-            await this.supabase.from('utracks')
-                .update(utrack_upd)
-                .eq('user_uid', user_uid)
-                .eq('track_uid', resolved_uid);
-        }
+        // Always upsert — guarantees the row exists remotely regardless of prior state
+        await this.supabase.from('tracks')
+            .upsert(this.track_to_global_insert(track), { onConflict: 'uid' });
+        await this.supabase.from('utracks')
+            .upsert(this.track_to_utrack_insert(track, user_uid), { onConflict: 'user_uid,track_uid' });
     }
 
     // Check if an existing global track shares any service ID with the given local track.
     // Returns the remote canonical uid, or the local uid if no collision is found.
-    private async resolve_canonical_uid(track: Partial<LocalTrack>): Promise<string> {
+    private async resolve_canonical_uid(track: LocalTrack): Promise<string> {
         const filter_parts: string[] = [];
 
         if (track.youtube_id)           filter_parts.push(`youtube_id.eq.${track.youtube_id}`);
@@ -315,16 +315,65 @@ export class SyncEngine {
         if (track.illusi_id)            filter_parts.push(`illusi_id.eq.${track.illusi_id}`);
         if (track.imported_id)          filter_parts.push(`imported_id.eq.${track.imported_id}`);
 
-        if (filter_parts.length === 0) return track.uid ?? '';
+        if (filter_parts.length === 0) return track.uid;
 
         const { data } = await this.supabase
             .from('tracks')
             .select('uid')
             .or(filter_parts.join(','))
-            .neq('uid', track.uid ?? '')
+            .neq('uid', track.uid)
             .limit(1);
 
-        return data?.[0]?.uid ?? track.uid ?? '';
+        return data?.[0]?.uid ?? track.uid;
+    }
+
+    // -------------------------------------------------------------------------
+    // Remap a local track UID to a canonical UID across all tables + in-memory
+    // -------------------------------------------------------------------------
+    private async remap_local_uid(old_uid: string, new_uid: string) {
+        // 1. Check if a track with new_uid already exists locally (collision)
+        const existing_new = await db.select().from(tracks_table)
+            .where(eq(tracks_table.uid, new_uid)).get();
+
+        if (existing_new) {
+            // Merge the old track's data into the existing one, then delete the old
+            const old_track = await db.select().from(tracks_table)
+                .where(eq(tracks_table.uid, old_uid)).get();
+            if (old_track) {
+                const merged = this.accumulate_merge_tracks(existing_new, old_track);
+                await db.update(tracks_table).set(merged)
+                    .where(eq(tracks_table.uid, new_uid));
+                await db.delete(tracks_table).where(eq(tracks_table.uid, old_uid));
+            }
+        } else {
+            // Simple rename
+            await db.update(tracks_table)
+                .set({ uid: new_uid })
+                .where(eq(tracks_table.uid, old_uid));
+        }
+
+        // 2. Update playlists_tracks references
+        await db.update(playlists_tracks_table)
+            .set({ track_uid: new_uid })
+            .where(eq(playlists_tracks_table.track_uid, old_uid));
+
+        // 3. Update pending change_log entries
+        await db.update(change_log_table)
+            .set({ record_id: new_uid })
+            .where(and(
+                eq(change_log_table.record_id, old_uid),
+                eq(change_log_table.table_name, 'tracks')
+            ));
+
+        // 4. Update in-memory globals
+        const idx = GLOBALS.global_var.sql_tracks.findIndex(t => t.uid === old_uid);
+        if (idx !== -1) {
+            GLOBALS.global_var.sql_tracks[idx] = {
+                ...GLOBALS.global_var.sql_tracks[idx],
+                uid: new_uid,
+            };
+            SQLGlobal.update_global_track_item(new_uid, GLOBALS.global_var.sql_tracks[idx]);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -338,27 +387,16 @@ export class SyncEngine {
             return;
         }
 
-        const playlist = change.data as Partial<LocalPlaylist>;
+        const full_playlist = await db.select().from(playlists_table)
+            .where(eq(playlists_table.uuid, change.record_id)).get();
+        if (!full_playlist) return;
 
-        if (change.operation === 'insert') {
-            const row = this.playlist_to_insert(playlist as LocalPlaylist, user_uid);
-            await this.supabase.from('playlists').upsert(row, { onConflict: 'uuid' });
-        } else {
-            const update = strip_undefined<Database['public']['Tables']['playlists']['Update']>({
-                title:               playlist.title,
-                description:         playlist.description,
-                pinned:              playlist.pinned,
-                archived:            playlist.archived,
-                sort:                playlist.sort,
-                public:              playlist.public,
-                public_uuid:         playlist.public_uuid,
-                inherited_playlists: playlist.inherited_playlists,
-                inherited_searchs:   playlist.inherited_searchs,
-                linked_playlists:    playlist.linked_playlists,
-                modified_at:         safe_to_iso(playlist.modified_at),
-            });
-            await this.supabase.from('playlists').update(update).eq('uuid', change.record_id);
-        }
+        const playlist: LocalPlaylist = change.operation === 'update'
+            ? { ...full_playlist, ...(change.data as Partial<LocalPlaylist>) }
+            : full_playlist;
+
+        const row = this.playlist_to_insert(playlist, user_uid);
+        await this.supabase.from('playlists').upsert(row, { onConflict: 'uuid' });
     }
 
     // -------------------------------------------------------------------------
@@ -366,7 +404,9 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     private async push_playlist_track_change(change: CompressedChange) {
         if (change.operation === 'delete') {
-            const [playlist_uuid, track_uid] = change.record_id.split(':');
+            const colon_idx = change.record_id.indexOf(':');
+            const playlist_uuid = change.record_id.substring(0, colon_idx);
+            const track_uid = change.record_id.substring(colon_idx + 1);
             await this.supabase.from('playlists_tracks')
                 .update({ deleted: true })
                 .eq('uuid', playlist_uuid)
@@ -374,7 +414,13 @@ export class SyncEngine {
             return;
         }
 
-        const pt = change.data as LocalPlaylistTrack;
+        const full_pt = await db.select().from(playlists_tracks_table)
+            .where(and(
+                eq(playlists_tracks_table.uuid, (change.data as Partial<LocalPlaylistTrack>).uuid ?? ''),
+                eq(playlists_tracks_table.track_uid, (change.data as Partial<LocalPlaylistTrack>).track_uid ?? '')
+            )).get();
+
+        const pt = full_pt ?? change.data as LocalPlaylistTrack;
         await this.supabase.from('playlists_tracks')
             .upsert(this.playlist_track_to_insert(pt), { onConflict: 'uuid,track_uid' });
     }
@@ -390,25 +436,16 @@ export class SyncEngine {
             return;
         }
 
-        const release = change.data as Partial<LocalNewRelease>;
+        const full_release = await db.select().from(new_releases_table)
+            .where(eq(new_releases_table.id, Number(change.record_id))).get();
+        if (!full_release) return;
 
-        if (change.operation === 'insert') {
-            const row = this.new_release_to_insert(release as LocalNewRelease, user_uid);
-            await this.supabase.from('new_releases').upsert(row, { onConflict: 'id' });
-        } else {
-            const update = strip_undefined<Database['public']['Tables']['new_releases']['Update']>({
-                title:              release.title,
-                artist:             release.artist,
-                artwork_url:        release.artwork_url,
-                artwork_thumbnails: release.artwork_thumbnails,
-                explicit:           release.explicit,
-                album_type:         release.album_type,
-                type:               release.type,
-                date:               release.date,
-                song_track:         release.song_track ?? null,
-            });
-            await this.supabase.from('new_releases').update(update).eq('id', Number(change.record_id));
-        }
+        const release: LocalNewRelease = change.operation === 'update'
+            ? { ...full_release, ...(change.data as Partial<LocalNewRelease>) }
+            : full_release;
+
+        const row = this.new_release_to_insert(release, user_uid);
+        await this.supabase.from('new_releases').upsert(row, { onConflict: 'id' });
     }
 
     // -------------------------------------------------------------------------
@@ -504,13 +541,14 @@ export class SyncEngine {
                         .where(eq(tracks_table.uid, track_row.uid)).get();
                     if (!local) continue;
 
-                    const merged: RemoteTrackWithUserData = {
-                        ...track_row,
-                        plays:   local.plays,
-                        meta:    local.meta,
-                        deleted: track_row.deleted,
-                    };
-                    await this.apply_track(merged);
+                    // Accumulate enrichment from other users — local wins ties
+                    const merged_fields = this.accumulate_merge_local(local, track_row);
+                    await db.update(tracks_table).set(merged_fields)
+                        .where(eq(tracks_table.uid, track_row.uid));
+
+                    // Update in-memory
+                    const updated = { ...local, ...merged_fields };
+                    SQLGlobal.update_global_track_item(track_row.uid, updated as LocalTrack);
                 }
 
                 has_more = enriched.length === PULL_PAGE_SIZE;
@@ -529,48 +567,154 @@ export class SyncEngine {
         return (data ?? []).map(r => r.track_uid);
     }
 
+    // -------------------------------------------------------------------------
+    // Apply a pulled track with accumulate-merge strategy.
+    // Local wins ties. Only utracks.deleted causes local deletion.
+    // -------------------------------------------------------------------------
     private async apply_track(row: RemoteTrackWithUserData) {
+        // Only delete locally if the user's utrack is flagged as deleted
         if (row.deleted) {
+            const existed = await db.select().from(tracks_table)
+                .where(eq(tracks_table.uid, row.uid)).get();
             await db.delete(tracks_table).where(eq(tracks_table.uid, row.uid));
+            if (existed) {
+                SQLGlobal.delete_global_track_item(row.uid);
+            }
             return;
         }
 
         const existing = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, row.uid)).get();
 
-        const local = this.remote_track_to_local(row);
-
         if (existing) {
-            // Keep local-only fields (media paths) — only sync remote fields
-            await db.update(tracks_table).set({
-                title:                local.title,
-                alt_title:            local.alt_title,
-                artists:              local.artists,
-                duration:             local.duration,
-                prods:                local.prods,
-                genre:                local.genre,
-                tags:                 local.tags,
-                explicit:             local.explicit,
-                unreleased:           local.unreleased,
-                album:                local.album,
-                illusi_id:            local.illusi_id,
-                imported_id:          local.imported_id,
-                youtube_id:           local.youtube_id,
-                youtubemusic_id:      local.youtubemusic_id,
-                soundcloud_id:        local.soundcloud_id,
-                soundcloud_permalink: local.soundcloud_permalink,
-                spotify_id:           local.spotify_id,
-                amazonmusic_id:       local.amazonmusic_id,
-                applemusic_id:        local.applemusic_id,
-                bandlab_id:           local.bandlab_id,
-                artwork_url:          local.artwork_url,
-                plays:                local.plays,
-                meta:                 local.meta,
-                modified_at:          local.modified_at,
-            }).where(eq(tracks_table.uid, row.uid));
+            // Accumulate merge — local wins ties, fill gaps from remote
+            const merged = this.accumulate_merge_local(existing, row);
+            await db.update(tracks_table).set(merged)
+                .where(eq(tracks_table.uid, row.uid));
+
+            // Update in-memory
+            const updated = { ...existing, ...merged };
+            SQLGlobal.update_global_track_item(row.uid, updated as LocalTrack);
         } else {
+            // New track from remote — insert
+            const local = this.remote_track_to_local(row);
             await db.insert(tracks_table).values(local);
+            SQLGlobal.add_global_track_item(local as LocalTrack);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Accumulate merge: local wins ties, fill gaps from remote.
+    // Service IDs always accumulate (take non-empty from either side).
+    // -------------------------------------------------------------------------
+    private accumulate_merge_local(
+        existing: LocalTrack,
+        remote: RemoteTrackWithUserData | Database['public']['Tables']['tracks']['Row'],
+    ): Partial<LocalTrack> {
+        const pick_str = (local: string, remote_val: string): string =>
+            local !== '' ? local : remote_val;
+        const pick_num = (local: number, remote_val: number): number =>
+            local !== 0 ? local : remote_val;
+
+        const remote_artists = typeof remote.artists === 'string'
+            ? remote.artists : JSON.stringify(remote.artists);
+        const remote_tags = typeof remote.tags === 'string'
+            ? remote.tags : JSON.stringify(remote.tags);
+        const remote_album = typeof remote.album === 'string'
+            ? remote.album : JSON.stringify(remote.album);
+
+        const local_artists_str = typeof existing.artists === 'string'
+            ? existing.artists : JSON.stringify(existing.artists);
+        const local_tags_str = typeof existing.tags === 'string'
+            ? existing.tags : JSON.stringify(existing.tags);
+        const local_album_str = typeof existing.album === 'string'
+            ? existing.album : JSON.stringify(existing.album);
+
+        const result: Partial<LocalTrack> = {
+            // Metadata: local wins if non-empty, else take remote
+            title:                pick_str(existing.title, remote.title),
+            alt_title:            pick_str(existing.alt_title, remote.alt_title),
+            artists:              local_artists_str !== '[]' ? existing.artists : (remote_artists as any),
+            duration:             pick_num(existing.duration, remote.duration),
+            prods:                pick_str(existing.prods, remote.prods),
+            genre:                pick_str(existing.genre, remote.genre),
+            tags:                 local_tags_str !== '[]' ? existing.tags : (remote_tags as any),
+            explicit:             existing.explicit !== 'NONE' ? existing.explicit : remote.explicit as any,
+            unreleased:           existing.unreleased || remote.unreleased,
+            album:                local_album_str !== '{"name":"","uri":null}' && local_album_str !== '{"name":""}' ? existing.album : (remote_album as any),
+            artwork_url:          pick_str(existing.artwork_url, remote.artwork_url),
+
+            // Service IDs: always accumulate (take non-empty from either side)
+            youtube_id:           pick_str(existing.youtube_id, remote.youtube_id),
+            youtubemusic_id:      pick_str(existing.youtubemusic_id, remote.youtubemusic_id),
+            soundcloud_id:        pick_num(existing.soundcloud_id, remote.soundcloud_id),
+            soundcloud_permalink: pick_str(existing.soundcloud_permalink, remote.soundcloud_permalink),
+            spotify_id:           pick_str(existing.spotify_id, remote.spotify_id),
+            amazonmusic_id:       pick_str(existing.amazonmusic_id, remote.amazonmusic_id),
+            applemusic_id:        pick_str(existing.applemusic_id, remote.applemusic_id),
+            bandlab_id:           pick_str(existing.bandlab_id, remote.bandlab_id),
+            illusi_id:            pick_str(existing.illusi_id, remote.illusi_id),
+            imported_id:          pick_str(existing.imported_id, remote.imported_id),
+
+            modified_at:          Math.max(existing.modified_at, safe_to_epoch(remote.modified_at)),
+        };
+
+        // User data fields (only present on RemoteTrackWithUserData)
+        if ('plays' in remote && 'meta' in remote) {
+            result.plays = existing.plays > 0 ? existing.plays : (remote as RemoteTrackWithUserData).plays;
+            const local_meta_str = typeof existing.meta === 'string'
+                ? existing.meta : JSON.stringify(existing.meta);
+            result.meta = local_meta_str !== '{}' ? existing.meta : (remote as RemoteTrackWithUserData).meta as any;
+        }
+
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Accumulate merge between two local tracks (for UID collision during remap)
+    // -------------------------------------------------------------------------
+    private accumulate_merge_tracks(
+        target: LocalTrack,
+        source: LocalTrack,
+    ): Partial<LocalTrack> {
+        const pick_str = (a: string, b: string): string => a !== '' ? a : b;
+        const pick_num = (a: number, b: number): number => a !== 0 ? a : b;
+
+        const target_artists_str = typeof target.artists === 'string'
+            ? target.artists : JSON.stringify(target.artists);
+        const target_tags_str = typeof target.tags === 'string'
+            ? target.tags : JSON.stringify(target.tags);
+        const target_album_str = typeof target.album === 'string'
+            ? target.album : JSON.stringify(target.album);
+
+        return {
+            title:                pick_str(target.title, source.title),
+            alt_title:            pick_str(target.alt_title, source.alt_title),
+            artists:              target_artists_str !== '[]' ? target.artists : source.artists,
+            duration:             pick_num(target.duration, source.duration),
+            prods:                pick_str(target.prods, source.prods),
+            genre:                pick_str(target.genre, source.genre),
+            tags:                 target_tags_str !== '[]' ? target.tags : source.tags,
+            explicit:             target.explicit !== 'NONE' ? target.explicit : source.explicit,
+            unreleased:           target.unreleased || source.unreleased,
+            album:                target_album_str !== '{"name":"","uri":null}' && target_album_str !== '{"name":""}' ? target.album : source.album,
+            artwork_url:          pick_str(target.artwork_url, source.artwork_url),
+            youtube_id:           pick_str(target.youtube_id, source.youtube_id),
+            youtubemusic_id:      pick_str(target.youtubemusic_id, source.youtubemusic_id),
+            soundcloud_id:        pick_num(target.soundcloud_id, source.soundcloud_id),
+            soundcloud_permalink: pick_str(target.soundcloud_permalink, source.soundcloud_permalink),
+            spotify_id:           pick_str(target.spotify_id, source.spotify_id),
+            amazonmusic_id:       pick_str(target.amazonmusic_id, source.amazonmusic_id),
+            applemusic_id:        pick_str(target.applemusic_id, source.applemusic_id),
+            bandlab_id:           pick_str(target.bandlab_id, source.bandlab_id),
+            illusi_id:            pick_str(target.illusi_id, source.illusi_id),
+            imported_id:          pick_str(target.imported_id, source.imported_id),
+            thumbnail_uri:        pick_str(target.thumbnail_uri, source.thumbnail_uri),
+            media_uri:            pick_str(target.media_uri, source.media_uri),
+            lyrics_uri:           pick_str(target.lyrics_uri, source.lyrics_uri),
+            plays:                Math.max(target.plays, source.plays),
+            modified_at:          Math.max(target.modified_at, source.modified_at),
+        };
     }
 
     private async pull_playlists(last_sync_iso: string) {

@@ -301,7 +301,12 @@ export interface Database {
             }
         }
         Views: Record<never, never>
-        Functions: Record<never, never>
+        Functions: {
+            resolve_or_insert_tracks: {
+                Args: { tracks_json: string }
+                Returns: Array<{ local_uid: string; canonical_uid: string }>
+            }
+        }
         Enums: Record<never, never>
         CompositeTypes: Record<never, never>
     }
