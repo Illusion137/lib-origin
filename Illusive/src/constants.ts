@@ -24,12 +24,12 @@ export namespace Constants {
     export const spotify_playlist_limit = 100;
     export const new_releases_backdate_days = 4;
     export const new_releases_artist_watch_small_amount = 25;
-    export const download_queue_max_length = 2;
+    export const download_queue_max_length = 3;
     export const download_lyrics_queue_max_length = 1;
     export const tracks_per_sample = 3;
     export const long_press_delay = 250;
     export const cached_ids_duration_milliseconds = 2000;
-    export const use_illusive_cahce = true;
+    export const use_illusive_cache = true;
     export const tint_opacity = 0.10;
     export const last_version_pre_1700 = "16.2.5";
     export const illusi_url_base = "illusi://";
