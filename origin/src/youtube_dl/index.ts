@@ -128,70 +128,84 @@ export namespace YouTubeDL {
      * This matches the reference implementation in googlevideo/examples/downloader.
      */
     export async function resolve_sabr_url(video_id: string): Promise<SabrTrackParams | ResponseError> {
-        try {
-            video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
-            const client = await get_innertube_client();
-
-            const content_pot_result = await potoken().generate_potoken(client, video_id);
-            if ("error" in content_pot_result) return content_pot_result;
-
-            const player_response = await make_player_request(client, video_id);
-            const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
-            if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", "MEDIUM", { video_id });
-
-            const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
-            if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "MEDIUM", { video_id });
-
-            const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-                .map((f: any) => buildSabrFormat(f));
-
-            const ctx = client.session.context.client;
-            const client_name_id = parseInt(
-                (Constants.CLIENT_NAME_IDS as Record<string, string>)[ctx.clientName] ?? '1'
-            );
-            const client_info: SabrClientInfo = {
-                clientName: client_name_id,
-                clientVersion: ctx.clientVersion,
-            };
-
-            return {
-                url: sabr_server_url,
-                isSabr: true,
-                sabrServerUrl: sabr_server_url,
-                sabrUstreamerConfig: video_playback_ustreamer_config,
-                sabrFormats: all_formats,
-                poToken: content_pot_result.po_token,
-                placeholder_po_token: content_pot_result.placeholder_po_token,
-                clientInfo: client_info,
-                cookie: client.session.cookie,
-                duration: player_response.video_details?.duration ?? 0,
-                on_refresh_po_token: async (_reason) => {
-                    const potoken_result = await potoken().generate_potoken(client, video_id);
-                    if ('error' in potoken_result) throw potoken_result.error;
-                    return potoken_result.po_token;
-                },
-                on_reload_player_response: async (reload_ctx: any) => {
-                    const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
-                    const watch_response = await watch_endpoint.call(client.actions, {
-                        playbackContext: {
-                            contentPlaybackContext: {
-                                vis: 0, splay: false, lactMilliseconds: '-1',
-                                signatureTimestamp: client.session.player?.signature_timestamp ?? 0,
-                            },
-                            reloadPlaybackContext: reload_ctx,
-                        },
-                        contentCheckOk: true, racyCheckOk: true,
-                    });
-                    const new_info = new YT.VideoInfo([watch_response], client.actions, '');
-                    const new_url = await client.session.player?.decipher(new_info.streaming_data?.server_abr_streaming_url);
-                    const new_config = new_info.player_config?.media_common_config?.media_ustreamer_request_config?.video_playback_ustreamer_config;
-                    if (!new_url || !new_config) return null;
-                    return { sabrServerUrl: new_url, sabrUstreamerConfig: new_config };
-                },
-            };
-        } catch (error) {
-            return generror_catch(error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
+        const MAX_RETRIES = 2;
+        let last_error: unknown;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
+            try {
+                return await resolve_sabr_url_attempt(video_id);
+            } catch (error) {
+                if (attempt < MAX_RETRIES && error instanceof TypeError && error.message.includes("Network request failed")) {
+                    last_error = error;
+                    continue;
+                }
+                return generror_catch(error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
+            }
         }
+        return generror_catch(last_error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
+    }
+
+    async function resolve_sabr_url_attempt(video_id: string): Promise<SabrTrackParams | ResponseError> {
+        video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
+        const client = await get_innertube_client();
+
+        const content_pot_result = await potoken().generate_potoken(client, video_id);
+        if ("error" in content_pot_result) return content_pot_result;
+
+        const player_response = await make_player_request(client, video_id);
+        const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
+        if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", "MEDIUM", { video_id });
+
+        const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
+        if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "MEDIUM", { video_id });
+
+        const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            .map((f: any) => buildSabrFormat(f));
+
+        const ctx = client.session.context.client;
+        const client_name_id = parseInt(
+            (Constants.CLIENT_NAME_IDS as Record<string, string>)[ctx.clientName] ?? '1'
+        );
+        const client_info: SabrClientInfo = {
+            clientName: client_name_id,
+            clientVersion: ctx.clientVersion,
+        };
+
+        return {
+            url: sabr_server_url,
+            isSabr: true,
+            sabrServerUrl: sabr_server_url,
+            sabrUstreamerConfig: video_playback_ustreamer_config,
+            sabrFormats: all_formats,
+            poToken: content_pot_result.po_token,
+            placeholder_po_token: content_pot_result.placeholder_po_token,
+            clientInfo: client_info,
+            cookie: client.session.cookie,
+            duration: player_response.video_details?.duration ?? 0,
+            on_refresh_po_token: async (_reason) => {
+                const potoken_result = await potoken().generate_potoken(client, video_id);
+                if ('error' in potoken_result) throw potoken_result.error;
+                return potoken_result.po_token;
+            },
+            on_reload_player_response: async (reload_ctx: any) => {
+                const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
+                const watch_response = await watch_endpoint.call(client.actions, {
+                    playbackContext: {
+                        contentPlaybackContext: {
+                            vis: 0, splay: false, lactMilliseconds: '-1',
+                            signatureTimestamp: client.session.player?.signature_timestamp ?? 0,
+                        },
+                        reloadPlaybackContext: reload_ctx,
+                    },
+                    contentCheckOk: true, racyCheckOk: true,
+                });
+                const new_info = new YT.VideoInfo([watch_response], client.actions, '');
+                const new_url = await client.session.player?.decipher(new_info.streaming_data?.server_abr_streaming_url);
+                const new_config = new_info.player_config?.media_common_config?.media_ustreamer_request_config?.video_playback_ustreamer_config;
+                if (!new_url || !new_config) return null;
+                return { sabrServerUrl: new_url, sabrUstreamerConfig: new_config };
+            },
+        };
     }
 }

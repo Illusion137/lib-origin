@@ -113,6 +113,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             miscnative().keep_mobile_awake()
         ]).catch(catch_log);
         Prefs.pref_set_theme(set_theme);
+        SQLfs.recreate_directories().catch(catch_log);
         warmup_client().catch(catch_log);
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))

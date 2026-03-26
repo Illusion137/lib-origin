@@ -18,7 +18,8 @@ export async function load_native_jseval(): Promise<JSEval> {
             break;
         case "REACT_NATIVE":
             try {
-                jseval_instance = { eval_in_webview: (await import("./jseval.mobile.tsx")).eval_in_webview };
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-implied-eval
+                jseval_instance = { eval_in_webview: (code: string) => { return new Function(code)(); } };
             } catch (e) { console.error(e); }
             break;
     }

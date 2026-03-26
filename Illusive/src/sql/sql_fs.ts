@@ -30,6 +30,13 @@ export namespace SQLfs {
     export function media_directory(item: string) { return document_directory(Constants.media_archive_path) + forward_item(item); }
     export function lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
     
+    export async function recreate_directories(){
+        await fs().make_directory(media_directory(""));
+        await fs().make_directory(custom_thumbnail_directory(""));
+        await fs().make_directory(thumbnail_directory(""));
+        await fs().make_directory(lyrics_directory(""));
+    }
+
     async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
         const base_name = path_lib.basename(new_name ?? item);
         await fs().copy(item, dir_func(base_name), {});
