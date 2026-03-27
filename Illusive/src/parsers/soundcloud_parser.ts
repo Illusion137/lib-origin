@@ -5,9 +5,22 @@ import type { ISOString } from "@illusive/types";
 import type * as IllusiveTypes from "@illusive/types";
 import { remove_prod } from "@common/utils/clean_util";
 import { reinterpret_cast } from "@common/cast";
+import type { SnippetedTrack } from "@origin/soundcloud/types/ArtistStories";
 
-function highest_artwork(artwork_url: string) {
+export function sc_highest_artwork(artwork_url: string) {
     return artwork_url?.replace("t200x200", "t500x500")?.replace("large", "t500x500");
+}
+
+export function soundcloud_parse_track_snippet(track: SnippetedTrack): IllusiveTypes.Track {
+    return {
+        uid: generate_new_uid(track.title),
+        title: remove_prod(track.title),
+        artists: [{name: track.user.username, uri: create_uri("soundcloud", track.user.permalink)}],
+        duration: Math.floor(track.duration / 1000),
+        soundcloud_id: track.id,
+        soundcloud_permalink: track.permalink_url,
+        artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
+    }
 }
 
 export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
@@ -19,7 +32,7 @@ export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
         duration: Math.floor(track.duration / 1000),
         soundcloud_id: track.id,
         soundcloud_permalink: track.permalink_url,
-        artwork_url: track.artwork_url ? highest_artwork(track.artwork_url) : highest_artwork(track.user.avatar_url)
+        artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
     }
 }
 export function soundcloud_parse_user(user: User) {
@@ -39,9 +52,9 @@ export function soundcloud_parse_playlist(playlist: Playlist) {
             } 
         }) : [{name: playlist.user.username, uri: create_uri("soundcloud", playlist.user.permalink)}],
         date: playlist.created_at as ISOString,
-        artwork_url: playlist.artwork_url ? highest_artwork(playlist.artwork_url) 
+        artwork_url: playlist.artwork_url ? sc_highest_artwork(playlist.artwork_url) 
             : playlist.tracks?.[0]?.kind === "track" 
-                ? highest_artwork(reinterpret_cast<Track>(playlist.tracks?.[0])?.artwork_url)
+                ? sc_highest_artwork(reinterpret_cast<Track>(playlist.tracks?.[0])?.artwork_url)
             : undefined
     }
 }

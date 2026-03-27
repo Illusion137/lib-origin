@@ -304,7 +304,7 @@ export interface Database {
         Functions: {
             resolve_or_insert_tracks: {
                 Args: { tracks_json: string }
-                Returns: Array<{ local_uid: string; canonical_uid: string }>
+                Returns: { local_uid: string; canonical_uid: string }[]
             }
         }
         Enums: Record<never, never>

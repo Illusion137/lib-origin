@@ -21,16 +21,16 @@
   - [ ] Added Audio Normalizer
   - [ ] Added Synced Lyrics
   - [ ] Added Lyrics uploading
-  - [ ] Added Lyrics editing
+  - Added Lyrics editing
   - [ ] Added loading screens
   - [ ] Added custom secondary color to themes
   - [ ] Added custom AudioPlayer backgrounds
   - [ ] Added ContextMenu to RowArtist and CompactArtistComponents
   - [ ] Slightly modify PlaylistBase by moving artist-data to center of artwork and searchbar
-  - [ ] Refactored Illusive.Illusi to support get-playlist
-  - [ ] Refactored Illusive.Illusi to support create-playlist
-  - [ ] Refactored Illusive.Illusi to support add-tracks-to-playlist
-  - [ ] Refactored Illusive.Illusi to support delete-tracks-to-playlist
+  - Refactored Illusive.Illusi to support get-playlist
+  - Refactored Illusive.Illusi to support create-playlist
+  - Refactored Illusive.Illusi to support add-tracks-to-playlist
+  - Refactored Illusive.Illusi to support delete-tracks-to-playlist
   - [ ] Refactored Extras-Settings UI
   - [ ] Redesigned Explore UI
   - [ ] Redesigned Search Screen UI
@@ -41,7 +41,7 @@
   - [ ] Redesigned Changelog UI
   - [ ] Redesigned CompactArtistComponent
   - [ ] Update Lyrics UI
-  - [ ] Added Illusi server (Supabase)
+  - Added Illusi server (Supabase)
 # Illusi 19.0.1
   - Fixed better shared track linking
   - Fixed bug related to tracks without proper duration being broken

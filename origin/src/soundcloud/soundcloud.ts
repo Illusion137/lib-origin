@@ -7,10 +7,12 @@ import { encode_params } from "@common/utils/fetch_util";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
+import { reinterpret_cast } from '../../../dist-roze-native/common/cast';
+import type { ArtistStories } from "./types/ArtistStories";
 
 export namespace SoundCloud {
     type Opts = BaseOpts & { client_id?: (string | ResponseError) };
-    let app_version = 1727431820;
+    let app_version = 1774492604;
     const client_cache = { client: { client_id: null as null | string, user_id: null as null | string }, enabled: true };
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
@@ -179,6 +181,9 @@ export namespace SoundCloud {
         const response_search_of = await response.json();
         if ("error" in response_search_of) return response_search_of;
         return { data: response_search_of, client_id: opts.client_id, hydration };
+    }
+    export async function apiget_cast<T>(opts: Opts & { path: string, params?: Record<string, any>, hydration_url?: string, requires_cookies?: boolean }){
+        return reinterpret_cast<{data: T, client_id: string|ResponseError, hyrdration: Awaited<ReturnType<typeof get_hydration>>}>(apiget(opts));
     }
     export async function apipost<T>(opts: Opts & { path: string, params?: Record<string, any>, payload: object | null, method?: FetchMethod, hydration_url?: string, }) {
         const has_cookies = requires_cookies(opts);
@@ -388,8 +393,22 @@ export namespace SoundCloud {
     export async function liked_music(opts: Opts & { limit?: number, offset?: number }) {
         return await apiget<LikedTrack>({ ...opts, path: `users/${get_self_user_id(opts.cookie_jar!)}/track_likes`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0 } });
     }
-    export async function new_tracks(opts: Opts & { limit?: number, offset?: number }) {
-        return await apiget<ArtistShortcut>({ ...opts, path: `me/artist-shortcuts`, params: { limit: opts.limit ?? 1000, offset: opts.offset ?? 0 } });
+    export async function artists_shortcuts(opts: Opts & { limit?: number, offset?: number }) {
+        return await apiget<ArtistShortcut>({ ...opts, path: `me/artist-shortcuts`, params: { limit: opts.limit ?? 1000, offset: opts.offset ?? 0, requires_cookies: true } });
+    }
+    export async function artists_shortcuts_stories(opts: Opts & { artist_urn: string; }) {
+        return await apiget_cast<ArtistStories>({ ...opts, path: `me/artist-shortcuts/stories/${opts.artist_urn}` });
+    }
+    export async function artists_shortcuts_stories_read(opts: Opts & { artist_urns: string[] }) {
+        const payload = {
+            read_receipts: opts.artist_urns.map(urn => (
+                {
+                    artist: urn,
+                    last_update_read: (new Date().toISOString().split('.')[0]+'Z')
+                }
+            ))
+        }
+        return await apipost<null>({ ...opts, path: `me/artist-shortcuts/read-updates`, payload });
     }
     export async function who_to_follow(opts: Opts & { limit?: number, offset?: number }) {
         return await apiget<ArtistRecommendation>({ ...opts, path: `me/suggested/users/who_to_follow`, params: { limit: opts.limit ?? 1000, offset: opts.offset ?? 0 } });
@@ -449,6 +468,7 @@ export namespace SoundCloud {
         if ("error" in user_playlists) return user_playlists;
         return { data: user_playlists.artist_data.collection, client_id: opts.client_id, hydration };
     }
+
     export async function add_tracks_to_playlist(opts: Opts & { playlist_name: string, track_ids: number[] }) {
         const playlist_name = extract_playlist_name(opts.playlist_name);
         if (typeof playlist_name === "object") return playlist_name;

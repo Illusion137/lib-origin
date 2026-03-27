@@ -661,10 +661,10 @@ export class SyncEngine {
 
         // User data fields (only present on RemoteTrackWithUserData)
         if ('plays' in remote && 'meta' in remote) {
-            result.plays = existing.plays > 0 ? existing.plays : (remote as RemoteTrackWithUserData).plays;
+            result.plays = existing.plays > 0 ? existing.plays : (remote).plays;
             const local_meta_str = typeof existing.meta === 'string'
                 ? existing.meta : JSON.stringify(existing.meta);
-            result.meta = local_meta_str !== '{}' ? existing.meta : (remote as RemoteTrackWithUserData).meta as any;
+            result.meta = local_meta_str !== '{}' ? existing.meta : (remote).meta as any;
         }
 
         return result;
