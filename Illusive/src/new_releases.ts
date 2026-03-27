@@ -40,7 +40,7 @@ export async function soundcloud_get_new_releases(): Promise<CompactPlaylist[]> 
 }
 
 export async function illusi_get_new_releases(): Promise<CompactPlaylist[]> {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase().auth.getSession();
     if (!session) return [];
 
     const result = await Origin.Illusi.get_new_releases({ jwt: session.access_token });

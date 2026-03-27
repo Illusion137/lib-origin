@@ -136,7 +136,7 @@ export async function bandlab_get_user_playlists(): Promise<CompactPlaylistsResu
 }
 
 export async function illusi_get_user_playlists(): Promise<CompactPlaylistsResult> {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase().auth.getSession();
     if (!session) return { playlists: [] };
 
     const result = await Origin.Illusi.get_playlists({ jwt: session.access_token });

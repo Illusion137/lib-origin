@@ -56,8 +56,16 @@ async function get_authed_user_uid(supabase: SupabaseClient<Database>): Promise<
 
 export class SyncEngine {
     private is_syncing = false;
+    private is_initialized = false;
+    private is_destroyed = false;
+    private destroy_generation = 0;
+    private consecutive_failures = 0;
+    private last_error_message?: string;
+    private last_sync_started_at?: number;
+    private last_sync_completed_at?: number;
     private sync_interval?: ReturnType<typeof setInterval>;
     private debounce_timeout?: ReturnType<typeof setTimeout>;
+    private network_subscription?: ReturnType<NetworkMonitor['on_network_change']>;
     private readonly supabase: SupabaseClient<Database>;
     private readonly network_monitor: NetworkMonitor;
 
@@ -66,25 +74,53 @@ export class SyncEngine {
         this.network_monitor = networkMonitor;
     }
 
+    private assert_supabase_ok(context: string, error: unknown) {
+        if (!error) return;
+        const message = typeof error === 'object' && error !== null && 'message' in error
+            // eslint-disable-next-line @typescript-eslint/no-base-to-string
+            ? String((error as { message?: unknown }).message ?? '')
+            // eslint-disable-next-line @typescript-eslint/no-base-to-string
+            : String(error);
+        throw new Error(`[SyncEngine] ${context} failed: ${message}`);
+    }
+
     schedule_sync(delay_ms = 3000) {
+        if (this.is_destroyed) return;
         if (this.debounce_timeout) clearTimeout(this.debounce_timeout);
+        const failure_multiplier = Math.min(Math.pow(2, Math.max(this.consecutive_failures - 1, 0)), 32);
+        const effective_delay = Math.min(delay_ms * failure_multiplier, 5 * 60 * 1000);
         this.debounce_timeout = setTimeout(() => {
+            if (this.is_destroyed) return;
             this.sync().catch(catch_log);
-        }, delay_ms);
+        }, effective_delay);
     }
 
     async initialize() {
+        if (this.is_initialized || this.is_destroyed) return;
+        const initialize_generation = this.destroy_generation;
+        this.is_initialized = true;
         ChangeTracker.set_on_change(() => this.schedule_sync());
-        await this.initial_sync().catch(catch_log);
+        await this.initial_sync().catch((error) => {
+            this.is_initialized = false;
+            throw error;
+        });
 
-        this.network_monitor.on_network_change(async (isGoodTime) => {
+        if (this.is_destroyed || initialize_generation !== this.destroy_generation) {
+            this.is_initialized = false;
+            return;
+        }
+
+        this.network_subscription = this.network_monitor.on_network_change(async (isGoodTime) => {
+            if (this.is_destroyed) return;
             if (isGoodTime && !this.is_syncing) {
                 await this.sync().catch(catch_log);
             }
         });
 
         this.sync_interval = setInterval(async () => {
+            if (this.is_destroyed) return;
             const isGoodTime = await this.network_monitor.is_good_time_to_sync();
+            if (this.is_destroyed) return;
             if (isGoodTime && !this.is_syncing) {
                 await this.sync().catch(catch_log);
             }
@@ -92,15 +128,38 @@ export class SyncEngine {
     }
 
     async sync() {
-        if (this.is_syncing) return;
+        if (this.is_syncing || this.is_destroyed) return;
+        this.last_sync_started_at = Date.now();
         try {
             this.is_syncing = true;
             await this.push_changes();
+            if (this.is_destroyed) return;
             await this.pull_changes();
+            if (this.is_destroyed) return;
             await Prefs.save_pref('last_synced', new Date());
+            this.consecutive_failures = 0;
+            this.last_error_message = undefined;
+            this.last_sync_completed_at = Date.now();
+        } catch (error) {
+            this.consecutive_failures += 1;
+            this.last_error_message = error instanceof Error ? error.message : String(error);
+            throw error;
         } finally {
             this.is_syncing = false;
         }
+    }
+
+    async get_sync_diagnostics() {
+        const stats = await ChangeTracker.get_sync_stats();
+        return {
+            is_syncing: this.is_syncing,
+            is_initialized: this.is_initialized,
+            consecutive_failures: this.consecutive_failures,
+            last_error_message: this.last_error_message,
+            last_sync_started_at: this.last_sync_started_at,
+            last_sync_completed_at: this.last_sync_completed_at,
+            pending_changes: stats,
+        };
     }
 
     // -------------------------------------------------------------------------
@@ -110,22 +169,41 @@ export class SyncEngine {
     // collisions and UID canonicalization.
     // -------------------------------------------------------------------------
     private async initial_sync() {
+        // Check local sentinel first — avoids a network round-trip on every cold start
+        const local_done = await db.select().from(sync_metadata_table)
+            .where(eq(sync_metadata_table.table_name, '_initial_sync_complete')).get();
+        if (local_done) return;
+
         const user_uid = await get_authed_user_uid(this.supabase);
         if (!user_uid) return;
 
-        // No-op if this user already has remote data
-        const { data: existing } = await this.supabase
+        // Fallback: no-op if this user already has remote data
+        const { data: existing, error: existing_err } = await this.supabase
             .from('utracks')
             .select('id')
             .eq('user_uid', user_uid)
             .limit(1);
+        this.assert_supabase_ok('initial_sync existing check', existing_err);
 
-        if (existing && existing.length > 0) return;
+        if (existing && existing.length > 0) {
+            // Remote data exists — mark sentinel so we skip the check next time
+            await db.insert(sync_metadata_table)
+                .values({ table_name: '_initial_sync_complete', last_sync_at: Date.now(), last_modified_at: Date.now() })
+                .onConflictDoUpdate({ target: sync_metadata_table.table_name, set: { last_sync_at: Date.now() } });
+            return;
+        }
 
         await this.initial_sync_tracks(user_uid);
         await this.initial_sync_playlists(user_uid);
         await this.initial_sync_playlists_tracks();
         await this.initial_sync_new_releases(user_uid);
+
+        // All local data has been pushed — pending change_log entries are redundant
+        await db.delete(change_log_table);
+
+        await db.insert(sync_metadata_table)
+            .values({ table_name: '_initial_sync_complete', last_sync_at: Date.now(), last_modified_at: Date.now() })
+            .onConflictDoUpdate({ target: sync_metadata_table.table_name, set: { last_sync_at: Date.now() } });
     }
 
     private async initial_sync_tracks(user_uid: string) {
@@ -242,7 +320,7 @@ export class SyncEngine {
                 switch (table_name) {
                     case 'tracks':           await this.push_track_change(change, user_uid); break;
                     case 'playlists':        await this.push_playlist_change(change, user_uid); break;
-                    case 'playlists_tracks': await this.push_playlist_track_change(change); break;
+                    case 'playlists_tracks': await this.push_playlist_track_change(change, user_uid); break;
                     case 'new_releases':     await this.push_new_release_change(change, user_uid); break;
                 }
                 succeeded.push(...change.change_ids);
@@ -267,10 +345,11 @@ export class SyncEngine {
                 ? (await this.resolve_canonical_uid(local_track)) || change.record_id
                 : change.record_id;
 
-            await this.supabase.from('utracks')
+            const { error } = await this.supabase.from('utracks')
                 .update({ deleted: true })
                 .eq('user_uid', user_uid)
                 .eq('track_uid', uid);
+            this.assert_supabase_ok(`push_track_change delete ${uid}`, error);
             return;
         }
 
@@ -293,10 +372,12 @@ export class SyncEngine {
         }
 
         // Always upsert — guarantees the row exists remotely regardless of prior state
-        await this.supabase.from('tracks')
+        const { error: track_error } = await this.supabase.from('tracks')
             .upsert(this.track_to_global_insert(track), { onConflict: 'uid' });
-        await this.supabase.from('utracks')
+        this.assert_supabase_ok(`push_track_change tracks upsert ${track.uid}`, track_error);
+        const { error: utrack_error } = await this.supabase.from('utracks')
             .upsert(this.track_to_utrack_insert(track, user_uid), { onConflict: 'user_uid,track_uid' });
+        this.assert_supabase_ok(`push_track_change utracks upsert ${track.uid}`, utrack_error);
     }
 
     // Check if an existing global track shares any service ID with the given local track.
@@ -317,12 +398,13 @@ export class SyncEngine {
 
         if (filter_parts.length === 0) return track.uid;
 
-        const { data } = await this.supabase
+        const { data, error } = await this.supabase
             .from('tracks')
             .select('uid')
             .or(filter_parts.join(','))
             .neq('uid', track.uid)
             .limit(1);
+        this.assert_supabase_ok(`resolve_canonical_uid ${track.uid}`, error);
 
         return data?.[0]?.uid ?? track.uid;
     }
@@ -331,41 +413,43 @@ export class SyncEngine {
     // Remap a local track UID to a canonical UID across all tables + in-memory
     // -------------------------------------------------------------------------
     private async remap_local_uid(old_uid: string, new_uid: string) {
-        // 1. Check if a track with new_uid already exists locally (collision)
-        const existing_new = await db.select().from(tracks_table)
-            .where(eq(tracks_table.uid, new_uid)).get();
+        await db.transaction(async (tx) => {
+            // 1. Check if a track with new_uid already exists locally (collision)
+            const existing_new = await tx.select().from(tracks_table)
+                .where(eq(tracks_table.uid, new_uid)).get();
 
-        if (existing_new) {
-            // Merge the old track's data into the existing one, then delete the old
-            const old_track = await db.select().from(tracks_table)
-                .where(eq(tracks_table.uid, old_uid)).get();
-            if (old_track) {
-                const merged = this.accumulate_merge_tracks(existing_new, old_track);
-                await db.update(tracks_table).set(merged)
-                    .where(eq(tracks_table.uid, new_uid));
-                await db.delete(tracks_table).where(eq(tracks_table.uid, old_uid));
+            if (existing_new) {
+                // Merge the old track's data into the existing one, then delete the old
+                const old_track = await tx.select().from(tracks_table)
+                    .where(eq(tracks_table.uid, old_uid)).get();
+                if (old_track) {
+                    const merged = this.accumulate_merge_tracks(existing_new, old_track);
+                    await tx.update(tracks_table).set(merged)
+                        .where(eq(tracks_table.uid, new_uid));
+                    await tx.delete(tracks_table).where(eq(tracks_table.uid, old_uid));
+                }
+            } else {
+                // Simple rename
+                await tx.update(tracks_table)
+                    .set({ uid: new_uid })
+                    .where(eq(tracks_table.uid, old_uid));
             }
-        } else {
-            // Simple rename
-            await db.update(tracks_table)
-                .set({ uid: new_uid })
-                .where(eq(tracks_table.uid, old_uid));
-        }
 
-        // 2. Update playlists_tracks references
-        await db.update(playlists_tracks_table)
-            .set({ track_uid: new_uid })
-            .where(eq(playlists_tracks_table.track_uid, old_uid));
+            // 2. Update playlists_tracks references
+            await tx.update(playlists_tracks_table)
+                .set({ track_uid: new_uid })
+                .where(eq(playlists_tracks_table.track_uid, old_uid));
 
-        // 3. Update pending change_log entries
-        await db.update(change_log_table)
-            .set({ record_id: new_uid })
-            .where(and(
-                eq(change_log_table.record_id, old_uid),
-                eq(change_log_table.table_name, 'tracks')
-            ));
+            // 3. Update pending change_log entries
+            await tx.update(change_log_table)
+                .set({ record_id: new_uid })
+                .where(and(
+                    eq(change_log_table.record_id, old_uid),
+                    eq(change_log_table.table_name, 'tracks')
+                ));
+        });
 
-        // 4. Update in-memory globals
+        // 4. Update in-memory globals — only after transaction commits
         const idx = GLOBALS.global_var.sql_tracks.findIndex(t => t.uid === old_uid);
         if (idx !== -1) {
             GLOBALS.global_var.sql_tracks[idx] = {
@@ -381,9 +465,11 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     private async push_playlist_change(change: CompressedChange, user_uid: string) {
         if (change.operation === 'delete') {
-            await this.supabase.from('playlists')
+            const { error } = await this.supabase.from('playlists')
                 .update({ deleted: true })
-                .eq('uuid', change.record_id);
+                .eq('uuid', change.record_id)
+                .eq('user_uid', user_uid);
+            this.assert_supabase_ok(`push_playlist_change delete ${change.record_id}`, error);
             return;
         }
 
@@ -396,21 +482,24 @@ export class SyncEngine {
             : full_playlist;
 
         const row = this.playlist_to_insert(playlist, user_uid);
-        await this.supabase.from('playlists').upsert(row, { onConflict: 'uuid' });
+        const { error } = await this.supabase.from('playlists').upsert(row, { onConflict: 'uuid' });
+        this.assert_supabase_ok(`push_playlist_change upsert ${change.record_id}`, error);
     }
 
     // -------------------------------------------------------------------------
     // Playlist-track push
     // -------------------------------------------------------------------------
-    private async push_playlist_track_change(change: CompressedChange) {
+    private async push_playlist_track_change(change: CompressedChange, user_uid: string) {
         if (change.operation === 'delete') {
             const colon_idx = change.record_id.indexOf(':');
             const playlist_uuid = change.record_id.substring(0, colon_idx);
             const track_uid = change.record_id.substring(colon_idx + 1);
-            await this.supabase.from('playlists_tracks')
+            await this.assert_user_owns_playlist(playlist_uuid, user_uid);
+            const { error } = await this.supabase.from('playlists_tracks')
                 .update({ deleted: true })
                 .eq('uuid', playlist_uuid)
                 .eq('track_uid', track_uid);
+            this.assert_supabase_ok(`push_playlist_track_change delete ${change.record_id}`, error);
             return;
         }
 
@@ -421,8 +510,10 @@ export class SyncEngine {
             )).get();
 
         const pt = full_pt ?? change.data as LocalPlaylistTrack;
-        await this.supabase.from('playlists_tracks')
+        await this.assert_user_owns_playlist(pt.uuid, user_uid);
+        const { error } = await this.supabase.from('playlists_tracks')
             .upsert(this.playlist_track_to_insert(pt), { onConflict: 'uuid,track_uid' });
+        this.assert_supabase_ok(`push_playlist_track_change upsert ${change.record_id}`, error);
     }
 
     // -------------------------------------------------------------------------
@@ -430,9 +521,11 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     private async push_new_release_change(change: CompressedChange, user_uid: string) {
         if (change.operation === 'delete') {
-            await this.supabase.from('new_releases')
+            const { error } = await this.supabase.from('new_releases')
                 .update({ deleted: true })
-                .eq('id', Number(change.record_id));
+                .eq('id', Number(change.record_id))
+                .eq('user_uid', user_uid);
+            this.assert_supabase_ok(`push_new_release_change delete ${change.record_id}`, error);
             return;
         }
 
@@ -445,7 +538,22 @@ export class SyncEngine {
             : full_release;
 
         const row = this.new_release_to_insert(release, user_uid);
-        await this.supabase.from('new_releases').upsert(row, { onConflict: 'id' });
+        const { error } = await this.supabase.from('new_releases').upsert(row, { onConflict: 'id' });
+        this.assert_supabase_ok(`push_new_release_change upsert ${change.record_id}`, error);
+    }
+
+    private async assert_user_owns_playlist(playlist_uuid: string, user_uid: string) {
+        const { data, error } = await this.supabase
+            .from('playlists')
+            .select('uuid')
+            .eq('uuid', playlist_uuid)
+            .eq('user_uid', user_uid)
+            .limit(1);
+
+        this.assert_supabase_ok(`assert_user_owns_playlist ${playlist_uuid}`, error);
+        if (!data || data.length === 0) {
+            throw new Error(`[SyncEngine] unauthorized playlist access: ${playlist_uuid}`);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -453,7 +561,7 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     private async pull_changes() {
         for (const table_name of SYNCABLE_TABLES) {
-            await this.pull_table_changes(table_name).catch(catch_log);
+            await this.pull_table_changes(table_name);
         }
     }
 
@@ -464,40 +572,46 @@ export class SyncEngine {
             .where(eq(sync_metadata_table.table_name, table_name))
             .get();
 
-        const last_sync_iso = new Date(metadata?.last_sync_at ?? 0).toISOString();
+        // Subtract 2s buffer to cover sub-millisecond Supabase timestamp precision
+        const last_sync_iso = new Date((metadata?.last_sync_at ?? 0) - 2000).toISOString();
+
+        const pull_started_at = Date.now();
+        const pull_started_iso = new Date(pull_started_at).toISOString();
 
         switch (table_name) {
-            case 'tracks':           await this.pull_tracks(last_sync_iso); break;
-            case 'playlists':        await this.pull_playlists(last_sync_iso); break;
-            case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso); break;
-            case 'new_releases':     await this.pull_new_releases(last_sync_iso); break;
+            case 'tracks':           await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at); break;
+            case 'playlists':        await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at); break;
+            case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, pull_started_iso, pull_started_at); break;
+            case 'new_releases':     await this.pull_new_releases(last_sync_iso, pull_started_iso, pull_started_at); break;
         }
+    }
 
-        const now = Date.now();
+    private async save_pull_watermark(table_name: SyncableLocalTableName, pull_started_at: number) {
         await db
             .insert(sync_metadata_table)
-            .values({ table_name, last_sync_at: now, last_modified_at: now })
+            .values({ table_name, last_sync_at: pull_started_at, last_modified_at: pull_started_at })
             .onConflictDoUpdate({
                 target: sync_metadata_table.table_name,
-                set: { last_sync_at: now, last_modified_at: now },
+                set: { last_sync_at: pull_started_at, last_modified_at: pull_started_at },
             });
     }
 
-    private async pull_tracks(last_sync_iso: string) {
+    private async pull_tracks(last_sync_iso: string, pull_started_iso: string, pull_started_at: number) {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (!user_uid) return;
 
-        // Fetch utracks with embedded track data, paginated
-        let cursor = last_sync_iso;
-        let has_more = true;
-        while (has_more) {
+        // Fetch utracks with embedded track data, paginated with stable ordering.
+        let offset = 0;
+        while (true) {
             const { data: utrack_rows, error: u_err } = await this.supabase
                 .from('utracks')
                 .select('*, tracks(*)')
                 .eq('user_uid', user_uid)
-                .gte('modified_at', cursor)
+                .gte('modified_at', last_sync_iso)
+                .lte('modified_at', pull_started_iso)
                 .order('modified_at', { ascending: true })
-                .limit(PULL_PAGE_SIZE);
+                .order('id', { ascending: true })
+                .range(offset, offset + PULL_PAGE_SIZE - 1);
 
             if (u_err) throw u_err;
             if (!utrack_rows || utrack_rows.length === 0) break;
@@ -515,23 +629,24 @@ export class SyncEngine {
                 await this.apply_track(merged);
             }
 
-            has_more = utrack_rows.length === PULL_PAGE_SIZE;
-            if (has_more) cursor = utrack_rows[utrack_rows.length - 1].modified_at;
+            if (utrack_rows.length < PULL_PAGE_SIZE) break;
+            offset += utrack_rows.length;
         }
 
         // Also pull tracks enriched by other users since last sync
         const owned_uids = await this.get_owned_track_uids(user_uid);
         if (owned_uids.length > 0) {
-            cursor = last_sync_iso;
-            has_more = true;
-            while (has_more) {
+            offset = 0;
+            while (true) {
                 const { data: enriched, error: t_err } = await this.supabase
                     .from('tracks')
                     .select('*')
-                    .gte('modified_at', cursor)
+                    .gte('modified_at', last_sync_iso)
+                    .lte('modified_at', pull_started_iso)
                     .in('uid', owned_uids)
                     .order('modified_at', { ascending: true })
-                    .limit(PULL_PAGE_SIZE);
+                    .order('uid', { ascending: true })
+                    .range(offset, offset + PULL_PAGE_SIZE - 1);
 
                 if (t_err) throw t_err;
                 if (!enriched || enriched.length === 0) break;
@@ -551,18 +666,21 @@ export class SyncEngine {
                     SQLGlobal.update_global_track_item(track_row.uid, updated as LocalTrack);
                 }
 
-                has_more = enriched.length === PULL_PAGE_SIZE;
-                if (has_more) cursor = enriched[enriched.length - 1].modified_at;
+                if (enriched.length < PULL_PAGE_SIZE) break;
+                offset += enriched.length;
             }
         }
+
+        await this.save_pull_watermark('tracks', pull_started_at);
     }
 
     private async get_owned_track_uids(user_uid: string): Promise<string[]> {
-        const { data } = await this.supabase
+        const { data, error } = await this.supabase
             .from('utracks')
             .select('track_uid')
             .eq('user_uid', user_uid)
             .eq('deleted', false);
+        this.assert_supabase_ok('get_owned_track_uids', error);
 
         return (data ?? []).map(r => r.track_uid);
     }
@@ -717,20 +835,21 @@ export class SyncEngine {
         };
     }
 
-    private async pull_playlists(last_sync_iso: string) {
+    private async pull_playlists(last_sync_iso: string, pull_started_iso: string, pull_started_at: number) {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (!user_uid) return;
 
-        let cursor = last_sync_iso;
-        let has_more = true;
-        while (has_more) {
+        let offset = 0;
+        while (true) {
             const { data, error } = await this.supabase
                 .from('playlists')
                 .select('*')
                 .eq('user_uid', user_uid)
-                .gte('modified_at', cursor)
+                .gte('modified_at', last_sync_iso)
+                .lte('modified_at', pull_started_iso)
                 .order('modified_at', { ascending: true })
-                .limit(PULL_PAGE_SIZE);
+                .order('uuid', { ascending: true })
+                .range(offset, offset + PULL_PAGE_SIZE - 1);
 
             if (error) throw error;
             if (!data || data.length === 0) break;
@@ -752,34 +871,38 @@ export class SyncEngine {
                 }
             }
 
-            has_more = data.length === PULL_PAGE_SIZE;
-            if (has_more) cursor = data[data.length - 1].modified_at;
+            if (data.length < PULL_PAGE_SIZE) break;
+            offset += data.length;
         }
+
+        await this.save_pull_watermark('playlists', pull_started_at);
     }
 
-    private async pull_playlists_tracks(last_sync_iso: string) {
+    private async pull_playlists_tracks(last_sync_iso: string, pull_started_iso: string, pull_started_at: number) {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (user_uid === null) return;
 
-        const { data: user_playlists } = await this.supabase
+        const { data: user_playlists, error: user_playlist_error } = await this.supabase
             .from('playlists')
             .select('uuid')
             .eq('user_uid', user_uid)
             .eq('deleted', false);
+        this.assert_supabase_ok('pull_playlists_tracks user playlists fetch', user_playlist_error);
 
         const playlist_uuids = (user_playlists ?? []).map(p => p.uuid);
         if (playlist_uuids.length === 0) return;
 
-        let cursor = last_sync_iso;
-        let has_more = true;
-        while (has_more) {
+        let offset = 0;
+        while (true) {
             const { data, error } = await this.supabase
                 .from('playlists_tracks')
                 .select('*')
                 .in('uuid', playlist_uuids)
-                .gte('modified_at', cursor)
+                .gte('modified_at', last_sync_iso)
+                .lte('modified_at', pull_started_iso)
                 .order('modified_at', { ascending: true })
-                .limit(PULL_PAGE_SIZE);
+                .order('id', { ascending: true })
+                .range(offset, offset + PULL_PAGE_SIZE - 1);
 
             if (error) throw error;
             if (!data || data.length === 0) break;
@@ -814,25 +937,28 @@ export class SyncEngine {
                 }
             }
 
-            has_more = data.length === PULL_PAGE_SIZE;
-            if (has_more) cursor = data[data.length - 1].modified_at;
+            if (data.length < PULL_PAGE_SIZE) break;
+            offset += data.length;
         }
+
+        await this.save_pull_watermark('playlists_tracks', pull_started_at);
     }
 
-    private async pull_new_releases(last_sync_iso: string) {
+    private async pull_new_releases(last_sync_iso: string, pull_started_iso: string, pull_started_at: number) {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (user_uid === null) return;
 
-        let cursor = last_sync_iso;
-        let has_more = true;
-        while (has_more) {
+        let offset = 0;
+        while (true) {
             const { data, error } = await this.supabase
                 .from('new_releases')
                 .select('*')
                 .eq('user_uid', user_uid)
-                .gte('modified_at', cursor)
+                .gte('modified_at', last_sync_iso)
+                .lte('modified_at', pull_started_iso)
                 .order('modified_at', { ascending: true })
-                .limit(PULL_PAGE_SIZE);
+                .order('id', { ascending: true })
+                .range(offset, offset + PULL_PAGE_SIZE - 1);
 
             if (error) throw error;
             if (!data || data.length === 0) break;
@@ -854,9 +980,11 @@ export class SyncEngine {
                 }
             }
 
-            has_more = data.length === PULL_PAGE_SIZE;
-            if (has_more) cursor = data[data.length - 1].modified_at;
+            if (data.length < PULL_PAGE_SIZE) break;
+            offset += data.length;
         }
+
+        await this.save_pull_watermark('new_releases', pull_started_at);
     }
 
     // -------------------------------------------------------------------------
@@ -1035,7 +1163,21 @@ export class SyncEngine {
     }
 
     destroy() {
-        if (this.sync_interval) clearInterval(this.sync_interval);
-        if (this.debounce_timeout) clearTimeout(this.debounce_timeout);
+        this.is_destroyed = true;
+        this.destroy_generation += 1;
+        this.is_initialized = false;
+        if (this.sync_interval) {
+            clearInterval(this.sync_interval);
+            this.sync_interval = undefined;
+        }
+        if (this.debounce_timeout) {
+            clearTimeout(this.debounce_timeout);
+            this.debounce_timeout = undefined;
+        }
+        if (this.network_subscription) {
+            this.network_subscription();
+            this.network_subscription = undefined;
+        }
+        ChangeTracker.set_on_change(() => undefined);
     }
 }

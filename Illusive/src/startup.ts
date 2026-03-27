@@ -30,6 +30,51 @@ import { FutsalShuffle } from './futsal_shuffle';
 import { fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
 
+let sync_engine_instance: SyncEngine | null = null;
+let sync_engine_start_promise: Promise<void> | null = null;
+let sync_engine_should_run = false;
+let auth_state_subscription: { unsubscribe: () => void } | null = null;
+
+async function start_sync_engine() {
+    sync_engine_should_run = true;
+    if (sync_engine_instance) return;
+    if (sync_engine_start_promise) {
+        await sync_engine_start_promise;
+        return;
+    }
+
+    const engine = new SyncEngine(supabase(), NetworkMonitor.get_instance());
+    sync_engine_start_promise = (async () => {
+        try {
+            await engine.initialize();
+            if (!sync_engine_should_run) {
+                engine.destroy();
+                return;
+            }
+            sync_engine_instance = engine;
+        } catch (error) {
+            engine.destroy();
+            throw error;
+        } finally {
+            sync_engine_start_promise = null;
+        }
+    })();
+
+    await sync_engine_start_promise;
+}
+
+function stop_sync_engine() {
+    sync_engine_should_run = false;
+    if (!sync_engine_instance) return;
+    sync_engine_instance.destroy();
+    sync_engine_instance = null;
+}
+
+function reset_auth_sync_subscription() {
+    auth_state_subscription?.unsubscribe();
+    auth_state_subscription = null;
+}
+
 export async function warmup_client() {
     await ffmpeg().execute_args(['-L']);
     if (Prefs.get_pref('warmup_youtube')) {
@@ -63,16 +108,24 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 
         await migrate(db, migrations).catch(catch_log);
 
-        // Start sync if already authenticated; otherwise listen for sign-in.
-        const { data: { session } } = await supabase.auth.getSession();
+        // Start sync for the current session and maintain a single engine lifecycle.
+        const { data: { session } } = await supabase().auth.getSession();
         if (session) {
-            new SyncEngine(supabase, NetworkMonitor.get_instance()).initialize().catch(catch_log);
+            await start_sync_engine().catch(catch_log);
+        } else {
+            stop_sync_engine();
         }
-        supabase.auth.onAuthStateChange((event) => {
+
+        reset_auth_sync_subscription();
+        const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
             if (event === 'SIGNED_IN') {
-                new SyncEngine(supabase, NetworkMonitor.get_instance()).initialize().catch(catch_log);
+                void start_sync_engine().catch(catch_log);
+            }
+            if (event === 'SIGNED_OUT') {
+                stop_sync_engine();
             }
         });
+        auth_state_subscription = subscription;
 
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;

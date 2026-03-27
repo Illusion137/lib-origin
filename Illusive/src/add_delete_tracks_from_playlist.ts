@@ -4,7 +4,7 @@ import { Constants } from '@illusive/constants';
 import { Prefs } from '@illusive/prefs';
 import type { Track } from '@illusive/types';
 import type { ResponseError } from '@common/types';
-import { supabase } from '@illusive/db/supabase';
+import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 
 export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -103,12 +103,14 @@ export async function apple_music_delete_tracks_from_playlist(tracks: Track[], p
     const uris = tracks.map(track => track.applemusic_id!);
     const data = await Origin.AppleMusic.get_serialized_server_data("https://music.apple.com/us/library/all-playlists/", {cookie_jar: cookie_jar});
     if("error" in data) return false;
+    let all_ok = true;
     for(const uri of uris) {
         const deletion_response = await Origin.AppleMusic.remove_track_from_playlist(playlist_url, uri, data.authorization, {cookie_jar: cookie_jar});
-        if("error" in deletion_response) return false;
-        if(!deletion_response.ok) return false;
+        if("error" in deletion_response || !deletion_response.ok) {
+            all_ok = false;
+        }
     }
-    return true;
+    return all_ok;
 }
 export async function soundcloud_add_tracks_to_playlist(tracks: Track[], playlist_url: string) {
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
@@ -122,25 +124,23 @@ export async function soundcloud_delete_tracks_from_playlist(tracks: Track[], pl
     const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
     tracks = tracks.filter(track => !is_empty(track.soundcloud_id));
     const uris = tracks.map(track => track.soundcloud_id!);
-    const deletion_response = await Origin.SoundCloud.add_tracks_to_playlist({cookie_jar: cookie_jar, playlist_name: playlist_url, track_ids: uris});
+    const deletion_response = await Origin.SoundCloud.delete_tracks_to_playlist({cookie_jar: cookie_jar, playlist_name: playlist_url, track_ids: uris});
     if("error" in deletion_response) return false;
-    return deletion_response.data.ok;
+    return true;
 }
 
 export async function illusi_add_tracks_to_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return false;
-
     const uuid = playlist_uri.split(':')[1];
     const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
-    return await Origin.Illusi.add_tracks_to_playlist(rows, { jwt: session.access_token });
+    for(const row of rows){
+        await SQLPlaylists.insert_track_playlist(row);
+    }
+    return true;
 }
 
 export async function illusi_delete_tracks_from_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return false;
-
     const uuid = playlist_uri.split(':')[1];
-    const track_uids = tracks.map(track => track.uid);
-    return await Origin.Illusi.delete_tracks_from_playlist(uuid, track_uids, { jwt: session.access_token });
+    const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
+    await SQLPlaylists.delete_all_tracks_playlist(rows);
+    return true;
 }

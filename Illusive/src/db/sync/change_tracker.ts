@@ -4,6 +4,7 @@ import { db } from '../database';
 import { change_log_table } from '../schema';
 import { eq, and, inArray, asc, lt } from 'drizzle-orm';
 import type { CompressedChange, LocalTableName } from './types';
+import { compress_record_changes, type ChangeLogLikeRow } from './change_compression';
 
 type ChangeLogRow = typeof change_log_table.$inferSelect;
 
@@ -71,10 +72,10 @@ export class ChangeTracker {
             const colon_idx = key.indexOf(':');
             const table_name = key.substring(0, colon_idx);
             const record_id = key.substring(colon_idx + 1);
-            const compressed_change = this.compress_record_changes(
+            const compressed_change = compress_record_changes(
                 table_name as LocalTableName,
                 record_id,
-                record_changes
+                record_changes as ChangeLogLikeRow[]
             );
             
             if (compressed_change) {
@@ -86,141 +87,12 @@ export class ChangeTracker {
         return compressed.slice(0, batch_size);
     }
 
-    /**
-     * Compress multiple changes to the same record into a single operation
-     */
-    private static compress_record_changes(
+    static compress_record_changes_for_tests(
         table_name: LocalTableName,
         record_id: string,
-        changes: ChangeLogRow[]
+        changes: ChangeLogLikeRow[]
     ): CompressedChange | null {
-        if (changes.length === 0) return null;
-
-        const change_ids = changes.map(c => c.id);
-        const operations = changes.map(c => c.operation);
-        
-        // Case 1: Delete is the final operation - only keep the delete
-        if (operations[operations.length - 1] === 'delete') {
-            // If there was an insert earlier, we can skip entirely (net zero)
-            if (operations.includes('insert')) {
-                return null;
-            }
-            
-            return {
-                table: table_name,
-                operation: 'delete',
-                record_id,
-                data: null,
-                change_ids,
-            };
-        }
-
-        // Case 2: Insert followed by updates - merge into single insert
-        if (operations[0] === 'insert') {
-            const merged_data = this.merge_changes(changes);
-            return {
-                table: table_name,
-                operation: 'insert',
-                record_id,
-                data: merged_data,
-                change_ids,
-            };
-        }
-
-        // Case 3: Only updates - merge into single update with only changed fields
-        if (operations.every(op => op === 'update')) {
-            const merged_data = this.merge_changes(changes);
-            const minimal_data = this.extract_minimal_update(merged_data);
-            
-            return {
-                table: table_name,
-                operation: 'update',
-                record_id,
-                data: minimal_data,
-                change_ids,
-            };
-        }
-
-        // Default: return the latest change
-        const latest = changes[changes.length - 1];
-        return {
-            table: table_name,
-            operation: latest.operation,
-            record_id,
-            data: latest.data as Record<string, unknown>,
-            change_ids,
-        };
-    }
-
-    /**
-     * Merge multiple change records into a single data object
-     * Later changes override earlier ones
-     */
-    private static merge_changes(changes: ChangeLogRow[]): Record<string, unknown> {
-        let merged: Record<string, unknown> = {};
-
-        for (const change of changes) {
-            const data = change.data as Record<string, unknown>;
-            merged = { ...merged, ...data };
-        }
-
-        return merged;
-    }
-
-    /**
-     * Extract only the fields that were actually modified
-     * Remove metadata fields that don't need to sync
-     */
-    private static extract_minimal_update(data: Record<string, unknown>): Record<string, unknown> {
-        const minimal: Record<string, unknown> = {};
-        
-        // Fields to always exclude from updates (managed server-side)
-        const excluded_fields = ['id', 'created_at'];
-        
-        // Only include fields that have actual values and aren't excluded
-        for (const [key, value] of Object.entries(data)) {
-            if (excluded_fields.includes(key)) continue;
-            
-            // Skip null/undefined values
-            if (value === null || value === undefined) continue;
-            
-            // Skip empty strings for optional fields
-            if (value === '' && this.is_optional_field(key)) continue;
-            
-            // Skip empty arrays for optional array fields
-            if (Array.isArray(value) && value.length === 0 && this.is_optional_field(key)) continue;
-            
-            minimal[key] = value;
-        }
-        
-        // Always include modified_at for tracking
-        minimal.modified_at = data.modified_at || Date.now();
-        
-        return minimal;
-    }
-
-    /**
-     * Check if a field is optional (can be omitted if empty)
-     */
-    private static is_optional_field(field_name: string): boolean {
-        const optional_fields = [
-            'alt_title',
-            'prods',
-            'genre',
-            'description',
-            'youtube_id',
-            'youtubemusic_id',
-            'soundcloud_permalink',
-            'spotify_id',
-            'amazonmusic_id',
-            'applemusic_id',
-            'bandlab_id',
-            'artwork_url',
-            'thumbnail_uri',
-            'lyrics_uri',
-        ];
-        
-        return optional_fields.includes(field_name);
+        return compress_record_changes(table_name, record_id, changes);
     }
 
     /**

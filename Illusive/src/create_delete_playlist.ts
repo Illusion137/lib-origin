@@ -2,8 +2,7 @@ import { remove } from '@common/utils/clean_util';
 import * as Origin from '@origin/index'
 import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import { supabase } from '@illusive/db/supabase';
-import { gen_uuid } from '@common/utils/util';
+import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 
 export async function spotify_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -90,19 +89,12 @@ export async function soundcloud_delete_playlist(playlist_url: string) {
 }
 
 export async function illusi_create_playlist(playlist_name: string): Promise<string> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return '';
-
-    const uuid = gen_uuid();
-    const result = await Origin.Illusi.create_playlist(playlist_name, uuid, { jwt: session.access_token });
-    if ('error' in result) return '';
-    return create_uri('illusi', result.uuid);
+    const uuid = await SQLPlaylists.create_playlist(playlist_name);
+    return create_uri('illusi', uuid);
 }
 
 export async function illusi_delete_playlist(playlist_uri: string): Promise<boolean> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return false;
-
     const uuid = playlist_uri.split(':')[1];
-    return Origin.Illusi.delete_playlist(uuid, { jwt: session.access_token });
+    await SQLPlaylists.delete_playlist(uuid);
+    return true;
 }

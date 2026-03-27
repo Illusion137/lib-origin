@@ -185,7 +185,7 @@ export async function soundcloud_search_continuation(opts: SoundcloudSearchConti
 }
 
 export async function illusi_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase().auth.getSession();
     if (!session) return default_search();
 
     const result = await Origin.Illusi.search_tracks(query, opts?.limit ?? 50, { jwt: session.access_token });
