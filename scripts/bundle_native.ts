@@ -1,7 +1,7 @@
 /**
  * bundle_native.ts
  *
- * Packages roze/native as a standalone @roze/native npm package.
+ * Packages @sumi/native as a standalone @sumi137/roze npm package.
  *
  * Usage:
  *   ts-node -T scripts/bundle_native.ts
@@ -49,9 +49,9 @@ function ensure_dir(p: string) {
     fs.mkdirSync(p, { recursive: true });
 }
 
-function resolve_pkg_version(pkg: string): string {
+function resolve_pkg_version(pkg: string): string | null {
     const all = { ...(ROOT_PKG.dependencies ?? {}), ...(ROOT_PKG.devDependencies ?? {}) };
-    return all[pkg] ?? "*";
+    return all[pkg] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -263,15 +263,17 @@ async function main() {
     const NODE_BUILTINS = new Set(["fs", "path", "os", "child_process", "stream", "events", "util", "crypto", "http", "https", "buffer", "url", "assert", "net", "tls", "dns", "zlib"]);
     for (const pkg of [...all_external_pkgs].sort()) {
         if (NODE_BUILTINS.has(pkg)) continue;
-        deps[pkg] = resolve_pkg_version(pkg);
+        const version = resolve_pkg_version(pkg);
+        if (version === null) continue; // internal/private — not on npm
+        deps[pkg] = version;
     }
 
     const pkg_json = {
-        name: "@roze/native",
-        version: "1.0.0",
+        name: "@sumi137/native",
+        version: "1.0.1",
         description: "Cross-platform native modules for roze (node + react-native)",
-        main: "gen/load_native_modules.ts",
-        types: "gen/load_native_modules.ts",
+        main: "index.ts",
+        types: "index.ts",
         license: "MIT",
         dependencies: deps
     };
@@ -298,16 +300,16 @@ async function main() {
     console.log("Generated tsconfig.json");
 
     // --- Generate README.md ---
-    const readme = `# @roze/native
+    const readme = `sumi137roze/native
 
 Cross-platform native module bindings for node.js and React Native.
 
 ## Installation
 
 \`\`\`bash
-npm install @roze/native
+npm install @sumi137/native
 # or
-yarn add @roze/native
+yarn add @sumi137/native
 \`\`\`
 
 ## Metro configuration
@@ -335,7 +337,7 @@ Add the following to your \`tsconfig.json\` to resolve \`@native/*\` imports:
 {
     "compilerOptions": {
         "paths": {
-            "@native/*": ["./node_modules/@roze/native/*"]
+            "@native/*": ["./node_modules/@rsumi137native/*"]
         }
     }
 }
@@ -344,13 +346,18 @@ Add the following to your \`tsconfig.json\` to resolve \`@native/*\` imports:
 ## Usage
 
 \`\`\`typescript
-import { load_native_modules } from "@roze/native/gen/load_native_modules";
+import { load_native_modules } from "@roze/nsumi137gen/load_native_modules";
 
 await load_native_modules();
 \`\`\`
 `;
     fs.writeFileSync(path.join(OUT_DIR, "README.md"), readme, "utf8");
     console.log("Generated README.md");
+
+    // --- Generate index.ts (root entry point) ---
+    const index_ts = `export { load_native_modules } from "./gen/load_native_modules";\n`;
+    fs.writeFileSync(path.join(OUT_DIR, "index.ts"), index_ts, "utf8");
+    console.log("Generated index.ts");
 
     // --- Summary ---
     const all_out = walk_ts(OUT_DIR);
