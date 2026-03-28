@@ -36,6 +36,15 @@ type SyncableLocalTableName = 'tracks' | 'playlists' | 'playlists_tracks' | 'new
 const SYNCABLE_TABLES: SyncableLocalTableName[] = ['tracks', 'playlists', 'playlists_tracks', 'new_releases'];
 const BATCH_SIZE = 50;
 const PULL_PAGE_SIZE = 1000;
+const IN_CLAUSE_CHUNK_SIZE = 300;
+
+function chunk_array<T>(arr: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+}
 
 function safe_to_iso(value: unknown): string {
     if (value == null) return new Date().toISOString();
@@ -193,7 +202,16 @@ export class SyncEngine {
             return;
         }
 
-        await this.initial_sync_tracks(user_uid);
+        try {
+            await this.initial_sync_tracks(user_uid);
+        } catch (error) {
+            if (error !== null && typeof error === 'object' && 'code' in error && (error as { code: unknown }).code === 'PGRST202') {
+                // Migration not yet applied or PostgREST schema cache stale — skip and retry on next start
+                console.warn('[SyncEngine] resolve_or_insert_tracks not in schema cache (PGRST202) — initial sync deferred');
+                return;
+            }
+            throw error;
+        }
         await this.initial_sync_playlists(user_uid);
         await this.initial_sync_playlists_tracks();
         await this.initial_sync_new_releases(user_uid);
@@ -215,7 +233,7 @@ export class SyncEngine {
             // Use RPC to atomically resolve service ID collisions
             const tracks_json = batch.map(t => this.track_to_global_insert(t));
             const { data: mappings, error: rpc_err } = await this.supabase
-                .rpc('resolve_or_insert_tracks', { tracks_json: JSON.stringify(tracks_json) });
+                .rpc('resolve_or_insert_tracks', { tracks_json });
 
             if (rpc_err) throw rpc_err;
 
@@ -229,23 +247,29 @@ export class SyncEngine {
             }
 
             // Re-read the batch after potential UID remaps to get canonical UIDs
-            const remapped_batch = await Promise.all(
-                batch.map(async t => {
-                    const remapped = mappings?.find(m => m.local_uid === t.uid);
-                    const uid = remapped?.canonical_uid ?? t.uid;
-                    const current = await db.select().from(tracks_table)
-                        .where(eq(tracks_table.uid, uid)).get();
-                    return current ?? { ...t, uid };
-                })
-            );
+            const remapped_batch: LocalTrack[] = [];
+            const seen_uids = new Set<string>();
+            for (const t of batch) {
+                const remapped = mappings?.find(m => m.local_uid === t.uid);
+                const uid = remapped?.canonical_uid ?? t.uid;
+                // Skip duplicates (two batch items may have merged into the same canonical UID)
+                if (seen_uids.has(uid)) continue;
+                seen_uids.add(uid);
+                const current = await db.select().from(tracks_table)
+                    .where(eq(tracks_table.uid, uid)).get();
+                if (!current) continue; // Track was merged away by a prior remap in this batch
+                remapped_batch.push(current);
+            }
 
             // Upsert utracks with canonical UIDs
-            const { error: ue } = await this.supabase.from('utracks')
-                .upsert(
-                    remapped_batch.map(t => this.track_to_utrack_insert(t, user_uid)),
-                    { onConflict: 'user_uid,track_uid' }
-                );
-            if (ue) throw ue;
+            if (remapped_batch.length > 0) {
+                const { error: ue } = await this.supabase.from('utracks')
+                    .upsert(
+                        remapped_batch.map(t => this.track_to_utrack_insert(t, user_uid)),
+                        { onConflict: 'user_uid,track_uid' }
+                    );
+                if (ue) throw ue;
+            }
         }
     }
 
@@ -383,30 +407,40 @@ export class SyncEngine {
     // Check if an existing global track shares any service ID with the given local track.
     // Returns the remote canonical uid, or the local uid if no collision is found.
     private async resolve_canonical_uid(track: LocalTrack): Promise<string> {
-        const filter_parts: string[] = [];
+        const service_id_checks: [string, string | number][] = [];
 
-        if (track.youtube_id)           filter_parts.push(`youtube_id.eq.${track.youtube_id}`);
-        if (track.youtubemusic_id)      filter_parts.push(`youtubemusic_id.eq.${track.youtubemusic_id}`);
-        if (track.soundcloud_id)        filter_parts.push(`soundcloud_id.eq.${track.soundcloud_id}`);
-        if (track.soundcloud_permalink) filter_parts.push(`soundcloud_permalink.eq.${track.soundcloud_permalink}`);
-        if (track.spotify_id)           filter_parts.push(`spotify_id.eq.${track.spotify_id}`);
-        if (track.amazonmusic_id)       filter_parts.push(`amazonmusic_id.eq.${track.amazonmusic_id}`);
-        if (track.applemusic_id)        filter_parts.push(`applemusic_id.eq.${track.applemusic_id}`);
-        if (track.bandlab_id)           filter_parts.push(`bandlab_id.eq.${track.bandlab_id}`);
-        if (track.illusi_id)            filter_parts.push(`illusi_id.eq.${track.illusi_id}`);
-        if (track.imported_id)          filter_parts.push(`imported_id.eq.${track.imported_id}`);
+        if (track.youtube_id)           service_id_checks.push(['youtube_id', track.youtube_id]);
+        if (track.youtubemusic_id)      service_id_checks.push(['youtubemusic_id', track.youtubemusic_id]);
+        if (track.soundcloud_id)        service_id_checks.push(['soundcloud_id', track.soundcloud_id]);
+        if (track.soundcloud_permalink) service_id_checks.push(['soundcloud_permalink', track.soundcloud_permalink]);
+        if (track.spotify_id)           service_id_checks.push(['spotify_id', track.spotify_id]);
+        if (track.amazonmusic_id)       service_id_checks.push(['amazonmusic_id', track.amazonmusic_id]);
+        if (track.applemusic_id)        service_id_checks.push(['applemusic_id', track.applemusic_id]);
+        if (track.bandlab_id)           service_id_checks.push(['bandlab_id', track.bandlab_id]);
+        if (track.illusi_id)            service_id_checks.push(['illusi_id', track.illusi_id]);
+        if (track.imported_id)          service_id_checks.push(['imported_id', track.imported_id]);
 
-        if (filter_parts.length === 0) return track.uid;
+        if (service_id_checks.length === 0) return track.uid;
 
-        const { data, error } = await this.supabase
-            .from('tracks')
-            .select('uid')
-            .or(filter_parts.join(','))
-            .neq('uid', track.uid)
-            .limit(1);
-        this.assert_supabase_ok(`resolve_canonical_uid ${track.uid}`, error);
+        // Query each service ID individually to avoid PostgREST filter injection
+        // from values containing special characters (commas, dots, etc.)
+        const results = await Promise.all(
+            service_id_checks.map(([column, value]) =>
+                this.supabase
+                    .from('tracks')
+                    .select('uid')
+                    .eq(column, value)
+                    .neq('uid', track.uid)
+                    .limit(1)
+            )
+        );
 
-        return data?.[0]?.uid ?? track.uid;
+        for (const { data, error } of results) {
+            this.assert_supabase_ok(`resolve_canonical_uid ${track.uid}`, error);
+            if (data && data.length > 0) return data[0].uid;
+        }
+
+        return track.uid;
     }
 
     // -------------------------------------------------------------------------
@@ -436,6 +470,23 @@ export class SyncEngine {
             }
 
             // 2. Update playlists_tracks references
+            // First, delete rows where old_uid would collide with an existing new_uid in the same playlist
+            const old_uid_rows = await tx.select().from(playlists_tracks_table)
+                .where(eq(playlists_tracks_table.track_uid, old_uid));
+            for (const row of old_uid_rows) {
+                const conflict = await tx.select().from(playlists_tracks_table)
+                    .where(and(
+                        eq(playlists_tracks_table.uuid, row.uuid),
+                        eq(playlists_tracks_table.track_uid, new_uid)
+                    )).get();
+                if (conflict) {
+                    await tx.delete(playlists_tracks_table)
+                        .where(and(
+                            eq(playlists_tracks_table.uuid, row.uuid),
+                            eq(playlists_tracks_table.track_uid, old_uid)
+                        ));
+                }
+            }
             await tx.update(playlists_tracks_table)
                 .set({ track_uid: new_uid })
                 .where(eq(playlists_tracks_table.track_uid, old_uid));
@@ -503,16 +554,20 @@ export class SyncEngine {
             return;
         }
 
+        const colon_idx = change.record_id.indexOf(':');
+        const playlist_uuid = change.record_id.substring(0, colon_idx);
+        const track_uid = change.record_id.substring(colon_idx + 1);
+
         const full_pt = await db.select().from(playlists_tracks_table)
             .where(and(
-                eq(playlists_tracks_table.uuid, (change.data as Partial<LocalPlaylistTrack>).uuid ?? ''),
-                eq(playlists_tracks_table.track_uid, (change.data as Partial<LocalPlaylistTrack>).track_uid ?? '')
+                eq(playlists_tracks_table.uuid, playlist_uuid),
+                eq(playlists_tracks_table.track_uid, track_uid)
             )).get();
+        if (!full_pt) return;
 
-        const pt = full_pt ?? change.data as LocalPlaylistTrack;
-        await this.assert_user_owns_playlist(pt.uuid, user_uid);
+        await this.assert_user_owns_playlist(full_pt.uuid, user_uid);
         const { error } = await this.supabase.from('playlists_tracks')
-            .upsert(this.playlist_track_to_insert(pt), { onConflict: 'uuid,track_uid' });
+            .upsert(this.playlist_track_to_insert(full_pt), { onConflict: 'uuid,track_uid' });
         this.assert_supabase_ok(`push_playlist_track_change upsert ${change.record_id}`, error);
     }
 
@@ -636,38 +691,42 @@ export class SyncEngine {
         // Also pull tracks enriched by other users since last sync
         const owned_uids = await this.get_owned_track_uids(user_uid);
         if (owned_uids.length > 0) {
-            offset = 0;
-            while (true) {
-                const { data: enriched, error: t_err } = await this.supabase
-                    .from('tracks')
-                    .select('*')
-                    .gte('modified_at', last_sync_iso)
-                    .lte('modified_at', pull_started_iso)
-                    .in('uid', owned_uids)
-                    .order('modified_at', { ascending: true })
-                    .order('uid', { ascending: true })
-                    .range(offset, offset + PULL_PAGE_SIZE - 1);
+            // Batch owned_uids to avoid PostgREST URL length limits on .in()
+            const uid_chunks = chunk_array(owned_uids, IN_CLAUSE_CHUNK_SIZE);
+            for (const uid_chunk of uid_chunks) {
+                offset = 0;
+                while (true) {
+                    const { data: enriched, error: t_err } = await this.supabase
+                        .from('tracks')
+                        .select('*')
+                        .gte('modified_at', last_sync_iso)
+                        .lte('modified_at', pull_started_iso)
+                        .in('uid', uid_chunk)
+                        .order('modified_at', { ascending: true })
+                        .order('uid', { ascending: true })
+                        .range(offset, offset + PULL_PAGE_SIZE - 1);
 
-                if (t_err) throw t_err;
-                if (!enriched || enriched.length === 0) break;
+                    if (t_err) throw t_err;
+                    if (!enriched || enriched.length === 0) break;
 
-                for (const track_row of enriched) {
-                    const local = await db.select().from(tracks_table)
-                        .where(eq(tracks_table.uid, track_row.uid)).get();
-                    if (!local) continue;
+                    for (const track_row of enriched) {
+                        const local = await db.select().from(tracks_table)
+                            .where(eq(tracks_table.uid, track_row.uid)).get();
+                        if (!local) continue;
 
-                    // Accumulate enrichment from other users — local wins ties
-                    const merged_fields = this.accumulate_merge_local(local, track_row);
-                    await db.update(tracks_table).set(merged_fields)
-                        .where(eq(tracks_table.uid, track_row.uid));
+                        // Accumulate enrichment from other users — local wins ties
+                        const merged_fields = this.accumulate_merge_local(local, track_row);
+                        await db.update(tracks_table).set(merged_fields)
+                            .where(eq(tracks_table.uid, track_row.uid));
 
-                    // Update in-memory
-                    const updated = { ...local, ...merged_fields };
-                    SQLGlobal.update_global_track_item(track_row.uid, updated as LocalTrack);
+                        // Update in-memory
+                        const updated = { ...local, ...merged_fields };
+                        SQLGlobal.update_global_track_item(track_row.uid, updated as LocalTrack);
+                    }
+
+                    if (enriched.length < PULL_PAGE_SIZE) break;
+                    offset += enriched.length;
                 }
-
-                if (enriched.length < PULL_PAGE_SIZE) break;
-                offset += enriched.length;
             }
         }
 
@@ -892,53 +951,57 @@ export class SyncEngine {
         const playlist_uuids = (user_playlists ?? []).map(p => p.uuid);
         if (playlist_uuids.length === 0) return;
 
-        let offset = 0;
-        while (true) {
-            const { data, error } = await this.supabase
-                .from('playlists_tracks')
-                .select('*')
-                .in('uuid', playlist_uuids)
-                .gte('modified_at', last_sync_iso)
-                .lte('modified_at', pull_started_iso)
-                .order('modified_at', { ascending: true })
-                .order('id', { ascending: true })
-                .range(offset, offset + PULL_PAGE_SIZE - 1);
+        // Batch playlist UUIDs to avoid PostgREST URL length limits on .in()
+        const uuid_chunks = chunk_array(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
+        for (const uuid_chunk of uuid_chunks) {
+            let offset = 0;
+            while (true) {
+                const { data, error } = await this.supabase
+                    .from('playlists_tracks')
+                    .select('*')
+                    .in('uuid', uuid_chunk)
+                    .gte('modified_at', last_sync_iso)
+                    .lte('modified_at', pull_started_iso)
+                    .order('modified_at', { ascending: true })
+                    .order('id', { ascending: true })
+                    .range(offset, offset + PULL_PAGE_SIZE - 1);
 
-            if (error) throw error;
-            if (!data || data.length === 0) break;
+                if (error) throw error;
+                if (!data || data.length === 0) break;
 
-            for (const row of data) {
-                const existing = await db.select().from(playlists_tracks_table)
-                    .where(and(
-                        eq(playlists_tracks_table.uuid, row.uuid),
-                        eq(playlists_tracks_table.track_uid, row.track_uid)
-                    )).get();
+                for (const row of data) {
+                    const existing = await db.select().from(playlists_tracks_table)
+                        .where(and(
+                            eq(playlists_tracks_table.uuid, row.uuid),
+                            eq(playlists_tracks_table.track_uid, row.track_uid)
+                        )).get();
 
-                if (row.deleted) {
+                    if (row.deleted) {
+                        if (existing) {
+                            await db.delete(playlists_tracks_table)
+                                .where(and(
+                                    eq(playlists_tracks_table.uuid, row.uuid),
+                                    eq(playlists_tracks_table.track_uid, row.track_uid)
+                                ));
+                        }
+                        continue;
+                    }
+
+                    const local = this.remote_playlist_track_to_local(row);
                     if (existing) {
-                        await db.delete(playlists_tracks_table)
+                        await db.update(playlists_tracks_table).set(local)
                             .where(and(
                                 eq(playlists_tracks_table.uuid, row.uuid),
                                 eq(playlists_tracks_table.track_uid, row.track_uid)
                             ));
+                    } else {
+                        await db.insert(playlists_tracks_table).values(local);
                     }
-                    continue;
                 }
 
-                const local = this.remote_playlist_track_to_local(row);
-                if (existing) {
-                    await db.update(playlists_tracks_table).set(local)
-                        .where(and(
-                            eq(playlists_tracks_table.uuid, row.uuid),
-                            eq(playlists_tracks_table.track_uid, row.track_uid)
-                        ));
-                } else {
-                    await db.insert(playlists_tracks_table).values(local);
-                }
+                if (data.length < PULL_PAGE_SIZE) break;
+                offset += data.length;
             }
-
-            if (data.length < PULL_PAGE_SIZE) break;
-            offset += data.length;
         }
 
         await this.save_pull_watermark('playlists_tracks', pull_started_at);

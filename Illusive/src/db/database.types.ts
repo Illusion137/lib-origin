@@ -303,7 +303,7 @@ export interface Database {
         Views: Record<never, never>
         Functions: {
             resolve_or_insert_tracks: {
-                Args: { tracks_json: string }
+                Args: { tracks_json: unknown }
                 Returns: { local_uid: string; canonical_uid: string }[]
             }
         }

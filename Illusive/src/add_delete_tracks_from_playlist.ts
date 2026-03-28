@@ -4,7 +4,6 @@ import { Constants } from '@illusive/constants';
 import { Prefs } from '@illusive/prefs';
 import type { Track } from '@illusive/types';
 import type { ResponseError } from '@common/types';
-import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 
 export async function spotify_add_tracks_to_playlist(tracks: Track[], playlist_uri: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -130,17 +129,19 @@ export async function soundcloud_delete_tracks_from_playlist(tracks: Track[], pl
 }
 
 export async function illusi_add_tracks_to_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
-    const uuid = playlist_uri.split(':')[1];
-    const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
-    for(const row of rows){
-        await SQLPlaylists.insert_track_playlist(row);
-    }
-    return true;
+    // const uuid = playlist_uri.split(':')[1];
+    // const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
+    // for(const row of rows){
+    //     await SQLPlaylists.insert_track_playlist(row);
+    // }
+    // return true;
+    return false;
 }
 
 export async function illusi_delete_tracks_from_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
-    const uuid = playlist_uri.split(':')[1];
-    const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
-    await SQLPlaylists.delete_all_tracks_playlist(rows);
-    return true;
+    // const uuid = playlist_uri.split(':')[1];
+    // const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
+    // await SQLPlaylists.delete_all_tracks_playlist(rows);
+    // return true;
+    return false;
 }

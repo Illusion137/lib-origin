@@ -2,7 +2,6 @@ import { remove } from '@common/utils/clean_util';
 import * as Origin from '@origin/index'
 import { create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 
 export async function spotify_create_playlist(playlist_name: string) {
     const cookie_jar = Prefs.get_pref('spotify_cookie_jar');
@@ -89,12 +88,14 @@ export async function soundcloud_delete_playlist(playlist_url: string) {
 }
 
 export async function illusi_create_playlist(playlist_name: string): Promise<string> {
-    const uuid = await SQLPlaylists.create_playlist(playlist_name);
-    return create_uri('illusi', uuid);
+    // const uuid = await SQLPlaylists.create_playlist(playlist_name);
+    // return create_uri('illusi', uuid);
+    return "";
 }
 
 export async function illusi_delete_playlist(playlist_uri: string): Promise<boolean> {
-    const uuid = playlist_uri.split(':')[1];
-    await SQLPlaylists.delete_playlist(uuid);
-    return true;
+    // const uuid = playlist_uri.split(':')[1];
+    // await SQLPlaylists.delete_playlist(uuid);
+    // return true;
+    return false;
 }
