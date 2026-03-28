@@ -1046,20 +1046,24 @@ export class SyncEngine {
             if (!data || data.length === 0) break;
 
             for (const row of data) {
+                // Remote and local IDs are independent autoincrement sequences,
+                // so match by the unique `title` column instead.
+                const title_value = (typeof row.title === 'string'
+                    ? JSON.parse(row.title) : row.title) as LocalNewRelease['title'];
+
                 if (row.deleted) {
-                    await db.delete(new_releases_table).where(eq(new_releases_table.id, row.id));
+                    await db.delete(new_releases_table)
+                        .where(eq(new_releases_table.title, title_value));
                     continue;
                 }
 
                 const local = this.remote_new_release_to_local(row);
-                const existing = await db.select().from(new_releases_table)
-                    .where(eq(new_releases_table.id, row.id)).get();
-
-                if (existing) {
-                    await db.update(new_releases_table).set(local).where(eq(new_releases_table.id, row.id));
-                } else {
-                    await db.insert(new_releases_table).values(local);
-                }
+                await db.insert(new_releases_table)
+                    .values(local)
+                    .onConflictDoUpdate({
+                        target: new_releases_table.title,
+                        set: local,
+                    });
             }
 
             if (data.length < PULL_PAGE_SIZE) break;
