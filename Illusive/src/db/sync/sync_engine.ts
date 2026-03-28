@@ -575,21 +575,40 @@ export class SyncEngine {
     // New release push
     // -------------------------------------------------------------------------
     private async push_new_release_change(change: CompressedChange, user_uid: string) {
+        // record_id for new_releases is title.uri (a string), not the numeric id.
+        // For deletes, the numeric id is in change.data. For inserts/updates,
+        // look up the local row by the unique title field.
+        const data = change.data as Partial<LocalNewRelease> | null;
+
         if (change.operation === 'delete') {
+            const numeric_id = data?.id;
+            if (numeric_id == null) return; // Cannot identify remote row without id
             const { error } = await this.supabase.from('new_releases')
                 .update({ deleted: true })
-                .eq('id', Number(change.record_id))
+                .eq('id', numeric_id)
                 .eq('user_uid', user_uid);
             this.assert_supabase_ok(`push_new_release_change delete ${change.record_id}`, error);
             return;
         }
 
-        const full_release = await db.select().from(new_releases_table)
-            .where(eq(new_releases_table.id, Number(change.record_id))).get();
+        // Look up by numeric id if available (from change.data), otherwise scan by title URI
+        let full_release: LocalNewRelease | undefined;
+        if (data?.id != null) {
+            full_release = await db.select().from(new_releases_table)
+                .where(eq(new_releases_table.id, data.id)).get();
+        }
+        if (!full_release) {
+            // Fallback: find by title URI matching record_id
+            const all_releases = await db.select().from(new_releases_table);
+            full_release = all_releases.find(r => {
+                const title = typeof r.title === 'string' ? JSON.parse(r.title) : r.title;
+                return title?.uri === change.record_id;
+            });
+        }
         if (!full_release) return;
 
         const release: LocalNewRelease = change.operation === 'update'
-            ? { ...full_release, ...(change.data as Partial<LocalNewRelease>) }
+            ? { ...full_release, ...data }
             : full_release;
 
         const row = this.new_release_to_insert(release, user_uid);
