@@ -7,7 +7,7 @@ import { encode_params } from "@common/utils/fetch_util";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
-import { reinterpret_cast } from '../../../dist-roze-native/common/cast';
+import { reinterpret_cast } from '@common/cast';
 import type { ArtistStories } from "./types/ArtistStories";
 
 export namespace SoundCloud {
