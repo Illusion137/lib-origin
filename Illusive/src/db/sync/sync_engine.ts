@@ -3,11 +3,14 @@ import { ChangeTracker } from './change_tracker';
 import type { NetworkMonitor } from './network_monitor';
 import { db } from '../database';
 import {
+    backpack_table,
     change_log_table,
     new_releases_table,
     playlists_table,
     playlists_tracks_table,
+    recently_played_tracks_table,
     sync_metadata_table,
+    track_plays_table,
     tracks_table,
 } from '../schema';
 import { and, eq } from 'drizzle-orm';
@@ -491,7 +494,22 @@ export class SyncEngine {
                 .set({ track_uid: new_uid })
                 .where(eq(playlists_tracks_table.track_uid, old_uid));
 
-            // 3. Update pending change_log entries
+            // 3. Update backpack (full track copy keyed by uid)
+            await tx.update(backpack_table)
+                .set({ uid: new_uid })
+                .where(eq(backpack_table.uid, old_uid));
+
+            // 4. Update recently_played_tracks (full track copy keyed by uid)
+            await tx.update(recently_played_tracks_table)
+                .set({ uid: new_uid })
+                .where(eq(recently_played_tracks_table.uid, old_uid));
+
+            // 5. Update track_plays references
+            await tx.update(track_plays_table)
+                .set({ track_uid: new_uid })
+                .where(eq(track_plays_table.track_uid, old_uid));
+
+            // 6. Update pending change_log entries
             await tx.update(change_log_table)
                 .set({ record_id: new_uid })
                 .where(and(

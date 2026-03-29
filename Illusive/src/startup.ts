@@ -29,6 +29,7 @@ import { NetworkMonitor } from './db/sync/network_monitor';
 import { FutsalShuffle } from './futsal_shuffle';
 import { fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
+import { run_startup_links } from './linker';
 
 let sync_engine_instance: SyncEngine | null = null;
 let sync_engine_start_promise: Promise<void> | null = null;
@@ -169,6 +170,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         SQLfs.recreate_directories().catch(catch_log);
         warmup_client().catch(catch_log);
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
+        await run_startup_links(Prefs.get_pref('linker_links'));
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 

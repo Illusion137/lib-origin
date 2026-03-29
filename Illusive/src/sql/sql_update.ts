@@ -16,6 +16,7 @@ import type { LT1720 } from "@illusive/legacy/1720/legacy_types";
 import {
     artists_table,
     backpack_table,
+    change_log_table,
     new_releases_table,
     playlists_table,
     playlists_tracks_table,
@@ -210,5 +211,9 @@ export namespace SQLUpdate {
             }
             return true;
         });
+        await update_to("20.0.0", async() => {
+            await db.delete(change_log_table);
+            return true;
+        })
     }
 }

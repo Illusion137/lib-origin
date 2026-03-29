@@ -88,8 +88,8 @@ export namespace FutsalShuffle {
 
     export type BiasInfluence = RawBiasFactors;
 
-    export function get_bias_influence(tracks: Track[]): Map<string, BiasInfluence> {
-        if (!icache.cache_built) build_cache();
+    function get_bias_influence(tracks: Track[]): Map<string, BiasInfluence> {
+        build_cache();
 
         const bias_keys = Object.keys(Prefs.default_track_shuffle_bias) as (keyof RawBiasFactors)[];
         const raw: Map<string, RawBiasFactors> = new Map<string, RawBiasFactors>();
@@ -117,11 +117,30 @@ export namespace FutsalShuffle {
             for (const key of bias_keys) {
                 const min = mins[key]!;
                 const max = maxs[key]!;
-                influence[key] = max === min ? 0 : (factors[key] - min) / (max - min) * 2 - 1;
+                influence[key] = max === min ? 0 : (factors[key] - min) / (max - min);
             }
             result.set(track.uid, influence);
         }
         return result;
+    }
+
+    export function get_bias_visualizer_data(tracks: Track[]) {
+        const influences = get_bias_influence(tracks);
+        const bias = Prefs.get_pref('track_shuffle_bias');
+        const influences_values = [...influences.values()];
+        const keys = Object.keys(Prefs.default_track_shuffle_bias) as (keyof RawBiasFactors)[];
+        const data = new Array<number>(keys.length).fill(0);
+        for (const value of influences_values) {
+            for (let i = 0; i < keys.length; i++) {
+                data[i] += value[keys[i]] * Math.abs(bias[keys[i]]);
+            }
+        }
+        const max = Math.max(...data);
+        for (let i = 0; i < keys.length; i++) {
+            data[i] = max > 0 ? data[i] / max : 0;
+            if (isNaN(data[i])) data[i] = 0;
+        }
+        return data;
     }
 
     export function shuffle_weighted<T>(data: { weight: number, value: T }[]): T[] {
