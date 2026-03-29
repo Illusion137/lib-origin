@@ -8822,6 +8822,11 @@ react-native-canvas@^0.1.40:
   dependencies:
     ctx-polyfill "^1.1.4"
 
+react-native-carplay@^2.4.1-beta.0:
+  version "2.4.1-beta.0"
+  resolved "https://registry.yarnpkg.com/react-native-carplay/-/react-native-carplay-2.4.1-beta.0.tgz#985c44e4eae622e7d2cf17c5b996a0182dbf5a52"
+  integrity sha512-tYJymLgJi+0516niv4ApGVC+VgENX/uCYqCX81tewSILWnS6KR7M0A9+bHyNk8xoheFyYGruX7onYxU2U8ykPA==
+
 react-native-crypto@^2.2.0:
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/react-native-crypto/-/react-native-crypto-2.2.1.tgz#f4e2045f481f566f5aac4cf54ab51620128e908e"

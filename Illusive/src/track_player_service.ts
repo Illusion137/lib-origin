@@ -64,6 +64,7 @@ export async function setup_track_player(): Promise<boolean> {
         });
         await TrackPlayer.setRepeatMode(RepeatMode.Off);
         await TrackPlayer.setEqualizer(Prefs.equalizer_presets[Prefs.get_pref('equalizer_preset')] as unknown as number[]);
+        await TrackPlayer.setCrossFade(Prefs.get_pref('crossfade'));
         return true;
     }
     return true;

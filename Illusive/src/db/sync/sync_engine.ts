@@ -1082,7 +1082,7 @@ export class SyncEngine {
             title:                t.title,
             alt_title:            t.alt_title,
             artists:              t.artists,
-            duration:             Math.round(t.duration),
+            ...(t.duration > 0 ? { duration: Math.round(t.duration) } : {}),
             prods:                t.prods,
             genre:                t.genre,
             tags:                 t.tags,

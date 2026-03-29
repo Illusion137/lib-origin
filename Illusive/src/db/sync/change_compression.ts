@@ -94,11 +94,16 @@ function extract_minimal_update(data: Record<string, unknown>): Record<string, u
         if (value === null || value === undefined) continue;
         if (value === '' && is_optional_field(key)) continue;
         if (Array.isArray(value) && value.length === 0 && is_optional_field(key)) continue;
+        if (value === 0 && is_zero_means_unknown_field(key)) continue;
         minimal[key] = value;
     }
 
     minimal.modified_at = data.modified_at || Date.now();
     return minimal;
+}
+
+function is_zero_means_unknown_field(field_name: string): boolean {
+    return field_name === 'duration';
 }
 
 function is_optional_field(field_name: string): boolean {

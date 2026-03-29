@@ -16,7 +16,7 @@ export namespace FutsalShuffle {
         track_uid_to_weight: new Map<string, number>()
     };
     export function build_cache() {
-        icache.max_plays_in_library = Math.max(...GLOBALS.global_var.sql_tracks.map(track => track.meta?.plays ?? 0));
+        icache.max_plays_in_library = Math.max(1, ...GLOBALS.global_var.sql_tracks.map(track => track.meta?.plays ?? 0));
         icache.most_recent_played_ms = Math.max(...GLOBALS.global_var.sql_tracks.map(track => track.meta?.last_played_date ? new Date(track.meta.last_played_date).getTime() : 0));
         icache.most_recent_added_ms = Math.max(...GLOBALS.global_var.sql_tracks.map(track => track.meta?.added_date ? new Date(track.meta.added_date).getTime() : 0));
         icache.plays_from_albums.clear();
@@ -24,9 +24,9 @@ export namespace FutsalShuffle {
         icache.plays_in_past_month.clear();
         GLOBALS.global_var.sql_tracks.forEach(track => {
             if (track.album?.uri)
-                icache.plays_from_albums.set(track.album.uri, (icache.plays_from_albums.get(track.album.uri) ?? 0) + 1);
+                icache.plays_from_albums.set(track.album.uri, (icache.plays_from_albums.get(track.album.uri) ?? 0) + (track.meta?.plays ?? 0));
             if (track.artists?.[0]?.uri)
-                icache.plays_from_artist.set(track.artists[0].uri, (icache.plays_from_artist.get(track.artists[0].uri) ?? 0) + 1);
+                icache.plays_from_artist.set(track.artists[0].uri, (icache.plays_from_artist.get(track.artists[0].uri) ?? 0) + (track.meta?.plays ?? 0));
             // TODO plays_in_past_month;
         });
 
@@ -45,42 +45,83 @@ export namespace FutsalShuffle {
             }
         }
 
-        return;
+        icache.cache_built = true;
     }
 
     const boolean_weight = 10;
     const too_long_duration = seconds_of({ minutes: 4 });
     const too_short_duration = seconds_of({ minutes: 1 });
-    function get_track_weight(track: Track): number {
-        let weight = 1;
-        const bias = Prefs.get_pref('track_shuffle_bias');
-        weight += bias.too_long_duration * (track.duration > too_long_duration ? Math.log2(track.duration - too_long_duration) : 0);
-        weight += bias.too_short_duration * (track.duration < too_short_duration ? Math.log2(too_short_duration - track.duration) : 0);
-        weight += bias.explicit * (track.explicit !== "EXPLICIT" ? 0 : boolean_weight);
-        weight += bias.no_explicit * (track.explicit === "EXPLICIT" ? 0 : boolean_weight);
-        weight += bias.has_lyrics_dl * (is_empty(track.lyrics_uri) ? 0 : boolean_weight);
-        weight += bias.has_thumbnail_dl * (is_empty(track.thumbnail_uri) ? 0 : boolean_weight);
-        weight += bias.is_downloaded * (is_empty(track.media_uri) ? 0 : boolean_weight);
-        weight += bias.last_played * (track.meta?.last_played_date
-            ? boolean_weight : Math.min(days_of(
-                {
-                    milliseconds:
-                        icache.most_recent_played_ms - new Date(track.meta?.last_played_date ?? 0).getTime()
-                }), 20));
-        weight += bias.plays_from_album * (icache.plays_from_albums.get(track.album?.uri ?? "") ?? 0);
-        weight += bias.plays_from_artist * (icache.plays_from_artist.get(track.artists?.[0]?.uri ?? "") ?? 0);
-        // TODO see if I want to keep this
-        // weight += bias.plays_in_past_month * (icache.plays_in_past_month.get(track.uid) ?? 0);
-        weight += bias.recent_add_date *
-            (!track.meta?.added_date || new Date(track.meta.added_date ?? 0).getTime() === 0
+
+    type RawBiasFactors = Record<keyof typeof Prefs.default_track_shuffle_bias, number>;
+
+    function get_raw_bias_factors(track: Track): RawBiasFactors {
+        return {
+            too_long_duration: track.duration > too_long_duration ? Math.log2(track.duration - too_long_duration) : 0,
+            too_short_duration: track.duration < too_short_duration ? Math.log2(too_short_duration - track.duration) : 0,
+            explicit: track.explicit !== "EXPLICIT" ? 0 : boolean_weight,
+            no_explicit: track.explicit === "EXPLICIT" ? 0 : boolean_weight,
+            has_lyrics_dl: is_empty(track.lyrics_uri) ? 0 : boolean_weight,
+            has_thumbnail_dl: is_empty(track.thumbnail_uri) ? 0 : boolean_weight,
+            is_downloaded: is_empty(track.media_uri) ? 0 : boolean_weight,
+            last_played: !track.meta?.last_played_date
+                ? boolean_weight
+                : Math.min(days_of({ milliseconds: icache.most_recent_played_ms - new Date(track.meta.last_played_date).getTime() }), 20),
+            plays_from_album: icache.plays_from_albums.get(track.album?.uri ?? "") ?? 0,
+            plays_from_artist: icache.plays_from_artist.get(track.artists?.[0]?.uri ?? "") ?? 0,
+            // plays_in_past_month: icache.plays_in_past_month.get(track.uid) ?? 0,
+            recent_add_date: !track.meta?.added_date || new Date(track.meta.added_date).getTime() === 0
                 ? 0
-                : Math.min(days_of(
-                    {
-                        milliseconds:
-                            icache.most_recent_added_ms - new Date(track.meta?.last_played_date ?? 0).getTime()
-                    }), 20));
-        weight += bias.total_plays * 100 * ((track.meta?.plays ?? 0) / icache.max_plays_in_library);
+                : Math.min(days_of({ milliseconds: icache.most_recent_added_ms - new Date(track.meta.added_date).getTime() }), 20),
+            total_plays: 100 * ((track.meta?.plays ?? 0) / icache.max_plays_in_library),
+        };
+    }
+
+    function get_track_weight(track: Track): number {
+        const bias = Prefs.get_pref('track_shuffle_bias');
+        const factors = get_raw_bias_factors(track);
+        let weight = 1;
+        for (const key of Object.keys(factors) as (keyof RawBiasFactors)[]) {
+            weight += bias[key] * factors[key];
+        }
         return weight;
+    }
+
+    export type BiasInfluence = RawBiasFactors;
+
+    export function get_bias_influence(tracks: Track[]): Map<string, BiasInfluence> {
+        if (!icache.cache_built) build_cache();
+
+        const bias_keys = Object.keys(Prefs.default_track_shuffle_bias) as (keyof RawBiasFactors)[];
+        const raw: Map<string, RawBiasFactors> = new Map<string, RawBiasFactors>();
+        for (const track of tracks) {
+            raw.set(track.uid, get_raw_bias_factors(track));
+        }
+
+        const mins: Partial<Record<keyof RawBiasFactors, number>> = {};
+        const maxs: Partial<Record<keyof RawBiasFactors, number>> = {};
+        for (const key of bias_keys) {
+            let min = Infinity, max = -Infinity;
+            for (const factors of raw.values()) {
+                const v = factors[key];
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            mins[key] = min;
+            maxs[key] = max;
+        }
+
+        const result = new Map<string, BiasInfluence>();
+        for (const track of tracks) {
+            const factors = raw.get(track.uid)!;
+            const influence = {} as BiasInfluence;
+            for (const key of bias_keys) {
+                const min = mins[key]!;
+                const max = maxs[key]!;
+                influence[key] = max === min ? 0 : (factors[key] - min) / (max - min) * 2 - 1;
+            }
+            result.set(track.uid, influence);
+        }
+        return result;
     }
 
     export function shuffle_weighted<T>(data: { weight: number, value: T }[]): T[] {
