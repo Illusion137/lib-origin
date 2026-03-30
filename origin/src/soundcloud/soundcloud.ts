@@ -195,7 +195,7 @@ export namespace SoundCloud {
         return { data: response_search_of, client_id: opts.client_id, hydration };
     }
     export async function apiget_cast<T>(opts: Opts & { path: string, params?: Record<string, any>, hydration_url?: string, requires_cookies?: boolean }) {
-        return reinterpret_cast<{ data: T, client_id: string | ResponseError, hyrdration: Awaited<ReturnType<typeof get_hydration>> }>(apiget(opts));
+        return reinterpret_cast<{ data: T, client_id: string | ResponseError, hydration: Awaited<ReturnType<typeof get_hydration>> }>(apiget(opts));
     }
     export async function apipost<T>(opts: Opts & { path: string, params?: Record<string, any>, payload: object | null, method?: FetchMethod, hydration_url?: string, }) {
         const has_cookies = requires_cookies(opts);
