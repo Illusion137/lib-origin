@@ -128,7 +128,7 @@ export async function soundcloud_delete_tracks_from_playlist(tracks: Track[], pl
     return true;
 }
 
-export async function illusi_add_tracks_to_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
+export async function illusi_add_tracks_to_playlist(_: Track[], __: string): Promise<boolean> {
     // const uuid = playlist_uri.split(':')[1];
     // const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
     // for(const row of rows){
@@ -138,7 +138,7 @@ export async function illusi_add_tracks_to_playlist(tracks: Track[], playlist_ur
     return false;
 }
 
-export async function illusi_delete_tracks_from_playlist(tracks: Track[], playlist_uri: string): Promise<boolean> {
+export async function illusi_delete_tracks_from_playlist(_: Track[], __: string): Promise<boolean> {
     // const uuid = playlist_uri.split(':')[1];
     // const rows = tracks.map(track => ({ uuid, track_uid: track.uid }));
     // await SQLPlaylists.delete_all_tracks_playlist(rows);

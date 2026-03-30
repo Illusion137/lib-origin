@@ -112,7 +112,8 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         // Start sync for the current session and maintain a single engine lifecycle.
         const { data: { session } } = await supabase().auth.getSession();
         if (session) {
-            await start_sync_engine().catch(catch_log);
+            // Do not block app startup on long-running initial sync.
+            void start_sync_engine().catch(catch_log);
         } else {
             stop_sync_engine();
         }

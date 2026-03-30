@@ -3,13 +3,15 @@ import { Prefs } from "@illusive/prefs";
 import type { LinkerLink } from "@illusive/types";
 import { Wifi } from "@illusive/illusi/src/wifi_utils";
 import { convert_playlist } from "@illusive/playlist_converter";
-import { get_playlist_tracks } from "@illusive/playlist_utils";
+import { get_playlist_tracks_with_error } from "@illusive/playlist_utils";
 import { GLOBALS } from "@illusive/globals";
 import type { ResponseError } from "@common/types";
 
 export async function run_link(link: LinkerLink){
-    const illusi_playlist_tracks = await get_playlist_tracks(link.illusi_uuid, GLOBALS.global_var.sql_tracks, true);
-    const other_service_tracks = await get_playlist_tracks(link.service_uri, GLOBALS.global_var.sql_tracks, link.full_service_playlist);
+    const illusi_playlist_tracks = await get_playlist_tracks_with_error(link.illusi_uuid, GLOBALS.global_var.sql_tracks, true);
+    if("error" in illusi_playlist_tracks) return illusi_playlist_tracks;
+    const other_service_tracks = await get_playlist_tracks_with_error(link.service_uri, GLOBALS.global_var.sql_tracks, link.full_service_playlist);
+    if("error" in other_service_tracks) return other_service_tracks;
     switch(link.type){
         case "OUTGOING": {
             const [music_service] = split_uri(link.service_uri);

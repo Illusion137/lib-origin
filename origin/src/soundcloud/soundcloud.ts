@@ -28,6 +28,12 @@ export namespace SoundCloud {
         return urlid(permalink, "m.soundcloud.com/", "soundcloud.com/", /\?.+/);
     }
     function page_method_options(opts: Opts): RoZFetchRequestInit {
+        const essential_cookie_names = ['oauth_token', 'datadome', '_soundcloud_session', 'sc_anonymous_id'];
+        const cookie_string = essential_cookie_names
+            .map(name => opts.cookie_jar?.getCookie(name))
+            .filter(Boolean)
+            .map(c => c!.toString())
+            .join('; ');
         return {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
@@ -42,7 +48,7 @@ export namespace SoundCloud {
                 "sec-fetch-mode": "navigate",
                 "sec-fetch-site": "same-origin",
                 "upgrade-insecure-requests": "1",
-                "cookie": opts.cookie_jar?.toString() as string
+                "cookie": cookie_string
             },
             referrerPolicy: "strict-origin-when-cross-origin",
             body: null,
@@ -57,6 +63,12 @@ export namespace SoundCloud {
     function api_method_options(opts: Opts): RoZFetchRequestInit {
         const datadome_cookie = opts.cookie_jar?.getCookie('datadome');
         const oauth_cookie = opts.cookie_jar?.getCookie('oauth_token');
+        const essential_cookie_names = ['oauth_token', 'datadome', '_soundcloud_session', 'sc_anonymous_id'];
+        const cookie_string = essential_cookie_names
+            .map(name => opts.cookie_jar?.getCookie(name))
+            .filter(Boolean)
+            .map(c => c!.toString())
+            .join('; ');
         return {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
@@ -72,7 +84,7 @@ export namespace SoundCloud {
                 "x-datadome-clientid": datadome_cookie?.getData()?.value as string,
                 "Referer": "https://soundcloud.com/",
                 "Referrer-Policy": "origin",
-                "cookie": opts.cookie_jar?.toString() as string
+                "cookie": cookie_string
             },
             body: null,
             method: "GET",
@@ -182,8 +194,8 @@ export namespace SoundCloud {
         if ("error" in response_search_of) return response_search_of;
         return { data: response_search_of, client_id: opts.client_id, hydration };
     }
-    export async function apiget_cast<T>(opts: Opts & { path: string, params?: Record<string, any>, hydration_url?: string, requires_cookies?: boolean }){
-        return reinterpret_cast<{data: T, client_id: string|ResponseError, hyrdration: Awaited<ReturnType<typeof get_hydration>>}>(apiget(opts));
+    export async function apiget_cast<T>(opts: Opts & { path: string, params?: Record<string, any>, hydration_url?: string, requires_cookies?: boolean }) {
+        return reinterpret_cast<{ data: T, client_id: string | ResponseError, hyrdration: Awaited<ReturnType<typeof get_hydration>> }>(apiget(opts));
     }
     export async function apipost<T>(opts: Opts & { path: string, params?: Record<string, any>, payload: object | null, method?: FetchMethod, hydration_url?: string, }) {
         const has_cookies = requires_cookies(opts);
@@ -404,7 +416,7 @@ export namespace SoundCloud {
             read_receipts: opts.artist_urns.map(urn => (
                 {
                     artist: urn,
-                    last_update_read: (new Date().toISOString().split('.')[0]+'Z')
+                    last_update_read: (new Date().toISOString().split('.')[0] + 'Z')
                 }
             ))
         }

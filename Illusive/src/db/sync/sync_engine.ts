@@ -13,7 +13,7 @@ import {
     track_plays_table,
     tracks_table,
 } from '../schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, lt } from 'drizzle-orm';
 import type {
     CompressedChange,
     LocalNewRelease,
@@ -40,6 +40,25 @@ const SYNCABLE_TABLES: SyncableLocalTableName[] = ['tracks', 'playlists', 'playl
 const BATCH_SIZE = 50;
 const PULL_PAGE_SIZE = 1000;
 const IN_CLAUSE_CHUNK_SIZE = 300;
+const INITIAL_SYNC_COMPLETE_MARKER = '_initial_sync_complete';
+const INITIAL_SYNC_STARTED_MARKER = '_initial_sync_started_at';
+const INITIAL_SYNC_STAGE_MARKERS = {
+    tracks: '_initial_sync_tracks_complete',
+    playlists: '_initial_sync_playlists_complete',
+    playlists_tracks: '_initial_sync_playlists_tracks_complete',
+    new_releases: '_initial_sync_new_releases_complete',
+} as const;
+
+interface InitialSyncStageResult {
+    uploaded: number;
+    skipped: number;
+    failed: number;
+}
+
+interface RemoteNewReleaseIdentityRow {
+    id: number;
+    deleted: boolean;
+}
 
 function chunk_array<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -61,6 +80,58 @@ function safe_to_epoch(value: unknown): number {
     return isNaN(d.getTime()) ? Date.now() : d.getTime();
 }
 
+function to_int32_or_null(value: unknown): number | null {
+    const n = Number(value);
+    if (!isFinite(n)) return null;
+    const r = Math.round(n);
+    if (r < -2147483648 || r > 2147483647) return null;
+    return r;
+}
+
+// Coerce to a PostgreSQL integer (int4) — clamps to 0 on NaN, non-finite, or int32 overflow.
+function safe_int(value: unknown): number {
+    const n = Number(value);
+    if (!isFinite(n)) return 0;
+    const r = Math.round(n);
+    if (r < -2147483648) return -2147483648;
+    if (r > 2147483647) return 2147483647;
+    return r;
+}
+
+function parse_playlist_track_record_id(record_id: string): { playlist_uuid: string; track_uid: string } | null {
+    const colon_idx = record_id.indexOf(':');
+    if (colon_idx <= 0 || colon_idx >= record_id.length - 1) return null;
+    return {
+        playlist_uuid: record_id.substring(0, colon_idx),
+        track_uid: record_id.substring(colon_idx + 1),
+    };
+}
+
+function new_release_identity_key(title_value: unknown): string | null {
+    if (title_value === null || title_value === undefined) return null;
+    const parsed = typeof title_value === 'string' ? (() => {
+        try {
+            return JSON.parse(title_value) as unknown;
+        } catch (error) {
+            console.warn('[SyncEngine] new_release identity parse failed for string title:', error);
+            return title_value;
+        }
+    })() : title_value;
+
+    if (!parsed) return null;
+    if (typeof parsed === 'object' && 'uri' in parsed) {
+        const uri = (parsed as { uri?: unknown }).uri;
+        if (typeof uri === 'string' && uri.length > 0) return `uri:${uri}`;
+    }
+
+    try {
+        return `json:${JSON.stringify(parsed)}`;
+    } catch {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+        return `raw:${String(parsed)}`;
+    }
+}
+
 async function get_authed_user_uid(supabase: SupabaseClient<Database>): Promise<string | null> {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.user?.id ?? null;
@@ -70,6 +141,7 @@ export class SyncEngine {
     private is_syncing = false;
     private is_initialized = false;
     private is_destroyed = false;
+    private initial_sync_promise?: Promise<void>;
     private destroy_generation = 0;
     private consecutive_failures = 0;
     private last_error_message?: string;
@@ -96,13 +168,127 @@ export class SyncEngine {
         throw new Error(`[SyncEngine] ${context} failed: ${message}`);
     }
 
+    private is_playlists_tracks_track_fk_error(error: unknown): boolean {
+        if (!error || typeof error !== 'object') return false;
+        const maybe = error as { code?: unknown; message?: unknown };
+        const code = typeof maybe.code === 'string' ? maybe.code : '';
+        const message = typeof maybe.message === 'string' ? maybe.message : '';
+        return code === '23503' && message.includes('playlists_tracks_track_uid_fkey');
+    }
+
+    private async is_initial_sync_stage_complete(stage_marker: string): Promise<boolean> {
+        const row = await db.select().from(sync_metadata_table)
+            .where(eq(sync_metadata_table.table_name, stage_marker)).get();
+        return Boolean(row);
+    }
+
+    private async mark_initial_sync_stage_complete(stage_marker: string) {
+        const now = Date.now();
+        await db.insert(sync_metadata_table)
+            .values({ table_name: stage_marker, last_sync_at: now, last_modified_at: now })
+            .onConflictDoUpdate({
+                target: sync_metadata_table.table_name,
+                set: { last_sync_at: now, last_modified_at: now },
+            });
+    }
+
+    private async list_remote_uuids(remote_table: 'playlists', user_uid: string): Promise<Set<string>> {
+        const result = new Set<string>();
+        let fetch_offset = 0;
+        while (true) {
+            const { data, error } = await this.supabase
+                .from(remote_table)
+                .select('uuid')
+                .eq('user_uid', user_uid)
+                .range(fetch_offset, fetch_offset + PULL_PAGE_SIZE - 1);
+            this.assert_supabase_ok(`initial_sync ${remote_table} progress fetch`, error);
+            if (!data || data.length === 0) break;
+            for (const row of data) result.add(row.uuid);
+            if (data.length < PULL_PAGE_SIZE) break;
+            fetch_offset += data.length;
+        }
+        return result;
+    }
+
+    private async list_remote_playlist_track_keys(user_uid: string): Promise<Set<string>> {
+        const keys = new Set<string>();
+        const playlist_uuids = await this.list_remote_uuids('playlists', user_uid);
+        if (playlist_uuids.size === 0) return keys;
+        const uuid_chunks = chunk_array([...playlist_uuids], IN_CLAUSE_CHUNK_SIZE);
+        for (const uuid_chunk of uuid_chunks) {
+            let fetch_offset = 0;
+            while (true) {
+                const { data, error } = await this.supabase
+                    .from('playlists_tracks')
+                    .select('uuid,track_uid')
+                    .in('uuid', uuid_chunk)
+                    .range(fetch_offset, fetch_offset + PULL_PAGE_SIZE - 1);
+                this.assert_supabase_ok('initial_sync playlists_tracks progress fetch', error);
+                if (!data || data.length === 0) break;
+                for (const row of data) {
+                    keys.add(`${row.uuid}:${row.track_uid}`);
+                }
+                if (data.length < PULL_PAGE_SIZE) break;
+                fetch_offset += data.length;
+            }
+        }
+        return keys;
+    }
+
+    private async list_remote_new_release_identity_index(user_uid: string): Promise<Map<string, RemoteNewReleaseIdentityRow>> {
+        const index = new Map<string, RemoteNewReleaseIdentityRow>();
+        let fetch_offset = 0;
+        while (true) {
+            const { data, error } = await this.supabase
+                .from('new_releases')
+                .select('id,title,deleted')
+                .eq('user_uid', user_uid)
+                .range(fetch_offset, fetch_offset + PULL_PAGE_SIZE - 1);
+            this.assert_supabase_ok('initial_sync new_releases progress fetch', error);
+            if (!data || data.length === 0) break;
+
+            this.refresh_new_release_identity_index(index, data);
+
+            if (data.length < PULL_PAGE_SIZE) break;
+            fetch_offset += data.length;
+        }
+        return index;
+    }
+
+    private refresh_new_release_identity_index(
+        index: Map<string, RemoteNewReleaseIdentityRow>,
+        rows: { id: number; title: unknown; deleted: boolean }[]
+    ) {
+        for (const row of rows) {
+            const key = new_release_identity_key(row.title);
+            if (key === null) continue;
+            const existing = index.get(key);
+            if (!existing) {
+                index.set(key, { id: row.id, deleted: row.deleted });
+                continue;
+            }
+            if (existing.deleted && !row.deleted) {
+                index.set(key, { id: row.id, deleted: row.deleted });
+                continue;
+            }
+            if (existing.deleted === row.deleted && row.id < existing.id) {
+                index.set(key, { id: row.id, deleted: row.deleted });
+            }
+        }
+    }
+
     schedule_sync(delay_ms = 3000) {
         if (this.is_destroyed) return;
         if (this.debounce_timeout) clearTimeout(this.debounce_timeout);
         const failure_multiplier = Math.min(Math.pow(2, Math.max(this.consecutive_failures - 1, 0)), 32);
         const effective_delay = Math.min(delay_ms * failure_multiplier, 5 * 60 * 1000);
         this.debounce_timeout = setTimeout(() => {
+            this.debounce_timeout = undefined;
             if (this.is_destroyed) return;
+            if (this.is_syncing) {
+                this.schedule_sync(1000);
+                return;
+            }
             this.sync().catch(catch_log);
         }, effective_delay);
     }
@@ -113,8 +299,9 @@ export class SyncEngine {
         this.is_initialized = true;
         ChangeTracker.set_on_change(() => this.schedule_sync());
         await this.initial_sync().catch((error) => {
-            this.is_initialized = false;
-            throw error;
+            // Don't rethrow — let the interval and network listeners still be set up
+            // so that subsequent sync() calls can retry initial_sync via the sentinel check.
+            console.warn('[SyncEngine] initial_sync failed, will retry on next sync:', error);
         });
 
         if (this.is_destroyed || initialize_generation !== this.destroy_generation) {
@@ -124,17 +311,24 @@ export class SyncEngine {
 
         this.network_subscription = this.network_monitor.on_network_change(async (isGoodTime) => {
             if (this.is_destroyed) return;
-            if (isGoodTime && !this.is_syncing) {
-                await this.sync().catch(catch_log);
+            if (isGoodTime) {
+                this.schedule_sync(500);
             }
         });
+
+        if (this.is_destroyed || initialize_generation !== this.destroy_generation) {
+            this.network_subscription?.();
+            this.network_subscription = undefined;
+            this.is_initialized = false;
+            return;
+        }
 
         this.sync_interval = setInterval(async () => {
             if (this.is_destroyed) return;
             const isGoodTime = await this.network_monitor.is_good_time_to_sync();
             if (this.is_destroyed) return;
-            if (isGoodTime && !this.is_syncing) {
-                await this.sync().catch(catch_log);
+            if (isGoodTime) {
+                this.schedule_sync(1000);
             }
         }, 5 * 60 * 1000);
     }
@@ -144,6 +338,8 @@ export class SyncEngine {
         this.last_sync_started_at = Date.now();
         try {
             this.is_syncing = true;
+            await this.initial_sync(); // no-op after first success (sentinel); retries if initial_sync previously failed
+            if (this.is_destroyed) return;
             await this.push_changes();
             if (this.is_destroyed) return;
             await this.pull_changes();
@@ -181,70 +377,187 @@ export class SyncEngine {
     // collisions and UID canonicalization.
     // -------------------------------------------------------------------------
     private async initial_sync() {
-        // Check local sentinel first — avoids a network round-trip on every cold start
-        const local_done = await db.select().from(sync_metadata_table)
-            .where(eq(sync_metadata_table.table_name, '_initial_sync_complete')).get();
-        if (local_done) return;
-
-        const user_uid = await get_authed_user_uid(this.supabase);
-        if (!user_uid) return;
-
-        // Fallback: no-op if this user already has remote data
-        const { data: existing, error: existing_err } = await this.supabase
-            .from('utracks')
-            .select('id')
-            .eq('user_uid', user_uid)
-            .limit(1);
-        this.assert_supabase_ok('initial_sync existing check', existing_err);
-
-        if (existing && existing.length > 0) {
-            // Remote data exists — mark sentinel so we skip the check next time
-            await db.insert(sync_metadata_table)
-                .values({ table_name: '_initial_sync_complete', last_sync_at: Date.now(), last_modified_at: Date.now() })
-                .onConflictDoUpdate({ target: sync_metadata_table.table_name, set: { last_sync_at: Date.now() } });
+        if (this.initial_sync_promise) {
+            await this.initial_sync_promise;
             return;
         }
 
-        try {
-            await this.initial_sync_tracks(user_uid);
-        } catch (error) {
-            if (error !== null && typeof error === 'object' && 'code' in error && (error as { code: unknown }).code === 'PGRST202') {
-                // Migration not yet applied or PostgREST schema cache stale — skip and retry on next start
-                console.warn('[SyncEngine] resolve_or_insert_tracks not in schema cache (PGRST202) — initial sync deferred');
+        this.initial_sync_promise = (async () => {
+            // Check local sentinel first — avoids a network round-trip on every cold start
+            const local_done = await db.select().from(sync_metadata_table)
+                .where(eq(sync_metadata_table.table_name, INITIAL_SYNC_COMPLETE_MARKER)).get();
+            if (local_done) return;
+
+            const user_uid = await get_authed_user_uid(this.supabase);
+            if (!user_uid) return;
+
+            const started_row = await db.select().from(sync_metadata_table)
+                .where(eq(sync_metadata_table.table_name, INITIAL_SYNC_STARTED_MARKER)).get();
+            const initial_sync_started_at = started_row?.last_sync_at ?? Date.now();
+            if (!started_row) {
+                await db.insert(sync_metadata_table)
+                    .values({
+                        table_name: INITIAL_SYNC_STARTED_MARKER,
+                        last_sync_at: initial_sync_started_at,
+                        last_modified_at: initial_sync_started_at,
+                    })
+                    .onConflictDoUpdate({
+                        target: sync_metadata_table.table_name,
+                        set: {
+                            last_sync_at: initial_sync_started_at,
+                            last_modified_at: initial_sync_started_at,
+                        },
+                    });
+            }
+
+            const stage_succeeded = (result: InitialSyncStageResult) => result.failed === 0;
+
+            let tracks_done = await this.is_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.tracks);
+            if (!tracks_done) {
+                try {
+                    const result = await this.initial_sync_tracks(user_uid);
+                    tracks_done = stage_succeeded(result);
+                    if (tracks_done) {
+                        await this.mark_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.tracks);
+                    }
+                } catch (error) {
+                    if (error !== null && typeof error === 'object' && 'code' in error && (error as { code: unknown }).code === 'PGRST202') {
+                        // Migration not yet applied or PostgREST schema cache stale — skip and retry on next start
+                        console.warn('[SyncEngine] resolve_or_insert_tracks not in schema cache (PGRST202) — initial sync deferred');
+                        return;
+                    }
+                    throw error;
+                }
+            }
+
+            let playlists_done = await this.is_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.playlists);
+            if (!playlists_done) {
+                const result = await this.initial_sync_playlists(user_uid);
+                playlists_done = stage_succeeded(result);
+                if (playlists_done) {
+                    await this.mark_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.playlists);
+                }
+            }
+
+            let playlists_tracks_done = await this.is_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.playlists_tracks);
+            if (!playlists_tracks_done) {
+                const result = await this.initial_sync_playlists_tracks(user_uid);
+                playlists_tracks_done = stage_succeeded(result);
+                if (playlists_tracks_done) {
+                    await this.mark_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.playlists_tracks);
+                }
+            }
+
+            let new_releases_done = await this.is_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.new_releases);
+            if (!new_releases_done) {
+                const result = await this.initial_sync_new_releases(user_uid);
+                // For new_releases, `skipped` means invalid local identity rows that should retry later.
+                new_releases_done = result.failed === 0 && result.skipped === 0;
+                if (new_releases_done) {
+                    await this.mark_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.new_releases);
+                }
+            }
+
+            if (!tracks_done || !playlists_done || !playlists_tracks_done || !new_releases_done) {
                 return;
             }
-            throw error;
+
+            // Drop only changes that existed before the first initial-sync attempt.
+            // Changes logged after initial-sync started must still be pushed.
+            await db.delete(change_log_table)
+                .where(lt(change_log_table.created_at, initial_sync_started_at));
+
+            const now = Date.now();
+            await db.insert(sync_metadata_table)
+                .values({ table_name: INITIAL_SYNC_COMPLETE_MARKER, last_sync_at: now, last_modified_at: now })
+                .onConflictDoUpdate({
+                    target: sync_metadata_table.table_name,
+                    set: { last_sync_at: now, last_modified_at: now },
+                });
+        })();
+
+        try {
+            await this.initial_sync_promise;
+        } finally {
+            this.initial_sync_promise = undefined;
         }
-        await this.initial_sync_playlists(user_uid);
-        await this.initial_sync_playlists_tracks();
-        await this.initial_sync_new_releases(user_uid);
-
-        // All local data has been pushed — pending change_log entries are redundant
-        await db.delete(change_log_table);
-
-        await db.insert(sync_metadata_table)
-            .values({ table_name: '_initial_sync_complete', last_sync_at: Date.now(), last_modified_at: Date.now() })
-            .onConflictDoUpdate({ target: sync_metadata_table.table_name, set: { last_sync_at: Date.now() } });
     }
 
-    private async initial_sync_tracks(user_uid: string) {
+    private async initial_sync_tracks(user_uid: string): Promise<InitialSyncStageResult> {
+        // Fetch UIDs already in remote utracks so partial-progress retries skip them
+        const already_synced = new Set<string>();
+        let fetch_offset = 0;
+        while (true) {
+            const { data, error } = await this.supabase
+                .from('utracks')
+                .select('track_uid')
+                .eq('user_uid', user_uid)
+                .range(fetch_offset, fetch_offset + PULL_PAGE_SIZE - 1);
+            this.assert_supabase_ok('initial_sync_tracks progress fetch', error);
+            if (!data || data.length === 0) break;
+            for (const r of data) already_synced.add(r.track_uid);
+            if (data.length < PULL_PAGE_SIZE) break;
+            fetch_offset += data.length;
+        }
+
         const all = await db.select().from(tracks_table);
+        const to_sync = already_synced.size > 0 ? all.filter(t => !already_synced.has(t.uid)) : all;
+        if (to_sync.length === 0) {
+            return { uploaded: 0, skipped: all.length, failed: 0 };
+        }
 
-        for (let i = 0; i < all.length; i += BATCH_SIZE) {
-            const batch = all.slice(i, i + BATCH_SIZE);
+        let uploaded = 0;
+        let failed = 0;
 
-            // Use RPC to atomically resolve service ID collisions
-            const tracks_json = batch.map(t => this.track_to_global_insert(t));
-            const { data: mappings, error: rpc_err } = await this.supabase
-                .rpc('resolve_or_insert_tracks', { tracks_json });
-
-            if (rpc_err) throw rpc_err;
+        for (let i = 0; i < to_sync.length; i += BATCH_SIZE) {
+            const batch = to_sync.slice(i, i + BATCH_SIZE);
+            let mappings: { local_uid: string; canonical_uid: string }[] | null = null;
+            try {
+                // Use RPC to atomically resolve service ID collisions
+                const tracks_json = batch.map(t => this.track_to_global_insert(t));
+                const { data: rpc_mappings, error: rpc_err } = await this.supabase
+                    .rpc('resolve_or_insert_tracks', { tracks_json });
+                if (rpc_err) throw rpc_err;
+                mappings = rpc_mappings;
+            } catch (batch_error) {
+                // Keep syncing other rows: retry each row individually.
+                for (const single of batch) {
+                    try {
+                        const { data: rpc_mappings, error: rpc_err } = await this.supabase
+                            .rpc('resolve_or_insert_tracks', { tracks_json: [this.track_to_global_insert(single)] });
+                        if (rpc_err) throw rpc_err;
+                        if (rpc_mappings && rpc_mappings.length > 0) {
+                            const mapping = rpc_mappings[0];
+                            if (mapping.local_uid !== mapping.canonical_uid) {
+                                await this.remap_local_uid(mapping.local_uid, mapping.canonical_uid, false, false);
+                            }
+                            const canonical = await db.select().from(tracks_table)
+                                .where(eq(tracks_table.uid, mapping.canonical_uid)).get();
+                            if (canonical) {
+                                const { error: ue } = await this.supabase.from('utracks')
+                                    .upsert(this.track_to_utrack_insert(canonical, user_uid), { onConflict: 'user_uid,track_uid' });
+                                if (ue) throw ue;
+                                uploaded += 1;
+                            } else {
+                                failed += 1;
+                            }
+                        } else {
+                            failed += 1;
+                        }
+                    } catch (single_error) {
+                        console.warn(`[SyncEngine] initial_sync tracks row failed ${single.uid}:`, single_error);
+                        failed += 1;
+                    }
+                }
+                console.warn('[SyncEngine] initial_sync tracks batch failed; continued with row-level retries:', batch_error);
+                continue;
+            }
 
             // Remap any UIDs that were resolved to a canonical UID
             if (mappings) {
                 for (const mapping of mappings) {
                     if (mapping.local_uid !== mapping.canonical_uid) {
-                        await this.remap_local_uid(mapping.local_uid, mapping.canonical_uid);
+                        await this.remap_local_uid(mapping.local_uid, mapping.canonical_uid, false, false);
                     }
                 }
             }
@@ -271,39 +584,192 @@ export class SyncEngine {
                         remapped_batch.map(t => this.track_to_utrack_insert(t, user_uid)),
                         { onConflict: 'user_uid,track_uid' }
                     );
-                if (ue) throw ue;
+                if (ue) {
+                    // Keep syncing others: fallback row-by-row.
+                    for (const row of remapped_batch) {
+                        try {
+                            const { error: single_error } = await this.supabase.from('utracks')
+                                .upsert(this.track_to_utrack_insert(row, user_uid), { onConflict: 'user_uid,track_uid' });
+                            if (single_error) throw single_error;
+                            uploaded += 1;
+                        } catch (single_error) {
+                            console.warn(`[SyncEngine] initial_sync tracks utrack upsert failed ${row.uid}:`, single_error);
+                            failed += 1;
+                        }
+                    }
+                } else {
+                    uploaded += remapped_batch.length;
+                }
             }
         }
+        return { uploaded, skipped: all.length - to_sync.length, failed };
     }
 
-    private async initial_sync_playlists(user_uid: string) {
+    private async initial_sync_playlists(user_uid: string): Promise<InitialSyncStageResult> {
         const all = await db.select().from(playlists_table);
-        for (let i = 0; i < all.length; i += BATCH_SIZE) {
-            const batch = all.slice(i, i + BATCH_SIZE);
+        const remote_uuids = await this.list_remote_uuids('playlists', user_uid);
+        const to_sync = all.filter(p => !remote_uuids.has(p.uuid));
+        if (to_sync.length === 0) {
+            return { uploaded: 0, skipped: all.length, failed: 0 };
+        }
+
+        let uploaded = 0;
+        let failed = 0;
+
+        for (let i = 0; i < to_sync.length; i += BATCH_SIZE) {
+            const batch = to_sync.slice(i, i + BATCH_SIZE);
             const { error } = await this.supabase.from('playlists')
                 .upsert(batch.map(p => this.playlist_to_insert(p, user_uid)), { onConflict: 'uuid' });
-            if (error) throw error;
+            if (!error) {
+                uploaded += batch.length;
+                continue;
+            }
+
+            for (const playlist of batch) {
+                try {
+                    const { error: single_error } = await this.supabase.from('playlists')
+                        .upsert(this.playlist_to_insert(playlist, user_uid), { onConflict: 'uuid' });
+                    if (single_error) throw single_error;
+                    uploaded += 1;
+                } catch (single_error) {
+                    console.warn(`[SyncEngine] initial_sync playlists row failed ${playlist.uuid}:`, single_error);
+                    failed += 1;
+                }
+            }
         }
+        return { uploaded, skipped: all.length - to_sync.length, failed };
     }
 
-    private async initial_sync_playlists_tracks() {
+    private async initial_sync_playlists_tracks(user_uid: string): Promise<InitialSyncStageResult> {
         const all = await db.select().from(playlists_tracks_table);
-        for (let i = 0; i < all.length; i += BATCH_SIZE) {
-            const batch = all.slice(i, i + BATCH_SIZE);
+        const remote_keys = await this.list_remote_playlist_track_keys(user_uid);
+        const to_sync = all.filter(pt => !remote_keys.has(`${pt.uuid}:${pt.track_uid}`));
+        if (to_sync.length === 0) {
+            return { uploaded: 0, skipped: all.length, failed: 0 };
+        }
+
+        let uploaded = 0;
+        let failed = 0;
+
+        for (let i = 0; i < to_sync.length; i += BATCH_SIZE) {
+            const batch = to_sync.slice(i, i + BATCH_SIZE);
             const { error } = await this.supabase.from('playlists_tracks')
                 .upsert(batch.map(pt => this.playlist_track_to_insert(pt)), { onConflict: 'uuid,track_uid' });
-            if (error) throw error;
+            if (!error) {
+                uploaded += batch.length;
+                continue;
+            }
+
+            for (const row of batch) {
+                try {
+                    const { error: single_error } = await this.supabase.from('playlists_tracks')
+                        .upsert(this.playlist_track_to_insert(row), { onConflict: 'uuid,track_uid' });
+                    if (single_error) throw single_error;
+                    uploaded += 1;
+                } catch (single_error) {
+                    console.warn(`[SyncEngine] initial_sync playlists_tracks row failed ${row.uuid}:${row.track_uid}:`, single_error);
+                    failed += 1;
+                }
+            }
         }
+        return { uploaded, skipped: all.length - to_sync.length, failed };
     }
 
-    private async initial_sync_new_releases(user_uid: string) {
+    private async initial_sync_new_releases(user_uid: string): Promise<InitialSyncStageResult> {
         const all = await db.select().from(new_releases_table);
-        for (let i = 0; i < all.length; i += BATCH_SIZE) {
-            const batch = all.slice(i, i + BATCH_SIZE);
-            const { error } = await this.supabase.from('new_releases')
-                .upsert(batch.map(r => this.new_release_to_insert(r, user_uid)), { onConflict: 'id' });
-            if (error) throw error;
+        const remote_identity_index = await this.list_remote_new_release_identity_index(user_uid);
+        const to_sync: LocalNewRelease[] = [];
+        let skipped = 0;
+        const seen_local_identity_keys = new Set<string>();
+        for (const release of all) {
+            const key = new_release_identity_key(release.title);
+            if (key === null) {
+                console.warn(`[SyncEngine] initial_sync new_releases skipped local row with invalid title identity (id=${release.id})`);
+                skipped += 1;
+                continue;
+            }
+            if (seen_local_identity_keys.has(key)) {
+                console.warn(`[SyncEngine] initial_sync new_releases skipped duplicate local identity (id=${release.id}, key=${key})`);
+                skipped += 1;
+                continue;
+            }
+            seen_local_identity_keys.add(key);
+            const remote = remote_identity_index.get(key);
+            if (!remote) {
+                to_sync.push(release);
+                continue;
+            }
+            if (remote.deleted) {
+                to_sync.push(release);
+            }
         }
+        if (to_sync.length === 0) {
+            return { uploaded: 0, skipped, failed: 0 };
+        }
+
+        let uploaded = 0;
+        let failed = 0;
+
+        const existing_by_key = new Map<string, LocalNewRelease>();
+        for (const row of all) {
+            const key = new_release_identity_key(row.title);
+            if (key !== null) existing_by_key.set(key, row);
+        }
+
+        for (let i = 0; i < to_sync.length; i += BATCH_SIZE) {
+            const batch = to_sync.slice(i, i + BATCH_SIZE);
+            for (const release of batch) {
+                try {
+                    const key = new_release_identity_key(release.title);
+                    if (key === null) {
+                        // Should not happen because we filtered above; keep defensive.
+                        console.warn(`[SyncEngine] initial_sync new_releases skipped during upload (invalid identity, id=${release.id})`);
+                        skipped += 1;
+                        continue;
+                    }
+                    const row = this.new_release_to_insert(release, user_uid);
+                    const remote = remote_identity_index.get(key);
+                    if (remote) {
+                        const { error: update_error } = await this.supabase
+                            .from('new_releases')
+                            .update({ ...row, deleted: false })
+                            .eq('id', remote.id)
+                            .eq('user_uid', user_uid);
+                        if (update_error) throw update_error;
+                        uploaded += 1;
+                        remote_identity_index.set(key, { id: remote.id, deleted: false });
+                    } else {
+                        const { error: insert_error } = await this.supabase
+                            .from('new_releases')
+                            .insert(row);
+                        if (insert_error) throw insert_error;
+                        uploaded += 1;
+                    }
+
+                    const existing = existing_by_key.get(key);
+                    if (existing) {
+                        await db.update(new_releases_table)
+                            .set({
+                                title: row.title,
+                                artist: row.artist,
+                                artwork_url: row.artwork_url,
+                                artwork_thumbnails: row.artwork_thumbnails,
+                                explicit: row.explicit,
+                                album_type: row.album_type,
+                                type: row.type,
+                                date: row.date,
+                                song_track: row.song_track,
+                                created_at: safe_to_epoch(row.created_at),
+                            })
+                            .where(eq(new_releases_table.id, existing.id));
+                    }
+                } catch (single_error) {
+                    console.warn('[SyncEngine] initial_sync new_releases row failed:', single_error);
+                    failed += 1;
+                }
+            }
+        }
+        return { uploaded, skipped, failed };
     }
 
     // -------------------------------------------------------------------------
@@ -322,7 +788,15 @@ export class SyncEngine {
             }, {});
 
             const synced_ids: number[] = [];
-            for (const [table_name, table_changes] of Object.entries(by_table)) {
+            const ordered_table_names = [
+                ...SYNCABLE_TABLES,
+                ...Object.keys(by_table).filter((name) =>
+                    !SYNCABLE_TABLES.includes(name as SyncableLocalTableName))
+            ];
+
+            for (const table_name of ordered_table_names) {
+                const table_changes = by_table[table_name];
+                if (!table_changes || table_changes.length === 0) continue;
                 const remote_table = LOCAL_TO_REMOTE_TABLE_MAP[table_name as LocalTableName];
                 if (remote_table === null) {
                     synced_ids.push(...table_changes.map(c => c.change_ids).flat());
@@ -330,6 +804,11 @@ export class SyncEngine {
                 }
                 const succeeded = await this.push_table_changes(table_name as SyncableLocalTableName, table_changes);
                 synced_ids.push(...succeeded);
+            }
+
+            if (synced_ids.length === 0) {
+                console.warn(`[SyncEngine] push stalled: ${changes.length} compressed changes failed; retrying on next sync cycle`);
+                break;
             }
 
             await ChangeTracker.mark_as_synced(synced_ids);
@@ -340,6 +819,9 @@ export class SyncEngine {
     private async push_table_changes(table_name: SyncableLocalTableName, changes: CompressedChange[]): Promise<number[]> {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (!user_uid) return [];
+        const remote_identity_index = table_name === 'new_releases'
+            ? await this.list_remote_new_release_identity_index(user_uid)
+            : undefined;
 
         const succeeded: number[] = [];
         for (const change of changes) {
@@ -348,7 +830,7 @@ export class SyncEngine {
                     case 'tracks':           await this.push_track_change(change, user_uid); break;
                     case 'playlists':        await this.push_playlist_change(change, user_uid); break;
                     case 'playlists_tracks': await this.push_playlist_track_change(change, user_uid); break;
-                    case 'new_releases':     await this.push_new_release_change(change, user_uid); break;
+                    case 'new_releases':     await this.push_new_release_change(change, user_uid, remote_identity_index); break;
                 }
                 succeeded.push(...change.change_ids);
             } catch (err) {
@@ -414,7 +896,12 @@ export class SyncEngine {
 
         if (track.youtube_id)           service_id_checks.push(['youtube_id', track.youtube_id]);
         if (track.youtubemusic_id)      service_id_checks.push(['youtubemusic_id', track.youtubemusic_id]);
-        if (track.soundcloud_id)        service_id_checks.push(['soundcloud_id', track.soundcloud_id]);
+        if (track.soundcloud_id) {
+            const soundcloud_id = to_int32_or_null(track.soundcloud_id);
+            if (soundcloud_id !== null && soundcloud_id !== 0) {
+                service_id_checks.push(['soundcloud_id', soundcloud_id]);
+            }
+        }
         if (track.soundcloud_permalink) service_id_checks.push(['soundcloud_permalink', track.soundcloud_permalink]);
         if (track.spotify_id)           service_id_checks.push(['spotify_id', track.spotify_id]);
         if (track.amazonmusic_id)       service_id_checks.push(['amazonmusic_id', track.amazonmusic_id]);
@@ -449,7 +936,12 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     // Remap a local track UID to a canonical UID across all tables + in-memory
     // -------------------------------------------------------------------------
-    private async remap_local_uid(old_uid: string, new_uid: string) {
+    private async remap_local_uid(
+        old_uid: string,
+        new_uid: string,
+        queue_playlist_track_changes = true,
+        queue_track_delete_change = true
+    ) {
         await db.transaction(async (tx) => {
             // 1. Check if a track with new_uid already exists locally (collision)
             const existing_new = await tx.select().from(tracks_table)
@@ -464,6 +956,15 @@ export class SyncEngine {
                     await tx.update(tracks_table).set(merged)
                         .where(eq(tracks_table.uid, new_uid));
                     await tx.delete(tracks_table).where(eq(tracks_table.uid, old_uid));
+                    if (queue_track_delete_change) {
+                        await tx.insert(change_log_table).values({
+                            table_name: 'tracks',
+                            operation: 'delete',
+                            record_id: old_uid,
+                            data: { uid: old_uid },
+                            synced: false,
+                        });
+                    }
                 }
             } else {
                 // Simple rename
@@ -476,23 +977,46 @@ export class SyncEngine {
             // First, delete rows where old_uid would collide with an existing new_uid in the same playlist
             const old_uid_rows = await tx.select().from(playlists_tracks_table)
                 .where(eq(playlists_tracks_table.track_uid, old_uid));
-            for (const row of old_uid_rows) {
-                const conflict = await tx.select().from(playlists_tracks_table)
+            const old_uuids = old_uid_rows.map((row) => row.uuid);
+            const conflict_uuids = old_uuids.length > 0
+                ? new Set((await tx.select({ uuid: playlists_tracks_table.uuid })
+                    .from(playlists_tracks_table)
                     .where(and(
-                        eq(playlists_tracks_table.uuid, row.uuid),
-                        eq(playlists_tracks_table.track_uid, new_uid)
-                    )).get();
-                if (conflict) {
-                    await tx.delete(playlists_tracks_table)
-                        .where(and(
-                            eq(playlists_tracks_table.uuid, row.uuid),
-                            eq(playlists_tracks_table.track_uid, old_uid)
-                        ));
-                }
+                        inArray(playlists_tracks_table.uuid, old_uuids),
+                        eq(playlists_tracks_table.track_uid, new_uid),
+                    ))).map((row) => row.uuid))
+                : new Set<string>();
+
+            if (conflict_uuids.size > 0) {
+                await tx.delete(playlists_tracks_table)
+                    .where(and(
+                        inArray(playlists_tracks_table.uuid, [...conflict_uuids]),
+                        eq(playlists_tracks_table.track_uid, old_uid)
+                    ));
             }
             await tx.update(playlists_tracks_table)
                 .set({ track_uid: new_uid })
                 .where(eq(playlists_tracks_table.track_uid, old_uid));
+
+            if (queue_playlist_track_changes && old_uid_rows.length > 0) {
+                const playlist_track_changes = old_uid_rows.flatMap((row) => ([
+                    {
+                        table_name: 'playlists_tracks' as const,
+                        operation: 'delete' as const,
+                        record_id: `${row.uuid}:${old_uid}`,
+                        data: { uuid: row.uuid, track_uid: old_uid },
+                        synced: false,
+                    },
+                    {
+                        table_name: 'playlists_tracks' as const,
+                        operation: 'insert' as const,
+                        record_id: `${row.uuid}:${new_uid}`,
+                        data: { ...row, track_uid: new_uid },
+                        synced: false,
+                    },
+                ]));
+                await tx.insert(change_log_table).values(playlist_track_changes);
+            }
 
             // 3. Update backpack (full track copy keyed by uid)
             await tx.update(backpack_table)
@@ -514,7 +1038,8 @@ export class SyncEngine {
                 .set({ record_id: new_uid })
                 .where(and(
                     eq(change_log_table.record_id, old_uid),
-                    eq(change_log_table.table_name, 'tracks')
+                    eq(change_log_table.table_name, 'tracks'),
+                    inArray(change_log_table.operation, ['insert', 'update'])
                 ));
         });
 
@@ -559,10 +1084,13 @@ export class SyncEngine {
     // Playlist-track push
     // -------------------------------------------------------------------------
     private async push_playlist_track_change(change: CompressedChange, user_uid: string) {
+        const parsed = parse_playlist_track_record_id(change.record_id);
+        if (!parsed) {
+            throw new Error(`[SyncEngine] invalid playlists_tracks record_id: ${change.record_id}`);
+        }
+
         if (change.operation === 'delete') {
-            const colon_idx = change.record_id.indexOf(':');
-            const playlist_uuid = change.record_id.substring(0, colon_idx);
-            const track_uid = change.record_id.substring(colon_idx + 1);
+            const { playlist_uuid, track_uid } = parsed;
             await this.assert_user_owns_playlist(playlist_uuid, user_uid);
             const { error } = await this.supabase.from('playlists_tracks')
                 .update({ deleted: true })
@@ -572,9 +1100,7 @@ export class SyncEngine {
             return;
         }
 
-        const colon_idx = change.record_id.indexOf(':');
-        const playlist_uuid = change.record_id.substring(0, colon_idx);
-        const track_uid = change.record_id.substring(colon_idx + 1);
+        const { playlist_uuid, track_uid } = parsed;
 
         const full_pt = await db.select().from(playlists_tracks_table)
             .where(and(
@@ -586,26 +1112,97 @@ export class SyncEngine {
         await this.assert_user_owns_playlist(full_pt.uuid, user_uid);
         const { error } = await this.supabase.from('playlists_tracks')
             .upsert(this.playlist_track_to_insert(full_pt), { onConflict: 'uuid,track_uid' });
-        this.assert_supabase_ok(`push_playlist_track_change upsert ${change.record_id}`, error);
+        if (!error) return;
+        if (!this.is_playlists_tracks_track_fk_error(error)) {
+            this.assert_supabase_ok(`push_playlist_track_change upsert ${change.record_id}`, error);
+            return;
+        }
+
+        // Self-heal FK failures by ensuring the remote dependency exists and retrying once.
+        const local_track = await db.select().from(tracks_table)
+            .where(eq(tracks_table.uid, track_uid)).get();
+        if (!local_track) {
+            await db.delete(playlists_tracks_table)
+                .where(and(
+                    eq(playlists_tracks_table.uuid, playlist_uuid),
+                    eq(playlists_tracks_table.track_uid, track_uid)
+                ));
+            console.warn(`[SyncEngine] push_playlist_track_change dropped dangling local row (missing local track): ${change.record_id}`);
+            return;
+        }
+
+        let canonical_uid = track_uid;
+        const resolved_uid = await this.resolve_canonical_uid(local_track);
+        if (resolved_uid !== track_uid) {
+            await this.remap_local_uid(track_uid, resolved_uid, false, false);
+            canonical_uid = resolved_uid;
+        }
+
+        const canonical_track = await db.select().from(tracks_table)
+            .where(eq(tracks_table.uid, canonical_uid)).get();
+        if (!canonical_track) {
+            throw new Error(`[SyncEngine] push_playlist_track_change recovery failed: canonical track missing ${canonical_uid}`);
+        }
+
+        const { error: track_error } = await this.supabase.from('tracks')
+            .upsert(this.track_to_global_insert(canonical_track), { onConflict: 'uid' });
+        this.assert_supabase_ok(`push_playlist_track_change dependency track upsert ${canonical_uid}`, track_error);
+
+        const { error: utrack_error } = await this.supabase.from('utracks')
+            .upsert(this.track_to_utrack_insert(canonical_track, user_uid), { onConflict: 'user_uid,track_uid' });
+        this.assert_supabase_ok(`push_playlist_track_change dependency utrack upsert ${canonical_uid}`, utrack_error);
+
+        const refreshed = await db.select().from(playlists_tracks_table)
+            .where(and(
+                eq(playlists_tracks_table.uuid, playlist_uuid),
+                eq(playlists_tracks_table.track_uid, canonical_uid)
+            )).get();
+        if (!refreshed) {
+            // Local row was remapped/deleted while recovering.
+            return;
+        }
+
+        const { error: retry_error } = await this.supabase.from('playlists_tracks')
+            .upsert(this.playlist_track_to_insert(refreshed), { onConflict: 'uuid,track_uid' });
+        this.assert_supabase_ok(`push_playlist_track_change upsert-retry ${playlist_uuid}:${canonical_uid}`, retry_error);
     }
 
     // -------------------------------------------------------------------------
     // New release push
     // -------------------------------------------------------------------------
-    private async push_new_release_change(change: CompressedChange, user_uid: string) {
+    private async push_new_release_change(
+        change: CompressedChange,
+        user_uid: string,
+        remote_identity_index?: Map<string, RemoteNewReleaseIdentityRow>,
+    ) {
         // record_id for new_releases is title.uri (a string), not the numeric id.
         // For deletes, the numeric id is in change.data. For inserts/updates,
         // look up the local row by the unique title field.
         const data = change.data as Partial<LocalNewRelease> | null;
+        const identity_index = remote_identity_index ?? await this.list_remote_new_release_identity_index(user_uid);
 
         if (change.operation === 'delete') {
-            const numeric_id = data?.id;
-            if (numeric_id == null) return; // Cannot identify remote row without id
+            let numeric_id = data?.id ?? null;
+            if (numeric_id == null && change.record_id.length > 0) {
+                const remote = identity_index.get(`uri:${change.record_id}`);
+                numeric_id = remote?.id ?? null;
+            }
+            if (numeric_id == null) {
+                console.warn(`[SyncEngine] push_new_release_change delete skipped (no remote id): ${change.record_id}`);
+                return;
+            }
             const { error } = await this.supabase.from('new_releases')
                 .update({ deleted: true })
                 .eq('id', numeric_id)
                 .eq('user_uid', user_uid);
             this.assert_supabase_ok(`push_new_release_change delete ${change.record_id}`, error);
+            if (change.record_id.length > 0) {
+                const key = `uri:${change.record_id}`;
+                const remote = identity_index.get(key);
+                if (remote) {
+                    identity_index.set(key, { id: remote.id, deleted: true });
+                }
+            }
             return;
         }
 
@@ -619,8 +1216,7 @@ export class SyncEngine {
             // Fallback: find by title URI matching record_id
             const all_releases = await db.select().from(new_releases_table);
             full_release = all_releases.find(r => {
-                const title = typeof r.title === 'string' ? JSON.parse(r.title) : r.title;
-                return title?.uri === change.record_id;
+                return new_release_identity_key(r.title) === `uri:${change.record_id}`;
             });
         }
         if (!full_release) return;
@@ -630,8 +1226,31 @@ export class SyncEngine {
             : full_release;
 
         const row = this.new_release_to_insert(release, user_uid);
-        const { error } = await this.supabase.from('new_releases').upsert(row, { onConflict: 'id' });
-        this.assert_supabase_ok(`push_new_release_change upsert ${change.record_id}`, error);
+        const identity_key = new_release_identity_key(release.title);
+        if (identity_key === null) {
+            console.warn(`[SyncEngine] push_new_release_change skipped ${change.operation} with invalid title identity: ${change.record_id}`);
+            return;
+        }
+
+        const remote = identity_index.get(identity_key);
+        if (remote) {
+            const { error } = await this.supabase.from('new_releases')
+                .update({ ...row, deleted: false })
+                .eq('id', remote.id)
+                .eq('user_uid', user_uid);
+            this.assert_supabase_ok(`push_new_release_change update ${change.record_id}`, error);
+            identity_index.set(identity_key, { id: remote.id, deleted: false });
+            return;
+        }
+
+        const { data: inserted, error } = await this.supabase.from('new_releases')
+            .insert(row)
+            .select('id')
+            .single();
+        this.assert_supabase_ok(`push_new_release_change insert ${change.record_id}`, error);
+        if (inserted && typeof inserted.id === 'number') {
+            identity_index.set(identity_key, { id: inserted.id, deleted: false });
+        }
     }
 
     private async assert_user_owns_playlist(playlist_uuid: string, user_uid: string) {
@@ -986,7 +1605,10 @@ export class SyncEngine {
         this.assert_supabase_ok('pull_playlists_tracks user playlists fetch', user_playlist_error);
 
         const playlist_uuids = (user_playlists ?? []).map(p => p.uuid);
-        if (playlist_uuids.length === 0) return;
+        if (playlist_uuids.length === 0) {
+            await this.save_pull_watermark('playlists_tracks', pull_started_at);
+            return;
+        }
 
         // Batch playlist UUIDs to avoid PostgREST URL length limits on .in()
         const uuid_chunks = chunk_array(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
@@ -1048,6 +1670,16 @@ export class SyncEngine {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (user_uid === null) return;
 
+        const local_rows = await db.select().from(new_releases_table);
+        const local_by_key = new Map<string, LocalNewRelease[]>();
+        for (const row of local_rows) {
+            const key = new_release_identity_key(row.title);
+            if (key === null) continue;
+            const list = local_by_key.get(key) ?? [];
+            list.push(row);
+            local_by_key.set(key, list);
+        }
+
         let offset = 0;
         while (true) {
             const { data, error } = await this.supabase
@@ -1066,22 +1698,42 @@ export class SyncEngine {
             for (const row of data) {
                 // Remote and local IDs are independent autoincrement sequences,
                 // so match by the unique `title` column instead.
-                const title_value = (typeof row.title === 'string'
-                    ? JSON.parse(row.title) : row.title) as LocalNewRelease['title'];
+                const title_key = new_release_identity_key(row.title);
+                if (title_key === null) {
+                    console.warn('[SyncEngine] pull_new_releases skipped row with invalid title identity');
+                    continue;
+                }
 
                 if (row.deleted) {
-                    await db.delete(new_releases_table)
-                        .where(eq(new_releases_table.title, title_value));
+                    const existing_rows = local_by_key.get(title_key) ?? [];
+                    if (existing_rows.length > 0) {
+                        await db.delete(new_releases_table)
+                            .where(inArray(new_releases_table.id, existing_rows.map((item) => item.id)));
+                        local_by_key.delete(title_key);
+                    }
                     continue;
                 }
 
                 const local = this.remote_new_release_to_local(row);
-                await db.insert(new_releases_table)
-                    .values(local)
-                    .onConflictDoUpdate({
-                        target: new_releases_table.title,
-                        set: local,
-                    });
+                const existing_rows = local_by_key.get(title_key) ?? [];
+                if (existing_rows.length > 0) {
+                    const keeper = existing_rows[0];
+                    await db.update(new_releases_table)
+                        .set(local)
+                        .where(eq(new_releases_table.id, keeper.id));
+                    if (existing_rows.length > 1) {
+                        await db.delete(new_releases_table)
+                            .where(inArray(new_releases_table.id, existing_rows.slice(1).map((item) => item.id)));
+                    }
+                    local_by_key.set(title_key, [{ ...keeper, ...local }]);
+                } else {
+                    await db.insert(new_releases_table).values(local);
+                    const inserted = await db.select().from(new_releases_table)
+                        .where(eq(new_releases_table.title, local.title)).get();
+                    if (inserted) {
+                        local_by_key.set(title_key, [inserted]);
+                    }
+                }
             }
 
             if (data.length < PULL_PAGE_SIZE) break;
@@ -1127,7 +1779,7 @@ export class SyncEngine {
         return {
             user_uid,
             track_uid:   t.uid,
-            plays:       t.plays,
+            plays:       safe_int(t.plays),
             meta:        t.meta,
             created_at:  safe_to_iso(t.created_at),
             modified_at: safe_to_iso(t.modified_at),

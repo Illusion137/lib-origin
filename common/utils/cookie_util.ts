@@ -116,7 +116,7 @@ export class CookieJar {
         const cookie_names = this.getCookies().map(cookie => cookie.getData().name); 
         for(const other_cookie of other_jar.getCookies()) {
             if(cookie_names.includes(other_cookie.getData().name) && !other_cookie.hasExpired()) {
-                const jar_cookie_index = this.#jar.findIndex(cookie => cookie.getData().name = other_cookie.getData().name);
+                const jar_cookie_index = this.#jar.findIndex(cookie => cookie.getData().name === other_cookie.getData().name);
                 this.#jar[jar_cookie_index] = other_cookie;
             } else this.#jar.push(other_cookie);
         }

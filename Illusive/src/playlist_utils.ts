@@ -6,7 +6,7 @@ import { music_service_uri_to_music_service, split_uri } from "./illusive_utils"
 import type { CompactPlaylistData, ConvertTo, MusicServiceType, Playlist, SortType, Track } from "./types";
 import { SQLPlaylists } from "./sql/sql_playlists";
 
-export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track[], full_service_playlist: boolean) {
+export async function get_playlist_tracks_with_error(uuid_uri: string, global_tracks: Track[], full_service_playlist: boolean) {
     if (uuid_uri === Constants.library_write_playlist) {
         return global_tracks.slice();
     }
@@ -16,8 +16,13 @@ export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track
     const [service, id] = split_uri(uuid_uri);
     const tracks = full_service_playlist ? await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id) :
         await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_playlist(id);
-    if ("error" in tracks) return [];
+    if ("error" in tracks && tracks.error !== undefined) return {error: tracks.error.error};
     return tracks.tracks;
+}
+export async function get_playlist_tracks(uuid_uri: string, global_tracks: Track[], full_service_playlist: boolean): Promise<Track[]> {
+    const tracks = await get_playlist_tracks_with_error(uuid_uri, global_tracks, full_service_playlist);
+    if("error" in tracks) return [];
+    return tracks;
 }
 interface PlaylistDifferences {
     to_add: Track[],
