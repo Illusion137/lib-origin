@@ -31,10 +31,10 @@ export namespace SQLfs {
     export function lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
     
     export async function recreate_directories(){
-        await fs().make_directory(media_directory(""));
-        await fs().make_directory(custom_thumbnail_directory(""));
-        await fs().make_directory(thumbnail_directory(""));
-        await fs().make_directory(lyrics_directory(""));
+        if(!(await fs().get_info(media_directory(""))).exists) await fs().make_directory(media_directory(""));
+        if(!(await fs().get_info(custom_thumbnail_directory(""))).exists) await fs().make_directory(custom_thumbnail_directory(""));
+        if(!(await fs().get_info(thumbnail_directory(""))).exists) await fs().make_directory(thumbnail_directory(""));
+        if(!(await fs().get_info(lyrics_directory(""))).exists) await fs().make_directory(lyrics_directory(""));
     }
 
     async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {
