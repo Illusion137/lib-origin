@@ -42,19 +42,7 @@ export async function soundcloud_get_new_releases(): Promise<CompactPlaylist[]> 
 export async function illusi_get_new_releases(): Promise<CompactPlaylist[]> {
     const { data: { session } } = await supabase().auth.getSession();
     if (!session) return [];
-
     const result = await Origin.Illusi.get_new_releases({ jwt: session.access_token });
     if ('error' in result) return [];
-
-    return result.map(r => ({
-        title:              r.title,
-        artist:             r.artist,
-        artwork_url:        r.artwork_url,
-        artwork_thumbnails: r.artwork_thumbnails,
-        explicit:           r.explicit,
-        album_type:         r.album_type,
-        type:               r.type,
-        date:               r.date,
-        song_track:         r.song_track as CompactPlaylist['song_track'],
-    }));
+    return result;
 }

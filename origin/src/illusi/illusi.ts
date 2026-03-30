@@ -1,4 +1,6 @@
-import type { Database } from '../../../Illusive/src/db/database.types';
+import type { PromiseResult } from '@common/types';
+import { generror } from '@common/utils/error_util';
+import type { Database } from '@illusive/db/database.types';
 
 const SUPABASE_URL  = (process.env.EXPO_PUBLIC_SUPABASE_PROJECT_URL ?? '').replace(/\/$/, '');
 const SUPABASE_ANON = process.env.EXPO_PUBLIC_SUPABASE_PUBLIC_KEY  ?? '';
@@ -9,6 +11,10 @@ export namespace Illusi {
     export type RemotePlaylist    = Pick<Database['public']['Tables']['playlists']['Row'],    'uuid' | 'title' | 'description' | 'created_at' | 'modified_at'>;
     export type RemoteTrack       = Omit<Database['public']['Tables']['tracks']['Row'],       'deleted'>;
     export type RemoteNewRelease  = Omit<Database['public']['Tables']['new_releases']['Row'], 'id' | 'user_uid' | 'deleted' | 'modified_at'>;
+
+    function supaerror_to_rozerr(error: {error: string}, args?: object){
+        return generror(error.error, "LOW", args);
+    }
 
     function rest_headers(opts: Opts, extra?: Record<string, string>) {
         return {
@@ -31,6 +37,66 @@ export namespace Illusi {
         } catch (e) {
             return { error: String(e) };
         }
+    }
+
+    export type RemotePlaylistWithTracks = RemotePlaylist & {
+        tracks: RemoteTrack[];
+    };
+
+    export const PLAYLIST_LIMIT = 100;
+    export async function get_playlist(
+        uuid: string,
+        opts: Opts,
+    ): PromiseResult<RemotePlaylistWithTracks> {
+        const [playlist_result, tracks_result] = await Promise.all([
+            rest<RemotePlaylist[]>(
+                `playlists?select=uuid,title,description,created_at,modified_at&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&limit=1`,
+                opts,
+            ),
+            rest<{ track_uid: string }[]>(
+                `playlists_tracks?select=track_uid&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&order=created_at.asc&limit=${PLAYLIST_LIMIT}&offset=0`,
+                opts,
+            ),
+        ]);
+
+        if ('error' in playlist_result) return supaerror_to_rozerr(playlist_result, {uuid, opts});
+        if ('error' in tracks_result)   return supaerror_to_rozerr(tracks_result, {uuid, opts});
+
+        const playlist = playlist_result[0];
+        if (!playlist) return generror("Playlist not found", "LOW", {uuid, opts});
+
+        if (tracks_result.length === 0) return { ...playlist, tracks: [] };
+
+        const uid_list = tracks_result.map(r => `"${r.track_uid}"`).join(',');
+        const tracks = await rest<RemoteTrack[]>(
+            `tracks?select=*&uid=in.(${uid_list})&deleted=eq.false`,
+            opts,
+        );
+
+        if ('error' in tracks) return supaerror_to_rozerr(tracks, {uuid, opts});
+        return { ...playlist, tracks };
+    }
+
+    export async function get_playlist_continuation(
+        uuid: string,
+        offset: number,
+        opts: Opts,
+    ): PromiseResult<RemoteTrack[]> {
+        const tracks_result = await rest<{ track_uid: string }[]>(
+            `playlists_tracks?select=track_uid&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&order=created_at.asc&limit=100&offset=${offset}`,
+            opts,
+        );
+
+        if ('error' in tracks_result) return supaerror_to_rozerr(tracks_result, {uuid, offset, opts});
+        if (tracks_result.length === 0) return [];
+
+        const uid_list = tracks_result.map(r => `"${r.track_uid}"`).join(',');
+        const tracks = await rest<RemoteTrack[]>(
+            `tracks?select=*&uid=in.(${uid_list})&deleted=eq.false`,
+            opts,
+        );
+        if("error" in tracks) return supaerror_to_rozerr(tracks, {uuid, offset, opts})
+        return tracks;
     }
 
     export async function get_playlists(opts: Opts): Promise<RemotePlaylist[] | { error: string }> {
