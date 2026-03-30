@@ -406,9 +406,20 @@ export async function api_get_playlist(url: string): Promise<MusicServicePlaylis
 }
 
 // TODO come back to improve this and also insert continuation
+interface BandlabPlaylistContinuation { "url": string, "offset": number }
 export async function bandlab_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
     const playlist_response = await Origin.BandLab.projects_list(url, { cookie_jar });
+    if ("error" in playlist_response) return default_playlist(playlist_response);
+    return {
+        title: "Projects List",
+        tracks: playlist_response.data.map(bandlab_parse_track),
+        continuation: {url, offset: playlist_response.data.length} as BandlabPlaylistContinuation
+    }
+}
+export async function bandlab_get_playlist_continuation(opts: BandlabPlaylistContinuation): Promise<MusicServicePlaylist> {
+    const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
+    const playlist_response = await Origin.BandLab.projects_list(opts.url, { cookie_jar, offset: opts.offset });
     if ("error" in playlist_response) return default_playlist(playlist_response);
     return {
         title: "Projects List",
