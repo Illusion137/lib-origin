@@ -1,5 +1,5 @@
 import * as sha1 from 'sha1-uint8array'
-import type { YTCFG } from '@origin/youtube/types/YTCFG';
+import type { YTCFG } from './YTCFG';
 
 export function sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN: string) {
     const time_stamp_seconds_str = String(epoch.getTime()).slice(0, 10);

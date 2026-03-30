@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { BGUTILS_BROWSER_BUNDLE } from "./bgutils-browser-bundle";
 
 interface PendingRequest {
 	resolve: (result: any) => void;
@@ -10,8 +9,7 @@ interface PendingRequest {
 }
 
 const BGUTILS_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)";
-
-export const WEBVIEW_INJECTED_JS = BGUTILS_BROWSER_BUNDLE + `\n` + `
+export const WEBVIEW_INJECTED_JS = `\n` + `
 (function() {
     var _wv_log = function(level, args) {
         try {
@@ -153,9 +151,6 @@ export async function eval_in_webview(code: string, timeout_ms = 15_000): Promis
 	});
 }
 
-// Richer HTML that resembles a real YouTube page structure.
-// BotGuard fingerprints the DOM (canvas, document.body, language, etc.),
-// so a near-blank page produces weak/invalid snapshots.
 const JSEVAL_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>

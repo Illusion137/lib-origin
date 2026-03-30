@@ -86,3 +86,16 @@ export async function soundcloud_delete_playlist(playlist_url: string) {
     if("error" in deletion_response) return false;
     return deletion_response.data.ok;
 }
+
+export async function illusi_create_playlist(_: string): Promise<string> {
+    // const uuid = await SQLPlaylists.create_playlist(playlist_name);
+    // return create_uri('illusi', uuid);
+    return "";
+}
+
+export async function illusi_delete_playlist(_: string): Promise<boolean> {
+    // const uuid = playlist_uri.split(':')[1];
+    // await SQLPlaylists.delete_playlist(uuid);
+    // return true;
+    return false;
+}

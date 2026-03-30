@@ -10,7 +10,7 @@ export default [
 	{ languageOptions: { globals: globals.node } },
 	js.configs.recommended,
 	...tseslint.configs.all,
-	{ ignores: ["babel.config.js", "eslint.config.mjs", "jest.config.js", "./origin/src/youtube_dl/PATCH/sax/sax.js", "./origin/src/manga_reader/deob.js", "./origin/src/manga_reader/deob2.js"] },
+	{ ignores: ["babel.config.js", "eslint.config.mjs", "jest.config.js", "./origin/src/youtube_dl/PATCH/sax/sax.js", "./origin/src/manga_reader/deob.js", "./origin/src/manga_reader/deob2.js", "dist-roze-native/**"] },
 	{
 		languageOptions: {
 			parserOptions: {

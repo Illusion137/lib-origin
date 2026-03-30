@@ -2,20 +2,20 @@ import fuzzysort from 'fuzzysort';
 import * as Origin from '@origin/index'
 import { TimedCache, type PromiseResult, type ResponseError } from "@common/types";
 import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_array } from "@common/utils/util";
-import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "@illusive/add_delete_tracks_from_playlist";
-import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "@illusive/create_delete_playlist";
+import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, illusi_add_tracks_to_playlist, illusi_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "@illusive/add_delete_tracks_from_playlist";
+import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, illusi_create_playlist, illusi_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "@illusive/create_delete_playlist";
 import { bandlab_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from "@illusive/download_from_id";
 import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
-import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
+import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, illusi_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
 import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, small_track, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
-import { amazon_music_search, apple_music_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
+import { amazon_music_search, apple_music_search, illusi_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
 import { MusicService } from "@illusive/types";
-import { soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
+import { illusi_get_new_releases, soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
 import { parse_youtube_music_track } from '@illusive/parsers/youtube_music_parser';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
@@ -34,15 +34,16 @@ export namespace Illusive {
             valid_playlist_url_regex: /(https?:\/\/)illusi\.dev\/playlist\/.+/i,
             link_text: 'https://illusi.dev/playlist/...',
             required_cookie_credentials: [],
-            get_user_playlists: undefined,
+            get_user_playlists: illusi_get_user_playlists,
             get_playlist: illusi_get_playlist,
             get_artist: illusi_get_artist,
-            search: undefined,
+            search: illusi_search,
             explore: undefined,
-            create_playlist: undefined,
-            delete_playlist: undefined,
-            add_tracks_to_playlist: undefined,
-            delete_tracks_from_playlist: undefined
+            create_playlist: illusi_create_playlist,
+            delete_playlist: illusi_delete_playlist,
+            add_tracks_to_playlist: illusi_add_tracks_to_playlist,
+            delete_tracks_from_playlist: illusi_delete_tracks_from_playlist,
+            get_new_releases: illusi_get_new_releases,
         });
     const musi = new MusicService(
         {

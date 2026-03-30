@@ -476,7 +476,7 @@ export class MusicService {
         this.required_cookie_credentials = s.required_cookie_credentials;
         this.link_text = s.link_text;
         this.cookie_jar_callback = s.cookie_jar_callback;
-        this.search = Constants.use_illusive_cahce ? async (query: string, opts?: SearchOpts) => {
+        this.search = Constants.use_illusive_cache ? async (query: string, opts?: SearchOpts) => {
             const key = query + ":MS:" + String(this.app_icon);
             if (search_cache.get(key)) return search_cache.get(key)!;
             return search_cache.update(key, await s.search!(query, opts));

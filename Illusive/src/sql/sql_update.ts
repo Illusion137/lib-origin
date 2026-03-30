@@ -16,6 +16,7 @@ import type { LT1720 } from "@illusive/legacy/1720/legacy_types";
 import {
     artists_table,
     backpack_table,
+    change_log_table,
     new_releases_table,
     playlists_table,
     playlists_tracks_table,
@@ -171,7 +172,7 @@ export namespace SQLUpdate {
                 }
                 for (const playlists_track of legacy_playlists_tracks) {
                     const inserted_playlists_track = await tx.insert(playlists_tracks_table).values(playlists_track).returning().catch((e) => fail_callback(e, tx));
-                    await ChangeTracker.log_change("playlists_tracks", "insert", inserted_playlists_track[0].id, inserted_playlists_track[0]);
+                    await ChangeTracker.log_change("playlists_tracks", "insert", `${inserted_playlists_track[0].uuid}:${inserted_playlists_track[0].track_uid}`, inserted_playlists_track[0]);
                 }
                 for (const artist of legacy_artists) {
                     const inserted_artist = await tx.insert(artists_table).values(artist).returning().catch((e) => fail_callback(e, tx));
@@ -183,7 +184,8 @@ export namespace SQLUpdate {
                 }
                 for (const new_release of legacy_new_releases) {
                     const inserted_new_releases = await tx.insert(new_releases_table).values(new_release).returning().catch((e) => fail_callback(e, tx));
-                    await ChangeTracker.log_change("new_releases", "insert", inserted_new_releases[0].id, inserted_new_releases[0]);
+                    const nr_title = typeof inserted_new_releases[0].title === 'string' ? JSON.parse(inserted_new_releases[0].title) : inserted_new_releases[0].title;
+                    await ChangeTracker.log_change("new_releases", "insert", nr_title?.uri ?? `nr_${inserted_new_releases[0].id}`, inserted_new_releases[0]);
                 }
             });
             return updated;
@@ -209,5 +211,9 @@ export namespace SQLUpdate {
             }
             return true;
         });
+        await update_to("20.0.0", async() => {
+            await db.delete(change_log_table);
+            return true;
+        })
     }
 }

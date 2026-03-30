@@ -1,36 +1,25 @@
-# Illusi 20.0.0
+# Illusi 21.0.0
   - [ ] Illusi-CLI
   - [ ] Illusi desktop based on React-Native
-  - [ ] Fixed bug relating to YouTube Music playlist parsing
   - [ ] Fixed YouTube Music Search album being put into playlists tab
   - [ ] Fixed latest release SQLArtist integration
   - [ ] Fixed search SQLArtist integration
   - [ ] Fixed SQLArtist integration re-caching
   - [ ] Fixed YouTube (Music) artwork not being square for lock-screen
   - [ ] FourTrackArtwork Album tinting
-  - [ ] Added specialized playlists to explore
   - [ ] Added Playlist-Converter
   - [ ] Added Extras-Help
   - [ ] Added Watch Artist
   - [ ] Added SQLTrackSkips
-  - [ ] Added SQLTrackPlays
-  - [ ] Added Crossfade
-  - [ ] Added Sharing intents
-  - [ ] Added Explore SoundCloud new tracks integration
   - [ ] Added Trim-Silence
   - [ ] Added Audio Normalizer
   - [ ] Added Synced Lyrics
   - [ ] Added Lyrics uploading
-  - [ ] Added Lyrics editing
   - [ ] Added loading screens
   - [ ] Added custom secondary color to themes
   - [ ] Added custom AudioPlayer backgrounds
   - [ ] Added ContextMenu to RowArtist and CompactArtistComponents
   - [ ] Slightly modify PlaylistBase by moving artist-data to center of artwork and searchbar
-  - [ ] Refactored Illusive.Illusi to support get-playlist
-  - [ ] Refactored Illusive.Illusi to support create-playlist
-  - [ ] Refactored Illusive.Illusi to support add-tracks-to-playlist
-  - [ ] Refactored Illusive.Illusi to support delete-tracks-to-playlist
   - [ ] Refactored Extras-Settings UI
   - [ ] Redesigned Explore UI
   - [ ] Redesigned Search Screen UI
@@ -40,8 +29,22 @@
   - [ ] Redesigned Statistics UI
   - [ ] Redesigned Changelog UI
   - [ ] Redesigned CompactArtistComponent
-  - [ ] Update Lyrics UI
-  - [ ] Added Illusi server (Supabase)
+# Illusi 20.0.0
+  - Patched up Keep-Delete (Beta)
+  - Update Lyrics UI
+  - Fixed bugs relating to SCDL outputting errors to Sentry
+  - Fixed bugs relating to TrackPlayer desync
+  - Added support for SoundCloud New Releases
+  - Added +1 to download_queue_max_length
+  - Improved latency times for PoToken generation
+  - Added Crossfade support for TrackPlayer
+  - Refactored Illusive.Illusi to support get-playlist
+  - Refactored Illusive.Illusi to support create-playlist
+  - Refactored Illusive.Illusi to support add-tracks-to-playlist
+  - Refactored Illusive.Illusi to support delete-tracks-to-playlist
+  - Added Lyrics editing
+  - Added Illusi server (Supabase)
+
 # Illusi 19.0.1
   - Fixed better shared track linking
   - Fixed bug related to tracks without proper duration being broken
@@ -51,6 +54,7 @@
   - Added pref: `ignore_fat_finger_for_seconds` (default: 0)
   - Cached PO token challenge
 # Illusi 19.0.0
+  - Added Sharing intents
   - Fixed working PO token generation for YouTube
   - Fixed External Services cookie management
   - Added native PO token generation via Node.js bridge
@@ -70,6 +74,8 @@
   - Fixed ContextMenuView
   - Fixed Audioplayer push to queue doubling glitch
   - Fixed Audioplayer push to queue
+  - Added specialized playlists to explore
+  - Added SQLTrackPlays
   - Added basic Illusi deep link support
   - Improved shuffler UI
   - Patched autoplay in SwiftAudioEx

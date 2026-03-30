@@ -2262,6 +2262,13 @@
   resolved "https://registry.yarnpkg.com/@isaacs/ttlcache/-/ttlcache-1.4.1.tgz#21fb23db34e9b6220c6ba023a0118a2dd3461ea2"
   integrity sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA==
 
+"@iternio/react-native-auto-play@^0.3.5":
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/@iternio/react-native-auto-play/-/react-native-auto-play-0.3.5.tgz#1b694fff0c0971c11f19843df31060ea3abd8da3"
+  integrity sha512-Yn36OEPsESq23tUYEKRid9F1z2AV6ZrupK5GE5l5QBbEKRfkQ2ly2BGI2N9ixtz3gAPNyCu3bFSDPOl4/EgfvQ==
+  dependencies:
+    react-native-uuid "^2.0.3"
+
 "@jest/create-cache-key-function@^29.6.3":
   version "29.7.0"
   resolved "https://registry.yarnpkg.com/@jest/create-cache-key-function/-/create-cache-key-function-29.7.0.tgz#793be38148fab78e65f40ae30c36785f4ad859f0"
@@ -5095,6 +5102,11 @@ domutils@^1.5.1:
   dependencies:
     dom-serializer "0"
     domelementtype "1"
+
+dotenv@^16.4.5:
+  version "16.6.1"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.6.1.tgz#773f0e69527a8315c7285d5ee73c4459d20a8020"
+  integrity sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==
 
 dotenv@^17.2.3:
   version "17.2.3"
@@ -8840,6 +8852,13 @@ react-native-document-picker@^8.1.3:
   dependencies:
     invariant "^2.2.4"
 
+react-native-dotenv@^3.4.11:
+  version "3.4.11"
+  resolved "https://registry.yarnpkg.com/react-native-dotenv/-/react-native-dotenv-3.4.11.tgz#2e6c4eabd55d5f1bf109b3dd9141dadf9c55cdd4"
+  integrity sha512-6vnIE+WHABSeHCaYP6l3O1BOEhWxKH6nHAdV7n/wKn/sciZ64zPPp2NUdEUf1m7g4uuzlLbjgr+6uDt89q2DOg==
+  dependencies:
+    dotenv "^16.4.5"
+
 react-native-fast-base64@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/react-native-fast-base64/-/react-native-fast-base64-0.1.4.tgz#9a75bfabdbcfd0c3ea4a48706e263a0f41238c88"
@@ -8891,6 +8910,11 @@ react-native-mmkv@^3.3.0:
   version "3.3.3"
   resolved "https://registry.yarnpkg.com/react-native-mmkv/-/react-native-mmkv-3.3.3.tgz#1f0326f6314e23725af8145964343224d074e6cd"
   integrity sha512-GMsfOmNzx0p5+CtrCFRVtpOOMYNJXuksBVARSQrCFaZwjUyHJdQzcN900GGaFFNTxw2fs8s5Xje//RDKj9+PZA==
+
+react-native-nitro-modules@^0.35.2:
+  version "0.35.2"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.35.2.tgz#75fbcd42a73d93540c0069d42098d9dc6c12ea7e"
+  integrity sha512-97cZcCh3ZAuWAfutel2Q3qLfc45XXh7F9Ei5tEjahP0kV3q8hQelwLIulKXmjN+f0JI5Zf/wCsfwwdVWYU2tKA==
 
 react-native-os@^1.2.6:
   version "1.2.6"
@@ -8944,7 +8968,7 @@ react-native-timer@^1.3.6:
 
 "react-native-track-player@github:Illusion137/RNTPvE":
   version "5.0.0-alpha0"
-  resolved "https://codeload.github.com/Illusion137/RNTPvE/tar.gz/539f424f32fc38019eecd26f08aeb88574ccd060"
+  resolved "https://codeload.github.com/Illusion137/RNTPvE/tar.gz/aa69edd00afc37b13eac83b5a7c1d24ccf5f04aa"
 
 react-native-tts-export@^5.2.3:
   version "5.2.3"
@@ -8973,6 +8997,11 @@ react-native-uuid@^2.0.2:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/react-native-uuid/-/react-native-uuid-2.0.3.tgz#f85f8a8d68e52e3f1c18ba0f02ec7776f9d4a0da"
   integrity sha512-f/YfIS2f5UB+gut7t/9BKGSCYbRA9/74A5R1MDp+FLYsuS+OSWoiM/D8Jko6OJB6Jcu3v6ONuddvZKHdIGpeiw==
+
+react-native-uuid@^2.0.3:
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/react-native-uuid/-/react-native-uuid-2.0.4.tgz#0c4f345523c5feac0282d3a51fe19887727df988"
+  integrity sha512-LSJNeh559qC17fgVPBsWuTSW/OygFp2dwTcf94IQBLYft5FzIQS9pCsuT36OPvyvDOMb6yiGr6TafaJDnz9PPQ==
 
 react-native-webview@^13.16.1:
   version "13.16.1"

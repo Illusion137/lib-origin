@@ -64,6 +64,7 @@ export async function setup_track_player(): Promise<boolean> {
         });
         await TrackPlayer.setRepeatMode(RepeatMode.Off);
         await TrackPlayer.setEqualizer(Prefs.equalizer_presets[Prefs.get_pref('equalizer_preset')] as unknown as number[]);
+        await TrackPlayer.setCrossFade(Prefs.get_pref('crossfade'));
         return true;
     }
     return true;
@@ -95,15 +96,15 @@ export async function insert_track_into_player_queue(track_data: Track, plus_ind
     await on_modify_track_player_queue();
 }
 
-export async function delete_track_from_player_queue(track_data: Track) {
-    const current_track_index = await TrackPlayer.getActiveTrackIndex();
-    if (current_track_index === undefined) return;
+export async function delete_track_from_player_queue(track_data: Track, current_track_index: number) {
     const global_index = GLOBALS.global_var.playing_tracks.slice(current_track_index).findIndex(track => track.uid === track_data.uid);
     if (global_index !== -1) {
-        GLOBALS.global_var.playing_tracks.splice(current_track_index + global_index, 1);
+        const absolute_index = current_track_index + global_index;
+        GLOBALS.global_var.playing_tracks.splice(absolute_index, 1);
+        // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current
         const tp_queue = await TrackPlayer.getQueue();
-        const tp_index = tp_queue.findIndex((track, i) => track.title === track_data.title && i >= current_track_index);
-        if (tp_index !== -1) await TrackPlayer.remove([tp_index]);
+        const tp_index = tp_queue.slice(current_track_index).findIndex(track => track.title === track_data.title);
+        if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]);
     }
     await on_modify_track_player_queue();
 }
@@ -142,7 +143,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
             await SQLBackpack.add_to_backpack(track.uid);
         return 'skip';
     }
-    if("duration" in url_data && url_data.duration && !isNaN(url_data.duration) && is_empty(track.duration)){
+    if ("duration" in url_data && url_data.duration && !isNaN(url_data.duration) && is_empty(track.duration)) {
         track.duration = url_data.duration;
     }
     const nt_response = await handle_new_track_data(track, url_data);
@@ -231,9 +232,16 @@ export async function check_push_next_track(queue_index: number) {
             await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, next_track_index);
         } else if (react_native_track === 'skip') {
             GLOBALS.global_var.playing_tracks.splice(next_track_index, 1);
+            // re-check immediately so the track now shifted into next_track_index gets loaded
+            await check_push_next_track(queue_index);
         } else {
-            GLOBALS.global_var.playing_tracks[next_track_index].playback!.successful = true;
-            await TrackPlayer.add(react_native_track, next_track_index);
+            next_illusi_track.playback!.successful = true;
+            try {
+                await TrackPlayer.add(react_native_track, next_track_index);
+            } catch (error) {
+                next_illusi_track.playback!.successful = false;
+                GLOBALS.global_var.bottom_alert("Failed to add track to queue", "WARN", { error: error as Error });
+            }
         }
     }
     // if (prev_illusi_track && prev_illusi_track.playback!.added === false && prev_illusi_track.playback!.successful === false) {
@@ -273,7 +281,7 @@ export async function track_player_on_error(data: { error: string }) {
     const index = await TrackPlayer.getActiveTrackIndex();
     if (index === undefined) return;
     const illusi_track = GLOBALS.global_var.playing_tracks[index];
-    await delete_track_from_player_queue(illusi_track);
+    await delete_track_from_player_queue(illusi_track, index);
 }
 
 export async function playback_service() {
@@ -295,7 +303,7 @@ export async function playback_service() {
                 if (new_react_native_track === null || new_react_native_track === 'skip') {
                     await track_player_next();
                 } else {
-                    GLOBALS.global_var.playing_tracks[data.index + 1].playback!.added = true;
+                    GLOBALS.global_var.playing_tracks[data.index].playback!.successful = true;
                     // await TrackPlayer.updateMetadataForTrack(data.index, new_react_native_track);
                 }
                 await TrackPlayer.play();

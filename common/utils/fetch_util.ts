@@ -1,4 +1,3 @@
-
 export function google_query(query: string) { return encodeURIComponent(query).split("%20").join("+"); }
 
 export function encode_params(data: Record<string, unknown>, query?: [string, string]) {

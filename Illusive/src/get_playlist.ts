@@ -389,7 +389,7 @@ export async function illusi_get_playlist(url: string): Promise<MusicServicePlay
     const cleaned_url = urlid(url, ".json");
     const local_illusi_playlist = get_local_illusi_playlist(cleaned_url);
     if (local_illusi_playlist !== undefined) return local_illusi_playlist;
-
+    
     const playlist_response = await rozfetch<MusicServicePlaylist>(url);
     if ("error" in playlist_response) return default_playlist(playlist_response);
     const playlist = await playlist_response.json();

@@ -1,7 +1,7 @@
 declare namespace NodeJS {
 	export interface ProcessEnv {
-		SUPABASE_PROJECT_URL: string;
-		SUPABASE_PUBLIC_KEY: string;
+		EXPO_PUBLIC_SUPABASE_PROJECT_URL: string;
+		EXPO_PUBLIC_SUPABASE_PUBLIC_KEY: string;
 		YOUTUBE_COOKIE_JAR: string;
 		YOUTUBE_MUSIC_COOKIE_JAR: string;
 		SPOTIFY_COOKIE_JAR: string;

@@ -5,6 +5,8 @@ import { Prefs } from '@illusive/prefs';
 import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from '@illusive/types';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
 import { generror } from '@common/utils/error_util';
+import { supabase } from '@illusive/db/supabase';
+import { Constants } from '@illusive/constants';
 
 const fetch_opts: RoZFetchRequestInit = {
     cache_opts: {
@@ -130,5 +132,23 @@ export async function bandlab_get_user_playlists(): Promise<CompactPlaylistsResu
                 artist: [{ name: "You", uri: create_uri("bandlab", user_uuid) }]
             }
         ]
+    };
+}
+
+export async function illusi_get_user_playlists(): Promise<CompactPlaylistsResult> {
+    const { data: { session } } = await supabase().auth.getSession();
+    if (!session) return { playlists: [] };
+
+    const result = await Origin.Illusi.get_playlists({ jwt: session.access_token });
+    if ('error' in result) return { playlists: [] };
+
+    return {
+        playlists: result.map(playlist => ({
+            title:             { name: playlist.title, uri: create_uri('illusi', playlist.uuid) },
+            artist:            [{ name: Constants.local_illusi_uri_id, uri: create_uri('illusi', Constants.local_illusi_uri_id) }],
+            artwork_thumbnails: [],
+            date:              playlist.created_at as ISOString,
+            type:              'PLAYLIST' as const,
+        }))
     };
 }

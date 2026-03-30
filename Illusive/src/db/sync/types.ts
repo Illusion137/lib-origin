@@ -1,63 +1,81 @@
-
-import type { Database } from "../database.types";
+import type { Database } from '../database.types';
 import type { SQLTrack, SQLPlaylist, SQLPlaylistTrack, SQLNewRelease } from '../schema';
 
-// Define local table names as a string literal union
-export type LocalTableName = 'tracks' | 'playlists' | 'playlists_tracks' | 'artists' | 'new_releases' | 'backpack' | 'recently_played_tracks' | 'track_plays';
+// ---------------------------------------------------------------------------
+// Local table names
+// ---------------------------------------------------------------------------
+export type LocalTableName =
+    | 'tracks'
+    | 'playlists'
+    | 'playlists_tracks'
+    | 'artists'
+    | 'new_releases'
+    | 'backpack'
+    | 'recently_played_tracks'
+    | 'track_plays';
 
-// Remote table names from Supabase schema
+// ---------------------------------------------------------------------------
+// Remote table names derived from the Database type
+// ---------------------------------------------------------------------------
 export type RemoteTableName = keyof Database['public']['Tables'];
 
-// A mapping from local table names to their corresponding remote names
+// ---------------------------------------------------------------------------
+// Mapping: local table → remote table (null = local-only, not synced)
+// Note: tracks also writes to utracks as a dual-write special case — this is
+// handled in SyncEngine.push_track_changes(), not via the map.
+// ---------------------------------------------------------------------------
 export const LOCAL_TO_REMOTE_TABLE_MAP: Record<LocalTableName, RemoteTableName | null> = {
-    tracks: 'tracks',
-    playlists: 'playlists',
-    playlists_tracks: 'uptracks',
-    new_releases: 'releases',
-    artists: null, // No direct mapping for artists
-    backpack: null,
+    tracks:                 'tracks',
+    playlists:              'playlists',
+    playlists_tracks:       'playlists_tracks',
+    new_releases:           'new_releases',
+    artists:                null,
+    backpack:               null,
     recently_played_tracks: null,
-    track_plays: null
+    track_plays:            null,
 };
 
-// A mapping from local table names to their Drizzle schema object
-// This is not used in this file but good for reference in other files.
-// import { tracks_table, playlists_table, playlists_tracks_table, artists_table, new_releases_table } from '../schema';
-// export const LOCAL_TABLE_SCHEMA_MAP = {
-//     'tracks': tracks_table,
-//     'playlists': playlists_table,
-//     'playlists_tracks': playlists_tracks_table,
-//     'artists': artists_table,
-//     'new_releases': new_releases_table
-// };
-
+// ---------------------------------------------------------------------------
+// Change types
+// ---------------------------------------------------------------------------
 export type ChangeOp = 'insert' | 'update' | 'delete';
 
 export interface Change {
-    table: LocalTableName;
-    record_id: string;
-    operation: ChangeOp;
-    data: any;
-    change_id: number;
+    table:      LocalTableName;
+    record_id:  string;
+    operation:  ChangeOp;
+    data:       unknown;
+    change_id:  number;
 }
 
 export interface CompressedChange {
-    table: LocalTableName;
-    record_id: string;
-    operation: ChangeOp;
-    data: any; // The compressed/merged data
+    table:      LocalTableName;
+    record_id:  string;
+    operation:  ChangeOp;
+    data:       unknown;
     change_ids: number[];
 }
 
-// More specific types for data transformations
-export type LocalTrack = SQLTrack;
-export type RemoteTrack = Database['public']['Tables']['tracks']['Row'];
-
-export type LocalPlaylist = SQLPlaylist;
-export type RemotePlaylist = Database['public']['Tables']['playlists']['Row'];
-
+// ---------------------------------------------------------------------------
+// Typed aliases for local ↔ remote data shapes
+// ---------------------------------------------------------------------------
+export type LocalTrack        = SQLTrack;
+export type LocalPlaylist     = SQLPlaylist;
 export type LocalPlaylistTrack = SQLPlaylistTrack;
-export type RemotePlaylistTrack = Database['public']['Tables']['uptracks']['Row'];
+export type LocalNewRelease   = SQLNewRelease;
 
-export type LocalNewRelease = SQLNewRelease;
-export type RemoteNewRelease = Database['public']['Tables']['releases']['Row'];
+export type RemoteTrack           = Database['public']['Tables']['tracks']['Row'];
+export type RemoteTrackInsert     = Database['public']['Tables']['tracks']['Insert'];
+export type RemoteUTrack          = Database['public']['Tables']['utracks']['Row'];
+export type RemoteUTrackInsert    = Database['public']['Tables']['utracks']['Insert'];
+export type RemotePlaylist        = Database['public']['Tables']['playlists']['Row'];
+export type RemotePlaylistInsert  = Database['public']['Tables']['playlists']['Insert'];
+export type RemotePlaylistTrack        = Database['public']['Tables']['playlists_tracks']['Row'];
+export type RemotePlaylistTrackInsert  = Database['public']['Tables']['playlists_tracks']['Insert'];
+export type RemoteNewRelease       = Database['public']['Tables']['new_releases']['Row'];
+export type RemoteNewReleaseInsert = Database['public']['Tables']['new_releases']['Insert'];
+
+// ---------------------------------------------------------------------------
+// Joined row returned when pulling tracks (tracks JOIN utracks)
+// ---------------------------------------------------------------------------
+export type RemoteTrackWithUserData = RemoteTrack & Pick<RemoteUTrack, 'plays' | 'meta' | 'deleted'>;

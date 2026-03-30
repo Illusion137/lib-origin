@@ -18,11 +18,11 @@ export const mobile_potoken: PoTokenGenerator = {
 			}
 			const context = innertube.session.context;
 			nodejs.channel.post("potoken", JSON.stringify({ content_binding, context }));
-			const MAX_TIMEOUT = 100;
+			const MAX_TIMEOUT = 1000;
 			let timeoutCounter = 0;
 			while (timeoutCounter < MAX_TIMEOUT) {
 				timeoutCounter += 1;
-				await new Promise((resolve) => setTimeout(resolve, 100));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 				if (results.identifier === content_binding) {
 					if (results.error) {
 						return generror(results.error, "CRITICAL");

@@ -117,7 +117,7 @@ export type SQLTrackPlays = Omit<typeof track_plays_table.$inferSelect, "id">;
 
 const sync_metadata_config = {
     id: int().primaryKey({ autoIncrement: true }),
-    table_name: text().notNull(),
+    table_name: text().notNull().unique(),
     last_sync_at: int().notNull().default(0),
     last_modified_at: int().notNull().default(0),
     created_at: int().notNull().$defaultFn(() => Date.now()),

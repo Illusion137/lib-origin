@@ -5,7 +5,7 @@ import { Illusive } from "@illusive/illusive";
 import { Prefs } from "@illusive/prefs";
 import type { Track } from "@illusive/types";
 import { alert_error } from "@illusive/illusi/src/alert";
-import { insert_track_into_player_queue } from '@illusive/track_player_service';
+import { insert_track_into_player_queue, on_modify_track_player_queue } from '@illusive/track_player_service';
 import { default_playlists } from '@illusive/default_playlists';
 import { GLOBALS } from '@illusive/globals';
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
@@ -69,6 +69,7 @@ export async function play_mix(track_data: Track, from: string) {
         }
         track_mix.tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
         GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
+        await on_modify_track_player_queue();
     })().catch(catch_ignore);
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[]) {

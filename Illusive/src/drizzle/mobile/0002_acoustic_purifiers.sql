@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `sync_metadata_table_name_unique` ON `sync_metadata` (`table_name`);

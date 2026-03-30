@@ -3,6 +3,8 @@ import type { ClientSearchOf, Playlist, Track, User } from '@origin/soundcloud/t
 import { CookieJar } from '@common/utils/cookie_util';
 import type { ResponseError } from '@common/types';
 import { is_empty } from '@common/utils/util';
+import { supabase } from '@illusive/db/supabase';
+import type { ISOString, TrackMetaData } from '@illusive/types';
 import { parse_search_continuation_contents } from '@origin/youtube/parser';
 import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
 import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
@@ -180,6 +182,53 @@ export async function soundcloud_search_continuation(opts: SoundcloudSearchConti
     const cookie_jar = get_cookie_jar('soundcloud_cookie_jar');
     const search_response = await Origin.SoundCloud.continuation<Playlist|Track|User>(opts.next_href, {cookie_jar, client_id: opts.client_id}, 1);
     return soundcloud_parse_search({data: search_response, client_id: opts.client_id});
+}
+
+export async function illusi_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+    const { data: { session } } = await supabase().auth.getSession();
+    if (!session) return default_search();
+
+    const result = await Origin.Illusi.search_tracks(query, opts?.limit ?? 50, { jwt: session.access_token });
+    if ('error' in result) return default_search();
+
+    const default_meta: TrackMetaData = {
+        added_date:       new Date().toISOString() as ISOString,
+        last_played_date: new Date().toISOString() as ISOString,
+        plays:            0,
+    };
+
+    return {
+        tracks: result.map(t => ({
+            uid:                  t.uid,
+            title:                t.title,
+            alt_title:            t.alt_title,
+            artists:              t.artists,
+            duration:             t.duration,
+            prods:                t.prods,
+            genre:                t.genre,
+            tags:                 t.tags,
+            explicit:             t.explicit,
+            unreleased:           t.unreleased,
+            album:                t.album,
+            illusi_id:            t.illusi_id,
+            imported_id:          t.imported_id,
+            youtube_id:           t.youtube_id,
+            youtubemusic_id:      t.youtubemusic_id,
+            soundcloud_id:        t.soundcloud_id,
+            soundcloud_permalink: t.soundcloud_permalink,
+            spotify_id:           t.spotify_id,
+            amazonmusic_id:       t.amazonmusic_id,
+            applemusic_id:        t.applemusic_id,
+            bandlab_id:           t.bandlab_id,
+            artwork_url:          t.artwork_url,
+            plays:                0,
+            meta:                 default_meta,
+        })),
+        playlists:  [],
+        albums:     [],
+        artists:    [],
+        continuation: null,
+    };
 }
 
 export async function apple_music_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse>{

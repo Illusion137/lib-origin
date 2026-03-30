@@ -44,6 +44,7 @@ export namespace SQLGlobal {
     }
     export function delete_global_track_item(track_uid: Track['uid']){
         const idx = GLOBALS.global_var.sql_tracks.findIndex(track => track.uid === track_uid);
+        if (idx === -1) return;
         GLOBALS.global_var.sql_tracks.splice(idx, 1);
         run_global_sql_tracks_callbacks();
     }

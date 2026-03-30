@@ -34,6 +34,7 @@ export const status_codes_descriptions = {
     '417': 'Expectation Failed',
     '418': 'I\'m a teapot',
     '429': 'Too Many Requests',
+    '431': 'Headers too long',
     '500': 'Internal Server Error',
     '501': 'Not Implemented',
     '502': 'Bad Gateway',

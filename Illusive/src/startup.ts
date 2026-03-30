@@ -23,9 +23,58 @@ import { SQLArtists } from './sql/sql_artists';
 import { catch_log } from '@common/utils/error_util';
 import { migrate } from 'drizzle-orm/op-sqlite/migrator';
 import migrations from './drizzle/mobile/migrations';
+import { supabase } from './db/supabase';
+import { SyncEngine } from './db/sync/sync_engine';
+import { NetworkMonitor } from './db/sync/network_monitor';
 import { FutsalShuffle } from './futsal_shuffle';
 import { fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
+import { run_startup_links } from './linker';
+
+let sync_engine_instance: SyncEngine | null = null;
+let sync_engine_start_promise: Promise<void> | null = null;
+let sync_engine_should_run = false;
+let auth_state_subscription: { unsubscribe: () => void } | null = null;
+
+async function start_sync_engine() {
+    sync_engine_should_run = true;
+    if (sync_engine_instance) return;
+    if (sync_engine_start_promise) {
+        await sync_engine_start_promise;
+        return;
+    }
+
+    const engine = new SyncEngine(supabase(), NetworkMonitor.get_instance());
+    sync_engine_start_promise = (async () => {
+        try {
+            await engine.initialize();
+            if (!sync_engine_should_run) {
+                engine.destroy();
+                return;
+            }
+            sync_engine_instance = engine;
+        } catch (error) {
+            engine.destroy();
+            throw error;
+        } finally {
+            sync_engine_start_promise = null;
+        }
+    })();
+
+    await sync_engine_start_promise;
+}
+
+function stop_sync_engine() {
+    sync_engine_should_run = false;
+    if (!sync_engine_instance) return;
+    sync_engine_instance.destroy();
+    sync_engine_instance = null;
+}
+
+function reset_auth_sync_subscription() {
+    auth_state_subscription?.unsubscribe();
+    auth_state_subscription = null;
+}
 
 export async function warmup_client() {
     await ffmpeg().execute_args(['-L']);
@@ -59,6 +108,26 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         };
 
         await migrate(db, migrations).catch(catch_log);
+
+        // Start sync for the current session and maintain a single engine lifecycle.
+        const { data: { session } } = await supabase().auth.getSession();
+        if (session) {
+            // Do not block app startup on long-running initial sync.
+            void start_sync_engine().catch(catch_log);
+        } else {
+            stop_sync_engine();
+        }
+
+        reset_auth_sync_subscription();
+        const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_IN') {
+                void start_sync_engine().catch(catch_log);
+            }
+            if (event === 'SIGNED_OUT') {
+                stop_sync_engine();
+            }
+        });
+        auth_state_subscription = subscription;
 
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
@@ -99,8 +168,10 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             miscnative().keep_mobile_awake()
         ]).catch(catch_log);
         Prefs.pref_set_theme(set_theme);
+        SQLfs.recreate_directories().catch(catch_log);
         warmup_client().catch(catch_log);
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
+        await run_startup_links(Prefs.get_pref('linker_links'));
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 

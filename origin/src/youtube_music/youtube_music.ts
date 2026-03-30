@@ -285,7 +285,7 @@ export namespace YouTubeMusic {
 		const browse_data = await browse_response.json();
 		if ("error" in browse_data) return browse_data;
 		if (browse_data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items === undefined) {
-			return generror("YouTube Music Only Artist Albums: couldn't find albums", "MEDIUM", { opts, artist_id });
+			return generror("YouTube Music Only Artist Albums: couldn't find albums", "INFO", { opts, artist_id });
 		}
 		return {
 			title: parse_runs(browse_data.header.musicHeaderRenderer.title.runs),

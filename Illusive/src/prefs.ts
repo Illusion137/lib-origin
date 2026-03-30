@@ -89,7 +89,8 @@ export namespace Prefs {
         primary_color: { default_value: '#7400fe', current_value: '#7400fe', type: "STRING" } as BasePref<HexColor, OtherPrefTypes>,
         theme: { default_value: 'dark', current_value: 'dark', type: "STRING" } as BasePref<PossibleThemes, OtherPrefTypes>,
         track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS" } as BasePref<Bias, OtherPrefTypes>,
-
+        carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: "STRING" } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
+        
         default_playlist_max_size: { default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
         recently_played_max_size: { default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
         fuzzy_search_threshold: { default_value: 50, current_value: 100, type: "NUMBER", range: { start: 0, end: 100 }, visible: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)" } as BasePref<number, OtherPrefTypes>,
