@@ -12,6 +12,17 @@ export namespace Illusi {
     export type RemotePlaylist    = Pick<Database['public']['Tables']['playlists']['Row'],    'uuid' | 'title' | 'description' | 'created_at' | 'modified_at'>;
     export type RemoteTrack       = Omit<Database['public']['Tables']['tracks']['Row'],       'deleted'>;
     export type RemoteNewRelease  = Omit<Database['public']['Tables']['new_releases']['Row'], 'id' | 'user_uid' | 'deleted' | 'modified_at'>;
+    export type RemoteTrackSuggestion = Pick<RemoteTrack,
+        'uid' | 'title' | 'alt_title' | 'artists' | 'album' | 'artwork_url' | 'explicit' | 'duration'
+    >;
+
+    //RemoteTrackSuggestion
+    function suggestion_track_new_uid(t: RemoteTrackSuggestion): RemoteTrackSuggestion {
+        return {...t, uid: generate_new_uid(t.title)};
+    }
+    function track_new_uid(t: RemoteTrack): RemoteTrack{
+        return {...t, uid: generate_new_uid(t.title)};
+    }
 
     function supaerror_to_rozerr(error: {error: string}, args?: object){
         return generror(error.error, "LOW", args);
@@ -75,7 +86,7 @@ export namespace Illusi {
         );
 
         if ('error' in tracks) return supaerror_to_rozerr(tracks, {uuid, opts});
-        return { ...playlist, tracks: tracks.map(t => ({...t, uid: generate_new_uid(t.title)})) };
+        return { ...playlist, tracks: tracks.map(track_new_uid) };
     }
 
     export async function get_playlist_continuation(
@@ -97,9 +108,29 @@ export namespace Illusi {
             opts,
         );
         if("error" in tracks) return supaerror_to_rozerr(tracks, {uuid, offset, opts})
-        return tracks.map(t => ({...t, uid: generate_new_uid(t.title)}));
+        return tracks.map(track_new_uid);
     }
 
+    export const SUGGESTION_LIMIT = 20;
+
+    export async function get_search_suggestions(
+        query: string,
+        opts: Opts,
+    ): PromiseResult<RemoteTrackSuggestion[]> {
+        const q = encodeURIComponent(`%${query}%`);
+
+        const result = await rest<RemoteTrackSuggestion[]>(
+            `tracks?select=uid,title,alt_title,artists,album,artwork_url,explicit,duration` +
+            `&or=(title.ilike.${q},alt_title.ilike.${q},artists.cs.${q},album->>name.ilike.${q})` +
+            `&deleted=eq.false` +
+            `&limit=${SUGGESTION_LIMIT}`,
+            opts,
+        );
+
+        if ('error' in result) return supaerror_to_rozerr(result, { query, opts });
+        return result.map(suggestion_track_new_uid);
+    }
+    
     export async function get_playlists(opts: Opts): Promise<RemotePlaylist[] | { error: string }> {
         return rest<RemotePlaylist[]>(
             'playlists?select=uuid,title,description,created_at,modified_at&deleted=eq.false&order=created_at.desc',

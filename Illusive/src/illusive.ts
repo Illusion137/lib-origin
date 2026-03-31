@@ -1,4 +1,4 @@
-import * as Origin from '@origin/index'
+import type * as Origin from '@origin/index'
 import { TimedCache, type PromiseResult, type ResponseError } from "@common/types";
 import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_array } from "@common/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, illusi_add_tracks_to_playlist, illusi_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "@illusive/add_delete_tracks_from_playlist";
@@ -15,7 +15,6 @@ import { amazon_music_search, apple_music_search, illusi_search, soundcloud_sear
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
 import { MusicService } from "@illusive/types";
 import { illusi_get_new_releases, soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
-import { parse_youtube_music_track } from '@illusive/parsers/youtube_music_parser';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { remove_topic } from '@common/utils/clean_util';
@@ -335,11 +334,6 @@ export namespace Illusive {
         if (!is_empty(track.youtube_id))
             return `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`;
         return illusi_dark_icon_index;
-    }
-
-    export async function get_suggestions(query: string) {
-        const suggestions = await Origin.YouTubeMusic.search_suggestions({}, query);
-        return suggestions.map(s => typeof s === "string" ? s : parse_youtube_music_track(s));
     }
 
     export type ShuffleMode = "ORDER" | "SHUFFLE";

@@ -326,6 +326,7 @@ export namespace YouTubeMusic {
 				if ("searchSuggestionRenderer" in content) {
 					return parse_runs(content.searchSuggestionRenderer.suggestion.runs, '');
 				}
+				// TODO parse more data like channels and such
 				else if ("musicResponsiveListItemRenderer" in content) {
 					try {
 						return Parser.parse_track_search_suggestion(content.musicResponsiveListItemRenderer);

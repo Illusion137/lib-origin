@@ -2,7 +2,7 @@ import { CookieJar } from "@common/utils/cookie_util";
 import type { BaseOpts, FetchMethod, PromiseResult, ResponseError, ResponseSuccess } from "@common/types";
 import { extract_all_strings_from_pattern, extract_string_from_pattern, is_empty, milliseconds_of, urlid } from "@common/utils/util";
 import type { HydratablePlaylist, HydratableUser, Hydration, UserData } from "@origin/soundcloud/types/Hydration";
-import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, Search, SearchOf, Track, User } from "@origin/soundcloud/types/Search";
+import type { ArtistRecommendation, ArtistShortcut, ArtistUser, ClientSearchOf, HistoryTrack, LikedTrack, Playlist, QueryOutput, Search, SearchOf, Track, User } from "@origin/soundcloud/types/Search";
 import { encode_params } from "@common/utils/fetch_util";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 import { generror } from "@common/utils/error_util";
@@ -421,6 +421,9 @@ export namespace SoundCloud {
             ))
         }
         return await apipost<null>({ ...opts, path: `me/artist-shortcuts/read-updates`, payload });
+    }
+    export async function query_suggestions(opts: Opts & { query: string; limit?: number, offset?: number }){
+        return await apiget<QueryOutput>({ ...opts, path: `search/queries`, params: { q: opts.query, limit: opts.limit ?? 1000, offset: opts.offset ?? 0 } });
     }
     export async function who_to_follow(opts: Opts & { limit?: number, offset?: number }) {
         return await apiget<ArtistRecommendation>({ ...opts, path: `me/suggested/users/who_to_follow`, params: { limit: opts.limit ?? 1000, offset: opts.offset ?? 0 } });
