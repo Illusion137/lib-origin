@@ -1,0 +1,17 @@
+diff --git a/node_modules/drizzle-orm/op-sqlite/driver.d.cts b/node_modules/drizzle-orm/op-sqlite/driver.d.cts
+index b691555..1d60318 100644
+--- a/node_modules/drizzle-orm/op-sqlite/driver.d.cts
++++ b/node_modules/drizzle-orm/op-sqlite/driver.d.cts
+@@ -1,4 +1,4 @@
+-import type { OPSQLiteConnection, QueryResult } from '@op-engineering/op-sqlite';
++import type { DB, OPSQLiteConnection, QueryResult } from '@op-engineering/op-sqlite';
+ import { entityKind } from "../entity.cjs";
+ import { BaseSQLiteDatabase } from "../sqlite-core/db.cjs";
+ import type { DrizzleConfig } from "../utils.cjs";
+@@ -6,5 +6,5 @@ export declare class OPSQLiteDatabase<TSchema extends Record<string, unknown> =
+     static readonly [entityKind]: string;
+ }
+ export declare function drizzle<TSchema extends Record<string, unknown> = Record<string, never>>(client: OPSQLiteConnection, config?: DrizzleConfig<TSchema>): OPSQLiteDatabase<TSchema> & {
+-    $client: OPSQLiteConnection;
++    $client: DB;
+ };

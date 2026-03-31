@@ -183,11 +183,10 @@ export async function spotify_get_artist(id: string): Promise<MusicServiceArtist
     if ("error" in artist) return default_artist(artist);
     const union_artist = artist.data.artistUnion;
     const artist_uri: NamedUUID = { name: union_artist.profile.name, uri: create_uri("spotify", id) };
-    // TODO 
     const popular_release_albums = union_artist?.discography?.popularReleasesAlbums?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [];
     return {
         name: union_artist.profile.name,
-        albums: union_artist.discography.albums.items?.[0]?.releases?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [],
+        albums: popular_release_albums.concat(union_artist.discography.albums.items?.[0]?.releases?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? []),
         playlists: [],
         latest_release: union_artist?.discography?.latest ? parse_spotify_artist_album(union_artist.discography.latest, artist_uri) : undefined,
         tracks: union_artist.discography?.topTracks?.items.map(parse_spotify_artist_track) ?? [],

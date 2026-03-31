@@ -28,11 +28,11 @@ export namespace Explore {
 	}
 
     type GetPersistantNewReleases = (refreshed?: boolean) => Promise<CompactPlaylist[]>;
-    export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
+    export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases, on_progress: () => any): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
 		const most_played_artists = get_most_played_artists(GLOBALS.global_var.sql_tracks);
 		const new_releases_length = await SQLNewReleases.new_releases_count();
 		const old_persistant = await get_persistant_new_releases(true);
-		const artist_watch_new_releases: (CompactPlaylist[] | ResponseError)[] | ResponseError = await artist_watch(most_played_artists).catch(json_catch);
+		const artist_watch_new_releases: (CompactPlaylist[] | ResponseError)[] | ResponseError = await artist_watch(most_played_artists, on_progress).catch(json_catch);
 		if ("error" in artist_watch_new_releases) return artist_watch_new_releases;
 		const filtered_new_releases = (artist_watch_new_releases.filter((r) => !("error" in r)) as CompactPlaylist[][]).flat();
 		await SQLNewReleases.refresh_new_releases(filtered_new_releases);

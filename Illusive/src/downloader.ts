@@ -152,7 +152,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
         track_downloader.update_key(downloading.uid, { ...downloading, execution_id: ffmpeg_result.session_id });
 
         retcode = await ffmpeg_result.retcode;
-        await wait(100); // TODO what we doing here??
+        await wait(100); // Waiting incase ffmpeg is cooling down; likely not necessary, but just in case
         if (retcode !== Constants.ffmpeg_retcode_success) logs = await ffmpeg_result.logs();
 
         if (retcode !== Constants.ffmpeg_retcode_success) return generror(`FFMPEG return status code: ${retcode};\n UID: ${downloading.track.uid}; LOG: ${logs}`, "CRITICAL");
@@ -175,7 +175,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
             track_downloader.update_key(downloading.uid, { ...downloading, execution_id: ffmpeg_result.session_id });
 
             retcode = await ffmpeg_result.retcode;
-            await wait(100); // TODO what we doing here??
+            await wait(100); // Waiting incase ffmpeg is cooling down; likely not necessary, but just in case
             if (retcode !== Constants.ffmpeg_retcode_success) logs = await ffmpeg_result.logs();
         }
 

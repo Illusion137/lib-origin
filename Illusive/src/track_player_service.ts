@@ -148,7 +148,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     }
     const nt_response = await handle_new_track_data(track, url_data);
     if (!("error" in nt_response)) track = nt_response;
-    // TODO if file doesn't exist might as well just remove it from the queue and skip
+    // Note: TrackPlayer will auto removed failed files, don't bother with checking if file exist
     const artwork = resolved_artwork(track.playback!.artwork);
     return {
         url: url_data.url,
@@ -328,7 +328,7 @@ export async function playback_service() {
                 current_track.meta!.last_played_date = (new Date().toISOString() as ISOString);
                 current_track.meta!.plays++;
                 await SQLTracks.update_track_meta_data(current_track.uid, current_track.meta!);
-                await SQLTrackPlays.insert_track_play(current_track.uid); // TODO fix whatever going on here
+                await SQLTrackPlays.insert_track_play(current_track.uid);
             }
             if (illusi_track.meta?.enddur !== undefined && data.position >= illusi_track.meta?.enddur) await track_player_next();
 

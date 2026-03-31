@@ -1,7 +1,8 @@
-import { days_of, is_empty, seconds_of } from "@common/utils/util";
+import { days_of, is_empty, milliseconds_of, seconds_of } from "@common/utils/util";
 import { Prefs } from "./prefs";
 import type { Track } from "./types";
 import { GLOBALS } from "./globals";
+import { SQLTrackPlays } from "./sql/sql_track_plays";
 
 export namespace FutsalShuffle {
     export const icache = {
@@ -22,13 +23,19 @@ export namespace FutsalShuffle {
         icache.plays_from_albums.clear();
         icache.plays_from_artist.clear();
         icache.plays_in_past_month.clear();
+
+
         GLOBALS.global_var.sql_tracks.forEach(track => {
             if (track.album?.uri)
                 icache.plays_from_albums.set(track.album.uri, (icache.plays_from_albums.get(track.album.uri) ?? 0) + (track.meta?.plays ?? 0));
             if (track.artists?.[0]?.uri)
                 icache.plays_from_artist.set(track.artists[0].uri, (icache.plays_from_artist.get(track.artists[0].uri) ?? 0) + (track.meta?.plays ?? 0));
-            // TODO plays_in_past_month;
         });
+
+        const grouped_plays = SQLTrackPlays.count_all_track_plays_sync({date_start: new Date(Date.now() - milliseconds_of({months: 1}))});
+        for(const [track_uid, count_array] of Object.entries(grouped_plays)){
+            icache.plays_in_past_month.set(track_uid, count_array.length);
+        }
 
         const weights: number[] = [];
         GLOBALS.global_var.sql_tracks.forEach(track => {
@@ -139,6 +146,7 @@ export namespace FutsalShuffle {
         const max = Math.max(...data);
         for (let i = 0; i < keys.length; i++) {
             data[i] = max > 0 ? data[i] / max : 0;
+            if(bias[keys[i]] < 0) data[i] *= -1;
             if (isNaN(data[i])) data[i] = 0;
         }
         return data;

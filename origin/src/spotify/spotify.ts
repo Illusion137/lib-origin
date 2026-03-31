@@ -57,8 +57,6 @@ export namespace Spotify {
     export const valid_collection_regex = /(https?:\/\/)open\.spotify\.com\/(collection)\/.+/i
     export const valid_artist_regex = /(https?:\/\/)open\.spotify\.com\/artist\/.+/i
 
-    // TODO finish spotify
-
     export function get_headers(client: (Client | undefined), cookie_jar: (CookieJar | undefined)): Record<string, string> {
         const default_headers = {
             "cache-control": "max-age=0",
