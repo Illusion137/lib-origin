@@ -36,6 +36,7 @@ const tracks_config = {
         last_played_date: new Date().toISOString() as ISOString,
         plays: 0,
     })),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
@@ -55,6 +56,7 @@ const playlists_config = {
     inherited_searchs: text({mode: 'json'}).notNull().$type<InheritedSearch[]>().default([]),
     linked_playlists: text({mode: 'json'}).notNull().$type<LinkedPlaylist[]>().default([]),
     date: text().notNull().$defaultFn(() => new Date().toISOString()),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
@@ -63,6 +65,7 @@ const playlists_tracks_config = {
     id: int().primaryKey({ autoIncrement: true }),
     uuid: text().notNull(),
     track_uid: text().notNull(),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
@@ -77,6 +80,7 @@ const new_releases_config = {
     type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"), // TODO remove this boofy ass shit
     date: text().notNull().$type<ISOString>().default(new Date(0).toISOString() as ISOString),
     song_track: text({mode: 'json'}).$type<Track>(),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
@@ -84,6 +88,7 @@ const artists_config = {
     uri: text().primaryKey().notNull(),
     name: text().notNull(),
     artwork_url: text().notNull(),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
@@ -92,6 +97,7 @@ const track_plays_config = {
     id: int().primaryKey({ autoIncrement: true }),
     count: int().notNull().default(0),
     track_uid: text().notNull(),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
@@ -121,6 +127,7 @@ const sync_metadata_config = {
     table_name: text().notNull().unique(),
     last_sync_at: int().notNull().default(0),
     last_modified_at: int().notNull().default(0),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
@@ -130,6 +137,7 @@ const change_log_config = {
     operation: text().notNull().$type<'insert' | 'update' | 'delete'>(),
     record_id: text().notNull(),
     data: text({ mode: 'json' }).notNull(),
+    deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     synced: int({ mode: 'boolean' }).notNull().default(false),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;

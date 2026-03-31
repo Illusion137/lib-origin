@@ -1,7 +1,7 @@
 import { db } from "@illusive/db/database";
 import { track_plays_table } from "@illusive/db/schema";
 import type { Track } from "@illusive/types";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import { gen_uuid } from "@common/utils/util";
 
@@ -18,7 +18,7 @@ export namespace SQLTrackPlays {
         // TODO unfuck this
         const timestamps_objs = await db.select({created_at: track_plays_table.created_at})
             .from(track_plays_table)
-            .where(eq(track_plays_table.track_uid, track_uid));
+            .where(and(eq(track_plays_table.deleted, false), eq(track_plays_table.track_uid, track_uid)));
         if(date_range.date_start === undefined && date_range.date_end === undefined) return timestamps_objs.length;
         const timestamps = timestamps_objs.map(item => item.created_at);
         let count = 0;

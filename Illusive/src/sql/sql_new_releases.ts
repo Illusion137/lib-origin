@@ -8,13 +8,13 @@ import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompac
 import { SQLTracks } from './sql_tracks';
 import { reinterpret_cast } from '@common/cast';
 import { GLOBALS } from '@illusive/globals';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { ChangeTracker } from '@illusive/db/sync/change_tracker';
 import { gen_uuid } from '@common/utils/util';
 
 export namespace SQLNewReleases {
     export async function new_releases_count(): Promise<number>{
-        return await db.$count(new_releases_table);
+        return await db.$count(new_releases_table, eq(new_releases_table.deleted, false));
     }
     
     export async function sql_compact_playlist_to_compact_playlist(playlist: CompactPlaylist|SQLCompactPlaylist): Promise<CompactPlaylist>{
@@ -35,7 +35,7 @@ export namespace SQLNewReleases {
     
     export async function get_all_new_releases(){
         return await Promise.all(
-            (await db.select().from(new_releases_table).orderBy(desc(new_releases_table.created_at))).map(sql_compact_playlist_to_compact_playlist)
+            (await db.select().from(new_releases_table).where(eq(new_releases_table.deleted, false)).orderBy(desc(new_releases_table.created_at))).map(sql_compact_playlist_to_compact_playlist)
         ) as TimestampedCompactPlaylist[];
     }
     

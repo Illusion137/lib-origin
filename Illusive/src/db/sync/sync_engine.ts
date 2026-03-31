@@ -370,6 +370,8 @@ export class SyncEngine {
             if (this.is_destroyed) return;
             await this.pull_changes();
             if (this.is_destroyed) return;
+            await ChangeTracker.delete_irresolvable_changes();
+            if (this.is_destroyed) return;
             await Prefs.save_pref('last_synced', new Date());
             this.consecutive_failures = 0;
             this.last_error_message = undefined;
@@ -1221,8 +1223,24 @@ export class SyncEngine {
             .where(eq(tracks_table.uid, row.uid)).get();
 
         if (existing) {
-            // Accumulate merge — local wins ties, fill gaps from remote
-            const merged = this.accumulate_merge_local(existing, row);
+            const has_pending_upsert = pending_track_changes
+                ? pending_track_changes.upserts.has(row.uid)
+                : Boolean(await db.select({ id: change_log_table.id })
+                    .from(change_log_table)
+                    .where(and(
+                        eq(change_log_table.synced, false),
+                        eq(change_log_table.table_name, 'tracks'),
+                        inArray(change_log_table.operation, ['insert', 'update']),
+                        eq(change_log_table.record_id, row.uid),
+                    ))
+                    .limit(1)
+                    .get());
+
+            // If there are pending local changes, preserve local intent (accumulate/fill-gaps).
+            // Otherwise let remote win for metadata so that remote edits propagate down.
+            const merged = has_pending_upsert
+                ? this.accumulate_merge_local(existing, row)
+                : this.remote_merge_local(existing, row);
             await db.update(tracks_table).set(merged)
                 .where(eq(tracks_table.uid, row.uid));
 
@@ -1294,6 +1312,73 @@ export class SyncEngine {
         };
 
         // User data fields (only present on RemoteTrackWithUserData)
+        if ('plays' in remote && 'meta' in remote) {
+            result.plays = existing.plays > 0 ? existing.plays : (remote).plays;
+            const local_meta_str = typeof existing.meta === 'string'
+                ? existing.meta : JSON.stringify(existing.meta);
+            result.meta = local_meta_str !== '{}' ? existing.meta : (remote).meta as any;
+        }
+
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Remote-first merge: remote wins for metadata when no pending local changes.
+    // Service IDs always accumulate. Local device files are always preserved.
+    // User data (plays, meta) is kept locally.
+    // -------------------------------------------------------------------------
+    private remote_merge_local(
+        existing: LocalTrack,
+        remote: RemoteTrackWithUserData | Database['public']['Tables']['tracks']['Row'],
+    ): Partial<LocalTrack> {
+        const pick_str = (local: string, remote_val: string): string =>
+            local !== '' ? local : remote_val;
+        const pick_num = (local: number, remote_val: number): number =>
+            local !== 0 ? local : remote_val;
+
+        const remote_artists = typeof remote.artists === 'string'
+            ? remote.artists : JSON.stringify(remote.artists);
+        const remote_tags = typeof remote.tags === 'string'
+            ? remote.tags : JSON.stringify(remote.tags);
+        const remote_album = typeof remote.album === 'string'
+            ? remote.album : JSON.stringify(remote.album);
+
+        const result: Partial<LocalTrack> = {
+            // Metadata: remote wins if non-empty/non-default
+            title:                remote.title || existing.title,
+            alt_title:            remote.alt_title || existing.alt_title,
+            artists:              (remote_artists !== '[]' ? remote_artists : JSON.stringify(existing.artists)) as any,
+            duration:             remote.duration || existing.duration,
+            prods:                remote.prods || existing.prods,
+            genre:                remote.genre || existing.genre,
+            tags:                 (remote_tags !== '[]' ? remote_tags : JSON.stringify(existing.tags)) as any,
+            explicit:             (remote.explicit !== 'NONE' ? remote.explicit : existing.explicit) as any,
+            unreleased:           remote.unreleased || existing.unreleased,
+            album:                (remote_album !== '{"name":"","uri":null}' && remote_album !== '{"name":""}' ? remote_album : JSON.stringify(existing.album)) as any,
+            artwork_url:          remote.artwork_url || existing.artwork_url,
+
+            // Service IDs: always accumulate (take non-empty from either side)
+            youtube_id:           pick_str(existing.youtube_id, remote.youtube_id),
+            youtubemusic_id:      pick_str(existing.youtubemusic_id, remote.youtubemusic_id),
+            soundcloud_id:        pick_num(existing.soundcloud_id, remote.soundcloud_id),
+            soundcloud_permalink: pick_str(existing.soundcloud_permalink, remote.soundcloud_permalink),
+            spotify_id:           pick_str(existing.spotify_id, remote.spotify_id),
+            amazonmusic_id:       pick_str(existing.amazonmusic_id, remote.amazonmusic_id),
+            applemusic_id:        pick_str(existing.applemusic_id, remote.applemusic_id),
+            bandlab_id:           pick_str(existing.bandlab_id, remote.bandlab_id),
+            illusi_id:            pick_str(existing.illusi_id, remote.illusi_id),
+            imported_id:          pick_str(existing.imported_id, remote.imported_id),
+
+            // Local-only device paths — never overwrite with remote
+            media_uri:            existing.media_uri,
+            thumbnail_uri:        existing.thumbnail_uri,
+            lyrics_uri:           existing.lyrics_uri,
+            synced_lyrics_uri:    existing.synced_lyrics_uri,
+
+            modified_at:          Math.max(existing.modified_at, safe_to_epoch(remote.modified_at)),
+        };
+
+        // User data fields (only present on RemoteTrackWithUserData) — local wins
         if ('plays' in remote && 'meta' in remote) {
             result.plays = existing.plays > 0 ? existing.plays : (remote).plays;
             const local_meta_str = typeof existing.meta === 'string'
@@ -1665,6 +1750,7 @@ export class SyncEngine {
             media_uri:            '',
             lyrics_uri:           '',
             synced_lyrics_uri:    '',
+            deleted:              false,
             created_at:           safe_to_epoch(row.created_at),
             modified_at:          safe_to_epoch(row.modified_at),
         };
@@ -1688,6 +1774,7 @@ export class SyncEngine {
             linked_playlists:    row.linked_playlists,
             // Local-only field — preserve existing value
             thumbnail_uri:       existing_thumbnail_uri,
+            deleted:             false,
             date:                row.created_at,
             created_at:          safe_to_epoch(row.created_at),
             modified_at:         safe_to_epoch(row.modified_at),
@@ -1700,6 +1787,7 @@ export class SyncEngine {
         return {
             uuid:       row.uuid,
             track_uid:  row.track_uid,
+            deleted:    false,
             created_at: safe_to_epoch(row.created_at),
         };
     }
@@ -1717,6 +1805,7 @@ export class SyncEngine {
             type:               row.type,
             date:               row.date,
             song_track:         row.song_track,
+            deleted:            false,
             created_at:         safe_to_epoch(row.created_at),
         };
     }

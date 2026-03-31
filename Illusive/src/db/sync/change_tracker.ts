@@ -135,6 +135,44 @@ export class ChangeTracker {
     }
 
     /**
+     * Delete changelog entries that can never be synced:
+     * - insert+delete pairs for the same record (net-zero, compress to null)
+     * These stay with synced=false indefinitely otherwise, clogging the changelog.
+     */
+    static async delete_irresolvable_changes(): Promise<number> {
+        const all_changes = await db
+            .select()
+            .from(change_log_table)
+            .where(eq(change_log_table.synced, false))
+            .orderBy(asc(change_log_table.created_at));
+
+        if (all_changes.length === 0) return 0;
+
+        const changes_by_record = new Map<string, typeof all_changes>();
+        for (const change of all_changes) {
+            const key = `${change.table_name}:${change.record_id}`;
+            if (!changes_by_record.has(key)) changes_by_record.set(key, []);
+            changes_by_record.get(key)!.push(change);
+        }
+
+        const ids_to_delete: number[] = [];
+        for (const [key, record_changes] of changes_by_record.entries()) {
+            const colon_idx = key.indexOf(':');
+            const table_name = key.substring(0, colon_idx) as LocalTableName;
+            const record_id = key.substring(colon_idx + 1);
+            const compressed = compress_record_changes(table_name, record_id, record_changes as ChangeLogLikeRow[]);
+            if (compressed === null) {
+                ids_to_delete.push(...record_changes.map(c => c.id));
+            }
+        }
+
+        if (ids_to_delete.length === 0) return 0;
+
+        await db.delete(change_log_table).where(inArray(change_log_table.id, ids_to_delete));
+        return ids_to_delete.length;
+    }
+
+    /**
      * Clean up old synced changes
      */
     static async cleanup_old_changes(days_to_keep = 30) {

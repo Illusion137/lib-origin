@@ -1,5 +1,6 @@
 import type { PromiseResult } from '@common/types';
 import { generror } from '@common/utils/error_util';
+import { generate_new_uid } from '@common/utils/util';
 import type { Database } from '@illusive/db/database.types';
 
 const SUPABASE_URL  = (process.env.EXPO_PUBLIC_SUPABASE_PROJECT_URL ?? '').replace(/\/$/, '');
@@ -74,7 +75,7 @@ export namespace Illusi {
         );
 
         if ('error' in tracks) return supaerror_to_rozerr(tracks, {uuid, opts});
-        return { ...playlist, tracks };
+        return { ...playlist, tracks: tracks.map(t => ({...t, uid: generate_new_uid(t.title)})) };
     }
 
     export async function get_playlist_continuation(
@@ -96,7 +97,7 @@ export namespace Illusi {
             opts,
         );
         if("error" in tracks) return supaerror_to_rozerr(tracks, {uuid, offset, opts})
-        return tracks;
+        return tracks.map(t => ({...t, uid: generate_new_uid(t.title)}));
     }
 
     export async function get_playlists(opts: Opts): Promise<RemotePlaylist[] | { error: string }> {
