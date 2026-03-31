@@ -29,6 +29,7 @@ export namespace ExampleObj {
         thumbnail_uri: "",
         media_uri: "",
         lyrics_uri: "",
+        synced_lyrics_uri: "",
         meta: {} as never,
         playback: undefined as never,
         downloading_data: undefined as never,

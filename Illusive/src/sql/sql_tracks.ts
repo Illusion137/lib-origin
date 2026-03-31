@@ -14,6 +14,7 @@ import { SQLfs } from "./sql_fs";
 import { SQLGlobal } from "./sql_global";
 import { db } from "@illusive/db/database";
 import { ChangeTracker } from "@illusive/db/sync/change_tracker";
+import type { Lyrics } from "@illusive/lyrics";
 
 export namespace SQLTracks {
     // TODO remove this and preprocess tracks 
@@ -58,13 +59,14 @@ export namespace SQLTracks {
         }
         const saved = track_exists(track, GLOBALS.global_var.sql_tracks);
         track.downloading_data = { saved: saved, progress: 0, playlist_saved: false };
-        if (saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri)) {
+        if (saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri) && is_empty(track.thumbnail_uri)) {
             const primary_key = track_primary_key(track);
             const found_track = find_track_in_globals_with_key(track, primary_key);
             if (found_track) track.uid = found_track.uid;
             track.media_uri = found_track?.media_uri;
             track.thumbnail_uri = found_track?.thumbnail_uri;
             track.lyrics_uri = found_track?.lyrics_uri;
+            track.synced_lyrics_uri = found_track?.synced_lyrics_uri;
             track.meta = found_track?.meta;
         }
         check_fixerupper_track(track).catch(catch_ignore);
@@ -88,6 +90,7 @@ export namespace SQLTracks {
             media_uri: is_empty(track.media_uri) ? new_track.media_uri : track.media_uri,
             thumbnail_uri: is_empty(track.thumbnail_uri) ? new_track.thumbnail_uri : track.thumbnail_uri,
             lyrics_uri: is_empty(track.lyrics_uri) ? new_track.lyrics_uri : track.lyrics_uri,
+            synced_lyrics_uri: is_empty(track.synced_lyrics_uri) ? new_track.synced_lyrics_uri : track.synced_lyrics_uri,
             imported_id: is_empty(track.imported_id) ? new_track.imported_id : track.imported_id,
             illusi_id: is_empty(track.illusi_id) ? new_track.illusi_id : track.illusi_id,
             youtube_id: is_empty(track.youtube_id) ? new_track.youtube_id : track.youtube_id,
@@ -254,7 +257,7 @@ export namespace SQLTracks {
         SQLGlobal.add_global_track_item(parsed_track);
         if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
         if (Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
-        if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
+        if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
         const sanitized_track = {
@@ -328,15 +331,21 @@ export namespace SQLTracks {
         return { exists: true, path: track.lyrics_uri ?? or_path };
     }
 
-    export async function save_track_lyrics(track: Track, lyrics: string) {
+    export async function save_track_lyrics(track: Track, lyrics: Lyrics.LyricsResult) {
         const lyrics_file = `${track.uid}.txt`;
-        await SQLfs.create_file(SQLfs.lyrics_directory(lyrics_file), lyrics);
+        const synced_lyrics_file = `${track.uid}.sync.txt`;
+        await SQLfs.create_file(SQLfs.lyrics_directory(lyrics_file), lyrics.plain);
+        if(lyrics.synced !== undefined) {
+            await SQLfs.create_file(SQLfs.synced_lyrics_directory(synced_lyrics_file), lyrics.synced);
+        }
+        const synced_lyrics_uri = lyrics.synced !== undefined ? undefined : synced_lyrics_file;
         const new_track = {
             ...track,
-            lyrics_uri: lyrics_file
+            lyrics_uri: lyrics_file,
+            synced_lyrics_uri: synced_lyrics_uri
         };
         await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid));
-        await ChangeTracker.log_change('tracks', 'update', track.uid, { lyrics_uri: lyrics_file });
+        await ChangeTracker.log_change('tracks', 'update', track.uid, { lyrics_uri: lyrics_file, synced_lyrics_file: synced_lyrics_uri });
         SQLGlobal.update_global_track_item(track.uid, new_track);
         return lyrics_file;
     }
@@ -344,15 +353,20 @@ export namespace SQLTracks {
         await SQLfs.delete_item(SQLfs.lyrics_directory(`${track.uid}.txt`));
         const new_track = {
             ...track,
-            lyrics_uri: ''
+            lyrics_uri: '',
+            synced_lyrics_uri: ''
         };
         await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid));
-        await ChangeTracker.log_change('tracks', 'update', track.uid, { lyrics_uri: '' });
+        await ChangeTracker.log_change('tracks', 'update', track.uid, { lyrics_uri: '', synced_lyrics_uri: '' });
         SQLGlobal.update_global_track_item(track.uid, new_track);
     }
 
     export async function read_track_lyrics(track: Track) {
         if (is_empty(track.lyrics_uri)) return undefined;
         return await SQLfs.read_file(SQLfs.lyrics_directory(track.lyrics_uri!));
+    }
+    export async function read_track_synced_lyrics(track: Track) {
+        if (is_empty(track.synced_lyrics_uri)) return undefined;
+        return await SQLfs.read_file(SQLfs.synced_lyrics_directory(track.synced_lyrics_uri!));
     }
 }

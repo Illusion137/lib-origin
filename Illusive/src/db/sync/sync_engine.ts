@@ -1664,6 +1664,7 @@ export class SyncEngine {
             thumbnail_uri:        '',
             media_uri:            '',
             lyrics_uri:           '',
+            synced_lyrics_uri:    '',
             created_at:           safe_to_epoch(row.created_at),
             modified_at:          safe_to_epoch(row.modified_at),
         };

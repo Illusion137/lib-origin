@@ -131,6 +131,11 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         description: "Lyrics Downloaded"
     },
     {
+        flag: '@sldl',
+        condition: (track) => !is_empty(track.synced_lyrics_uri),
+        description: "Lyrics Downloaded"
+    },
+    {
         flag: '@uv',
         condition: (track) => track.meta?.unavailable ?? false,
         description: "Unavailable on YouTube"

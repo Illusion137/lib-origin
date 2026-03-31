@@ -61,6 +61,7 @@ export namespace FutsalShuffle {
             explicit: track.explicit !== "EXPLICIT" ? 0 : boolean_weight,
             no_explicit: track.explicit === "EXPLICIT" ? 0 : boolean_weight,
             has_lyrics_dl: is_empty(track.lyrics_uri) ? 0 : boolean_weight,
+            has_synced_lyrics_dl: is_empty(track.synced_lyrics_uri) ? 0 : boolean_weight,
             has_thumbnail_dl: is_empty(track.thumbnail_uri) ? 0 : boolean_weight,
             is_downloaded: is_empty(track.media_uri) ? 0 : boolean_weight,
             last_played: !track.meta?.last_played_date

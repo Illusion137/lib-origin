@@ -29,12 +29,13 @@ export namespace SQLfs {
     export function thumbnail_directory(item: string) { return  document_directory(Constants.thumbnail_archive_path) + forward_item(item); }
     export function media_directory(item: string) { return document_directory(Constants.media_archive_path) + forward_item(item); }
     export function lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
+    export function synced_lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
     
     export async function recreate_directories(){
-        if(!(await fs().get_info(media_directory(""))).exists) await fs().make_directory(media_directory(""));
-        if(!(await fs().get_info(custom_thumbnail_directory(""))).exists) await fs().make_directory(custom_thumbnail_directory(""));
-        if(!(await fs().get_info(thumbnail_directory(""))).exists) await fs().make_directory(thumbnail_directory(""));
-        if(!(await fs().get_info(lyrics_directory(""))).exists) await fs().make_directory(lyrics_directory(""));
+        for(const dir of Constants.default_directories){
+            if((await fs().get_info(document_directory(dir))).exists) continue;
+            await fs().make_directory(document_directory(dir));
+        } 
     }
 
     async function copy_to(item: string, dir_func: (item: string) => string, new_name?: string) {

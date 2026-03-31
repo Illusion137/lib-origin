@@ -56,6 +56,7 @@ export namespace Prefs {
         is_downloaded: 0,
         has_thumbnail_dl: 0,
         has_lyrics_dl: 0,
+        has_synced_lyrics_dl: 0,
         plays_from_artist: 0,
         plays_from_album: 0,
         // plays_in_past_month: 0,

@@ -14,6 +14,7 @@ import { ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { sabr_downloader } from '@native/sabr_downloader/sabr_downloader';
 import { generror } from '@common/utils/error_util';
 import { wait } from '@common/utils/timed_util';
+import { Lyrics } from './lyrics';
 
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
     return tracks.sort((a, b) => a.duration - b.duration);
@@ -211,7 +212,7 @@ export async function download_track(track: Track, redownload?: boolean): Promis
 }
 
 async function download_track_lyrics_base(downloading: LyricsDownloading) {
-    const lyrics_maybe = await Illusive.get_track_lryics(downloading.track);
+    const lyrics_maybe = await Lyrics.get_track_lryics(downloading.track);
     return lyrics_maybe;
 }
 
@@ -223,10 +224,10 @@ export const track_lyrics_downloader = new AsyncFNQueue<LyricsDownloading, Await
 );
 
 export async function download_track_lyrics(track: Track) {
-    if (!is_empty(track.lyrics_uri)) return "EXISTS";
+    if (!is_empty(track.lyrics_uri) || !is_empty(track.synced_lyrics_uri)) return "EXISTS";
     if (!is_empty(track.imported_id) || !is_empty(track.bandlab_id) || !is_empty(track.soundcloud_id)) return "EXISTS";
     const result = await track_lyrics_downloader.push_into_queue({ track, uid: track.uid });
-    if (typeof result === "object") return result;
+    if (typeof result === "object" && "error" in result) return result;
     if (result === "EXISTS") return result;
     await SQLTracks.save_track_lyrics(track, result);
     return result;

@@ -4,8 +4,9 @@ export namespace Constants {
     export const thumbnail_archive_path = "thumbnail_archive/";
     export const media_archive_path = "media_archive/";
     export const lyrics_archive_path = "lyrics_archive/";
+    export const synced_lyrics_archive_path = "synced_lyrics_archive/";
 
-    export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path];
+    export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path, synced_lyrics_archive_path];
     export const default_directories_wsql = default_directories.concat(sqlite_directory);
 
     export const library_write_playlist = "LIBRARY";

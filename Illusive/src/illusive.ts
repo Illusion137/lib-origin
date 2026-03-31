@@ -1,4 +1,3 @@
-import fuzzysort from 'fuzzysort';
 import * as Origin from '@origin/index'
 import { TimedCache, type PromiseResult, type ResponseError } from "@common/types";
 import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_array } from "@common/utils/util";
@@ -10,7 +9,7 @@ import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotif
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, bandlab_get_playlist_continuation, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, illusi_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
-import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, small_track, str_or_include } from "@illusive/illusive_utils";
+import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import { amazon_music_search, apple_music_search, illusi_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
@@ -341,50 +340,6 @@ export namespace Illusive {
     export async function get_suggestions(query: string) {
         const suggestions = await Origin.YouTubeMusic.search_suggestions({}, query);
         return suggestions.map(s => typeof s === "string" ? s : parse_youtube_music_track(s));
-    }
-
-    async function lyrics_try_good_result(track: Track, search_query: string) {
-        const search_response = await Origin.Genius.search_songs(search_query, {});
-        if ("error" in search_response) return search_response;
-        const best_result = search_response.find(hit => {
-            const title_result = fuzzysort.single(
-                clean_track_info(hit.result.title).trim(),
-                clean_track_info(track.title).trim(),
-            );
-            const artist_result = fuzzysort.single(
-                clean_track_info(hit.result.artist_names).trim(),
-                clean_track_info(artist_string(track)).trim(),
-            );
-            return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5
-        });
-        if (best_result === undefined) return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_query });
-        return best_result.result;
-    }
-    async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
-        for (const search_query of search_queries) {
-            const result = await lyrics_try_good_result(track, search_query);
-            if ("error" in result) continue;
-            return result;
-        }
-        return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_queries });
-    }
-    export async function get_track_lryics(track: Track): PromiseResult<string> {
-        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
-
-        const base_query = `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`;
-        const base_query_clean = `${remove_topic(artist_name)} ${clean_track_info(track.title.replace(`${artist_name} - `, ''))}`;
-
-        const track_title_split = track.title.split(' - ');
-        const best_result = await lyrics_get_first_good_result(track, [
-            track_title_split.length === 2 ? `${clean_track_info(track_title_split[0])} ${clean_track_info(track_title_split[1])}` : undefined,
-            track_title_split.length === 2 ? `${clean_track_info(track_title_split[1])} ${remove_topic(artist_name)}` : undefined,
-            base_query,
-            base_query_clean !== base_query ? base_query_clean : undefined
-        ].filter(s => s !== undefined));
-        if ("error" in best_result) return best_result;
-
-        const lyrics_response = await Origin.Genius.get_lyrics(best_result, {});
-        return lyrics_response;
     }
 
     export type ShuffleMode = "ORDER" | "SHUFFLE";

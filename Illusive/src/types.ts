@@ -146,7 +146,10 @@ export interface LyricsDownloading {
     track: Track;
     uid: string;
 }
-export type LyricsDownloadingResult = ResponseError | string;
+export type LyricsDownloadingResult = "EXISTS" | ResponseError | {
+        plain: string;
+        synced: string|undefined;
+    };
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = { name: string, uuid: string, uri?: never } | { name: string, uuid?: never, uri: IllusiveURI | null };
@@ -223,6 +226,7 @@ interface Basic_Track<T, U, V, X> {
     thumbnail_uri?: string
     media_uri?: string
     lyrics_uri?: string
+    synced_lyrics_uri?: string
     meta?: U
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData

@@ -30,6 +30,7 @@ const tracks_config = {
     thumbnail_uri: text().notNull().default(""),
     media_uri: text().notNull().default(""),
     lyrics_uri: text().notNull().default(""),
+    synced_lyrics_uri: text().notNull().default(""),
     meta: text({mode: 'json'}).notNull().$type<TrackMetaData>().$defaultFn(() => ({
         added_date: new Date().toISOString() as ISOString,
         last_played_date: new Date().toISOString() as ISOString,

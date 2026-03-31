@@ -297,6 +297,7 @@ export function track_to_illusive_uri(track: Track): IllusiveURI{
 		thumbnail_uri: "illusi",
 		media_uri: "illusi",
 		lyrics_uri: "illusi",
+		synced_lyrics_uri: "illusi",
 		meta: "illusi",
 		playback: "illusi",
 		downloading_data: "illusi"
