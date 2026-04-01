@@ -1,6 +1,6 @@
 import { json_catch, milliseconds_of } from "@common/utils/util";
 import { GLOBALS } from "./globals";
-import type { CompactPlaylist, MusicServiceType, Track } from "./types";
+import type { CompactPlaylist, FullPlaylist, MusicServiceType, Track } from "./types";
 import { FutsalShuffle } from "./futsal_shuffle";
 import { reinterpret_cast } from "@common/cast";
 import { Illusive } from "./illusive";
@@ -13,6 +13,8 @@ import { get_most_played_artists, should_automatic_refresh } from "./illusive_ut
 import { artist_watch } from "./artist_watch";
 import { Prefs } from "./prefs";
 import { call_wtimeout } from "@common/utils/timed_util";
+import * as Origin from '@origin/index';
+import { soundcloud_parse_system_playlist } from "./parsers/soundcloud_parser";
 
 export namespace Explore {
     const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = "PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI";
@@ -116,4 +118,15 @@ export namespace Explore {
             return [];
         }
     }
+	export async function get_recommended_playlists(): Promise<FullPlaylist[]>{
+		const recommended_playlists_urn = "soundcloud:selections:personalized-tracks";
+		const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
+		const mixed_selection = await Origin.SoundCloud.mixed_selections({cookie_jar});
+		if("error" in mixed_selection) return [];
+		const recommended_playlists_section = mixed_selection.data.collection.find(item => item.urn.startsWith(recommended_playlists_urn))?.items.collection;
+		if(!recommended_playlists_section) return [];
+		const playlists = recommended_playlists_section.filter(item => item.kind === "system-playlist")
+			.map(soundcloud_parse_system_playlist);
+		return playlists;
+	}
 }

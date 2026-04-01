@@ -9,8 +9,12 @@ import { generror } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
 import { reinterpret_cast } from '@common/cast';
 import type { ArtistStories } from "./types/ArtistStories";
+import BufferRN from "buffer/";
+import type { SoundCloudMixedSelection } from "./types/MixedSelection";
+const Buffer = BufferRN.Buffer;
 
 export namespace SoundCloud {
+    const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
     type Opts = BaseOpts & { client_id?: (string | ResponseError) };
     let app_version = 1774492604;
     const client_cache = { client: { client_id: null as null | string, user_id: null as null | string }, enabled: true };
@@ -36,7 +40,7 @@ export namespace SoundCloud {
             .join('; ');
         return {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "User-Agent": USER_AGENT,
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "accept-language": "en-US,en;q=0.9",
                 "cache-control": "max-age=0",
@@ -71,7 +75,7 @@ export namespace SoundCloud {
             .join('; ');
         return {
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                "User-Agent": USER_AGENT,
                 "accept": "application/json, text/javascript, */*; q=0.01",
                 "accept-language": "en-US,en;q=0.9",
                 "authorization": oauth_cookie !== undefined ? `OAuth ${oauth_cookie.getData().value}` : undefined as unknown as string,
@@ -391,6 +395,11 @@ export namespace SoundCloud {
         if ("error" in playlist_tracks) return playlist_tracks;
         return { hydration: playlist_hyrdration, tracks: playlist_tracks, client_id: opts.client_id };
     }
+    export async function get_tracks(opts: Opts & { track_ids: string[] }) {
+        return await apiget_cast<Track[]>({
+            ...opts, path: `tracks`, params: { ids: opts.track_ids.join(',') }
+        });
+    }
     export async function get_mix(opts: Opts & { track_id: string, limit?: number, offset?: number }) {
         return await apiget<Track>({
             ...opts, path: `tracks/${opts.track_id}/related`, params: {
@@ -422,6 +431,9 @@ export namespace SoundCloud {
         }
         return await apipost<null>({ ...opts, path: `me/artist-shortcuts/read-updates`, payload });
     }
+    export async function mixed_selections(opts: Opts) {
+        return await apiget_cast<SoundCloudMixedSelection>({ ...opts, path: `mixed-selections` });
+    }
     export async function query_suggestions(opts: Opts & { query: string; limit?: number, offset?: number }){
         return await apiget<QueryOutput>({ ...opts, path: `search/queries`, params: { q: opts.query, limit: opts.limit ?? 1000, offset: opts.offset ?? 0 } });
     }
@@ -430,6 +442,25 @@ export namespace SoundCloud {
     }
     export async function following(opts: Opts & { limit?: number, offset?: number }) {
         return await apiget<User>({ ...opts, path: `users/${get_self_user_id(opts.cookie_jar!)}/followings`, params: { limit: opts.limit ?? 12, offset: opts.offset ?? 0 } });
+    }
+    export async function follow_artist(opts: Opts & { artist_id: string }) {
+        const has_cookies = requires_cookies(opts);
+        if ("error" in has_cookies) return has_cookies;
+        const user_id = get_self_user_id(opts.cookie_jar!);
+        const client_id = opts.client_id ? {client_id: opts.client_id} : await get_client_id(opts);
+        if("error" in client_id) return client_id;
+        if(typeof client_id.client_id === "object" && "error" in client_id.client_id) return client_id.client_id;
+        const signature = generate_follow_signature_v1(user_id, client_id.client_id, opts.artist_id);
+        return await apipost<User>({ ...opts, path: `me/followings/${opts.artist_id}`, params: { signature }, payload: null });
+    }
+    export async function unfollow_artist(opts: Opts & { artist_id: string; }) {
+        return await apipost<User>({ ...opts, path: `me/followings/${opts.artist_id}`, params: { }, payload: null, method: "DELETE" });
+    }
+    export async function is_following(opts: Opts & { artist_id: string }) {
+        const user_id = get_self_user_id(opts.cookie_jar!);
+        const result = await apiget<number>({ ...opts, path: `users/${user_id}/followings/ids`, params: {limit: 5000}, requires_cookies: true });
+        if ("error" in result) return result;
+        return { following: result.data.collection.includes(Number(opts.artist_id)), client_id: result.client_id };
     }
     export async function you_redirect(opts: Opts) {
         const has_cookies = requires_cookies(opts);
@@ -545,4 +576,40 @@ export namespace SoundCloud {
             return { ok: false };
         }
     }
+
+    // TODO: Note this is suject to change, so instead extract it from the scripts, but this is a good point for investigating SC signatures
+    export function generate_follow_signature_v1(user_id: string, client_id: string, followee_id: string){
+        const FOLLOWS_SIGNATURE_SECRET = "5Dpr3ubBw8LFtbvQcd4Hx6hU";
+        const FOLLOWS_SIGNATURE_VERSION = "1";
+        // a = userAgent.split(/[ /]/); a[a[0].length % a.length]
+        const ua_parts = USER_AGENT.split(/[ /]/);
+        const ua_part = ua_parts["Mozilla".length % ua_parts.length];
+        const raw_signature = FOLLOWS_SIGNATURE_VERSION + FOLLOWS_SIGNATURE_SECRET + client_id + FOLLOWS_SIGNATURE_SECRET + followee_id + user_id + ua_part;
+
+        // UTF-8 bytes (matches browser's unescape(encodeURIComponent(s)))
+        const bytes = Buffer.from(raw_signature, "utf8");
+        let seed = 7996111;
+        for (const byte of bytes) {
+            seed = (seed >>> 1) + ((seed & 1) << 23);
+            seed += byte;
+            seed &= 0xFFFFFF;
+        }
+        return `${FOLLOWS_SIGNATURE_VERSION}:${seed.toString(16)}`;
+    }
 }
+
+// TODO clear this when migrate to extract sigpatching from scripts
+// [FOLLOWING SIGNATURE NOTES]
+// from: https://a-v2.sndcdn.com/assets/54-c56123af.js
+/*
+signature: r(1273).sign(
+    r(18).currentUserId(), 
+    e, 
+    r(6).get("client_id"), 
+    r(1274).__FOLLOWS_SIGNATURE_SECRET__
+)
+*/
+// signature: 1:24476f
+// signature: 1:24476f
+// signature: 1:a08ed5
+// signature: `${SIG_VERSION}:24476f`
