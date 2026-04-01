@@ -67,7 +67,7 @@ export namespace SQLTrackPlays {
             );
         return timestamps_objs.length;
     }
-    export async function count_track_plays_sync(track_uid: Track['uid'], date_range: DateRange){
+    export function count_track_plays_sync(track_uid: Track['uid'], date_range: DateRange){
         const {date_start, date_end} = date_range_num(date_range);
         const dz = new DrizzleUtils(db.$client);
         const timestamps_objs = dz.get_all_sync_dz(db.select({created_at: track_plays_table.created_at})
@@ -81,5 +81,20 @@ export namespace SQLTrackPlays {
                 )
             ));
         return timestamps_objs.length;
+    }
+    export function get_track_plays_dates_sync(track_uid: Track['uid'], date_range: DateRange){
+        const {date_start, date_end} = date_range_num(date_range);
+        const dz = new DrizzleUtils(db.$client);
+        const timestamps_objs = dz.get_all_sync_dz(db.select({created_at: track_plays_table.created_at})
+            .from(track_plays_table)
+            .where(
+                and(
+                    eq(track_plays_table.deleted, false), 
+                    eq(track_plays_table.track_uid, track_uid),
+                    gt(track_plays_table.created_at, date_start),
+                    lt(track_plays_table.created_at, date_end)
+                )
+            ));
+        return timestamps_objs;
     }
 }

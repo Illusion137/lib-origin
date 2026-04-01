@@ -9,7 +9,7 @@ import { reinterpret_cast } from '@common/cast';
 import { generror_catch } from "@common/utils/error_util";
 
 export namespace Suggestions {
-    type SuggestionItem = (string | Track | CompactPlaylist | CompactArtist);
+    export type SuggestionItem = (string | Track | CompactPlaylist | CompactArtist);
     export async function get_google_suggestions(query: string): Promise<SuggestionItem[]>{
         return await Origin.Google.get_suggestions(query);
     }

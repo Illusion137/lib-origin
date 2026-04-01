@@ -94,22 +94,20 @@ export namespace Lyrics {
         if ("error" in best_result) return best_result;
         return best_result;
     }
-    function parse_lrclib_synced_line(line: string): SyncedLyric|ResponseError{
-        const pattern = /\[(\d+):(\d+).(\d+)\] (.+?)$/g;
-        const valid_line = pattern.test(line);
-        if(!valid_line) return generror("Failed to parse lrclib line", "LOW", {line});
+    function parse_lrclib_synced_line(line: string): SyncedLyric | ResponseError {
+        const pattern = /\[(\d+):(\d+).(\d+)\] (.*?)$/g;
         const extracted = extract_strings_from_pattern(line, pattern);
-        if(extracted.length < 4) return generror("Couldn't extract the lyrics pattern", "LOW", {line});
+        if (extracted.length < 4) return generror("Couldn't extract the lyrics pattern", "LOW", { line });
         const [minute, second, millisecond, text] = extracted;
         const seconds = seconds_of({
             milliseconds: parseFloat(millisecond),
             seconds: parseFloat(second),
             minutes: parseFloat(minute)
         })
-        return {text: text, interval: {from: seconds}};
+        return { text: text, interval: { from: seconds } };
     }
     export function lrclib_synced_lyrics_to_json(synced_lyrics_text: string): LRCLibSyncedLyrics|ResponseError {
-        const synced_lyrics = synced_lyrics_text.split('\n').filter(line => is_empty(line)).map(parse_lrclib_synced_line);
+        const synced_lyrics = synced_lyrics_text.split('\n').filter(line => !is_empty(line)).map(parse_lrclib_synced_line);
         const first_error = synced_lyrics.find(item => "error" in item);
         if(first_error !== undefined) return first_error;
         return {

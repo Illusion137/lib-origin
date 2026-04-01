@@ -338,7 +338,7 @@ export namespace SQLTracks {
         if(lyrics.synced !== undefined) {
             await SQLfs.create_file(SQLfs.synced_lyrics_directory(synced_lyrics_file), lyrics.synced);
         }
-        const synced_lyrics_uri = lyrics.synced !== undefined ? undefined : synced_lyrics_file;
+        const synced_lyrics_uri = lyrics.synced === undefined ? undefined : synced_lyrics_file;
         const new_track = {
             ...track,
             lyrics_uri: lyrics_file,

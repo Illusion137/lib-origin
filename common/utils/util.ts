@@ -31,8 +31,7 @@ export function extract_string_from_pattern(str: string, pattern: RegExp, severi
 export function extract_strings_from_pattern(str: string, pattern: RegExp) {
     const body_groups = pattern.exec(str);
     if (body_groups === null) return [];
-    const extracted = body_groups.slice(1);
-    return extracted;
+    return [...body_groups].slice(1);
 }
 export function extract_string_undef(str: string, pattern: RegExp) {
     return error_undefined(extract_string_from_pattern(str, pattern, "LOW"));
