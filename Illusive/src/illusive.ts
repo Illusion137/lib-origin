@@ -265,7 +265,7 @@ export namespace Illusive {
     }
 
     export function get_youtube_lowest_quality_thumbnail_uri(video_id: string) {
-        return `https://i.ytimg.com/vi/${video_id}/default.jpg`;
+        return `https://i.ytimg.com/vi/${video_id}/1.jpg`;
     }
     export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {
         const uris_descending = [
@@ -331,7 +331,7 @@ export namespace Illusive {
         if (!is_empty(track.artwork_url))
             return track.artwork_url!;
         if (!is_empty(track.youtube_id))
-            return `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`;
+            return `https://img.youtube.com/vi/${track.youtube_id}/1.jpg`;
         return illusi_dark_icon_index;
     }
 

@@ -391,26 +391,28 @@ export async function illusi_get_playlist(uuid: string): Promise<MusicServicePla
     const cleaned_url = urlid(uuid, ".json");
     const local_illusi_playlist = get_local_illusi_playlist(cleaned_url);
     if (local_illusi_playlist !== undefined) return local_illusi_playlist;
-    
+
+    uuid = urlid(uuid);
     const { data: { session } } = await supabase().auth.getSession();
-    if(session?.access_token === undefined) return default_playlist(generror("User not authenticated", "LOW", {url: uuid}));
-    const playlist = await Origin.Illusi.get_playlist(uuid, {jwt: session.access_token});
+    if (session?.access_token === undefined) return default_playlist(generror("User not authenticated", "LOW", { url: uuid }));
+    const playlist = await Origin.Illusi.get_playlist(uuid, { jwt: session.access_token });
     if ("error" in playlist) return default_playlist(playlist);
     return {
         title: playlist.title,
         tracks: playlist.tracks,
         description: playlist.description,
-        continuation: playlist.tracks.length < Origin.Illusi.PLAYLIST_LIMIT ? null : {uuid, offset: playlist.tracks.length} as IllusiPlaylistContinuation
+        date: new Date(playlist.created_at).toISOString() as ISOString,
+        continuation: playlist.tracks.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid, offset: playlist.tracks.length } as IllusiPlaylistContinuation
     };
 }
 export async function illusi_get_playlist_continuation(opts: IllusiPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const { data: { session } } = await supabase().auth.getSession();
-    if(session?.access_token === undefined) return default_playlist(generror("User not authenticated", "LOW", {opts}));
-    const playlist = await Origin.Illusi.get_playlist_continuation(opts.uuid, opts.offset, {jwt: session.access_token});
+    if (session?.access_token === undefined) return default_playlist(generror("User not authenticated", "LOW", { opts }));
+    const playlist = await Origin.Illusi.get_playlist_continuation(opts.uuid, opts.offset, { jwt: session.access_token });
     if ("error" in playlist) return default_playlist(playlist);
     return {
         tracks: playlist,
-        continuation: playlist.length < Origin.Illusi.PLAYLIST_LIMIT ? null : {uuid: opts.uuid, offset: playlist.length} as IllusiPlaylistContinuation
+        continuation: playlist.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid: opts.uuid, offset: playlist.length } as IllusiPlaylistContinuation
     };
 }
 
@@ -431,7 +433,7 @@ export async function bandlab_get_playlist(url: string): Promise<MusicServicePla
     return {
         title: "Projects List",
         tracks: playlist_response.data.map(bandlab_parse_track),
-        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : {url, offset: playlist_response.data.length} as BandlabPlaylistContinuation
+        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : { url, offset: playlist_response.data.length } as BandlabPlaylistContinuation
     }
 }
 export async function bandlab_get_playlist_continuation(opts: BandlabPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
@@ -440,6 +442,6 @@ export async function bandlab_get_playlist_continuation(opts: BandlabPlaylistCon
     if ("error" in playlist_response) return default_playlist(playlist_response);
     return {
         tracks: playlist_response.data.map(bandlab_parse_track),
-        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : {url: opts.url, offset: opts.offset + playlist_response.data.length}  as BandlabPlaylistContinuation
+        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : { url: opts.url, offset: opts.offset + playlist_response.data.length } as BandlabPlaylistContinuation
     }
 }

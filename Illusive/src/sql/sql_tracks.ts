@@ -109,7 +109,7 @@ export namespace SQLTracks {
             delete sql_track.id;
             return {
                 ...sql_track,
-                artists: sql_track.artists.filter((artist: NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
+                artists: (sql_track.artists ?? [])?.filter((artist: NamedUUID) => !bad_artist_names.includes(artist.name.trim())),
                 meta: {
                     ...sql_track.meta,
                     plays: sql_track.meta?.plays ?? 0,
@@ -201,12 +201,9 @@ export namespace SQLTracks {
         const count = await db.$count(tracks_table, and(eq(tracks_table.deleted, false), eq(tracks_table.uid, track.uid)));
         return count !== 0;
     }
-    let time_since_last_fetched_track_data = new Date(0);
     export async function fetch_track_data() {
-        if (Date.now() - time_since_last_fetched_track_data.getTime() < 5000) return;
         const tracks = await db.select().from(tracks_table).where(eq(tracks_table.deleted, false));
         GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
-        time_since_last_fetched_track_data = new Date();
         if (Prefs.get_pref('album_track_tinting')) {
             generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table);
         }
@@ -335,7 +332,7 @@ export namespace SQLTracks {
         const lyrics_file = `${track.uid}.txt`;
         const synced_lyrics_file = `${track.uid}.sync.txt`;
         await SQLfs.create_file(SQLfs.lyrics_directory(lyrics_file), lyrics.plain);
-        if(lyrics.synced !== undefined) {
+        if (lyrics.synced !== undefined) {
             await SQLfs.create_file(SQLfs.synced_lyrics_directory(synced_lyrics_file), lyrics.synced);
         }
         const synced_lyrics_uri = lyrics.synced === undefined ? undefined : synced_lyrics_file;

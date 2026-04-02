@@ -73,14 +73,21 @@ async function build_grid_buttons(playlists: CompactPlaylistData[]): Promise<Gri
     for (const playlist of playlists) {
         const artwork = await carplay_artwork(
             playlist.four_track ?? [],
-            (playlist as { thumbnail_uri?: string }).thumbnail_uri,
+            playlist.thumbnail_uri,
         ).catch(() => null);
-        const artwork_url = typeof artwork === 'string' && /^https?:\/\//.test(artwork) ? artwork : null;
+
+        const raw_uri =
+            typeof artwork === 'string' ? artwork
+                : (artwork !== null && typeof artwork === 'object' && 'uri' in artwork) ? artwork.uri
+                    : null;
+        const image_source = raw_uri
+            ? (raw_uri.startsWith('/') ? `file://${raw_uri}` : raw_uri)
+            : null;
 
         const button: GridButton<GridTemplate> = {
             title: { text: playlist.title },
-            image: artwork_url
-                ? { type: 'asset', image: { uri: artwork_url } }
+            image: image_source
+                ? { type: 'asset', image: { uri: image_source } }
                 : { type: 'glyph', name: 'library_music' },
             onPress: () => { play_playlist(playlist).catch(catch_log); },
         };
@@ -117,16 +124,20 @@ function cycle_play_mode(playlists: CompactPlaylistData[]): void {
 
 // ─── Root builder ─────────────────────────────────────────────────────────────
 
+const PINNED_PLAYLIST_ORDER = ['Recently Added', 'My Library', 'Recently Played', 'Most Played'] as const;
+
 async function build_root(): Promise<void> {
     const [default_cp, user_cp] = await Promise.all([
         default_compact_playlists(),
         SQLPlaylists.compact_playlists(),
     ]);
-    // default_compact_playlists returns My Library first — skip it
-    const playlists: CompactPlaylistData[] = [
-        ...default_cp.slice(1),
-        ...user_cp,
-    ];
+
+    const by_title = new Map(default_cp.map(p => [p.title, p]));
+    const pinned = PINNED_PLAYLIST_ORDER
+        .map(name => by_title.get(name))
+        .filter((p): p is CompactPlaylistData => p != null);
+
+    const playlists: CompactPlaylistData[] = [...pinned, ...user_cp];
 
     const mode = Prefs.get_pref('carplay_play_mode') as PlayMode;
     grid_template = await build_grid_template(playlists, mode);

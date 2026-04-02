@@ -118,13 +118,14 @@ export namespace Explore {
             return [];
         }
     }
-	export async function get_recommended_playlists(): Promise<FullPlaylist[]>{
+	export async function get_recommended_playlists(): Promise<FullPlaylist[]> {
+		if (!Illusive.music_service.get('SoundCloud')?.has_credentials()) return [];
 		const recommended_playlists_urn = "soundcloud:selections:personalized-tracks";
 		const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
-		const mixed_selection = await Origin.SoundCloud.mixed_selections({cookie_jar});
-		if("error" in mixed_selection) return [];
+		const mixed_selection = await Origin.SoundCloud.mixed_selections({ cookie_jar, fetch_opts: {cache_opts: {cache_ms: milliseconds_of({days: 1}), cache_ms_fail: 0, cache_mode: 'file'}} });
+		if ("error" in mixed_selection) return [];
 		const recommended_playlists_section = mixed_selection.data.collection.find(item => item.urn.startsWith(recommended_playlists_urn))?.items.collection;
-		if(!recommended_playlists_section) return [];
+		if (!recommended_playlists_section) return [];
 		const playlists = recommended_playlists_section.filter(item => item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		return playlists;

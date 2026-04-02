@@ -56,7 +56,7 @@ export class ChangeTracker {
 
         // Group changes by table and record
         const changes_by_record = new Map<string, typeof all_changes>();
-        
+
         for (const change of all_changes) {
             const key = `${change.table_name}:${change.record_id}`;
             if (!changes_by_record.has(key)) {
@@ -67,7 +67,7 @@ export class ChangeTracker {
 
         // Compress changes for each record
         const compressed: CompressedChange[] = [];
-        
+
         for (const [key, record_changes] of changes_by_record.entries()) {
             const colon_idx = key.indexOf(':');
             const table_name = key.substring(0, colon_idx);
@@ -77,7 +77,7 @@ export class ChangeTracker {
                 record_id,
                 record_changes as ChangeLogLikeRow[]
             );
-            
+
             if (compressed_change) {
                 compressed.push(compressed_change);
             }
@@ -100,7 +100,7 @@ export class ChangeTracker {
      */
     static async mark_as_synced(change_ids: number[]) {
         if (change_ids.length === 0) return;
-        
+
         await db
             .update(change_log_table)
             .set({ synced: true })
@@ -117,12 +117,12 @@ export class ChangeTracker {
             .where(eq(change_log_table.synced, false));
 
         const stats_by_table: Record<string, { inserts: number; updates: number; deletes: number }> = {};
-        
+
         for (const change of pending) {
             if (!stats_by_table[change.table_name]) {
                 stats_by_table[change.table_name] = { inserts: 0, updates: 0, deletes: 0 };
             }
-            
+
             if (change.operation === 'insert') stats_by_table[change.table_name].inserts++;
             if (change.operation === 'update') stats_by_table[change.table_name].updates++;
             if (change.operation === 'delete') stats_by_table[change.table_name].deletes++;
@@ -177,7 +177,7 @@ export class ChangeTracker {
      */
     static async cleanup_old_changes(days_to_keep = 30) {
         const cutoff_time = Date.now() - (days_to_keep * 24 * 60 * 60 * 1000);
-        
+
         await db
             .delete(change_log_table)
             .where(
