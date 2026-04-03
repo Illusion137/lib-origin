@@ -95,7 +95,7 @@ export namespace Illusi {
         opts: Opts,
     ): PromiseResult<RemoteTrack[]> {
         const tracks_result = await rest<{ track_uid: string }[]>(
-            `playlists_tracks?select=track_uid,tracks!inner(imported_id)&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&order=created_at.asc&limit=${PLAYLIST_LIMIT}&offset=0&tracks.imported_id=eq.&offset=${offset}`,
+            `playlists_tracks?select=track_uid,tracks!inner(imported_id)&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&order=created_at.asc&limit=${PLAYLIST_LIMIT}&tracks.imported_id=eq.&offset=${offset}`,
             opts,
         );
 

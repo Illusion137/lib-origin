@@ -19,7 +19,7 @@ export namespace SQLUtils {
             thumbnails: thumbnail_files.filter(file => !thumbnail_uri_set.has(file)).map(file => SQLfs.thumbnail_directory(file)),
             media: media_files.filter(file => !media_uri_set.has(file)).map(file => SQLfs.media_directory(file)),
             lyrics: lyrics_files.filter(file => !lyrics_uri_set.has(file)).map(file => SQLfs.lyrics_directory(file)),
-            synced_lyrics: synced_lyrics_files.filter(file => !synced_lyrics_uri_set.has(file)).map(file => SQLfs.lyrics_directory(file)),
+            synced_lyrics: synced_lyrics_files.filter(file => !synced_lyrics_uri_set.has(file)).map(file => SQLfs.synced_lyrics_directory(file)),
         };
     
         return files_to_delete;

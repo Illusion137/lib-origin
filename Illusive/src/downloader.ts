@@ -212,7 +212,7 @@ export async function download_track(track: Track, redownload?: boolean): Promis
 }
 
 async function download_track_lyrics_base(downloading: LyricsDownloading) {
-    const lyrics_maybe = await Lyrics.get_track_lryics(downloading.track);
+    const lyrics_maybe = await Lyrics.get_track_lyrics(downloading.track);
     return lyrics_maybe;
 }
 

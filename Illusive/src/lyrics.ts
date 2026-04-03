@@ -78,7 +78,7 @@ export namespace Lyrics {
         }
         return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_queries });
     }
-    export async function get_track_lryics(track: Track): PromiseResult<LyricsResult> {
+    export async function get_track_lyrics(track: Track): PromiseResult<LyricsResult> {
         const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
 
         const base_query = `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`;
@@ -95,7 +95,7 @@ export namespace Lyrics {
         return best_result;
     }
     function parse_lrclib_synced_line(line: string): SyncedLyric | ResponseError {
-        const pattern = /\[(\d+):(\d+).(\d+)\] (.*?)$/g;
+        const pattern = /\[(\d+):(\d+)\.(\d+)\] (.*?)$/g;
         const extracted = extract_strings_from_pattern(line, pattern);
         if (extracted.length < 4) return generror("Couldn't extract the lyrics pattern", "LOW", { line });
         const [minute, second, millisecond, text] = extracted;

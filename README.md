@@ -151,7 +151,7 @@ async function _main_() {
 	const search_result = await Illusive.music_service.get("SoundCloud")!.search!("Lelo Groundhog Day");
 	if ("error" in search_result) return;
 	if (search_result.tracks.length === 0) return; // no tracks in result
-	const lyrics_result = await Illusive.get_track_lryics(search_result.tracks[0]);
+	const lyrics_result = await Lyrics.get_track_lyrics(search_result.tracks[0]);
 	if (typeof lyrics_result === "object") return; // ResponseError
 	console.log(lyrics_result);
 	/* lyrics_result ->

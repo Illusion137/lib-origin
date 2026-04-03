@@ -342,12 +342,13 @@ export namespace SQLTracks {
             synced_lyrics_uri: synced_lyrics_uri
         };
         await db.update(tracks_table).set(new_track).where(eq(tracks_table.uid, track.uid));
-        await ChangeTracker.log_change('tracks', 'update', track.uid, { lyrics_uri: lyrics_file, synced_lyrics_file: synced_lyrics_uri });
+        await ChangeTracker.log_change('tracks', 'update', track.uid, { lyrics_uri: lyrics_file, synced_lyrics_uri: synced_lyrics_uri });
         SQLGlobal.update_global_track_item(track.uid, new_track);
         return lyrics_file;
     }
     export async function undownload_track_lyrics(track: Track) {
         await SQLfs.delete_item(SQLfs.lyrics_directory(`${track.uid}.txt`));
+        await SQLfs.delete_item(SQLfs.synced_lyrics_directory(`${track.uid}.sync.txt`));
         const new_track = {
             ...track,
             lyrics_uri: '',

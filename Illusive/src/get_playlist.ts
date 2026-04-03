@@ -412,7 +412,7 @@ export async function illusi_get_playlist_continuation(opts: IllusiPlaylistConti
     if ("error" in playlist) return default_playlist(playlist);
     return {
         tracks: playlist,
-        continuation: playlist.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid: opts.uuid, offset: playlist.length } as IllusiPlaylistContinuation
+        continuation: playlist.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid: opts.uuid, offset: opts.offset + playlist.length } as IllusiPlaylistContinuation
     };
 }
 

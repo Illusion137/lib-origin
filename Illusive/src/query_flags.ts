@@ -133,7 +133,7 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
     {
         flag: '@sldl',
         condition: (track) => !is_empty(track.synced_lyrics_uri),
-        description: "Lyrics Downloaded"
+        description: "Synced Lyrics Downloaded"
     },
     {
         flag: '@uv',

@@ -29,7 +29,7 @@ export namespace SQLfs {
     export function thumbnail_directory(item: string) { return  document_directory(Constants.thumbnail_archive_path) + forward_item(item); }
     export function media_directory(item: string) { return document_directory(Constants.media_archive_path) + forward_item(item); }
     export function lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
-    export function synced_lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
+    export function synced_lyrics_directory(item: string) { return document_directory(Constants.synced_lyrics_archive_path) + forward_item(item); }
     
     export async function recreate_directories(){
         for(const dir of Constants.default_directories){
