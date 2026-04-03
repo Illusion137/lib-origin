@@ -28,6 +28,11 @@ export function extract_string_from_pattern(str: string, pattern: RegExp, severi
     const extracted = body_groups[1];
     return extracted;
 }
+export function extract_strings_from_pattern(str: string, pattern: RegExp) {
+    const body_groups = pattern.exec(str);
+    if (body_groups === null) return [];
+    return [...body_groups].slice(1);
+}
 export function extract_string_undef(str: string, pattern: RegExp) {
     return error_undefined(extract_string_from_pattern(str, pattern, "LOW"));
 }

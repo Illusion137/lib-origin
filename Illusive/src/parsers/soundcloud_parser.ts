@@ -6,6 +6,9 @@ import type * as IllusiveTypes from "@illusive/types";
 import { remove_prod } from "@common/utils/clean_util";
 import { reinterpret_cast } from "@common/cast";
 import type { SnippetedTrack } from "@origin/soundcloud/types/ArtistStories";
+import type { SystemPlaylist } from "@origin/soundcloud/types/MixedSelection";
+import * as Origin from '@origin/index';
+import { generror } from "@common/utils/error_util";
 
 export function sc_highest_artwork(artwork_url: string) {
     return artwork_url?.replace("t200x200", "t500x500")?.replace("large", "t500x500");
@@ -69,5 +72,24 @@ export function soundcloud_parse_track_to_song(track: IllusiveTypes.Track, raw: 
         date: new Date(raw.release_date).toISOString() as ISOString,
         album_type: "SONG",
         song_track: track
+    }
+}
+
+export async function soundcloud_get_system_playlist_tracks_callback(tracks: SystemPlaylist['tracks']): Promise<IllusiveTypes.Track[]>{
+    const soundcloud_tracks = await Origin.SoundCloud.get_tracks({track_ids: tracks.map(t => String(t.id))});
+    if("error" in soundcloud_tracks) {
+        console.warn(generror("Failed to get SoundCloud Tracks", "MEDIUM", {tracks}));
+        return [];
+    }
+    return soundcloud_tracks.data.map(soundcloud_parse_track);
+}
+
+export function soundcloud_parse_system_playlist(playlist: SystemPlaylist): IllusiveTypes.FullPlaylist{
+    return {
+        title: playlist.short_title ?? playlist.title ?? "",
+        description: playlist.short_description ?? playlist.description ?? "",
+        artist: [],
+        artwork_url: sc_highest_artwork(playlist.calculated_artwork_url ?? playlist.artwork_url),
+        tracks_callback: async() => await soundcloud_get_system_playlist_tracks_callback(playlist.tracks)
     }
 }

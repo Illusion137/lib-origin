@@ -1,7 +1,8 @@
-import { days_of, is_empty, seconds_of } from "@common/utils/util";
+import { days_of, is_empty, milliseconds_of, seconds_of } from "@common/utils/util";
 import { Prefs } from "./prefs";
 import type { Track } from "./types";
 import { GLOBALS } from "./globals";
+import { SQLTrackPlays } from "./sql/sql_track_plays";
 
 export namespace FutsalShuffle {
     export const icache = {
@@ -22,13 +23,23 @@ export namespace FutsalShuffle {
         icache.plays_from_albums.clear();
         icache.plays_from_artist.clear();
         icache.plays_in_past_month.clear();
+
         GLOBALS.global_var.sql_tracks.forEach(track => {
             if (track.album?.uri)
                 icache.plays_from_albums.set(track.album.uri, (icache.plays_from_albums.get(track.album.uri) ?? 0) + (track.meta?.plays ?? 0));
             if (track.artists?.[0]?.uri)
                 icache.plays_from_artist.set(track.artists[0].uri, (icache.plays_from_artist.get(track.artists[0].uri) ?? 0) + (track.meta?.plays ?? 0));
-            // TODO plays_in_past_month;
         });
+
+        const grouped_plays = SQLTrackPlays.count_all_track_plays_sync({ date_start: new Date(Date.now() - milliseconds_of({ months: 1 })) });
+        for (const [track_uid, count_array] of Object.entries(grouped_plays)) {
+            icache.plays_in_past_month.set(track_uid, count_array.length);
+        }
+
+        for (const key of Object.keys(Prefs.default_track_shuffle_bias)) {
+            Prefs.prefs.track_shuffle_bias.current_value[key] ??= 0;
+            Prefs.prefs.track_shuffle_bias.default_value[key] ??= 0;
+        }
 
         const weights: number[] = [];
         GLOBALS.global_var.sql_tracks.forEach(track => {
@@ -61,6 +72,7 @@ export namespace FutsalShuffle {
             explicit: track.explicit !== "EXPLICIT" ? 0 : boolean_weight,
             no_explicit: track.explicit === "EXPLICIT" ? 0 : boolean_weight,
             has_lyrics_dl: is_empty(track.lyrics_uri) ? 0 : boolean_weight,
+            has_synced_lyrics_dl: is_empty(track.synced_lyrics_uri) ? 0 : boolean_weight,
             has_thumbnail_dl: is_empty(track.thumbnail_uri) ? 0 : boolean_weight,
             is_downloaded: is_empty(track.media_uri) ? 0 : boolean_weight,
             last_played: !track.meta?.last_played_date
@@ -89,7 +101,7 @@ export namespace FutsalShuffle {
     export type BiasInfluence = RawBiasFactors;
 
     function get_bias_influence(tracks: Track[]): Map<string, BiasInfluence> {
-        build_cache();
+        if (!icache.cache_built) build_cache();
 
         const bias_keys = Object.keys(Prefs.default_track_shuffle_bias) as (keyof RawBiasFactors)[];
         const raw: Map<string, RawBiasFactors> = new Map<string, RawBiasFactors>();
@@ -132,13 +144,14 @@ export namespace FutsalShuffle {
         const data = new Array<number>(keys.length).fill(0);
         for (const value of influences_values) {
             for (let i = 0; i < keys.length; i++) {
-                data[i] += value[keys[i]] * Math.abs(bias[keys[i]]);
+                data[i] += value[keys[i]] * Math.abs(bias[keys[i]] ?? 0);
             }
         }
         const max = Math.max(...data);
         for (let i = 0; i < keys.length; i++) {
-            data[i] = max > 0 ? data[i] / max : 0;
             if (isNaN(data[i])) data[i] = 0;
+            data[i] = max > 0 ? data[i] / max : 0;
+            if (bias[keys[i] ?? 0] < 0) data[i] *= -1;
         }
         return data;
     }
@@ -167,12 +180,19 @@ export namespace FutsalShuffle {
         return out;
     }
 
+    function get_weighted_tracks(tracks: Track[]) {
+        const weighted_tracks = tracks.map(track => ({ value: track, weight: icache.track_uid_to_weight.get(track.uid) ?? 1 }));
+        return weighted_tracks;
+    }
+    export function get_weighted_tracks_descending(tracks: Track[]) {
+        return get_weighted_tracks(tracks).sort((a, b) => b.weight - a.weight).map(track => track.value)
+    }
+    export function get_weighted_tracks_ascending(tracks: Track[]) {
+        return get_weighted_tracks(tracks).sort((a, b) => a.weight - b.weight).map(track => track.value)
+    }
+
     export function futsal_shuffle(tracks: Track[]) {
         if (!icache.cache_built) build_cache();
-        const weighted_tracks = tracks.map(track => ({ value: track, weight: icache.track_uid_to_weight.get(track.uid) ?? 1 }));
-
-        // console.log(weighted_tracks.map(t => t.weight).sort());
-
-        return shuffle_weighted(weighted_tracks);
+        return shuffle_weighted(get_weighted_tracks(tracks));
     }
 }

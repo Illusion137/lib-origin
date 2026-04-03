@@ -56,6 +56,11 @@ export interface ArtistRecommendation {
     user: User
 }
 
+export interface QueryOutput {
+    output: string;
+    query: string;
+}
+
 export interface User {
     avatar_url: string
     city: string

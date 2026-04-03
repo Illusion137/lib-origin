@@ -1,6 +1,6 @@
 import { Illusive } from "@illusive/illusive";
 import type { CompactPlaylist, NamedUUID, Promises } from '@illusive/types';
-import { is_empty, json_catch } from '@common/utils/util';
+import { is_empty, json_catch, shuffle_array } from '@common/utils/util';
 import { music_service_uri_to_music_service, split_uri } from "@illusive/illusive_utils";
 import { get_proxies } from "@illusive/sampler";
 import { Proxy } from "@origin/index";
@@ -18,9 +18,9 @@ async function add_playback_data_to_releases(releases: (CompactPlaylist[]|Respon
                     : item)))
 }
 
-// export async function artist_watch(artists: NamedUUID[], on_update: (progress: number) => void): Promise<(CompactPlaylist[]|ResponseError)[]>{
-export async function artist_watch(artists: NamedUUID[]): Promise<(CompactPlaylist[]|ResponseError)[]>{
+export async function artist_watch(artists: NamedUUID[], on_progress: () => any): Promise<(CompactPlaylist[]|ResponseError)[]>{
     const proxies = await get_proxies(artists.length);
+    artists = shuffle_array(artists);
     if(proxies.length < 5) artists = artists.slice(0, Constants.new_releases_artist_watch_small_amount);
     const releases: (CompactPlaylist[]|undefined)[] = [];
     const promises: Promises = [];
@@ -36,6 +36,7 @@ export async function artist_watch(artists: NamedUUID[]): Promise<(CompactPlayli
             // else {
             const release = (await music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch) ?? []) as CompactPlaylist[];
             releases.push(release);
+            on_progress?.();
             // }
         }
     }

@@ -32,6 +32,7 @@ import type { RoZFetchRequestInit } from '@common/rozfetch';
 import { bandlab_parse_track } from './parsers/bandlab_parser';
 import rozfetch from '@common/rozfetch';
 import { get_local_illusi_playlist } from './gen/illusi_playlists_links';
+import { supabase } from './db/supabase';
 
 export const album_fetch_opts: RoZFetchRequestInit = {
     cache_opts: {
@@ -385,16 +386,34 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
     }
 }
 
-export async function illusi_get_playlist(url: string): Promise<MusicServicePlaylist> {
-    const cleaned_url = urlid(url, ".json");
+interface IllusiPlaylistContinuation { "uuid": string, "offset": number };
+export async function illusi_get_playlist(uuid: string): Promise<MusicServicePlaylist> {
+    const cleaned_url = urlid(uuid, ".json");
     const local_illusi_playlist = get_local_illusi_playlist(cleaned_url);
     if (local_illusi_playlist !== undefined) return local_illusi_playlist;
-    
-    const playlist_response = await rozfetch<MusicServicePlaylist>(url);
-    if ("error" in playlist_response) return default_playlist(playlist_response);
-    const playlist = await playlist_response.json();
-    if ("error" in playlist && playlist.error !== undefined) return default_playlist(playlist as ResponseError);
-    return playlist as MusicServicePlaylist;
+
+    uuid = urlid(uuid);
+    const { data: { session } } = await supabase().auth.getSession();
+    if (session?.access_token === undefined) return default_playlist(generror("User not authenticated", "LOW", { url: uuid }));
+    const playlist = await Origin.Illusi.get_playlist(uuid, { jwt: session.access_token });
+    if ("error" in playlist) return default_playlist(playlist);
+    return {
+        title: playlist.title,
+        tracks: playlist.tracks,
+        description: playlist.description,
+        date: new Date(playlist.created_at).toISOString() as ISOString,
+        continuation: playlist.tracks.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid, offset: playlist.tracks.length } as IllusiPlaylistContinuation
+    };
+}
+export async function illusi_get_playlist_continuation(opts: IllusiPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
+    const { data: { session } } = await supabase().auth.getSession();
+    if (session?.access_token === undefined) return default_playlist(generror("User not authenticated", "LOW", { opts }));
+    const playlist = await Origin.Illusi.get_playlist_continuation(opts.uuid, opts.offset, { jwt: session.access_token });
+    if ("error" in playlist) return default_playlist(playlist);
+    return {
+        tracks: playlist,
+        continuation: playlist.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid: opts.uuid, offset: playlist.length } as IllusiPlaylistContinuation
+    };
 }
 
 export async function api_get_playlist(url: string): Promise<MusicServicePlaylist> {
@@ -405,14 +424,24 @@ export async function api_get_playlist(url: string): Promise<MusicServicePlaylis
     return playlist as MusicServicePlaylist;
 }
 
-// TODO come back to improve this and also insert continuation
+interface BandlabPlaylistContinuation { "url": string, "offset": number };
+const BANDLAB_TRACK_LIMIT = 50;
 export async function bandlab_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
-    const playlist_response = await Origin.BandLab.projects_list(url, { cookie_jar });
+    const playlist_response = await Origin.BandLab.projects_list(url, { cookie_jar, limit: BANDLAB_TRACK_LIMIT });
     if ("error" in playlist_response) return default_playlist(playlist_response);
     return {
         title: "Projects List",
         tracks: playlist_response.data.map(bandlab_parse_track),
-        continuation: null
+        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : { url, offset: playlist_response.data.length } as BandlabPlaylistContinuation
+    }
+}
+export async function bandlab_get_playlist_continuation(opts: BandlabPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
+    const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
+    const playlist_response = await Origin.BandLab.projects_list(opts.url, { cookie_jar, offset: opts.offset, limit: BANDLAB_TRACK_LIMIT });
+    if ("error" in playlist_response) return default_playlist(playlist_response);
+    return {
+        tracks: playlist_response.data.map(bandlab_parse_track),
+        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : { url: opts.url, offset: opts.offset + playlist_response.data.length } as BandlabPlaylistContinuation
     }
 }

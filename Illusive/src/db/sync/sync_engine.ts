@@ -76,6 +76,16 @@ function safe_to_epoch(value: unknown): number {
     return isNaN(d.getTime()) ? Date.now() : d.getTime();
 }
 
+/**
+ * Epoch coercion for comparisons/merge logic.
+ * If invalid/missing, return 0 so remote can't "win" by accident.
+ */
+function safe_to_epoch_merge(value: unknown): number {
+    if (value == null) return 0;
+    const d = new Date(value as number | string);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 function normalize_soundcloud_id(value: unknown): number {
     const n = Number(value);
     if (!isFinite(n)) return 0;
@@ -91,6 +101,57 @@ function safe_int(value: unknown): number {
     const r = Math.round(n);
     if (r < -2147483648 || r > 2147483647) return 0;
     return r;
+}
+
+function safe_json_parse<T>(value: unknown, fallback: T): T {
+    if (value == null) return fallback;
+    if (typeof value !== 'string') return value as T;
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return fallback;
+    try {
+        return JSON.parse(trimmed) as T;
+    } catch {
+        return fallback;
+    }
+}
+
+function normalize_json_string(value: unknown): string | null {
+    if (value == null) return null;
+    if (typeof value === 'string') return value.trim();
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return null;
+    }
+}
+
+function is_empty_json_array(value: unknown): boolean {
+    if (value == null) return true;
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === 'string') {
+        const s = value.trim();
+        if (s === '' || s === '[]') return true;
+        const parsed = safe_json_parse<unknown>(s, null);
+        return Array.isArray(parsed) ? parsed.length === 0 : false;
+    }
+    return false;
+}
+
+function is_empty_album(value: unknown): boolean {
+    if (value == null) return true;
+    if (typeof value === 'string') {
+        const s = value.trim();
+        if (s === '') return true;
+        const parsed = safe_json_parse<any>(s, null);
+        if (parsed == null) return false; // invalid JSON => treat as non-empty to avoid clobbering
+        return is_empty_album(parsed);
+    }
+    if (typeof value !== 'object') return false;
+    const v = value as { name?: unknown; uri?: unknown };
+    const name = typeof v.name === 'string' ? v.name : '';
+    const uri = v.uri;
+    const uri_is_empty = uri == null || uri === '';
+    return name.trim() === '' && uri_is_empty;
 }
 
 function parse_playlist_track_record_id(record_id: string): { playlist_uuid: string; track_uid: string } | null {
@@ -317,8 +378,6 @@ export class SyncEngine {
         this.is_initialized = true;
         ChangeTracker.set_on_change(() => this.schedule_sync());
         await this.initial_sync().catch((error) => {
-            // Don't rethrow — let the interval and network listeners still be set up
-            // so that subsequent sync() calls can retry initial_sync via the sentinel check.
             console.warn('[SyncEngine] initial_sync failed, will retry on next sync:', error);
         });
 
@@ -356,11 +415,9 @@ export class SyncEngine {
         this.last_sync_started_at = Date.now();
         try {
             this.is_syncing = true;
-            await this.initial_sync(); // no-op after first success (sentinel); retries if initial_sync previously failed
+            await this.initial_sync();
             const initial_sync_complete = await this.is_initial_sync_complete();
             if (!initial_sync_complete) {
-                // During initial sync retries, keep pushing local changes but avoid pull,
-                // which can apply partial remote state and cause destructive races.
                 if (this.is_destroyed) return;
                 await this.push_changes();
                 return;
@@ -369,6 +426,8 @@ export class SyncEngine {
             await this.push_changes();
             if (this.is_destroyed) return;
             await this.pull_changes();
+            if (this.is_destroyed) return;
+            await ChangeTracker.delete_irresolvable_changes();
             if (this.is_destroyed) return;
             await Prefs.save_pref('last_synced', new Date());
             this.consecutive_failures = 0;
@@ -398,7 +457,6 @@ export class SyncEngine {
 
     // -------------------------------------------------------------------------
     // INITIAL SYNC
-    // For users with large existing libraries that have never synced.
     // -------------------------------------------------------------------------
     private async initial_sync() {
         if (this.initial_sync_promise) {
@@ -407,7 +465,6 @@ export class SyncEngine {
         }
 
         this.initial_sync_promise = (async () => {
-            // Check local sentinel first — avoids a network round-trip on every cold start
             const local_done = await db.select().from(sync_metadata_table)
                 .where(eq(sync_metadata_table.table_name, INITIAL_SYNC_COMPLETE_MARKER)).get();
             if (local_done) return;
@@ -466,7 +523,6 @@ export class SyncEngine {
             let new_releases_done = await this.is_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.new_releases);
             if (!new_releases_done) {
                 const result = await this.initial_sync_new_releases(user_uid);
-                // For new_releases, `skipped` means invalid local identity rows that should retry later.
                 new_releases_done = result.failed === 0 && result.skipped === 0;
                 if (new_releases_done) {
                     await this.mark_initial_sync_stage_complete(INITIAL_SYNC_STAGE_MARKERS.new_releases);
@@ -477,8 +533,6 @@ export class SyncEngine {
                 return;
             }
 
-            // Drop only changes that existed before the first initial-sync attempt.
-            // Changes logged after initial-sync started must still be pushed.
             await db.delete(change_log_table)
                 .where(lt(change_log_table.created_at, initial_sync_started_at));
 
@@ -499,7 +553,6 @@ export class SyncEngine {
     }
 
     private async initial_sync_tracks(user_uid: string): Promise<InitialSyncStageResult> {
-        // Fetch UIDs already in remote utracks so partial-progress retries skip them
         const already_synced = new Set<string>();
         let fetch_offset = 0;
         while (true) {
@@ -528,12 +581,10 @@ export class SyncEngine {
         for (let i = 0; i < to_sync.length; i += BATCH_SIZE) {
             const batch = to_sync.slice(i, i + BATCH_SIZE);
 
-            // Upsert global tracks
             const { error: tracks_err } = await this.supabase.from('tracks')
                 .upsert(batch.map(t => this.track_to_global_insert(t)), { onConflict: 'uid' });
 
             if (tracks_err) {
-                // Batch failed — fall back row-by-row
                 for (const single of batch) {
                     try {
                         const { error: te } = await this.supabase.from('tracks')
@@ -552,12 +603,10 @@ export class SyncEngine {
                 continue;
             }
 
-            // Upsert per-user utracks
             const { error: utracks_err } = await this.supabase.from('utracks')
                 .upsert(batch.map(t => this.track_to_utrack_insert(t, user_uid)), { onConflict: 'user_uid,track_uid' });
 
             if (utracks_err) {
-                // Fallback row-by-row for utracks
                 for (const row of batch) {
                     try {
                         const { error: ue } = await this.supabase.from('utracks')
@@ -693,7 +742,6 @@ export class SyncEngine {
                 try {
                     const key = new_release_identity_key(release.title);
                     if (key === null) {
-                        // Should not happen because we filtered above; keep defensive.
                         console.warn(`[SyncEngine] initial_sync new_releases skipped during upload (invalid identity, id=${release.id})`);
                         skipped += 1;
                         continue;
@@ -740,6 +788,7 @@ export class SyncEngine {
                 }
             }
         }
+        db.$client.flushPendingReactiveQueries();
         return { uploaded, skipped, failed };
     }
 
@@ -798,10 +847,10 @@ export class SyncEngine {
         for (const change of changes) {
             try {
                 switch (table_name) {
-                    case 'tracks':           await this.push_track_change(change, user_uid); break;
-                    case 'playlists':        await this.push_playlist_change(change, user_uid); break;
+                    case 'tracks': await this.push_track_change(change, user_uid); break;
+                    case 'playlists': await this.push_playlist_change(change, user_uid); break;
                     case 'playlists_tracks': await this.push_playlist_track_change(change, user_uid); break;
-                    case 'new_releases':     await this.push_new_release_change(change, user_uid, remote_identity_index); break;
+                    case 'new_releases': await this.push_new_release_change(change, user_uid, remote_identity_index); break;
                 }
                 succeeded.push(...change.change_ids);
             } catch (err) {
@@ -813,11 +862,10 @@ export class SyncEngine {
 
     // -------------------------------------------------------------------------
     // Track push — dual-write to `tracks` (global) + `utracks` (per-user)
-    // Global tracks are NEVER deleted — only utracks can be soft-deleted.
+    // Also ensure duration is monotonic-max: always write the greatest duration to server.
     // -------------------------------------------------------------------------
     private async push_track_change(change: CompressedChange, user_uid: string) {
         if (change.operation === 'delete') {
-            // Only mark the user's utrack as deleted — global tracks pool is permanent
             const { error } = await this.supabase.from('utracks')
                 .update({ deleted: true })
                 .eq('user_uid', user_uid)
@@ -826,28 +874,51 @@ export class SyncEngine {
             return;
         }
 
-        // Always read the full local track so we have all service IDs for resolution
         const full_track = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, change.record_id)).get();
-        if (!full_track) return; // Track no longer exists locally, skip
+        if (!full_track) return;
 
-        // Merge any changed fields from compressed change on top of the full local track
         const track: LocalTrack = change.operation === 'update'
             ? { ...full_track, ...(change.data as Partial<LocalTrack>) }
             : full_track;
 
-        // Always upsert — guarantees the row exists remotely regardless of prior state
+        // Fetch remote duration so we can enforce "greatest duration wins" at the source of truth (tracks table).
+        let remote_duration = 0;
+        try {
+            const { data: remote_row, error: remote_error } = await this.supabase
+                .from('tracks')
+                .select('duration')
+                .eq('uid', track.uid)
+                .limit(1)
+                .maybeSingle();
+            if (remote_error) throw remote_error;
+            remote_duration = typeof remote_row?.duration === 'number' ? remote_row.duration : 0;
+        } catch (e) {
+            // Don't fail the whole push; fallback to local duration.
+            console.warn(`[SyncEngine] push_track_change remote duration fetch failed ${track.uid}:`, e);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+        const local_duration = Math.round(Number(track.duration ?? 0));
+        const best_duration = Math.max(
+            isFinite(local_duration) ? local_duration : 0,
+            isFinite(remote_duration) ? remote_duration : 0
+        );
+
+        const global_insert = this.track_to_global_insert({
+            ...track,
+            duration: best_duration,
+        } as LocalTrack);
+
         const { error: track_error } = await this.supabase.from('tracks')
-            .upsert(this.track_to_global_insert(track), { onConflict: 'uid' });
+            .upsert(global_insert, { onConflict: 'uid' });
         this.assert_supabase_ok(`push_track_change tracks upsert ${track.uid}`, track_error);
+
         const { error: utrack_error } = await this.supabase.from('utracks')
-            .upsert(this.track_to_utrack_insert(track, user_uid), { onConflict: 'user_uid,track_uid' });
+            .upsert({ ...this.track_to_utrack_insert(track, user_uid), deleted: false }, { onConflict: 'user_uid,track_uid' });
         this.assert_supabase_ok(`push_track_change utracks upsert ${track.uid}`, utrack_error);
     }
 
-    // -------------------------------------------------------------------------
-    // Playlist push
-    // -------------------------------------------------------------------------
     private async push_playlist_change(change: CompressedChange, user_uid: string) {
         if (change.operation === 'delete') {
             const { error } = await this.supabase.from('playlists')
@@ -871,9 +942,6 @@ export class SyncEngine {
         this.assert_supabase_ok(`push_playlist_change upsert ${change.record_id}`, error);
     }
 
-    // -------------------------------------------------------------------------
-    // Playlist-track push
-    // -------------------------------------------------------------------------
     private async push_playlist_track_change(change: CompressedChange, user_uid: string) {
         const parsed = parse_playlist_track_record_id(change.record_id);
         if (!parsed) {
@@ -909,7 +977,6 @@ export class SyncEngine {
             return;
         }
 
-        // Self-heal FK failures by ensuring the remote dependency exists and retrying once.
         const local_track = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, track_uid)).get();
         if (!local_track) {
@@ -927,7 +994,7 @@ export class SyncEngine {
         this.assert_supabase_ok(`push_playlist_track_change dependency track upsert ${track_uid}`, track_error);
 
         const { error: utrack_error } = await this.supabase.from('utracks')
-            .upsert(this.track_to_utrack_insert(local_track, user_uid), { onConflict: 'user_uid,track_uid' });
+            .upsert({ ...this.track_to_utrack_insert(local_track, user_uid), deleted: false }, { onConflict: 'user_uid,track_uid' });
         this.assert_supabase_ok(`push_playlist_track_change dependency utrack upsert ${track_uid}`, utrack_error);
 
         const { error: retry_error } = await this.supabase.from('playlists_tracks')
@@ -935,17 +1002,11 @@ export class SyncEngine {
         this.assert_supabase_ok(`push_playlist_track_change upsert-retry ${playlist_uuid}:${track_uid}`, retry_error);
     }
 
-    // -------------------------------------------------------------------------
-    // New release push
-    // -------------------------------------------------------------------------
     private async push_new_release_change(
         change: CompressedChange,
         user_uid: string,
         remote_identity_index?: Map<string, RemoteNewReleaseIdentityRow>,
     ) {
-        // record_id for new_releases is title.uri (a string), not the numeric id.
-        // For deletes, the numeric id is in change.data. For inserts/updates,
-        // look up the local row by the unique title field.
         const data = change.data as Partial<LocalNewRelease> | null;
         const identity_index = remote_identity_index ?? await this.list_remote_new_release_identity_index(user_uid);
 
@@ -974,14 +1035,12 @@ export class SyncEngine {
             return;
         }
 
-        // Look up by numeric id if available (from change.data), otherwise scan by title URI
         let full_release: LocalNewRelease | undefined;
         if (data?.id != null) {
             full_release = await db.select().from(new_releases_table)
                 .where(eq(new_releases_table.id, data.id)).get();
         }
         if (!full_release) {
-            // Fallback: find by title URI matching record_id
             const all_releases = await db.select().from(new_releases_table);
             full_release = all_releases.find(r => {
                 return new_release_identity_key(r.title) === `uri:${change.record_id}`;
@@ -1051,17 +1110,16 @@ export class SyncEngine {
             .where(eq(sync_metadata_table.table_name, table_name))
             .get();
 
-        // Subtract 2s buffer to cover sub-millisecond Supabase timestamp precision
         const last_sync_iso = new Date((metadata?.last_sync_at ?? 0) - 2000).toISOString();
 
         const pull_started_at = Date.now();
         const pull_started_iso = new Date(pull_started_at).toISOString();
 
         switch (table_name) {
-            case 'tracks':           await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at); break;
-            case 'playlists':        await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at); break;
+            case 'tracks': await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at); break;
+            case 'playlists': await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at); break;
             case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, pull_started_iso, pull_started_at); break;
-            case 'new_releases':     await this.pull_new_releases(last_sync_iso, pull_started_iso, pull_started_at); break;
+            case 'new_releases': await this.pull_new_releases(last_sync_iso, pull_started_iso, pull_started_at); break;
         }
     }
 
@@ -1078,9 +1136,11 @@ export class SyncEngine {
     private async pull_tracks(last_sync_iso: string, pull_started_iso: string, pull_started_at: number) {
         const user_uid = await get_authed_user_uid(this.supabase);
         if (!user_uid) return;
-        const pending_track_changes = await this.get_pending_change_sets('tracks');
 
-        // Fetch utracks with embedded track data, paginated with stable ordering.
+        const pending_track_changes = await this.get_pending_change_sets('tracks');
+        const owned_uids = await this.get_owned_track_uids_all(user_uid);
+
+        // PASS A: utracks changes (delete/restore + user fields)
         let offset = 0;
         while (true) {
             const { data: utrack_rows, error: u_err } = await this.supabase
@@ -1102,26 +1162,29 @@ export class SyncEngine {
 
                 const merged: RemoteTrackWithUserData = {
                     ...track_data,
-                    plays:   row.plays,
-                    meta:    row.meta,
+                    plays: row.plays,
+                    meta: row.meta,
                     deleted: row.deleted,
                 };
-                await this.apply_track(merged, pending_track_changes);
+
+                try {
+                    await this.apply_track(merged, pending_track_changes);
+                } catch (err) {
+                    console.warn('[SyncEngine] pull_tracks apply_track failed:', err);
+                }
             }
 
             if (utrack_rows.length < PULL_PAGE_SIZE) break;
             offset += utrack_rows.length;
         }
 
-        // Also pull tracks enriched by other users since last sync
-        const owned_uids = await this.get_owned_track_uids(user_uid);
+        // PASS B: global metadata edits (tracks.modified_at) for owned tracks (including deleted ones)
         if (owned_uids.length > 0) {
-            // Batch owned_uids to avoid PostgREST URL length limits on .in()
             const uid_chunks = chunk_array(owned_uids, IN_CLAUSE_CHUNK_SIZE);
             for (const uid_chunk of uid_chunks) {
                 offset = 0;
                 while (true) {
-                    const { data: enriched, error: t_err } = await this.supabase
+                    const { data: global_rows, error: t_err } = await this.supabase
                         .from('tracks')
                         .select('*')
                         .gte('modified_at', last_sync_iso)
@@ -1132,25 +1195,18 @@ export class SyncEngine {
                         .range(offset, offset + PULL_PAGE_SIZE - 1);
 
                     if (t_err) throw t_err;
-                    if (!enriched || enriched.length === 0) break;
+                    if (!global_rows || global_rows.length === 0) break;
 
-                    for (const track_row of enriched) {
-                        const local = await db.select().from(tracks_table)
-                            .where(eq(tracks_table.uid, track_row.uid)).get();
-                        if (!local) continue;
-
-                        // Accumulate enrichment from other users — local wins ties
-                        const merged_fields = this.accumulate_merge_local(local, track_row);
-                        await db.update(tracks_table).set(merged_fields)
-                            .where(eq(tracks_table.uid, track_row.uid));
-
-                        // Update in-memory
-                        const updated = { ...local, ...merged_fields };
-                        SQLGlobal.update_global_track_item(track_row.uid, updated as LocalTrack);
+                    for (const track_row of global_rows) {
+                        try {
+                            await this.apply_global_track(track_row, pending_track_changes);
+                        } catch (err) {
+                            console.warn('[SyncEngine] pull_tracks apply_global_track failed:', err);
+                        }
                     }
 
-                    if (enriched.length < PULL_PAGE_SIZE) break;
-                    offset += enriched.length;
+                    if (global_rows.length < PULL_PAGE_SIZE) break;
+                    offset += global_rows.length;
                 }
             }
         }
@@ -1158,89 +1214,123 @@ export class SyncEngine {
         await this.save_pull_watermark('tracks', pull_started_at);
     }
 
-    private async get_owned_track_uids(user_uid: string): Promise<string[]> {
+    private async get_owned_track_uids_all(user_uid: string): Promise<string[]> {
         const { data, error } = await this.supabase
             .from('utracks')
             .select('track_uid')
-            .eq('user_uid', user_uid)
-            .eq('deleted', false);
-        this.assert_supabase_ok('get_owned_track_uids', error);
+            .eq('user_uid', user_uid);
+        this.assert_supabase_ok('get_owned_track_uids_all', error);
 
         return (data ?? []).map(r => r.track_uid);
     }
 
-    // -------------------------------------------------------------------------
-    // Apply a pulled track with accumulate-merge strategy.
-    // Local wins ties. Only utracks.deleted causes local deletion.
-    // -------------------------------------------------------------------------
+    private async apply_global_track(
+        row: Database['public']['Tables']['tracks']['Row'],
+        pending_track_changes: { upserts: Set<string>; deletes: Set<string> },
+    ) {
+        const uid = row.uid;
+        if (!uid) return;
+
+        if (pending_track_changes.deletes.has(uid)) return;
+
+        const existing = await db.select().from(tracks_table)
+            .where(eq(tracks_table.uid, uid)).get();
+        if (!existing) return;
+
+        const merged = this.remote_merge_local(existing, row);
+        await db.update(tracks_table).set(merged).where(eq(tracks_table.uid, uid));
+        SQLGlobal.update_global_track_item(uid, { ...existing, ...merged } as LocalTrack);
+        db.$client.flushPendingReactiveQueries();
+    }
+
     private async apply_track(
         row: RemoteTrackWithUserData,
         pending_track_changes?: { upserts: Set<string>; deletes: Set<string> }
     ) {
-        // Only delete locally if the user's utrack is flagged as deleted
-        if (row.deleted) {
-            const has_pending_delete = pending_track_changes
-                ? pending_track_changes.deletes.has(row.uid)
-                : Boolean(await db.select({ id: change_log_table.id })
-                    .from(change_log_table)
-                    .where(and(
-                        eq(change_log_table.synced, false),
-                        eq(change_log_table.table_name, 'tracks'),
-                        eq(change_log_table.operation, 'delete'),
-                        eq(change_log_table.record_id, row.uid),
-                    ))
-                    .limit(1)
-                    .get());
-            const has_pending_upsert = pending_track_changes
-                ? pending_track_changes.upserts.has(row.uid)
-                : Boolean(await db.select({ id: change_log_table.id })
-                    .from(change_log_table)
-                    .where(and(
-                        eq(change_log_table.synced, false),
-                        eq(change_log_table.table_name, 'tracks'),
-                        inArray(change_log_table.operation, ['insert', 'update']),
-                        eq(change_log_table.record_id, row.uid),
-                    ))
-                    .limit(1)
-                    .get());
+        const has_pending_delete = pending_track_changes
+            ? pending_track_changes.deletes.has(row.uid)
+            : Boolean(await db.select({ id: change_log_table.id })
+                .from(change_log_table)
+                .where(and(
+                    eq(change_log_table.synced, false),
+                    eq(change_log_table.table_name, 'tracks'),
+                    eq(change_log_table.operation, 'delete'),
+                    eq(change_log_table.record_id, row.uid),
+                ))
+                .limit(1)
+                .get());
 
-            // Non-destructive policy: only apply remote tombstones when local intent also says delete.
-            if (!has_pending_delete || has_pending_upsert) {
-                return;
-            }
-            const existed = await db.select().from(tracks_table)
-                .where(eq(tracks_table.uid, row.uid)).get();
-            await db.delete(tracks_table).where(eq(tracks_table.uid, row.uid));
-            if (existed) {
-                SQLGlobal.delete_global_track_item(row.uid);
-            }
-            return;
-        }
+        const has_pending_upsert = pending_track_changes
+            ? pending_track_changes.upserts.has(row.uid)
+            : Boolean(await db.select({ id: change_log_table.id })
+                .from(change_log_table)
+                .where(and(
+                    eq(change_log_table.synced, false),
+                    eq(change_log_table.table_name, 'tracks'),
+                    inArray(change_log_table.operation, ['insert', 'update']),
+                    eq(change_log_table.record_id, row.uid),
+                ))
+                .limit(1)
+                .get());
 
         const existing = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, row.uid)).get();
 
+        // Remote delete -> soft-delete locally (preserve URIs)
+        if (row.deleted) {
+            if (has_pending_upsert) return;
+
+            if (existing) {
+                await db.update(tracks_table)
+                    .set({
+                        deleted: true,
+                        modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at)),
+                    })
+                    .where(eq(tracks_table.uid, row.uid));
+                SQLGlobal.update_global_track_item(row.uid, { ...existing, deleted: true } as LocalTrack);
+                db.$client.flushPendingReactiveQueries();
+            }
+            return;
+        }
+
+        // Remote restore
+        if (has_pending_delete) return;
+
         if (existing) {
-            // Accumulate merge — local wins ties, fill gaps from remote
-            const merged = this.accumulate_merge_local(existing, row);
+            const merged = this.remote_merge_local(existing, row);
+
+            // Always preserve local-only URIs
+            merged.media_uri = existing.media_uri;
+            merged.thumbnail_uri = existing.thumbnail_uri;
+            merged.lyrics_uri = existing.lyrics_uri;
+            merged.synced_lyrics_uri = existing.synced_lyrics_uri;
+
+            merged.deleted = false;
+
+            // If there's a pending local upsert, preserve user fields
+            if (has_pending_upsert) {
+                merged.plays = existing.plays;
+                // merged.meta = existing.meta;
+            }
+
             await db.update(tracks_table).set(merged)
                 .where(eq(tracks_table.uid, row.uid));
-
-            // Update in-memory
-            const updated = { ...existing, ...merged };
-            SQLGlobal.update_global_track_item(row.uid, updated as LocalTrack);
-        } else {
-            // New track from remote — insert
-            const local = this.remote_track_to_local(row);
-            await db.insert(tracks_table).values(local);
-            SQLGlobal.add_global_track_item(local as LocalTrack);
+            SQLGlobal.update_global_track_item(row.uid, { ...existing, ...merged } as LocalTrack);
+            db.$client.flushPendingReactiveQueries();
+            return;
         }
+
+        // Insert new non-deleted track (will have empty URIs; can't preserve what never existed locally)
+        const local = this.remote_track_to_local(row);
+        await db.insert(tracks_table).values(local);
+        SQLGlobal.add_global_track_item(local as LocalTrack);
+        db.$client.flushPendingReactiveQueries();
     }
 
     // -------------------------------------------------------------------------
-    // Accumulate merge: local wins ties, fill gaps from remote.
-    // Service IDs always accumulate (take non-empty from either side).
+    // Merge helpers
     // -------------------------------------------------------------------------
+    // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private accumulate_merge_local(
         existing: LocalTrack,
         remote: RemoteTrackWithUserData | Database['public']['Tables']['tracks']['Row'],
@@ -1251,54 +1341,136 @@ export class SyncEngine {
             local !== 0 ? local : remote_val;
 
         const remote_artists = typeof remote.artists === 'string'
-            ? remote.artists : JSON.stringify(remote.artists);
+            ? safe_json_parse<any[]>(remote.artists, [])
+            : (remote.artists as any[]);
         const remote_tags = typeof remote.tags === 'string'
-            ? remote.tags : JSON.stringify(remote.tags);
+            ? safe_json_parse<any[]>(remote.tags, [])
+            : (remote.tags as any[]);
         const remote_album = typeof remote.album === 'string'
-            ? remote.album : JSON.stringify(remote.album);
+            ? safe_json_parse<any>(remote.album, { name: '', uri: null })
+            : remote.album;
 
-        const local_artists_str = typeof existing.artists === 'string'
-            ? existing.artists : JSON.stringify(existing.artists);
-        const local_tags_str = typeof existing.tags === 'string'
-            ? existing.tags : JSON.stringify(existing.tags);
-        const local_album_str = typeof existing.album === 'string'
-            ? existing.album : JSON.stringify(existing.album);
+        const local_artists_is_empty = is_empty_json_array(existing.artists);
+        const local_tags_is_empty = is_empty_json_array(existing.tags);
+        const local_album_is_empty = is_empty_album(existing.album);
 
         const result: Partial<LocalTrack> = {
-            // Metadata: local wins if non-empty, else take remote
-            title:                pick_str(existing.title, remote.title),
-            alt_title:            pick_str(existing.alt_title, remote.alt_title),
-            artists:              local_artists_str !== '[]' ? existing.artists : (remote_artists as any),
-            duration:             pick_num(existing.duration, remote.duration),
-            prods:                pick_str(existing.prods, remote.prods),
-            genre:                pick_str(existing.genre, remote.genre),
-            tags:                 local_tags_str !== '[]' ? existing.tags : (remote_tags as any),
-            explicit:             existing.explicit !== 'NONE' ? existing.explicit : remote.explicit as any,
-            unreleased:           existing.unreleased || remote.unreleased,
-            album:                local_album_str !== '{"name":"","uri":null}' && local_album_str !== '{"name":""}' ? existing.album : (remote_album as any),
-            artwork_url:          pick_str(existing.artwork_url, remote.artwork_url),
+            title: pick_str(existing.title, remote.title),
+            alt_title: pick_str(existing.alt_title, remote.alt_title),
+            artists: local_artists_is_empty ? remote_artists : existing.artists,
+            duration: Math.max(existing.duration ?? 0, remote.duration ?? 0), // greatest duration wins locally
+            prods: pick_str(existing.prods, remote.prods),
+            genre: pick_str(existing.genre, remote.genre),
+            tags: local_tags_is_empty ? remote_tags : existing.tags,
+            explicit: existing.explicit !== 'NONE' ? existing.explicit : remote.explicit as any,
+            unreleased: existing.unreleased || remote.unreleased,
+            album: local_album_is_empty ? remote_album : existing.album,
+            artwork_url: pick_str(existing.artwork_url, remote.artwork_url),
 
-            // Service IDs: always accumulate (take non-empty from either side)
-            youtube_id:           pick_str(existing.youtube_id, remote.youtube_id),
-            youtubemusic_id:      pick_str(existing.youtubemusic_id, remote.youtubemusic_id),
-            soundcloud_id:        pick_num(existing.soundcloud_id, remote.soundcloud_id),
+            youtube_id: pick_str(existing.youtube_id, remote.youtube_id),
+            youtubemusic_id: pick_str(existing.youtubemusic_id, remote.youtubemusic_id),
+            soundcloud_id: pick_num(existing.soundcloud_id, remote.soundcloud_id),
             soundcloud_permalink: pick_str(existing.soundcloud_permalink, remote.soundcloud_permalink),
-            spotify_id:           pick_str(existing.spotify_id, remote.spotify_id),
-            amazonmusic_id:       pick_str(existing.amazonmusic_id, remote.amazonmusic_id),
-            applemusic_id:        pick_str(existing.applemusic_id, remote.applemusic_id),
-            bandlab_id:           pick_str(existing.bandlab_id, remote.bandlab_id),
-            illusi_id:            pick_str(existing.illusi_id, remote.illusi_id),
-            imported_id:          pick_str(existing.imported_id, remote.imported_id),
+            spotify_id: pick_str(existing.spotify_id, remote.spotify_id),
+            amazonmusic_id: pick_str(existing.amazonmusic_id, remote.amazonmusic_id),
+            applemusic_id: pick_str(existing.applemusic_id, remote.applemusic_id),
+            bandlab_id: pick_str(existing.bandlab_id, remote.bandlab_id),
+            illusi_id: pick_str(existing.illusi_id, remote.illusi_id),
+            imported_id: pick_str(existing.imported_id, remote.imported_id),
 
-            modified_at:          Math.max(existing.modified_at, safe_to_epoch(remote.modified_at)),
+            modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(remote.modified_at)),
         };
 
-        // User data fields (only present on RemoteTrackWithUserData)
         if ('plays' in remote && 'meta' in remote) {
             result.plays = existing.plays > 0 ? existing.plays : (remote).plays;
-            const local_meta_str = typeof existing.meta === 'string'
-                ? existing.meta : JSON.stringify(existing.meta);
-            result.meta = local_meta_str !== '{}' ? existing.meta : (remote).meta as any;
+
+            // const local_meta_str = normalize_json_string(existing.meta) ?? '';
+            // const remote_meta = typeof (remote).meta === 'string'
+            //     ? safe_json_parse<any>((remote).meta, {})
+            //     : (remote).meta;
+
+            // Remote-first meta, but never wipe local with an empty remote meta payload.
+            const remote_meta = typeof (remote).meta === 'string'
+                ? safe_json_parse<any>((remote).meta, {})
+                : (remote).meta;
+            const remote_meta_str = normalize_json_string(remote_meta) ?? '';
+            const remote_meta_is_empty = remote_meta_str === '' || remote_meta_str === '{}' || remote_meta_str === 'null';
+            result.meta = remote_meta_is_empty ? existing.meta : remote_meta;
+        }
+
+        return result;
+    }
+
+    private remote_merge_local(
+        existing: LocalTrack,
+        remote: RemoteTrackWithUserData | Database['public']['Tables']['tracks']['Row'],
+    ): Partial<LocalTrack> {
+        const pick_str = (local: string, remote_val: string): string =>
+            local !== '' ? local : remote_val;
+        const pick_num = (local: number, remote_val: number): number =>
+            local !== 0 ? local : remote_val;
+
+        const remote_artists = typeof remote.artists === 'string'
+            ? safe_json_parse<any[]>(remote.artists, [])
+            : (remote.artists as any[]);
+        const remote_tags = typeof remote.tags === 'string'
+            ? safe_json_parse<any[]>(remote.tags, [])
+            : (remote.tags as any[]);
+        const remote_album = typeof remote.album === 'string'
+            ? safe_json_parse<any>(remote.album, { name: '', uri: null })
+            : remote.album;
+
+        const remote_artists_non_empty = !is_empty_json_array(remote_artists);
+        const remote_tags_non_empty = !is_empty_json_array(remote_tags);
+        const remote_album_non_empty = !is_empty_album(remote_album);
+
+        const best_duration = Math.max(existing.duration ?? 0, remote.duration ?? 0);
+
+        const result: Partial<LocalTrack> = {
+            title: remote.title && remote.title.trim() !== '' ? remote.title : existing.title,
+            alt_title: remote.alt_title && remote.alt_title.trim() !== '' ? remote.alt_title : existing.alt_title,
+            artists: remote_artists_non_empty ? remote_artists : existing.artists,
+
+            // greatest duration wins (prevents "starts at 0 then updates" from clobbering)
+            duration: best_duration,
+
+            prods: remote.prods && remote.prods.trim() !== '' ? remote.prods : existing.prods,
+            genre: remote.genre && remote.genre.trim() !== '' ? remote.genre : existing.genre,
+            tags: remote_tags_non_empty ? remote_tags : existing.tags,
+            explicit: (remote.explicit !== 'NONE' ? remote.explicit : existing.explicit) as any,
+            unreleased: remote.unreleased || existing.unreleased,
+            album: remote_album_non_empty ? remote_album : existing.album,
+            artwork_url: remote.artwork_url && remote.artwork_url.trim() !== '' ? remote.artwork_url : existing.artwork_url,
+
+            youtube_id: pick_str(existing.youtube_id, remote.youtube_id),
+            youtubemusic_id: pick_str(existing.youtubemusic_id, remote.youtubemusic_id),
+            soundcloud_id: pick_num(existing.soundcloud_id, remote.soundcloud_id),
+            soundcloud_permalink: pick_str(existing.soundcloud_permalink, remote.soundcloud_permalink),
+            spotify_id: pick_str(existing.spotify_id, remote.spotify_id),
+            amazonmusic_id: pick_str(existing.amazonmusic_id, remote.amazonmusic_id),
+            applemusic_id: pick_str(existing.applemusic_id, remote.applemusic_id),
+            bandlab_id: pick_str(existing.bandlab_id, remote.bandlab_id),
+            illusi_id: pick_str(existing.illusi_id, remote.illusi_id),
+            imported_id: pick_str(existing.imported_id, remote.imported_id),
+
+            media_uri: existing.media_uri,
+            thumbnail_uri: existing.thumbnail_uri,
+            lyrics_uri: existing.lyrics_uri,
+            synced_lyrics_uri: existing.synced_lyrics_uri,
+
+            modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(remote.modified_at)),
+        };
+
+        if ('plays' in remote && 'meta' in remote) {
+            result.plays = existing.plays > 0 ? existing.plays : (remote).plays;
+
+            // Remote-first meta, but never wipe local with an empty remote meta payload.
+            const remote_meta = typeof (remote).meta === 'string'
+                ? safe_json_parse<any>((remote).meta, {})
+                : (remote).meta;
+            const remote_meta_str = normalize_json_string(remote_meta) ?? '';
+            const remote_meta_is_empty = remote_meta_str === '' || remote_meta_str === '{}' || remote_meta_str === 'null';
+            result.meta = remote_meta_is_empty ? existing.meta : remote_meta;
         }
 
         return result;
@@ -1330,14 +1502,12 @@ export class SyncEngine {
                 const has_pending_delete = pending_changes.deletes.has(record_id);
                 if (row.deleted) {
                     if (!has_pending_delete || has_pending_upsert) {
-                        // Non-destructive policy: only apply remote tombstones when local intent also says delete.
                         continue;
                     }
                     await db.delete(playlists_table).where(eq(playlists_table.uuid, row.uuid));
                     continue;
                 }
                 if (has_pending_upsert || has_pending_delete) {
-                    // Preserve local pending intent over remote state.
                     continue;
                 }
 
@@ -1355,7 +1525,7 @@ export class SyncEngine {
             if (data.length < PULL_PAGE_SIZE) break;
             offset += data.length;
         }
-
+        db.$client.flushPendingReactiveQueries();
         await this.save_pull_watermark('playlists', pull_started_at);
     }
 
@@ -1377,7 +1547,6 @@ export class SyncEngine {
             return;
         }
 
-        // Batch playlist UUIDs to avoid PostgREST URL length limits on .in()
         const uuid_chunks = chunk_array(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
         for (const uuid_chunk of uuid_chunks) {
             let offset = 0;
@@ -1407,7 +1576,6 @@ export class SyncEngine {
 
                     if (row.deleted) {
                         if (!has_pending_delete || has_pending_upsert) {
-                            // Non-destructive policy: only apply remote tombstones when local intent also says delete.
                             continue;
                         }
                         if (existing) {
@@ -1420,7 +1588,6 @@ export class SyncEngine {
                         continue;
                     }
                     if (has_pending_upsert || has_pending_delete) {
-                        // Preserve local pending intent over remote state.
                         continue;
                     }
 
@@ -1440,7 +1607,7 @@ export class SyncEngine {
                 offset += data.length;
             }
         }
-
+        db.$client.flushPendingReactiveQueries();
         await this.save_pull_watermark('playlists_tracks', pull_started_at);
     }
 
@@ -1475,8 +1642,6 @@ export class SyncEngine {
             if (!data || data.length === 0) break;
 
             for (const row of data) {
-                // Remote and local IDs are independent autoincrement sequences,
-                // so match by the unique `title` column instead.
                 const title_key = new_release_identity_key(row.title);
                 if (title_key === null) {
                     console.warn('[SyncEngine] pull_new_releases skipped row with invalid title identity');
@@ -1488,13 +1653,11 @@ export class SyncEngine {
                     const existing_rows = local_by_key.get(title_key) ?? [];
                     if (existing_rows.length > 0) {
                         if (release_record_id === null) {
-                            // Cannot safely correlate pending local intent without a stable record_id.
                             continue;
                         }
                         const has_pending_upsert = pending_changes.upserts.has(release_record_id);
                         const has_pending_delete = pending_changes.deletes.has(release_record_id);
                         if (!has_pending_delete || has_pending_upsert) {
-                            // Non-destructive policy: only apply remote tombstones when local intent also says delete.
                             continue;
                         }
                         await db.delete(new_releases_table)
@@ -1507,7 +1670,6 @@ export class SyncEngine {
                     const has_pending_upsert = pending_changes.upserts.has(release_record_id);
                     const has_pending_delete = pending_changes.deletes.has(release_record_id);
                     if (has_pending_upsert || has_pending_delete) {
-                        // Preserve local pending intent over remote state.
                         continue;
                     }
                 }
@@ -1538,78 +1700,79 @@ export class SyncEngine {
             offset += data.length;
         }
 
+        db.$client.flushPendingReactiveQueries();
         await this.save_pull_watermark('new_releases', pull_started_at);
     }
 
     // -------------------------------------------------------------------------
-    // local → remote insert shapes (fully typed)
+    // local → remote insert shapes
     // -------------------------------------------------------------------------
     private track_to_global_insert(t: LocalTrack): RemoteTrackInsert {
         return {
-            uid:                  t.uid,
-            title:                t.title,
-            alt_title:            t.alt_title,
-            artists:              t.artists,
+            uid: t.uid,
+            title: t.title,
+            alt_title: t.alt_title,
+            artists: t.artists,
             ...(t.duration > 0 ? { duration: Math.round(t.duration) } : {}),
-            prods:                t.prods,
-            genre:                t.genre,
-            tags:                 t.tags,
-            explicit:             t.explicit,
-            unreleased:           t.unreleased,
-            album:                t.album,
-            illusi_id:            t.illusi_id,
-            imported_id:          t.imported_id,
-            youtube_id:           t.youtube_id,
-            youtubemusic_id:      t.youtubemusic_id,
-            soundcloud_id:        normalize_soundcloud_id(t.soundcloud_id),
+            prods: t.prods,
+            genre: t.genre,
+            tags: t.tags,
+            explicit: t.explicit,
+            unreleased: t.unreleased,
+            album: t.album,
+            illusi_id: t.illusi_id,
+            imported_id: t.imported_id,
+            youtube_id: t.youtube_id,
+            youtubemusic_id: t.youtubemusic_id,
+            soundcloud_id: normalize_soundcloud_id(t.soundcloud_id),
             soundcloud_permalink: t.soundcloud_permalink,
-            spotify_id:           t.spotify_id,
-            amazonmusic_id:       t.amazonmusic_id,
-            applemusic_id:        t.applemusic_id,
-            bandlab_id:           t.bandlab_id,
-            artwork_url:          t.artwork_url,
-            created_at:           safe_to_iso(t.created_at),
-            modified_at:          safe_to_iso(t.modified_at),
+            spotify_id: t.spotify_id,
+            amazonmusic_id: t.amazonmusic_id,
+            applemusic_id: t.applemusic_id,
+            bandlab_id: t.bandlab_id,
+            artwork_url: t.artwork_url,
+            created_at: safe_to_iso(t.created_at),
+            modified_at: safe_to_iso(t.modified_at),
         };
     }
 
     private track_to_utrack_insert(t: LocalTrack, user_uid: string): RemoteUTrackInsert {
         return {
             user_uid,
-            track_uid:   t.uid,
-            plays:       safe_int(t.plays),
-            meta:        t.meta,
-            deleted:     false,
-            created_at:  safe_to_iso(t.created_at),
+            track_uid: t.uid,
+            plays: safe_int(t.plays),
+            meta: t.meta,
+            deleted: false,
+            created_at: safe_to_iso(t.created_at),
             modified_at: safe_to_iso(t.modified_at),
         };
     }
 
     private playlist_to_insert(p: LocalPlaylist, user_uid: string): RemotePlaylistInsert {
         return {
-            uuid:                p.uuid,
+            uuid: p.uuid,
             user_uid,
-            title:               p.title,
-            description:         p.description,
-            pinned:              p.pinned,
-            archived:            p.archived,
-            sort:                p.sort,
-            public:              p.public,
-            public_uuid:         p.public_uuid,
+            title: p.title,
+            description: p.description,
+            pinned: p.pinned,
+            archived: p.archived,
+            sort: p.sort,
+            public: p.public,
+            public_uuid: p.public_uuid,
             inherited_playlists: p.inherited_playlists,
-            inherited_searchs:   p.inherited_searchs,
-            linked_playlists:    p.linked_playlists,
-            deleted:             false,
-            created_at:          safe_to_iso(p.created_at),
-            modified_at:         safe_to_iso(p.modified_at),
+            inherited_searchs: p.inherited_searchs,
+            linked_playlists: p.linked_playlists,
+            deleted: false,
+            created_at: safe_to_iso(p.created_at),
+            modified_at: safe_to_iso(p.modified_at),
         };
     }
 
     private playlist_track_to_insert(pt: LocalPlaylistTrack): RemotePlaylistTrackInsert {
         return {
-            uuid:       pt.uuid,
-            track_uid:  pt.track_uid,
-            deleted:    false,
+            uuid: pt.uuid,
+            track_uid: pt.track_uid,
+            deleted: false,
             created_at: safe_to_iso(pt.created_at),
         };
     }
@@ -1617,55 +1780,56 @@ export class SyncEngine {
     private new_release_to_insert(r: LocalNewRelease, user_uid: string): RemoteNewReleaseInsert {
         return {
             user_uid,
-            title:              r.title,
-            artist:             r.artist,
-            artwork_url:        r.artwork_url,
+            title: r.title,
+            artist: r.artist,
+            artwork_url: r.artwork_url,
             artwork_thumbnails: r.artwork_thumbnails,
-            explicit:           r.explicit,
-            album_type:         r.album_type,
-            type:               r.type,
-            date:               r.date,
-            song_track:         r.song_track ?? null,
-            deleted:            false,
-            created_at:         safe_to_iso(r.created_at),
+            explicit: r.explicit,
+            album_type: r.album_type,
+            type: r.type,
+            date: r.date,
+            song_track: r.song_track ?? null,
+            deleted: false,
+            created_at: safe_to_iso(r.created_at),
         };
     }
 
     // -------------------------------------------------------------------------
-    // remote → local shapes (fully typed, local-only fields preserved)
+    // remote → local shapes
     // -------------------------------------------------------------------------
     private remote_track_to_local(row: RemoteTrackWithUserData): Omit<LocalTrack, 'id'> {
         return {
-            uid:                  row.uid,
-            title:                row.title,
-            alt_title:            row.alt_title,
-            artists:              row.artists,
-            duration:             row.duration,
-            prods:                row.prods,
-            genre:                row.genre,
-            tags:                 row.tags,
-            explicit:             row.explicit,
-            unreleased:           row.unreleased,
-            album:                row.album,
-            illusi_id:            row.illusi_id,
-            imported_id:          row.imported_id,
-            youtube_id:           row.youtube_id,
-            youtubemusic_id:      row.youtubemusic_id,
-            soundcloud_id:        row.soundcloud_id,
+            uid: row.uid,
+            title: row.title,
+            alt_title: row.alt_title,
+            artists: row.artists,
+            duration: row.duration,
+            prods: row.prods,
+            genre: row.genre,
+            tags: row.tags,
+            explicit: row.explicit,
+            unreleased: row.unreleased,
+            album: row.album,
+            illusi_id: row.illusi_id,
+            imported_id: row.imported_id,
+            youtube_id: row.youtube_id,
+            youtubemusic_id: row.youtubemusic_id,
+            soundcloud_id: row.soundcloud_id,
             soundcloud_permalink: row.soundcloud_permalink,
-            spotify_id:           row.spotify_id,
-            amazonmusic_id:       row.amazonmusic_id,
-            applemusic_id:        row.applemusic_id,
-            bandlab_id:           row.bandlab_id,
-            artwork_url:          row.artwork_url,
-            plays:                row.plays,
-            meta:                 row.meta,
-            // Local-only paths — never stored remotely; set empty for new inserts
-            thumbnail_uri:        '',
-            media_uri:            '',
-            lyrics_uri:           '',
-            created_at:           safe_to_epoch(row.created_at),
-            modified_at:          safe_to_epoch(row.modified_at),
+            spotify_id: row.spotify_id,
+            amazonmusic_id: row.amazonmusic_id,
+            applemusic_id: row.applemusic_id,
+            bandlab_id: row.bandlab_id,
+            artwork_url: row.artwork_url,
+            plays: row.plays,
+            meta: row.meta,
+            thumbnail_uri: '',
+            media_uri: '',
+            lyrics_uri: '',
+            synced_lyrics_uri: '',
+            deleted: false,
+            created_at: safe_to_epoch(row.created_at),
+            modified_at: safe_to_epoch(row.modified_at),
         };
     }
 
@@ -1674,22 +1838,22 @@ export class SyncEngine {
         existing_thumbnail_uri: string,
     ): Omit<LocalPlaylist, 'id'> {
         return {
-            uuid:                row.uuid,
-            title:               row.title,
-            description:         row.description,
-            pinned:              row.pinned,
-            archived:            row.archived,
-            sort:                row.sort as LocalPlaylist['sort'],
-            public:              row.public,
-            public_uuid:         row.public_uuid,
+            uuid: row.uuid,
+            title: row.title,
+            description: row.description,
+            pinned: row.pinned,
+            archived: row.archived,
+            sort: row.sort as LocalPlaylist['sort'],
+            public: row.public,
+            public_uuid: row.public_uuid,
             inherited_playlists: row.inherited_playlists,
-            inherited_searchs:   row.inherited_searchs,
-            linked_playlists:    row.linked_playlists,
-            // Local-only field — preserve existing value
-            thumbnail_uri:       existing_thumbnail_uri,
-            date:                row.created_at,
-            created_at:          safe_to_epoch(row.created_at),
-            modified_at:         safe_to_epoch(row.modified_at),
+            inherited_searchs: row.inherited_searchs,
+            linked_playlists: row.linked_playlists,
+            thumbnail_uri: existing_thumbnail_uri,
+            deleted: false,
+            date: row.created_at,
+            created_at: safe_to_epoch(row.created_at),
+            modified_at: safe_to_epoch(row.modified_at),
         };
     }
 
@@ -1697,8 +1861,9 @@ export class SyncEngine {
         row: Database['public']['Tables']['playlists_tracks']['Row'],
     ): Omit<LocalPlaylistTrack, 'id'> {
         return {
-            uuid:       row.uuid,
-            track_uid:  row.track_uid,
+            uuid: row.uuid,
+            track_uid: row.track_uid,
+            deleted: false,
             created_at: safe_to_epoch(row.created_at),
         };
     }
@@ -1707,16 +1872,17 @@ export class SyncEngine {
         row: Database['public']['Tables']['new_releases']['Row'],
     ): Omit<LocalNewRelease, 'id'> {
         return {
-            title:              row.title,
-            artist:             row.artist,
-            artwork_url:        row.artwork_url,
+            title: row.title,
+            artist: row.artist,
+            artwork_url: row.artwork_url,
             artwork_thumbnails: row.artwork_thumbnails,
-            explicit:           row.explicit,
-            album_type:         row.album_type,
-            type:               row.type,
-            date:               row.date,
-            song_track:         row.song_track,
-            created_at:         safe_to_epoch(row.created_at),
+            explicit: row.explicit,
+            album_type: row.album_type,
+            type: row.type,
+            date: row.date,
+            song_track: row.song_track,
+            deleted: false,
+            created_at: safe_to_epoch(row.created_at),
         };
     }
 

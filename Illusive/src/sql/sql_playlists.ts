@@ -49,13 +49,14 @@ export namespace SQLPlaylists {
         return await db
                 .$count(playlists_tracks_table,
                     and(
+                        eq(playlists_tracks_table.deleted, false),
                         eq(playlists_tracks_table.uuid, playlist_track.uuid),
                         eq(playlists_tracks_table.track_uid, playlist_track.track_uid)
                     )
             ) !== 0;
     }
     export async function playlists_count(){
-        return await db.$count(playlists_table) ?? 0;
+        return await db.$count(playlists_table, eq(playlists_table.deleted, false)) ?? 0;
     }
     export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: string, tracks: Track[]): Promise<void> {
         const promises: Promises = tracks.map(async(track) => {
@@ -79,6 +80,7 @@ export namespace SQLPlaylists {
         return (await db
             .select()
             .from(playlists_tracks_table)
+            .where(eq(playlists_tracks_table.deleted, false))
         );
     }
     export async function unique_playlist_uuids_from_playlist_tracks(){
@@ -93,12 +95,14 @@ export namespace SQLPlaylists {
         const playlist = await db
             .select()
             .from(tracks_table)
-            .innerJoin(playlists_tracks_table, 
+            .innerJoin(playlists_tracks_table,
                 and(
                     eq(playlists_tracks_table.track_uid, tracks_table.uid),
                     eq(playlists_tracks_table.uuid, playlist_uuid)
                 )
-            ).orderBy(playlists_tracks_table.id);
+            )
+            .where(and(eq(tracks_table.deleted, false), eq(playlists_tracks_table.deleted, false)))
+            .orderBy(playlists_tracks_table.id);
         
         let tracks: Track[] = playlist.map(p => reinterpret_cast<Track>(SQLTracks.sql_track_to_track(p.tracks))).filter(track => !("error" in track));
         if(skip_inheritance) return tracks;
@@ -155,7 +159,7 @@ export namespace SQLPlaylists {
         all_playlist_data_memo = await Promise.all(all_playlist_data_memo.map(async(playlist) => ({...playlist, visual_data: {...playlist.visual_data ?? {}, four_track: await Promise.resolve(playlist.visual_data!.four_track ?? []) }})))
     }
     export async function all_playlists_data(ignore_tracks?: IgnoreTracks) {
-        const playlists = await db.select().from(playlists_table);
+        const playlists = await db.select().from(playlists_table).where(eq(playlists_table.deleted, false));
         all_playlist_data_memo = await Promise.all( playlists.map(async(playlist) => sql_playlist_to_playlist(playlist, ignore_tracks ?? "PROMISE", playlist.archived ?? false)));
         resolve_all_playlist_data_memo().catch(catch_ignore);
         return all_playlist_data_memo;

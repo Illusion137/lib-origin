@@ -13,8 +13,6 @@ export const sqlite_location = async () => (SQLfs.document_directory('SQLite')).
 
 export let db: ReturnType<typeof drizzle>;
 
-// TODO for the love of fuck add transactions :3
-
 function get_database_location() {
     const sqlite_location_mobile = SQLfs.document_directory('SQLite')
         .replace('file://', '')

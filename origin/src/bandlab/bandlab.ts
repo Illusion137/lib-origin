@@ -85,7 +85,7 @@ export namespace BandLab {
 
     export async function projects_list(user_uuid: string, opts: Opts & { limit?: number; offset?: number }) {
         const params = {
-            limit: opts.limit ?? 30,
+            limit: opts.limit ?? 50,
             offset: opts.offset ?? 0
         };
         const projects_response = await api_get_data<BandLabProjects>(`users/${user_uuid}/songs?${encode_params(params)}`, opts);

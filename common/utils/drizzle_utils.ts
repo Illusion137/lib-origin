@@ -1,6 +1,5 @@
 import type { DB, Scalar } from "@op-engineering/op-sqlite";
 import { generror_catch } from "./error_util";
-
 function is_error_failed_unique_contraint(error: unknown) {
     return (error as Error).message.includes("UNIQUE constraint failed")
 }
@@ -14,6 +13,16 @@ export class DrizzleUtils<SQLTables extends string> {
     db: DB;
     constructor(db: DB) {
         this.db = db;
+    }
+
+    get_all_sync_dz<TQuery extends PromiseLike<any[]> & { toSQL: () => { sql: string; params: unknown[] } }>(query: TQuery): Awaited<TQuery> {
+        const { sql, params } = query.toSQL();
+        try {
+            return (this.db.executeSync(sql, params as Scalar[])).rows as unknown as Awaited<TQuery>;
+        } catch (error) {
+            log_error_if_not_unique_constraint_failed(error, sql, "get all SYNC DZ");
+            return [] as unknown as Awaited<TQuery>;
+        }
     }
 
     async exec_async(source: string) {

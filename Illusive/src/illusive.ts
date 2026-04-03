@@ -1,5 +1,4 @@
-import fuzzysort from 'fuzzysort';
-import * as Origin from '@origin/index'
+import type * as Origin from '@origin/index'
 import { TimedCache, type PromiseResult, type ResponseError } from "@common/types";
 import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_array } from "@common/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, illusi_add_tracks_to_playlist, illusi_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "@illusive/add_delete_tracks_from_playlist";
@@ -7,16 +6,15 @@ import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music
 import { bandlab_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from "@illusive/download_from_id";
 import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
-import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, illusi_get_playlist, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
+import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, bandlab_get_playlist_continuation, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
 import { get_soundcloud_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, illusi_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
-import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, small_track, str_or_include } from "@illusive/illusive_utils";
+import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
 import { amazon_music_search, apple_music_search, illusi_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
 import { MusicService } from "@illusive/types";
 import { illusi_get_new_releases, soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
-import { parse_youtube_music_track } from '@illusive/parsers/youtube_music_parser';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { remove_topic } from '@common/utils/clean_util';
@@ -36,6 +34,7 @@ export namespace Illusive {
             required_cookie_credentials: [],
             get_user_playlists: illusi_get_user_playlists,
             get_playlist: illusi_get_playlist,
+            get_playlist_continuation: illusi_get_playlist_continuation,
             get_artist: illusi_get_artist,
             search: illusi_search,
             explore: undefined,
@@ -200,6 +199,7 @@ export namespace Illusive {
             cookie_jar_callback: () => Prefs.get_pref('bandlab_cookie_jar'),
             pref_cookie_jar: 'bandlab_cookie_jar',
             get_playlist: bandlab_get_playlist,
+            get_playlist_continuation: bandlab_get_playlist_continuation,
             get_user_playlists: bandlab_get_user_playlists,
             download_from_id: bandlab_download_from_id,
         });
@@ -265,7 +265,7 @@ export namespace Illusive {
     }
 
     export function get_youtube_lowest_quality_thumbnail_uri(video_id: string) {
-        return `https://i.ytimg.com/vi/${video_id}/default.jpg`;
+        return `https://i.ytimg.com/vi/${video_id}/1.jpg`;
     }
     export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {
         const uris_descending = [
@@ -285,7 +285,6 @@ export namespace Illusive {
         return `https://img.youtube.com/vi/${video_id}/0.jpg`;
     }
 
-    // TODO investigate previous one to update new ones
     export async function get_highest_quality_service_thumbnail_uri(uri: string) {
         if (!/w\d{2,}-h\d{2,}/.test(uri)) return uri;
         const [width_str, height_str] = [extract_string_from_pattern(uri, /w(\d{2,})-h\d{2,}/g, "MEDIUM"), extract_string_from_pattern(uri, /w\d{2,}-h(\d{2,})/g, "MEDIUM")];
@@ -332,57 +331,8 @@ export namespace Illusive {
         if (!is_empty(track.artwork_url))
             return track.artwork_url!;
         if (!is_empty(track.youtube_id))
-            return `https://img.youtube.com/vi/${track.youtube_id}/0.jpg`;
+            return `https://img.youtube.com/vi/${track.youtube_id}/1.jpg`;
         return illusi_dark_icon_index;
-    }
-
-    export async function get_suggestions(query: string) {
-        const suggestions = await Origin.YouTubeMusic.search_suggestions({}, query);
-        return suggestions.map(s => typeof s === "string" ? s : parse_youtube_music_track(s));
-    }
-
-    async function lyrics_try_good_result(track: Track, search_query: string) {
-        const search_response = await Origin.Genius.search_songs(search_query, {});
-        if ("error" in search_response) return search_response;
-        const best_result = search_response.find(hit => {
-            const title_result = fuzzysort.single(
-                clean_track_info(hit.result.title).trim(),
-                clean_track_info(track.title).trim(),
-            );
-            const artist_result = fuzzysort.single(
-                clean_track_info(hit.result.artist_names).trim(),
-                clean_track_info(artist_string(track)).trim(),
-            );
-            return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5
-        });
-        if (best_result === undefined) return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_query });
-        return best_result.result;
-    }
-    async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
-        for (const search_query of search_queries) {
-            const result = await lyrics_try_good_result(track, search_query);
-            if ("error" in result) continue;
-            return result;
-        }
-        return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_queries });
-    }
-    export async function get_track_lryics(track: Track): PromiseResult<string> {
-        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
-
-        const base_query = `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`;
-        const base_query_clean = `${remove_topic(artist_name)} ${clean_track_info(track.title.replace(`${artist_name} - `, ''))}`;
-
-        const track_title_split = track.title.split(' - ');
-        const best_result = await lyrics_get_first_good_result(track, [
-            track_title_split.length === 2 ? `${clean_track_info(track_title_split[0])} ${clean_track_info(track_title_split[1])}` : undefined,
-            track_title_split.length === 2 ? `${clean_track_info(track_title_split[1])} ${remove_topic(artist_name)}` : undefined,
-            base_query,
-            base_query_clean !== base_query ? base_query_clean : undefined
-        ].filter(s => s !== undefined));
-        if ("error" in best_result) return best_result;
-
-        const lyrics_response = await Origin.Genius.get_lyrics(best_result, {});
-        return lyrics_response;
     }
 
     export type ShuffleMode = "ORDER" | "SHUFFLE";

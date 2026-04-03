@@ -5,6 +5,7 @@ import type { ISOString, CompactPlaylist, Track, NamedUUID, CompactArtist } from
 import type { Item4 } from '@origin/spotify/types/Album';
 import type { SpotifyArtistAlbum, SpotifyArtistApearsOn, SpotifyArtistTrack, SpotifySimliarArtist } from '@origin/spotify/types/Artist';
 import type { CollectionItem } from '@origin/spotify/types/Collection';
+import type { SpotifyArtist } from '@origin/spotify/types/Query';
 import type { SpotifyCompactArtist, SpotifySearchAlbum, SpotifySearchTrack } from '@origin/spotify/types/SearchResult';
 import type { ContentItem } from '@origin/spotify/types/UserPlaylist';
 
@@ -52,6 +53,15 @@ export function parse_spotify_collection_track(track: CollectionItem): Track {
         artwork_url: best_thumbnail(track.track.data.albumOfTrack.coverArt.sources)?.url
     }
 }
+
+export function parse_spotify_search_artist(artist: SpotifyArtist): CompactArtist {
+    return {
+        name: { name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri) },
+        profile_artwork_url: best_thumbnail(artist.visuals.avatarImage?.sources)?.url,
+        is_official_artist_channel: true
+    }
+}
+
 export function parse_spotify_search_track(track: SpotifySearchTrack): Track {
     return {
         uid: generate_new_uid(track.item.data.name),

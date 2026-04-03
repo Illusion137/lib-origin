@@ -1,6 +1,6 @@
 import type * as Origin from "@origin/index";
 import type { CookieJar } from "@common/utils/cookie_util"
-import type { ResponseError } from "@common/types";
+import type { PromiseResult, ResponseError } from "@common/types";
 import { TimedCache } from "@common/types"
 // import type { Chapter } from "@origin/youtube_dl/types";
 import { Constants } from "@illusive/constants";
@@ -146,7 +146,10 @@ export interface LyricsDownloading {
     track: Track;
     uid: string;
 }
-export type LyricsDownloadingResult = ResponseError | string;
+export type LyricsDownloadingResult = "EXISTS" | ResponseError | {
+        plain: string;
+        synced: string|undefined;
+    };
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = { name: string, uuid: string, uri?: never } | { name: string, uuid?: never, uri: IllusiveURI | null };
@@ -223,6 +226,7 @@ interface Basic_Track<T, U, V, X> {
     thumbnail_uri?: string
     media_uri?: string
     lyrics_uri?: string
+    synced_lyrics_uri?: string
     meta?: U
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
@@ -318,6 +322,19 @@ export interface SQLTimestampedCompactPlaylist extends SQLCompactPlaylist {
 export interface TimestampedCompactPlaylist extends CompactPlaylist {
     Timestamp: string
 }
+
+export interface FullPlaylist {
+    title: string;
+    description?: string;
+    artist: NamedUUID[];
+    artwork_thumbnails?: IllusiveThumbnail[];
+    artwork_url?: string;
+    artwork_index?: number;
+    date?: ISOString;
+    explicit?: ExplicitMode;
+    tracks_callback: () => Promise<Track[]>;
+}
+
 export interface CompactArtist {
     name: NamedUUID
     profile_artwork_url?: Artwork
@@ -362,18 +379,21 @@ export interface StatefullMusicSearchResponse {
 }
 
 export interface MusicServiceArtist {
-    name: string
-    latest_release?: CompactPlaylist
-    tracks: Track[]
-    tracks_continuation?: () => Track[]
-    playlists: CompactPlaylist[]
-    albums: CompactPlaylist[]
-    singles_eps: CompactPlaylist[]
-    appears_on?: CompactPlaylist[]
-    background_artwork_url?: string
-    profile_artwork_url?: Artwork
-    similar_artists: CompactArtist[],
-    error?: ResponseError
+    name: string;
+    latest_release?: CompactPlaylist;
+    tracks: Track[];
+    tracks_continuation?: () => Track[];
+    playlists: CompactPlaylist[];
+    albums: CompactPlaylist[];
+    singles_eps: CompactPlaylist[];
+    appears_on?: CompactPlaylist[];
+    background_artwork_url?: string;
+    profile_artwork_url?: Artwork;
+    similar_artists: CompactArtist[];
+    error?: ResponseError;
+    is_following?: boolean;
+    follow: () => PromiseResult<any>;
+    unfollow: () => PromiseResult<any>;
 }
 export interface YTDescriptionSong {
     artwork_url: string,

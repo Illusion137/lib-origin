@@ -29,7 +29,7 @@ export namespace SQLBackpack {
     }
     
     export async function backpack_tracks() {
-        const sql_tracks = await db.select().from(backpack_table);
+        const sql_tracks = await db.select().from(backpack_table).where(eq(backpack_table.deleted, false));
         const tracks: Track[] = SQLTracks.sql_tracks_to_tracks(sql_tracks);
         for(const track of tracks) track.playback!.artwork = Illusive.illusi_dark_icon_index;
         return tracks;

@@ -21,6 +21,10 @@ function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
     return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
 }
 
+async function empty_async_call(){
+    return undefined;
+}
+
 function default_artist(error?: ResponseError): MusicServiceArtist {
     return {
         ...(error !== undefined ? { error: error } : {}),
@@ -32,7 +36,10 @@ function default_artist(error?: ResponseError): MusicServiceArtist {
         similar_artists: [],
         tracks: [],
         background_artwork_url: undefined,
-        profile_artwork_url: undefined
+        profile_artwork_url: undefined,
+        is_following: undefined,
+        follow: empty_async_call,
+        unfollow: empty_async_call
     };
 }
 
@@ -73,7 +80,6 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
         }).catch(catch_log);
     })
 
-
     return {
         name: name,
         albums: potential_all_albums.length === 0 ? artist_response.data.shelfs
@@ -89,7 +95,10 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
         similar_artists: similar_artists,
         tracks: !("error" in artist_tracks_response) ? (artist_tracks_response.data.tracks).map(parse_youtube_music_artist_tracks_track).filter(item => item !== undefined) : (artist_response.data?.top_shelf?.contents?.map(parse_youtube_music_artist_track) ?? []),
         background_artwork_url: background_thumbnail,
-        profile_artwork_url: undefined
+        profile_artwork_url: undefined,
+        is_following: undefined,
+        follow: empty_async_call,
+        unfollow: empty_async_call
     };
 }
 
@@ -137,7 +146,10 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
         similar_artists: parsed_similar_artists,
         tracks: latest_release_and_top_songs?.items.map(item => parse_apple_music_artist_track(item, artist_info)) ?? [],
         background_artwork_url: undefined,
-        profile_artwork_url: artwork
+        profile_artwork_url: artwork,
+        is_following: undefined,
+        follow: empty_async_call,
+        unfollow: empty_async_call
     };
 }
 
@@ -165,6 +177,9 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
         }).catch(catch_log);
     }
 
+    const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
+    const is_following = await SoundCloud.is_following({cookie_jar, artist_id: id});
+
     return {
         name: artist_id.hydration.data.username,
         albums: artist_albums_response?.artist_data?.collection?.map(soundcloud_parse_playlist) ?? [],
@@ -174,7 +189,10 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
         singles_eps: [],
         similar_artists: [],
         background_artwork_url: undefined,
-        profile_artwork_url: artist_id.hydration.data.avatar_url
+        profile_artwork_url: artist_id.hydration.data.avatar_url,
+        is_following: "error" in is_following ? undefined : is_following.following,
+        follow: "error" in is_following ? empty_async_call : async() => SoundCloud.follow_artist({cookie_jar, artist_id: id}),
+        unfollow: "error" in is_following ? empty_async_call : async() => SoundCloud.unfollow_artist({cookie_jar, artist_id: id})
     };
 }
 
@@ -183,11 +201,10 @@ export async function spotify_get_artist(id: string): Promise<MusicServiceArtist
     if ("error" in artist) return default_artist(artist);
     const union_artist = artist.data.artistUnion;
     const artist_uri: NamedUUID = { name: union_artist.profile.name, uri: create_uri("spotify", id) };
-    // TODO 
     const popular_release_albums = union_artist?.discography?.popularReleasesAlbums?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [];
     return {
         name: union_artist.profile.name,
-        albums: union_artist.discography.albums.items?.[0]?.releases?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [],
+        albums: popular_release_albums.concat(union_artist.discography.albums.items?.[0]?.releases?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? []),
         playlists: [],
         latest_release: union_artist?.discography?.latest ? parse_spotify_artist_album(union_artist.discography.latest, artist_uri) : undefined,
         tracks: union_artist.discography?.topTracks?.items.map(parse_spotify_artist_track) ?? [],
@@ -195,7 +212,10 @@ export async function spotify_get_artist(id: string): Promise<MusicServiceArtist
         appears_on: union_artist.relatedContent.appearsOn.items?.map(item => item.releases.items)?.flat()?.map(parse_spotify_artist_appears_on),
         similar_artists: union_artist.relatedContent.relatedArtists.items.map(parse_spotify_similar_artist),
         background_artwork_url: best_thumbnail(union_artist.visuals?.avatarImage?.sources)?.url,
-        profile_artwork_url: best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url
+        profile_artwork_url: best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url,
+        is_following: undefined,
+        follow: empty_async_call,
+        unfollow: empty_async_call
     };
 }
 
@@ -208,7 +228,10 @@ export async function illusi_get_artist(id: string): Promise<MusicServiceArtist>
             singles_eps: [],
             playlists: [],
             similar_artists: [],
-            profile_artwork_url: Constants.sudo_profile_picture_index
+            profile_artwork_url: Constants.sudo_profile_picture_index,
+            is_following: false,
+            follow: empty_async_call,
+            unfollow: empty_async_call
         }
     }
     if (id === Constants.local_illusi_uri_id) {
@@ -219,7 +242,10 @@ export async function illusi_get_artist(id: string): Promise<MusicServiceArtist>
             singles_eps: [],
             playlists: [],
             similar_artists: [],
-            profile_artwork_url: Constants.sumi_profile_picture_index
+            profile_artwork_url: Constants.sumi_profile_picture_index,
+            is_following: undefined,
+            follow: empty_async_call,
+            unfollow: empty_async_call
         }
     }
     return default_artist();

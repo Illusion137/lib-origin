@@ -56,7 +56,7 @@ export class ChangeTracker {
 
         // Group changes by table and record
         const changes_by_record = new Map<string, typeof all_changes>();
-        
+
         for (const change of all_changes) {
             const key = `${change.table_name}:${change.record_id}`;
             if (!changes_by_record.has(key)) {
@@ -67,7 +67,7 @@ export class ChangeTracker {
 
         // Compress changes for each record
         const compressed: CompressedChange[] = [];
-        
+
         for (const [key, record_changes] of changes_by_record.entries()) {
             const colon_idx = key.indexOf(':');
             const table_name = key.substring(0, colon_idx);
@@ -77,7 +77,7 @@ export class ChangeTracker {
                 record_id,
                 record_changes as ChangeLogLikeRow[]
             );
-            
+
             if (compressed_change) {
                 compressed.push(compressed_change);
             }
@@ -100,7 +100,7 @@ export class ChangeTracker {
      */
     static async mark_as_synced(change_ids: number[]) {
         if (change_ids.length === 0) return;
-        
+
         await db
             .update(change_log_table)
             .set({ synced: true })
@@ -117,12 +117,12 @@ export class ChangeTracker {
             .where(eq(change_log_table.synced, false));
 
         const stats_by_table: Record<string, { inserts: number; updates: number; deletes: number }> = {};
-        
+
         for (const change of pending) {
             if (!stats_by_table[change.table_name]) {
                 stats_by_table[change.table_name] = { inserts: 0, updates: 0, deletes: 0 };
             }
-            
+
             if (change.operation === 'insert') stats_by_table[change.table_name].inserts++;
             if (change.operation === 'update') stats_by_table[change.table_name].updates++;
             if (change.operation === 'delete') stats_by_table[change.table_name].deletes++;
@@ -135,11 +135,49 @@ export class ChangeTracker {
     }
 
     /**
+     * Delete changelog entries that can never be synced:
+     * - insert+delete pairs for the same record (net-zero, compress to null)
+     * These stay with synced=false indefinitely otherwise, clogging the changelog.
+     */
+    static async delete_irresolvable_changes(): Promise<number> {
+        const all_changes = await db
+            .select()
+            .from(change_log_table)
+            .where(eq(change_log_table.synced, false))
+            .orderBy(asc(change_log_table.created_at));
+
+        if (all_changes.length === 0) return 0;
+
+        const changes_by_record = new Map<string, typeof all_changes>();
+        for (const change of all_changes) {
+            const key = `${change.table_name}:${change.record_id}`;
+            if (!changes_by_record.has(key)) changes_by_record.set(key, []);
+            changes_by_record.get(key)!.push(change);
+        }
+
+        const ids_to_delete: number[] = [];
+        for (const [key, record_changes] of changes_by_record.entries()) {
+            const colon_idx = key.indexOf(':');
+            const table_name = key.substring(0, colon_idx) as LocalTableName;
+            const record_id = key.substring(colon_idx + 1);
+            const compressed = compress_record_changes(table_name, record_id, record_changes as ChangeLogLikeRow[]);
+            if (compressed === null) {
+                ids_to_delete.push(...record_changes.map(c => c.id));
+            }
+        }
+
+        if (ids_to_delete.length === 0) return 0;
+
+        await db.delete(change_log_table).where(inArray(change_log_table.id, ids_to_delete));
+        return ids_to_delete.length;
+    }
+
+    /**
      * Clean up old synced changes
      */
     static async cleanup_old_changes(days_to_keep = 30) {
         const cutoff_time = Date.now() - (days_to_keep * 24 * 60 * 60 * 1000);
-        
+
         await db
             .delete(change_log_table)
             .where(

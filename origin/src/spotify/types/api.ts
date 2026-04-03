@@ -59,6 +59,15 @@ export type SpotifyRemoveFromPlaylist = SpotifyAPIBase<"removeFromPlaylist", {
     uids: string[];
 }>;
 
+export type SpotifyQuery = SpotifyAPIBase<"searchSuggestions", {
+    query: string;
+    limit?: number;
+    numberOfTopResults?: number;
+    offset?: number;
+    includeAuthors?: boolean;
+    includeEpisodeContentRatingsV2?: boolean;
+}>;
+
 export type SpotifyAPI = SpotifyGetPlaylist 
     | SpotifyGetAlbum 
     | SpotifyGetCollection 
@@ -76,7 +85,8 @@ export type SpotifyAPI = SpotifyGetPlaylist
     | SpotifyAddTracksToLibrary
     | SpotifyAddToPlaylist
     | SpotifyRemoveFromLibrary
-    | SpotifyRemoveFromPlaylist;
+    | SpotifyRemoveFromPlaylist
+    | SpotifyQuery;
 export type SpotifyAPIOperationNames = SpotifyAPI['operation_name'];
 export interface SPVar<T extends SpotifyAPI> {var:  T['var']};
 

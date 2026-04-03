@@ -19,9 +19,10 @@ import BufferRN from "buffer/";
 import { generror } from "@common/utils/error_util";
 import rozfetch, { type RoZFetchRequestInit, type RoZFetchResponse } from "@common/rozfetch";
 import spotify_secrets_bytes from "./data/secret_bytes.json";
-import type { SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLibrary, SpotifyAPI, SpotifyAPIOperationNames, SpotifyArtistOverview, SpotifyGetAlbum, SpotifyGetCollection, SpotifyGetPlaylist, SpotifyHome, SpotifyProfileAccountAttributes, SpotifyRemoveFromLibrary, SpotifyRemoveFromPlaylist, SpotifyRequiresCredentials, SpotifySearch, SpotifyTracksInLibrary, SPVar } from "./types/api";
+import type { SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLibrary, SpotifyAPI, SpotifyAPIOperationNames, SpotifyArtistOverview, SpotifyGetAlbum, SpotifyGetCollection, SpotifyGetPlaylist, SpotifyHome, SpotifyProfileAccountAttributes, SpotifyQuery, SpotifyRemoveFromLibrary, SpotifyRemoveFromPlaylist, SpotifyRequiresCredentials, SpotifySearch, SpotifyTracksInLibrary, SPVar } from "./types/api";
 import { reinterpret_cast } from '../../../common/cast';
 import { try_json_parse } from "@common/utils/parse_util";
+import type { Query } from "./types/Query";
 
 const Buffer = BufferRN.Buffer;
 export namespace Spotify {
@@ -55,8 +56,6 @@ export namespace Spotify {
     export const valid_album_regex = /(https?:\/\/)open\.spotify\.com\/(album)\/.+/i
     export const valid_collection_regex = /(https?:\/\/)open\.spotify\.com\/(collection)\/.+/i
     export const valid_artist_regex = /(https?:\/\/)open\.spotify\.com\/artist\/.+/i
-
-    // TODO finish spotify
 
     export function get_headers(client: (Client | undefined), cookie_jar: (CookieJar | undefined)): Record<string, string> {
         const default_headers = {
@@ -323,7 +322,8 @@ export namespace Spotify {
         removeFromLibrary: "a3c1ff58e6a36fec5fe1e3a193dc95d9071d96b9ba53c5ba9c1494fb1ee73915",
         removeFromPlaylist: "47c69e71df79e3c80e4af7e7a9a727d82565bb20ae20dc820d6bc6f94def482d",
         profileAndAccountAttributes: "b28d9a8b6e8b9a7ed4c2f4a490a3a1cba7e1eb379d90dfde6a3951e6bcb9fccc",
-        fetchPlaylist: "73a3b3470804983e4d55d83cd6cc99715019228fd999d51429cc69473a18789d"
+        fetchPlaylist: "73a3b3470804983e4d55d83cd6cc99715019228fd999d51429cc69473a18789d",
+        searchSuggestions: "1b44e7bced744d15c47e6c4c11952541693324020c528dc97d19c4a38cfb754e"
     };
     export const api_methods: Record<SpotifyAPIOperationNames, FetchMethod> = {
         fetchPlaylist: "GET",
@@ -344,6 +344,7 @@ export namespace Spotify {
         addToPlaylist: "POST",
         removeFromLibrary: "POST",
         removeFromPlaylist: "POST",
+        searchSuggestions: "POST"
     };
     export const api_version: Record<SpotifyAPIOperationNames, number> = {
         fetchPlaylist: 1,
@@ -364,6 +365,7 @@ export namespace Spotify {
         addToPlaylist: 1,
         removeFromLibrary: 1,
         removeFromPlaylist: 1,
+        searchSuggestions: 2
     };
     export async function internal_api_query<R, T extends SpotifyAPI>(operation_name: T['operation_name'], variables: T['var'], credentials: SpotifyRequiresCredentials, opts: Opts): PromiseResult<R> {
         if (credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
@@ -423,6 +425,18 @@ export namespace Spotify {
             limit: opts.var.limit ?? 100
         };
         return await internal_api_query<Collection, SpotifyGetCollection>("fetchLibraryTracks", opts.var, "requires_credentials", opts);
+    }
+
+    export async function get_query_suggestions(opts: SPVar<SpotifyQuery> & Opts): Promise<Query | ResponseError> {
+        opts.var = {
+            ...opts.var,
+            offset: opts.var.offset ?? 0,
+            limit: opts.var.limit ?? 20,
+            numberOfTopResults: opts.var.numberOfTopResults ?? 20,
+            includeAuthors: opts.var.includeAuthors ?? false,
+            includeEpisodeContentRatingsV2: opts.var.includeEpisodeContentRatingsV2 ?? false,
+        };
+        return await internal_api_query<Query, SpotifyQuery>("searchSuggestions", opts.var, "no_credentials", opts);
     }
 
     export async function get_profile_account_attributes(opts: SPVar<SpotifyProfileAccountAttributes> & Opts) {
