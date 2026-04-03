@@ -6,8 +6,6 @@ import { eq, and, inArray, asc, lt } from 'drizzle-orm';
 import type { CompressedChange, LocalTableName } from './types';
 import { compress_record_changes, type ChangeLogLikeRow } from './change_compression';
 
-type ChangeLogRow = typeof change_log_table.$inferSelect;
-
 export class ChangeTracker {
     private static on_change_callback?: () => void;
 
@@ -41,13 +39,18 @@ export class ChangeTracker {
      * 2. Remove insert+delete for same record (net zero)
      * 3. Convert insert+updates into single insert
      * 4. Keep only final state for each record
+     *
+     * Rows marked dropped=true are excluded entirely.
      */
     static async get_pending_changes(batch_size = 100): Promise<CompressedChange[]> {
-        // Get all unsynced changes ordered by creation time
+        // Get all unsynced, non-dropped changes ordered by creation time
         const all_changes = await db
             .select()
             .from(change_log_table)
-            .where(eq(change_log_table.synced, false))
+            .where(and(
+                eq(change_log_table.synced, false),
+                eq(change_log_table.dropped, false),
+            ))
             .orderBy(asc(change_log_table.created_at));
 
         if (all_changes.length === 0) {
@@ -108,13 +111,29 @@ export class ChangeTracker {
     }
 
     /**
+     * Mark changes as dropped — irrecoverable, will no longer be retried.
+     * Sets both dropped=true and synced=true so they are excluded from pending queries.
+     */
+    static async mark_as_dropped(change_ids: number[], reason = '') {
+        if (change_ids.length === 0) return;
+
+        await db
+            .update(change_log_table)
+            .set({ dropped: true, synced: true, last_error: reason })
+            .where(inArray(change_log_table.id, change_ids));
+    }
+
+    /**
      * Get statistics about pending changes
      */
     static async get_sync_stats() {
         const pending = await db
             .select()
             .from(change_log_table)
-            .where(eq(change_log_table.synced, false));
+            .where(and(
+                eq(change_log_table.synced, false),
+                eq(change_log_table.dropped, false),
+            ));
 
         const stats_by_table: Record<string, { inserts: number; updates: number; deletes: number }> = {};
 
@@ -143,7 +162,10 @@ export class ChangeTracker {
         const all_changes = await db
             .select()
             .from(change_log_table)
-            .where(eq(change_log_table.synced, false))
+            .where(and(
+                eq(change_log_table.synced, false),
+                eq(change_log_table.dropped, false),
+            ))
             .orderBy(asc(change_log_table.created_at));
 
         if (all_changes.length === 0) return 0;
@@ -188,3 +210,4 @@ export class ChangeTracker {
             );
     }
 }
+
