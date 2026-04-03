@@ -5,10 +5,11 @@ import { db } from '@illusive/db/database';
 import { new_releases_table } from '@illusive/db/schema';
 import { Prefs } from "@illusive/prefs";
 import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompactPlaylist, TimestampedCompactPlaylist,Track } from "@illusive/types";
+import { sort_compact_playlist_by_most_played_artists } from '@illusive/illusive_utils';
 import { SQLTracks } from './sql_tracks';
 import { reinterpret_cast } from '@common/cast';
 import { GLOBALS } from '@illusive/globals';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gt } from 'drizzle-orm';
 import { ChangeTracker } from '@illusive/db/sync/change_tracker';
 import { gen_uuid } from '@common/utils/util';
 
@@ -35,7 +36,10 @@ export namespace SQLNewReleases {
     
     export async function get_all_new_releases(){
         return await Promise.all(
-            (await db.select().from(new_releases_table).where(eq(new_releases_table.deleted, false)).orderBy(desc(new_releases_table.created_at))).map(sql_compact_playlist_to_compact_playlist)
+            (await db.select().from(new_releases_table).where(and(
+                eq(new_releases_table.deleted, false),
+                gt(new_releases_table.created_at, Date.now() - milliseconds_of({weeks: 3}))
+            )).orderBy(desc(new_releases_table.created_at))).map(sql_compact_playlist_to_compact_playlist)
         ) as TimestampedCompactPlaylist[];
     }
     
@@ -126,6 +130,7 @@ export namespace SQLNewReleases {
         await db.delete(new_releases_table);
     }
     export async function insert_all_into_new_releases(new_releases: (CompactPlaylist & {id?: number})[]){
+        new_releases = sort_compact_playlist_by_most_played_artists(new_releases, GLOBALS.global_var.sql_tracks).reverse();
         const promises: Promises = [];
         for(const new_release of new_releases){
             const { id, ...release_data } = new_release; id;

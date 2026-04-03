@@ -17,20 +17,20 @@ import * as Origin from '@origin/index';
 import { soundcloud_parse_system_playlist } from "./parsers/soundcloud_parser";
 
 export namespace Explore {
-    const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = "PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI";
-    const FORGOTTEN_FAVORITES_SLICE = 50;
+	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = "PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI";
+	const FORGOTTEN_FAVORITES_SLICE = 50;
 
-    function alert_new_releases(new_releases_length: number, updated_new_releases_length: number, old_persistant: CompactPlaylist[], new_persistant: CompactPlaylist[]) {
+	function alert_new_releases(new_releases_length: number, updated_new_releases_length: number, old_persistant: CompactPlaylist[], new_persistant: CompactPlaylist[]) {
 		if (updated_new_releases_length - new_releases_length !== 0) {
 			const total_added = updated_new_releases_length - new_releases_length;
 			const total_new = new_persistant.length - old_persistant.length;
 			const hidden = total_added - total_new;
-			GLOBALS.global_var.bottom_alert(`Refreshed New Releases From YTMusic`, "INFO", `${total_new} Added, ${hidden} Hidden`);
+			GLOBALS.global_var.bottom_alert(`Refreshed New Releases`, "INFO", `${total_new} Added, ${hidden} Hidden`);
 		}
 	}
 
-    type GetPersistantNewReleases = (refreshed?: boolean) => Promise<CompactPlaylist[]>;
-    export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases, on_progress: () => any): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
+	type GetPersistantNewReleases = (refreshed?: boolean) => Promise<CompactPlaylist[]>;
+	export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases, on_progress: () => any): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
 		const most_played_artists = get_most_played_artists(GLOBALS.global_var.sql_tracks);
 		const new_releases_length = await SQLNewReleases.new_releases_count();
 		const old_persistant = await get_persistant_new_releases(true);
@@ -46,10 +46,10 @@ export namespace Explore {
 
 	export async function refresh_service_new_releases(music_service_type: MusicServiceType, get_persistant_new_releases: GetPersistantNewReleases, set_is_loading: (value: boolean) => any) {
 		const music_service = Illusive.music_service.get(music_service_type)!;
-        if(music_service.get_new_releases === undefined) {
-            console.warn(generror("Trying to grab new releases of bad Music Service (likely not supported)", "MEDIUM", {music_service_type}))
-            return;
-        }
+		if (music_service.get_new_releases === undefined) {
+			console.warn(generror("Trying to grab new releases of bad Music Service (likely not supported)", "MEDIUM", { music_service_type }))
+			return;
+		}
 		const old_persistant = await get_persistant_new_releases(true);
 		const external_new_releases = await music_service.get_new_releases();
 		const new_releases_length = await SQLNewReleases.new_releases_count();
@@ -60,19 +60,19 @@ export namespace Explore {
 		set_is_loading(false);
 	}
 
-    export async function refresh_all_services_new_releases(get_persistant_new_releases: GetPersistantNewReleases, set_is_loading: (value: boolean) => any){
-        const service_types: MusicServiceType[] = ["YouTube Music", "SoundCloud"];
-        for(const type of service_types){
-            const music_service = Illusive.music_service.get(type)!;
-            const should_service_refresh_new_releases = music_service.has_credentials() && should_automatic_refresh(Prefs.get_pref("automatic_new_releases_last_refreshed"));
+	export async function refresh_all_services_new_releases(get_persistant_new_releases: GetPersistantNewReleases, set_is_loading: (value: boolean) => any) {
+		const service_types: MusicServiceType[] = ["YouTube Music", "SoundCloud"];
+		for (const type of service_types) {
+			const music_service = Illusive.music_service.get(type)!;
+			const should_service_refresh_new_releases = music_service.has_credentials() && should_automatic_refresh(Prefs.get_pref("automatic_new_releases_last_refreshed"));
 			if (should_service_refresh_new_releases) {
-				call_wtimeout(async() => await refresh_service_new_releases("YouTube Music", get_persistant_new_releases, set_is_loading), milliseconds_of({ seconds: 8 })).catch(catch_log);
+				call_wtimeout(async () => await refresh_service_new_releases(type, get_persistant_new_releases, set_is_loading), milliseconds_of({ seconds: 8 })).catch(catch_log);
 			}
-        }
+		}
 		await Prefs.save_pref("automatic_new_releases_last_refreshed", new Date());
-    }
+	}
 
-    export function get_forgotten_favorites(): CompactPlaylist[] {
+	export function get_forgotten_favorites(): CompactPlaylist[] {
 		const max_plays =
 			GLOBALS.global_var.sql_tracks
 				.filter((track) => (track.meta?.plays ?? 0) > 0)
@@ -99,30 +99,30 @@ export namespace Explore {
 			type: "ALBUM"
 		}));
 	}
-    export async function get_top_tracks(): Promise<Track[]>{
-        try {
-            const playlist = await Illusive.music_service.get("YouTube Music")!.get_playlist(YT_MUSIC_TOP_TRACKS_PLAYLIST_URL, {
-                cache_opts: {
-                    cache_ms: milliseconds_of({ days: 1 }),
-                    cache_on: "url",
-                    cache_mode: "file",
-                    cache_ms_fail: 0
-                }
-            });
-            if ("error" in playlist) return [];
-            playlist.tracks = SQLTracks.add_playback_saved_data_to_tracks(playlist.tracks);
-            return playlist.tracks;
-        }
-        catch(e){
-            console.warn(generror_catch(e, "Top Tracks generated an error", "MEDIUM", { YT_MUSIC_TOP_TRACKS_PLAYLIST_URL }));
-            return [];
-        }
-    }
+	export async function get_top_tracks(): Promise<Track[]> {
+		try {
+			const playlist = await Illusive.music_service.get("YouTube Music")!.get_playlist(YT_MUSIC_TOP_TRACKS_PLAYLIST_URL, {
+				cache_opts: {
+					cache_ms: milliseconds_of({ days: 1 }),
+					cache_on: "url",
+					cache_mode: "file",
+					cache_ms_fail: 0
+				}
+			});
+			if ("error" in playlist) return [];
+			playlist.tracks = SQLTracks.add_playback_saved_data_to_tracks(playlist.tracks);
+			return playlist.tracks;
+		}
+		catch (e) {
+			console.warn(generror_catch(e, "Top Tracks generated an error", "MEDIUM", { YT_MUSIC_TOP_TRACKS_PLAYLIST_URL }));
+			return [];
+		}
+	}
 	export async function get_recommended_playlists(): Promise<FullPlaylist[]> {
 		if (!Illusive.music_service.get('SoundCloud')?.has_credentials()) return [];
 		const recommended_playlists_urn = "soundcloud:selections:personalized-tracks";
 		const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
-		const mixed_selection = await Origin.SoundCloud.mixed_selections({ cookie_jar, fetch_opts: {cache_opts: {cache_ms: milliseconds_of({days: 1}), cache_ms_fail: 0, cache_mode: 'file'}} });
+		const mixed_selection = await Origin.SoundCloud.mixed_selections({ cookie_jar, fetch_opts: { cache_opts: { cache_ms: milliseconds_of({ days: 1 }), cache_ms_fail: 0, cache_mode: 'file' } } });
 		if ("error" in mixed_selection) return [];
 		const recommended_playlists_section = mixed_selection.data.collection.find(item => item.urn.startsWith(recommended_playlists_urn))?.items.collection;
 		if (!recommended_playlists_section) return [];

@@ -2,7 +2,6 @@ import * as DocumentPicker from 'react-native-document-picker'
 import { extract_file_extension, generate_new_uid } from '@common/utils/util';
 import type { Playlist, Promises, Track } from '@illusive/types';
 import { alert_error } from '@illusive/illusi/src/alert';
-import ImagePicker from 'react-native-image-crop-picker';
 import { get_audio_duration } from '@native/get_audio_duration/get_audio_duration';
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { SQLfs } from '@illusive/sql/sql_fs';
@@ -10,6 +9,7 @@ import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Constants } from './constants';
 import { create_uri } from './illusive_utils';
 import { ensure_photo_access } from './permissions';
+import { document_picker } from '@native/document_picker/document_picker';
 
 function handle_document_picker_error(error: unknown) {
     if (DocumentPicker.isCancel(error)) { } else if (DocumentPicker.isInProgress(error)) { } else alert_error({ error: error as Error });
@@ -26,16 +26,17 @@ export async function upload_sqlite_db() {
 
 export async function upload_playlist_thumbnail(playlist: Playlist, callback: (playlist: Playlist) => Promise<void>) {
     try {
-        await ensure_photo_access();
-        const img = await ImagePicker.openPicker({ mediaType: 'photo', forceJpg: true });
-        if (img.sourceURL === undefined) throw new Error("sourceURL is null");
-        if (img.filename === undefined) throw new Error("filename is undefined");
-        await SQLfs.copy_to_custom_thumbnail_directory(img.sourceURL, img.filename);
-        playlist.thumbnail_uri = img.filename!;
+        const img = await document_picker().pick_image();
+        if(img === null) return;
+        if("error" in img) {
+            alert_error(img);
+            return;
+        }
+        const file_name = img.name + img.extension;
+        await SQLfs.copy_to_custom_thumbnail_directory(img.uri, file_name);
+        playlist.thumbnail_uri = file_name;
         await SQLPlaylists.update_playlist(playlist.uuid, playlist);
-
         if (callback !== undefined) await callback(playlist);
-        await ImagePicker.clean();
     } catch (error) {
         if ((error as Error)?.message.includes("cancelled")) return;
         alert_error({ error: error as Error });
@@ -66,26 +67,17 @@ export async function upload_track_thumbnail(track: Track, callback: (track: Tra
         await ensure_photo_access();
         // RN 0.84 + New Architecture: single-image openPicker() silently hangs (broken JSI promise path).
         // Workaround: multiple:true + maxFiles:1 uses a different (working) code path.
-        const results = await ImagePicker.openPicker({
-            mediaType: 'photo',
-            forceJpg: true,
-            multiple: true,
-            maxFiles: 1,
-            smartAlbums: ['UserLibrary', 'PhotoStream', 'RecentlyAdded', 'Favorites'],
-            loadingLabelText: "Importing Track Thumbnail",
-            waitAnimationEnd: false,
-            includeBase64: false,
-            includeExif: false,
-        });
-        const img = results[0];
-        if (img === undefined) return;
-        if (img.sourceURL === undefined) throw new Error("sourceURL is null");
-        if (img.filename === undefined) throw new Error("filename is undefined");
-        await SQLfs.copy_to_custom_thumbnail_directory(img.sourceURL, img.filename);
-        await SQLTracks.update_track(track.uid, { ...track, thumbnail_uri: img.filename });
+        const img = await document_picker().pick_image();
+        if(img === null) return;
+        if("error" in img) {
+            alert_error(img);
+            return;
+        }
+        const file_name = img.name + img.extension;
+        await SQLfs.copy_to_custom_thumbnail_directory(img.uri, file_name);
+        await SQLTracks.update_track(track.uid, { ...track, thumbnail_uri: file_name });
 
         if (callback !== undefined) await callback(track);
-        await ImagePicker.clean();
     } catch (error) {
         if ((error as Error)?.message.includes("cancelled")) return;
         alert_error({ error: error as Error });
