@@ -140,6 +140,9 @@ const change_log_config = {
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     synced: int({ mode: 'boolean' }).notNull().default(false),
+    attempts: int().notNull().default(0),
+    last_error: text().notNull().default(''),
+    dropped: int({ mode: 'boolean' }).notNull().default(false),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 export const sync_metadata_table = sqliteTable("sync_metadata", sync_metadata_config);

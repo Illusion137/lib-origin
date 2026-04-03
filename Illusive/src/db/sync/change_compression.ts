@@ -8,6 +8,9 @@ export interface ChangeLogLikeRow {
     data: unknown;
     created_at: number;
     synced: boolean;
+    attempts?: number;
+    last_error?: string;
+    dropped?: boolean;
 }
 
 /**
