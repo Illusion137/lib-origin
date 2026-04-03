@@ -31,7 +31,7 @@ import { fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
 import { run_startup_links } from './linker';
 
-let sync_engine_instance: SyncEngine | null = null;
+export let sync_engine_instance: SyncEngine | null = null;
 let sync_engine_start_promise: Promise<void> | null = null;
 let sync_engine_should_run = false;
 let auth_state_subscription: { unsubscribe: () => void } | null = null;

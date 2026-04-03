@@ -2,8 +2,7 @@ import { db } from "@illusive/db/database";
 import { track_plays_table } from "@illusive/db/schema";
 import type { Track } from "@illusive/types";
 import { and, eq, gt, lt } from "drizzle-orm";
-import { ChangeTracker } from "@illusive/db/sync/change_tracker";
-import { gen_uuid, groupby } from "@common/utils/util";
+import { groupby } from "@common/utils/util";
 import { DrizzleUtils } from "@common/utils/drizzle_utils";
 
 export namespace SQLTrackPlays {
@@ -23,7 +22,7 @@ export namespace SQLTrackPlays {
     export async function insert_track_play(track_uid: Track['uid']) {
         const data = { track_uid };
         await db.insert(track_plays_table).values(data);
-        await ChangeTracker.log_change('track_plays', 'insert', gen_uuid(), data);
+        // await ChangeTracker.log_change('track_plays', 'insert', gen_uuid(), data);
     }
     const FAR_DATE = 1e14;
     export async function count_all_track_plays(date_range: DateRange) {
