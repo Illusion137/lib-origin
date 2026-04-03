@@ -1231,13 +1231,43 @@ export class SyncEngine {
         const uid = row.uid;
         if (!uid) return;
 
+        // If there's a pending local delete, never let remote "restore" win.
         if (pending_track_changes.deletes.has(uid)) return;
 
         const existing = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, uid)).get();
         if (!existing) return;
 
+        const remote_deleted = Boolean((row as any).deleted);
+
+        // IMPORTANT: apply remote global deletes (tracks.deleted) locally.
+        if (remote_deleted) {
+            // If there is a pending local upsert, we still respect the remote delete per your rule:
+            // "if either remote deleted flag is true => local deleted"
+            await db.update(tracks_table)
+                .set({
+                    deleted: true,
+                    modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at)),
+                })
+                .where(eq(tracks_table.uid, uid));
+
+            SQLGlobal.delete_global_track_item(uid);
+            db.$client.flushPendingReactiveQueries();
+            return;
+        }
+
+        // Remote row is not deleted: merge global metadata.
         const merged = this.remote_merge_local(existing, row);
+
+        // Preserve local-only URIs (defensive; remote_merge_local already preserves them,
+        // but keep this explicit so future edits don't regress it).
+        merged.media_uri = existing.media_uri;
+        merged.thumbnail_uri = existing.thumbnail_uri;
+        merged.lyrics_uri = existing.lyrics_uri;
+        merged.synced_lyrics_uri = existing.synced_lyrics_uri;
+
+        merged.deleted = false;
+
         await db.update(tracks_table).set(merged).where(eq(tracks_table.uid, uid));
         SQLGlobal.update_global_track_item(uid, { ...existing, ...merged } as LocalTrack);
         db.$client.flushPendingReactiveQueries();
@@ -1287,7 +1317,7 @@ export class SyncEngine {
                         modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at)),
                     })
                     .where(eq(tracks_table.uid, row.uid));
-                SQLGlobal.update_global_track_item(row.uid, { ...existing, deleted: true } as LocalTrack);
+                SQLGlobal.delete_global_track_item(row.uid);
                 db.$client.flushPendingReactiveQueries();
             }
             return;
@@ -1501,7 +1531,7 @@ export class SyncEngine {
                 const has_pending_upsert = pending_changes.upserts.has(record_id);
                 const has_pending_delete = pending_changes.deletes.has(record_id);
                 if (row.deleted) {
-                    if (!has_pending_delete || has_pending_upsert) {
+                    if (has_pending_upsert) {
                         continue;
                     }
                     await db.delete(playlists_table).where(eq(playlists_table.uuid, row.uuid));
@@ -1575,7 +1605,7 @@ export class SyncEngine {
                         )).get();
 
                     if (row.deleted) {
-                        if (!has_pending_delete || has_pending_upsert) {
+                        if (has_pending_upsert) {
                             continue;
                         }
                         if (existing) {
@@ -1656,8 +1686,7 @@ export class SyncEngine {
                             continue;
                         }
                         const has_pending_upsert = pending_changes.upserts.has(release_record_id);
-                        const has_pending_delete = pending_changes.deletes.has(release_record_id);
-                        if (!has_pending_delete || has_pending_upsert) {
+                        if (has_pending_upsert) {
                             continue;
                         }
                         await db.delete(new_releases_table)
