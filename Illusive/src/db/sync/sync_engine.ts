@@ -905,6 +905,7 @@ export class SyncEngine {
         const uid = row.uid;
         if (!uid) return;
 
+        // If there's a pending local delete, never let remote "restore" win.
         if (pending_track_changes.deletes.has(uid)) return;
 
         const existing = await db.select().from(tracks_table)
@@ -938,7 +939,7 @@ export class SyncEngine {
                         modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at)),
                     })
                     .where(eq(tracks_table.uid, row.uid));
-                SQLGlobal.update_global_track_item(row.uid, { ...existing, deleted: true } as LocalTrack);
+                SQLGlobal.delete_global_track_item(row.uid);
                 db.$client.flushPendingReactiveQueries();
             }
             return;
