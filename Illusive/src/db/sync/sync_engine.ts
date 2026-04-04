@@ -335,6 +335,23 @@ export class SyncEngine {
         }
     }
 
+    /**
+     * Set the pull watermark for all tables to the current time.
+     * Useful after a manual data import so the next sync only fetches changes
+     * that occurred after the import, rather than re-pulling everything.
+     */
+    async mark_all_tables_synced_now() {
+        const now = Date.now();
+        for (const table_name of PULL_TABLES) {
+            await db.insert(sync_metadata_table)
+                .values({ table_name, last_sync_at: now, last_modified_at: now })
+                .onConflictDoUpdate({
+                    target: sync_metadata_table.table_name,
+                    set: { last_sync_at: now, last_modified_at: now },
+                });
+        }
+    }
+
     async get_sync_diagnostics() {
         const stats = await ChangeTracker.get_sync_stats();
         return {
@@ -497,8 +514,8 @@ export class SyncEngine {
     ): Promise<{ outcome: PushResult; reason?: string }> {
         try {
             switch (table_name) {
-                case 'tracks':           await this.push_track_change(change, user_uid); break;
-                case 'playlists':        await this.push_playlist_change(change, user_uid); break;
+                case 'tracks': await this.push_track_change(change, user_uid); break;
+                case 'playlists': await this.push_playlist_change(change, user_uid); break;
                 case 'playlists_tracks': await this.push_playlist_track_change(change, user_uid); break;
                 case 'new_releases': {
                     const nr_result = await this.push_new_release_change(change, user_uid);
@@ -765,8 +782,8 @@ export class SyncEngine {
         const pull_started_iso = new Date(pull_started_at).toISOString();
 
         switch (table_name) {
-            case 'tracks':          await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
-            case 'playlists':       await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
+            case 'tracks': await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
+            case 'playlists': await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
             case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
             case "new_releases":
             default: break;
@@ -821,6 +838,7 @@ export class SyncEngine {
                 }
             }
 
+            db.$client.flushPendingReactiveQueries();
             if (utrack_rows.length < PULL_PAGE_SIZE) break;
             offset += utrack_rows.length;
         }
@@ -852,6 +870,7 @@ export class SyncEngine {
                         }
                     }
 
+                    db.$client.flushPendingReactiveQueries();
                     if (global_rows.length < PULL_PAGE_SIZE) break;
                     offset += global_rows.length;
                 }
@@ -917,7 +936,6 @@ export class SyncEngine {
         const merged = this.remote_merge_global(existing, row);
         await db.update(tracks_table).set(merged).where(eq(tracks_table.uid, uid));
         SQLGlobal.update_global_track_item(uid, { ...existing, ...merged } as LocalTrack);
-        db.$client.flushPendingReactiveQueries();
     }
 
     private async apply_track(
@@ -942,7 +960,6 @@ export class SyncEngine {
                     })
                     .where(eq(tracks_table.uid, row.uid));
                 SQLGlobal.delete_global_track_item(row.uid);
-                db.$client.flushPendingReactiveQueries();
             }
             return;
         }
@@ -972,7 +989,6 @@ export class SyncEngine {
             await db.update(tracks_table).set(merged)
                 .where(eq(tracks_table.uid, row.uid));
             SQLGlobal.update_global_track_item(row.uid, { ...existing, ...merged } as LocalTrack);
-            db.$client.flushPendingReactiveQueries();
             return;
         }
 
@@ -980,7 +996,6 @@ export class SyncEngine {
         const local = this.remote_track_to_local(row);
         await db.insert(tracks_table).values(local);
         SQLGlobal.add_global_track_item(local as LocalTrack);
-        db.$client.flushPendingReactiveQueries();
     }
 
     // -------------------------------------------------------------------------
