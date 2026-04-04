@@ -4,9 +4,15 @@ import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "@native/fs/fs.ba
 import * as expo_fs from "expo-file-system/legacy";
 import path_lib from "path";
 
+function join_uri(base: string, ...paths: string[]): string {
+	if (paths.length === 0) return base;
+	const sep = base.endsWith('/') ? '' : '/';
+	return base + sep + paths.join('/');
+}
+
 export const mobile_fs: FileSystem = {
-	temp_directory: async (...paths: string[]) => path_lib.join(expo_fs.cacheDirectory!, ...paths),
-	document_directory: async (...paths: string[]) => path_lib.join(expo_fs.documentDirectory!, ...paths),
+	temp_directory: async (...paths: string[]) => join_uri(expo_fs.cacheDirectory!, ...paths),
+	document_directory: async (...paths: string[]) => join_uri(expo_fs.documentDirectory!, ...paths),
 	read_as_string: async (path: string, opts: EncodingOpts) => {
 		try {
 			return await expo_fs.readAsStringAsync(path, opts);
