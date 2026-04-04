@@ -150,29 +150,30 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             stop_sync_engine();
         }
 
-        reset_auth_sync_subscription();
-        const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
-            if (event === 'SIGNED_IN') {
-                void start_sync_engine().catch(catch_log);
-            }
-            if (event === 'SIGNED_OUT') {
-                stop_sync_engine();
-            }
-        });
-        auth_state_subscription = subscription;
+        (async () => {
+            reset_auth_sync_subscription();
+            const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
+                if (event === 'SIGNED_IN') {
+                    void start_sync_engine().catch(catch_log);
+                }
+                if (event === 'SIGNED_OUT') {
+                    stop_sync_engine();
+                }
+            });
+            auth_state_subscription = subscription;
+            await SQLArtists.get_all_sql_artists();
+            await Promise.all([
+                SQLRecentlyPlayed.cleanup_recently_played(),
+                SQLPlaylists.all_playlists_data("PROMISE"),
+                miscnative().keep_mobile_awake()
+            ]).catch(catch_log);
+        })().catch(catch_log);
 
-        await SQLArtists.get_all_sql_artists();
-
-        Promise.all([
-            SQLRecentlyPlayed.cleanup_recently_played(),
-            SQLPlaylists.all_playlists_data("PROMISE"),
-            miscnative().keep_mobile_awake()
-        ]).catch(catch_log);
         Prefs.pref_set_theme(set_theme);
         SQLfs.recreate_directories().catch(catch_log);
         warmup_client().catch(catch_log);
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
-        await run_startup_links(Prefs.get_pref('linker_links'));
+        run_startup_links(Prefs.get_pref('linker_links')).catch(catch_log);
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 
