@@ -17,10 +17,10 @@ export namespace SQLDev {
             alert_error(new_db_path);
             return;
         }
-        if(new_db_path.fileCopyUri === null) {
+        if(new_db_path.uri === null) {
             alert_error("fileCopyUri is null");
             return;
         }
-        await load_sql_file(new_db_path.fileCopyUri);
+        await load_sql_file(new_db_path.uri);
     }
 }

@@ -768,6 +768,8 @@ export class SyncEngine {
             case 'tracks':          await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
             case 'playlists':       await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
             case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
+            case "new_releases":
+            default: break;
         }
     }
 

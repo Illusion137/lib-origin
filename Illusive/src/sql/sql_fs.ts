@@ -7,15 +7,17 @@ export namespace SQLfs {
     let cached_temp_directory: (...paths: string[]) => string = () => "";
     let cached_document_directory: (...paths: string[]) => string = () => "";
 
+    function join_uri(base: string, ...paths: string[]): string {
+        if (paths.length === 0) return base;
+        const sep = base.endsWith('/') ? '' : '/';
+        return base + sep + paths.join('/');
+    }
+
     export async function cache_load_directories(){
         const hold_temp_directory = await fs().temp_directory();
         const hold_document_directory = await fs().document_directory();
-        cached_temp_directory = (...paths: string[]) => {
-            return path_lib.join(hold_temp_directory, ...paths);
-        };
-        cached_document_directory = (...paths: string[]) => {
-            return path_lib.join(hold_document_directory, ...paths);
-        };
+        cached_temp_directory = (...paths: string[]) => join_uri(hold_temp_directory, ...paths);
+        cached_document_directory = (...paths: string[]) => join_uri(hold_document_directory, ...paths);
     }
 
     function forward_item(item: string) {
@@ -51,6 +53,7 @@ export namespace SQLfs {
     }
     
     export async function copy_to_custom_thumbnail_directory(item: string, new_name?: string) { return await copy_to(item, custom_thumbnail_directory, new_name); }
+    export async function copy_to_media_directory(item: string, new_name?: string) { return await copy_to(item, media_directory, new_name); }
     export async function move_to_custom_thumbnail_directory(item: string, new_name?: string) { return await move_to(item, custom_thumbnail_directory, new_name); }
     export async function move_to_thumbnail_directory(item: string, new_name?: string) { return await move_to(item, thumbnail_directory, new_name); }
     export async function move_to_media_directory(item: string, new_name?: string) { return await move_to(item, media_directory, new_name); }

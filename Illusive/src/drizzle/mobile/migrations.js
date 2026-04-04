@@ -6,7 +6,7 @@ import m0001 from './0001_nifty_krista_starr.sql';
 import m0002 from './0002_acoustic_purifiers.sql';
 import m0003 from './0003_keen_masked_marvel.sql';
 import m0004 from './0004_green_bloodstrike.sql';
-import m0005 from './0005_change_log_resilience.sql';
+import m0005 from './0005_equal_rafael_vega.sql';
 
   export default {
     journal,
