@@ -109,26 +109,6 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 
         await migrate(db, migrations).catch(catch_log);
 
-        // Start sync for the current session and maintain a single engine lifecycle.
-        const { data: { session } } = await supabase().auth.getSession();
-        if (session) {
-            // Do not block app startup on long-running initial sync.
-            void start_sync_engine().catch(catch_log);
-        } else {
-            stop_sync_engine();
-        }
-
-        reset_auth_sync_subscription();
-        const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
-            if (event === 'SIGNED_IN') {
-                void start_sync_engine().catch(catch_log);
-            }
-            if (event === 'SIGNED_OUT') {
-                stop_sync_engine();
-            }
-        });
-        auth_state_subscription = subscription;
-
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
         GLOBALS.global_var.download_track_lyrics = download_track_lyrics;
@@ -160,18 +140,40 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         await Prefs.save_pref('latest_version', version);
 
         await SQLTracks.fetch_track_data();
-        await SQLArtists.get_all_sql_artists();
 
-        Promise.all([
-            SQLRecentlyPlayed.cleanup_recently_played(),
-            SQLPlaylists.all_playlists_data("PROMISE"),
-            miscnative().keep_mobile_awake()
-        ]).catch(catch_log);
+        // Start sync for the current session and maintain a single engine lifecycle.
+        const { data: { session } } = await supabase().auth.getSession();
+        if (session) {
+            // Do not block app startup on long-running initial sync.
+            void start_sync_engine().catch(catch_log);
+        } else {
+            stop_sync_engine();
+        }
+
+        (async () => {
+            reset_auth_sync_subscription();
+            const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
+                if (event === 'SIGNED_IN') {
+                    void start_sync_engine().catch(catch_log);
+                }
+                if (event === 'SIGNED_OUT') {
+                    stop_sync_engine();
+                }
+            });
+            auth_state_subscription = subscription;
+            await SQLArtists.get_all_sql_artists();
+            await Promise.all([
+                SQLRecentlyPlayed.cleanup_recently_played(),
+                SQLPlaylists.all_playlists_data("PROMISE"),
+                miscnative().keep_mobile_awake()
+            ]).catch(catch_log);
+        })().catch(catch_log);
+
         Prefs.pref_set_theme(set_theme);
         SQLfs.recreate_directories().catch(catch_log);
         warmup_client().catch(catch_log);
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
-        await run_startup_links(Prefs.get_pref('linker_links'));
+        run_startup_links(Prefs.get_pref('linker_links')).catch(catch_log);
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 

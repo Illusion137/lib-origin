@@ -9,12 +9,13 @@ import { SQLTracks } from "./sql/sql_tracks";
 import { catch_log, generror, generror_catch } from "@common/utils/error_util";
 import type { ResponseError } from "@common/types";
 import { SQLNewReleases } from "./sql/sql_new_releases";
-import { get_most_played_artists, should_automatic_refresh } from "./illusive_utils";
+import { create_uri, get_most_played_artists, should_automatic_refresh } from "./illusive_utils";
 import { artist_watch } from "./artist_watch";
 import { Prefs } from "./prefs";
 import { call_wtimeout } from "@common/utils/timed_util";
 import * as Origin from '@origin/index';
 import { soundcloud_parse_system_playlist } from "./parsers/soundcloud_parser";
+import { supabase } from "./db/supabase";
 
 export namespace Explore {
 	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = "PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI";
@@ -129,5 +130,18 @@ export namespace Explore {
 		const playlists = recommended_playlists_section.filter(item => item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		return playlists;
+	}
+	export async function get_illusi_public_playlists(): Promise<CompactPlaylist[]> {
+		const { data: { session } } = await supabase().auth.getSession();
+		if (session?.access_token === undefined) {
+			console.warn(generror("User not authenticated", "LOW", {}));
+			return [];
+		}
+		const result = await Origin.Illusi.get_playlists({ jwt: session.access_token });
+		if ("error" in result) {
+			console.warn(generror("Failed to get Illusi public playlists", "MEDIUM", {}));
+			return [];
+		}
+		return result.map(playlist => ({ title: { name: playlist.title, uri: create_uri("illusi", playlist.uuid) }, artist: [{ name: "Sumi!", uri: null }], artwork_index: 0 }));
 	}
 }
