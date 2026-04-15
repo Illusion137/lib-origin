@@ -100,6 +100,11 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         condition: (track) => !is_empty(track.amazonmusic_id),
         description: "Has a Amazon Music ID"
     },
+        {
+        flag: '@bl',
+        condition: (track) => !is_empty(track.bandlab_id),
+        description: "Has a Amazon Music ID"
+    },
     {
         flag: '@sp',
         condition: (track) => !is_empty(track.spotify_id),
