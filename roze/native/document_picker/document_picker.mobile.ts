@@ -75,7 +75,7 @@ export const mobile_document_picker: DocumentPicker = {
                 allowVirtualFiles: false,
                 mode: "import",
                 presentationStyle: "fullScreen",
-                type: ""
+                type: "",
             });
             return pick_result_to_selected_file(pick_result);
         }
@@ -83,14 +83,14 @@ export const mobile_document_picker: DocumentPicker = {
             return generror_catch(e, "Failed to pick_file", "INFO", {});
         }
     },
-    pick_multiple_files: async () => {
+    pick_multiple_files: async (types?: string[]) => {
         try {
             const pick_result = await pick({
                 allowMultiSelection: true,
                 allowVirtualFiles: false,
                 mode: "import",
                 presentationStyle: "fullScreen",
-                type: ""
+                type: types ?? ""
             });
 
             return pick_result.map(pick_result_to_selected_file);

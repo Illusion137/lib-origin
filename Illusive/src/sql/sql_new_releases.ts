@@ -68,6 +68,7 @@ export namespace SQLNewReleases {
             const known_names_set = new Set(known_names);
             const known_uris_set = new Set(known_uris);
             new_releases = new_releases.filter(release => {
+                if(release.song_track !== undefined) return true;
                 const release_artists_uris = release.artist
                     .map(artist => artist.uri)
                     .filter(uri => !is_empty(uri));
@@ -134,6 +135,11 @@ export namespace SQLNewReleases {
         const promises: Promises = [];
         for(const new_release of new_releases){
             const { id, ...release_data } = new_release; id;
+            const selected = await db.select({title: new_releases_table.title})
+                .from(new_releases_table)
+                .where(eq(new_releases_table.title, release_data.title))
+                .limit(1);
+            if(selected.length > 0) continue;
             const promise = db.insert(new_releases_table).values(release_data).onConflictDoNothing();
             promises.push(promise);
             const record_id = new_release.title.uri ?? gen_uuid();
