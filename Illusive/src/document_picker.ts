@@ -112,7 +112,7 @@ export async function upload_music_files() {
 
         await Promise.all(all_promise_tracks);
     } catch (error) {
-        if ("error" in (error as object)) return;
+        if (typeof error === "object" && error !== null && "error" in error) return;
         alert_error({ error: error as Error });
     }
 }

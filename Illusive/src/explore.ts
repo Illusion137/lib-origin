@@ -137,9 +137,9 @@ export namespace Explore {
 			console.warn(generror("User not authenticated", "LOW", {}));
 			return [];
 		}
-		const result = await Origin.Illusi.get_playlists({ jwt: session.access_token });
+		const result = await Origin.Illusi.get_public_playlists({ jwt: session.access_token });
 		if ("error" in result) {
-			console.warn(generror("Failed to get Illusi public playlists", "MEDIUM", {}));
+			console.warn(generror("Failed to get Illusi public playlists", "MEDIUM", {result}));
 			return [];
 		}
 		return result.map(playlist => ({ title: { name: playlist.title, uri: create_uri("illusi", playlist.uuid) }, artist: [{ name: "Sumi!", uri: null }], artwork_index: 0 }));
