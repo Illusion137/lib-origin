@@ -103,7 +103,7 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         {
         flag: '@bl',
         condition: (track) => !is_empty(track.bandlab_id),
-        description: "Has a Amazon Music ID"
+        description: "Has a BandLab ID"
     },
     {
         flag: '@sp',
