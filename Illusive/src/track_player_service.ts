@@ -1,13 +1,12 @@
-import type { AddTrack } from 'react-native-track-player';
+import type { AddTrack } from 'react-native-everything-player';
 import TrackPlayer, {
     AppKilledPlaybackBehavior,
     Capability,
     Event,
-    PitchAlgorithm,
     RepeatMode,
     TrackType
 }
-    from 'react-native-track-player';
+    from 'react-native-everything-player';
 import { is_empty, recreate } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
@@ -157,7 +156,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         album: track.album?.name,
         duration: track.duration,
         artwork: typeof artwork === "number" ? artwork : artwork.uri,
-        pitchAlgorithm: PitchAlgorithm.Linear,
         type: is_empty(track.soundcloud_id) ? TrackType.HLS : TrackType.HLS,
         headers: {},
         contentType: 'audio/mp4',

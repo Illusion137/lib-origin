@@ -1,4 +1,4 @@
-import TrackPlayer, { Event } from 'react-native-track-player';
+import TrackPlayer, { Event } from 'react-native-everything-player';
 import type { SabrDownloader, SabrTokenCallbackReason } from "./sabr_downloader.base";
 
 export const mobile_sabr_downloader: SabrDownloader = {
