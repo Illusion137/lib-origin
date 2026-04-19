@@ -27,6 +27,7 @@ import type { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 import { fs } from "@native/fs/fs";
 import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import { Illusive } from "@illusive/illusive";
+import { ne } from "drizzle-orm";
 
 export namespace SQLUpdate {
     type Version = `${number}.${number}.${number}`;
@@ -214,6 +215,14 @@ export namespace SQLUpdate {
         await update_to("20.0.0", async() => {
             await db.delete(change_log_table);
             return true;
-        })
+        });
+        await update_to("20.1.11", async() => {
+            const bandlab_tracks = await db.select().from(tracks_table).where(ne(tracks_table.bandlab_id, ""));
+            const BAD_BANDLAB_THRESHOLD = 100;
+            if(bandlab_tracks.length > BAD_BANDLAB_THRESHOLD) {
+                await db.delete(tracks_table).where(ne(tracks_table.bandlab_id, ""));
+            }
+            return true;
+        });
     }
 }
