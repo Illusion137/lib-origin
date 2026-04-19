@@ -424,6 +424,7 @@ export async function api_get_playlist(url: string): Promise<MusicServicePlaylis
     return playlist as MusicServicePlaylist;
 }
 
+// TODO fix this full playlist shenanigans
 interface BandlabPlaylistContinuation { "url": string, "offset": number };
 const BANDLAB_TRACK_LIMIT = 50;
 export async function bandlab_get_playlist(url: string): Promise<MusicServicePlaylist> {
