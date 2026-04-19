@@ -424,8 +424,7 @@ export async function api_get_playlist(url: string): Promise<MusicServicePlaylis
     return playlist as MusicServicePlaylist;
 }
 
-// TODO fix this full playlist shenanigans
-interface BandlabPlaylistContinuation { "url": string, "offset": number };
+interface BandlabPlaylistContinuation { "url": string, "after": string };
 const BANDLAB_TRACK_LIMIT = 50;
 export async function bandlab_get_playlist(url: string): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
@@ -434,15 +433,15 @@ export async function bandlab_get_playlist(url: string): Promise<MusicServicePla
     return {
         title: "Projects List",
         tracks: playlist_response.data.map(bandlab_parse_track),
-        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : { url, offset: playlist_response.data.length } as BandlabPlaylistContinuation
+        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT || typeof playlist_response.paging.cursors.after !== "string" ? null : { url, after: playlist_response.paging.cursors.after } as BandlabPlaylistContinuation
     }
 }
 export async function bandlab_get_playlist_continuation(opts: BandlabPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
     const cookie_jar = Prefs.get_pref("bandlab_cookie_jar");
-    const playlist_response = await Origin.BandLab.projects_list(opts.url, { cookie_jar, offset: opts.offset, limit: BANDLAB_TRACK_LIMIT });
+    const playlist_response = await Origin.BandLab.projects_list(opts.url, { cookie_jar, after: opts.after, limit: BANDLAB_TRACK_LIMIT });
     if ("error" in playlist_response) return default_playlist(playlist_response);
     return {
         tracks: playlist_response.data.map(bandlab_parse_track),
-        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT ? null : { url: opts.url, offset: opts.offset + playlist_response.data.length } as BandlabPlaylistContinuation
+        continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT || typeof playlist_response.paging.cursors.after !== "string" ? null : { url: opts.url, after: playlist_response.paging.cursors.after } as BandlabPlaylistContinuation
     }
 }

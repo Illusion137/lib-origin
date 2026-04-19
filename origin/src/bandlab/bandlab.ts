@@ -83,17 +83,19 @@ export namespace BandLab {
         return parse_user_id(cookie_jar)?.[0][1];
     }
 
-    export async function projects_list(user_uuid: string, opts: Opts & { limit?: number; offset?: number }) {
+    export async function projects_list(user_uuid: string, opts: Opts & { limit?: number; after?: string }) {
         const params = {
             limit: opts.limit ?? 50,
-            offset: opts.offset ?? 0
+            ...(opts.after ? {
+                after: opts.after
+            } : {})
         };
         const projects_response = await api_get_data<BandLabProjects>(`users/${user_uuid}/songs?${encode_params(params)}`, opts);
         if ("error" in projects_response) return projects_response;
         return await projects_response.json();
     }
 
-    export async function self_projects_list(opts: Opts & { limit?: number; offset?: number }) {
+    export async function self_projects_list(opts: Opts & { limit?: number; after?: string }) {
         if (!opts.cookie_jar) return generror("Bandlab Self-Projects-List requires cookie jar", "INFO");
         const user_id_cookie = get_user_id_cookie(opts.cookie_jar);
         if (!user_id_cookie) return generror("Bandlab Self-Projects-List requires cookies", "INFO");

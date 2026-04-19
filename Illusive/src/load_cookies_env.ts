@@ -16,4 +16,5 @@ export default function load_cookies_env(){
     Prefs.prefs.soundcloud_cookie_jar.current_value    = CookieJar.fromString(pairs[2+3][1]);
     Prefs.prefs.amazon_music_cookie_jar.current_value  = CookieJar.fromString(pairs[2+4][1]);
     Prefs.prefs.apple_music_cookie_jar.current_value   = CookieJar.fromString(pairs[2+5][1]);
+    Prefs.prefs.bandlab_cookie_jar.current_value       = CookieJar.fromString(pairs[2+5+4][1]);
 }

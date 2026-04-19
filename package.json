@@ -1,7 +1,7 @@
 {
   "scripts": {
     "test": "vitest run",
-    "build": "ts-node -T scripts/prebuild.ts",
+    "build:gen": "ts-node -T scripts/prebuild.ts",
     "build:osx": "sh ./scripts/build.sh",
     "build:win": "powershell ./scripts/build.ps1",
     "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
