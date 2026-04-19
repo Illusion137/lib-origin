@@ -1,4 +1,4 @@
-import type { AddTrack } from 'react-native-everything-player';
+import type { AddTrack } from 'react-native-track-player';
 import TrackPlayer, {
     AppKilledPlaybackBehavior,
     Capability,
@@ -6,7 +6,7 @@ import TrackPlayer, {
     RepeatMode,
     TrackType
 }
-    from 'react-native-everything-player';
+    from 'react-native-track-player';
 import { is_empty, recreate } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
