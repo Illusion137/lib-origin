@@ -135,7 +135,6 @@ export class StreamConnection extends EventEmitter {
     }
 
     leave() {
-        console.log(new Error("LEAVING").stack)
         this.player.stop(true);
         if (this.connection.state.status !== VoiceConnectionStatus.Destroyed)
             this.connection.destroy();
