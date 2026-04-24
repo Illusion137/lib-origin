@@ -46,7 +46,13 @@ async function play_base(client: DiscordClient, message: DiscordMessage, tracks:
 	if (tracks.length === 0) return;
 	const has_queue = client.player.has_queue(message.guild!.id);
 	const queue = has_queue ? client.player.get_queue(message.guild!.id)! : client.player.create_queue(message.guild!.id);
-	if (!has_queue) await queue.join(message.member?.voice.channel ?? get_best_channel(message)!).catch((err) => send_message(client, "[ERROR]: " + err));
+	if (!has_queue) {
+		const joined = await queue.join(message.member?.voice.channel ?? get_best_channel(message)!).catch((err) => {
+			send_message(client, "[ERROR]: " + err);
+			return null;
+		});
+		if (!joined) return;
+	}
 	if (typeof tracks[0] === "function") {
 		for (const track_function of tracks as (() => Promise<DiscordTrack | undefined>)[]) {
 			const maybe_track = await track_function();
@@ -66,8 +72,8 @@ function get_search_track_functions(args: string[], service: MusicServiceType) {
 }
 
 const COMMANDS: Record<string, IllusicordCommand> = {
-	help: async (client, message, args) => {
-		await play_base(client, message, get_search_track_functions(args, "YouTube Music"));
+	help: async (client, _, __) => {
+		send_message(client, `Commands: ${Object.keys(COMMANDS).join(", ")}`);
 	},
 	play: async (client, message, args) => {
 		await play_base(client, message, get_search_track_functions(args, "YouTube Music"));
@@ -156,6 +162,7 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 export async function on_message_create(client: DiscordClient, message: DiscordMessage) {
 	try {
 		if (message.author.bot && message.webhookId === null) return;
+		if (!message.content.startsWith(Constants.SETTINGS_PREFIX)) return;
 
 		const args = message.content.slice(Constants.SETTINGS_PREFIX.length).trim().split(/ +/g);
 		const command_id = args.shift()!;

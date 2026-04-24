@@ -46,7 +46,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.19.0",
+    "@discordjs/voice": "^0.19.2",
     "@flyskywhy/react-native-gcanvas": "^6.0.20",
     "@fugood/whisper.node": "^1.0.5",
     "@iternio/react-native-auto-play": "^0.3.5",

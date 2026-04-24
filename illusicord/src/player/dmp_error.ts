@@ -33,7 +33,7 @@ export class DMPError extends Error {
          * @type {string}
          */
         this.name = code;
-        this.message = DMPErrors[code] ?? DMPErrors[DMPErrors.UNKNOWN];
+        this.message = code;
     }
     /**
      * DMPError in JSON representation
