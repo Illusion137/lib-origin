@@ -88,7 +88,7 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 		await play_base(
 			client,
 			message,
-			args.map((index) => MEDIA.find((_, media_index) => media_index === parseInt(index) - 1)!)
+			args.map((index) => MEDIA[parseInt(index) - 1]).filter(m => m)
 		);
 	},
 	illusno: async (client, message, args) => {
@@ -142,7 +142,13 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 	},
 	media: async (client, _, __) => {
 		let str = "";
-		for (let i = 0; i < MEDIA.length; i++) {
+		for (let i = 0; i < Math.floor(MEDIA.length / 2); i++) {
+			const track = MEDIA[i];
+			str += `> Media (${i + 1}) -> ` + track_to_string(track) + "\n";
+		}
+		send_message(client, str);
+		str = "";
+		for (let i = Math.floor(MEDIA.length / 2); i < MEDIA.length; i++) {
 			const track = MEDIA[i];
 			str += `> Media (${i + 1}) -> ` + track_to_string(track) + "\n";
 		}

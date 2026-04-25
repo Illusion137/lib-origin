@@ -161,6 +161,7 @@ export class Queue<T = unknown> {
             opts.seek = play_track.discord_playback_data.seek_time;
 
         if(opts?.immediate === true || queue_size === 0){
+            if(!play_track) return; 
             const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
             if("error" in download_url){
                 console.error(download_url);
