@@ -42,7 +42,7 @@ export namespace Lyrics {
             return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5 && number_epsilon_distance(hit.duration, track.duration, LRCLIB_HIT_DURATION_EPSILON);
         });
         if (best_result === undefined) return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_query });
-        return {plain: best_result.plainLyrics, synced: best_result.syncedLyrics};
+        return {plain: best_result.plainLyrics, synced: typeof best_result.syncedLyrics !== "string" ? undefined : best_result.syncedLyrics};
     }
     async function genius_lyrics_try_good_result(track: Track, search_query: string): PromiseResult<LyricsResult> {
         const search_response = await Origin.Genius.search_songs(search_query, {});

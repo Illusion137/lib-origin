@@ -18,7 +18,7 @@ export namespace SQLDev {
             return;
         }
         if (!new_db_path.uri) {
-            alert_error("fileCopyUri is empty");
+            alert_error("uri is empty");
             return;
         }
         await load_sql_file(new_db_path.uri);

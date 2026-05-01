@@ -3,7 +3,6 @@ import TrackPlayer, {
     AppKilledPlaybackBehavior,
     Capability,
     Event,
-    PitchAlgorithm,
     RepeatMode,
     TrackType
 }
@@ -157,7 +156,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         album: track.album?.name,
         duration: track.duration,
         artwork: typeof artwork === "number" ? artwork : artwork.uri,
-        pitchAlgorithm: PitchAlgorithm.Linear,
         type: is_empty(track.soundcloud_id) ? TrackType.HLS : TrackType.HLS,
         headers: {},
         contentType: 'audio/mp4',

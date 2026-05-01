@@ -10,6 +10,9 @@ import { Utils } from "@illusicord/player/utils";
 import type { Player } from "@illusicord/player/player";
 import { catch_ignore } from "@common/utils/error_util";
 import path from "path-browserify";
+import { SabrStream } from 'googlevideo/sabr-stream';
+import { EnabledTrackTypes } from 'googlevideo/utils';
+import { Readable } from 'stream';
 
 export class Queue<T = unknown> {
     player: Player;
@@ -158,17 +161,71 @@ export class Queue<T = unknown> {
             opts.seek = play_track.discord_playback_data.seek_time;
 
         if(opts?.immediate === true || queue_size === 0){
+            if(!play_track) return; 
             const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string);
             if("error" in download_url){
                 console.error(download_url);
             }
             const origin_dir = process.env.LORIGIN ?? "/lib-origin";
-            const resource = "error" in download_url ? this.connection.create_audio_stream(path.join(origin_dir, "/illusicord/media/5-seconds-of-silence.mp3"), {
+
+            let stream_input: Readable | string;
+            let input_type: StreamType;
+
+            if (!("error" in download_url) && download_url.isSabr) {
+                const sabr = new SabrStream({
+                    serverAbrStreamingUrl: download_url.sabrServerUrl,
+                    videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig,
+                    formats: download_url.sabrFormats,
+                    poToken: download_url.placeholder_po_token ?? download_url.poToken,
+                    clientInfo: download_url.clientInfo,
+                });
+
+                let real_token_applied = false;
+                sabr.on('streamProtectionStatusUpdate', async (status: any) => {
+                    if (status.status === 2) {
+                        if (!real_token_applied) {
+                            real_token_applied = true;
+                            if (download_url.poToken) sabr.setPoToken(download_url.poToken);
+                        } else if (download_url.on_refresh_po_token) {
+                            try {
+                                const refreshed = await download_url.on_refresh_po_token("expired");
+                                sabr.setPoToken(refreshed);
+                            } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
+                        }
+                    }
+                });
+
+                sabr.on('reloadPlayerResponse', async (ctx: any) => {
+                    if (!download_url.on_reload_player_response) return;
+                    try {
+                        const updated = await download_url.on_reload_player_response(ctx);
+                        if (updated) {
+                            sabr.setStreamingURL(updated.sabrServerUrl);
+                            sabr.setUstreamerConfig(updated.sabrUstreamerConfig);
+                        }
+                    } catch (e) { console.error('[SABR] Failed to reload player response:', e); }
+                });
+
+                sabr.on('error', (e: any) => console.error('[SABR] error:', e));
+
+                const { audioStream } = await sabr.start({
+                    enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
+                    preferOpus: true,
+                });
+
+                stream_input = Readable.fromWeb(audioStream as any);
+                input_type = StreamType.WebmOpus;
+            } else if ("error" in download_url) {
+                stream_input = path.join(origin_dir, "/illusicord/media/5-seconds-of-silence.mp3");
+                input_type = StreamType.Arbitrary;
+            } else {
+                stream_input = download_url.url.replace(IllusiveConstants.media_archive_path, '');
+                input_type = StreamType.Arbitrary;
+            }
+
+            const resource = this.connection.create_audio_stream(stream_input, {
                 metadata: play_track,
-                inputType: StreamType.Arbitrary
-            }) : this.connection.create_audio_stream(download_url.url.replace(IllusiveConstants.media_archive_path, ''), {
-                metadata: play_track,
-                inputType: StreamType.Arbitrary
+                inputType: input_type,
             });
             this.connection
                 .play_audio_stream(resource)

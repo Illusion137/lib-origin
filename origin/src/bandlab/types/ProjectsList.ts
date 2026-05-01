@@ -75,6 +75,6 @@ export interface Paging {
 }
 
 export interface Cursors {
-    after: any
+    after: string|null|undefined
     before: string
 }

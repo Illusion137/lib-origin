@@ -131,7 +131,7 @@ export namespace Illusi {
         return result.map(suggestion_track_new_uid);
     }
 
-    export async function get_playlists(
+    export async function get_public_playlists(
         opts: Opts,
     ): PromiseResult<RemotePlaylist[]> {
         const playlist_result = await
@@ -145,12 +145,19 @@ export namespace Illusi {
         return playlist_result;
     }
 
-    // export async function get_playlists(opts: Opts): Promise<RemotePlaylist[] | { error: string }> {
-    //     return rest<RemotePlaylist[]>(
-    //         'playlists?select=uuid,title,description,created_at,modified_at&deleted=eq.false&order=created_at.desc',
-    //         opts,
-    //     );
-    // }
+    export async function get_playlists(
+        opts: Opts,
+    ): PromiseResult<RemotePlaylist[]> {
+        const playlist_result = await
+            rest<RemotePlaylist[]>(
+                `playlists?select=uuid,title,description,created_at,modified_at&deleted=eq.false&limit=50`,
+                opts,
+            );
+
+        if ('error' in playlist_result) return supaerror_to_rozerr(playlist_result, { opts });
+
+        return playlist_result;
+    }
 
     export async function create_playlist(title: string, uuid: string, opts: Opts): Promise<{ uuid: string } | { error: string }> {
         const result = await rest<RemotePlaylist[]>(

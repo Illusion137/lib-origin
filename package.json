@@ -1,7 +1,7 @@
 {
   "scripts": {
     "test": "vitest run",
-    "build": "ts-node -T scripts/prebuild.ts",
+    "build:gen": "ts-node -T scripts/prebuild.ts",
     "build:osx": "sh ./scripts/build.sh",
     "build:win": "powershell ./scripts/build.ps1",
     "discord_dev:win": "@powershell ./illusicord/build/discord_dev.ps1",
@@ -46,7 +46,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.19.0",
+    "@discordjs/voice": "^0.19.2",
     "@flyskywhy/react-native-gcanvas": "^6.0.20",
     "@fugood/whisper.node": "^1.0.5",
     "@iternio/react-native-auto-play": "^0.3.5",

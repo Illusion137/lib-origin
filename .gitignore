@@ -25,3 +25,6 @@ roze/lib/supertonic/assets
 CLAUDE.md
 .claude
 dist-roze-native
+nodejs-assets
+.DS_Store
+SillyTest

@@ -71,6 +71,7 @@ export const node_sabr_downloader: SabrDownloader = {
 
 		const { audioStream, selectedFormats } = await sabr_stream.start({
 			enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
+			preferOpus: params.preferOpus,
 		});
 
 		const content_length = selectedFormats.audioFormat.contentLength;
