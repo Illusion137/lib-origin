@@ -228,17 +228,17 @@ export namespace Illusive {
 
     interface ExportTrack { "new_track_data"?: Track }
     const download_url_timed_cache = new TimedCache<string, (DownloadFromIdResult & ExportTrack) | ResponseError>(Constants.playlist_cache_duration_seconds);
-    export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean): Promise<(DownloadFromIdResult & ExportTrack) | ResponseError> {
+    export async function get_download_url(document_directory: string, track: Track, quality?: string, redownload_mode?: boolean, retry_mode?: boolean): Promise<(DownloadFromIdResult & ExportTrack) | ResponseError> {
         if (!is_empty(track.media_uri) && !(redownload_mode ?? false))
             return { url: pathlib.join(document_directory, Constants.media_archive_path, track.media_uri!) };
         const key = track.uid + (track.illusi_id ?? "") + ";:;" + quality;
         if (download_url_timed_cache.get(key)) return download_url_timed_cache.get(key)!;
         if (!is_empty(track.youtube_id))
-            return download_url_timed_cache.update(key, await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio"));
+            return download_url_timed_cache.update(key, await music_service.get("YouTube")!.download_from_id!(track.youtube_id!, quality ?? "highestaudio", retry_mode ? track : undefined));
         else if (!is_empty(track.soundcloud_permalink))
-            return download_url_timed_cache.update(key, await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!));
+            return download_url_timed_cache.update(key, await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!, retry_mode ? track : undefined));
         else if (!is_empty(track.bandlab_id))
-            return download_url_timed_cache.update(key, await music_service.get("BandLab")!.download_from_id!(track.bandlab_id!, quality!));
+            return download_url_timed_cache.update(key, await music_service.get("BandLab")!.download_from_id!(track.bandlab_id!, quality!, retry_mode ? track : undefined));
         const new_track_data = await convert_track(track, {});
         if ("error" in new_track_data) return new_track_data;
         if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting download_url", "CRITICAL", { track, quality, redownload_mode });

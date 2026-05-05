@@ -1,10 +1,11 @@
 import * as Origin from '@origin/index'
 import type { ResponseError } from '@common/types';
 import { Prefs } from '@illusive/prefs';
-import type { DownloadFromIdResult } from '@illusive/types';
+import type { DownloadFromIdResult,Track } from '@illusive/types';
 import { generror_catch } from '@common/utils/error_util';
 import { milliseconds_of } from '@common/utils/util';
-// import type { Types } from 'youtubei.js';
+import { youtube_search } from './search';
+import { number_epsilon_distance } from './illusive_utils';
 
 export async function soundcloud_download_from_id(permalink: string, _: string): Promise<DownloadFromIdResult | ResponseError> {
     const use_cookies_on_download = Prefs.get_pref('use_cookies_on_download');
@@ -13,10 +14,19 @@ export async function soundcloud_download_from_id(permalink: string, _: string):
     if (typeof url === "object") return url;
     return { url: url };
 }
-export async function youtube_download_from_id(video_id: string, quality: string): Promise<DownloadFromIdResult | ResponseError> {
+export async function youtube_download_from_id(video_id: string, quality: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
     try {
         const sabr_result = await Origin.YouTubeDL.resolve_sabr_url(video_id);
-        if ("error" in sabr_result) return sabr_result;
+        if ("error" in sabr_result) {
+            if(!retry_track) return sabr_result;
+            console.warn(`Retrying...: ${retry_track.title} | ${retry_track.artists[0].name}`);
+            const search_query = `${retry_track.title} ${retry_track.artists[0].name}`;
+            const search_result = await youtube_search(search_query);
+            if("error" in search_result && search_result.error) return search_result.error;
+            const new_track = search_result.tracks.find(track => number_epsilon_distance(track.duration, retry_track.duration, 10));
+            if(!new_track?.youtube_id) return sabr_result;
+            return youtube_download_from_id(new_track?.youtube_id, "18", undefined);
+        }
         return {
             url: sabr_result.url,
             duration: sabr_result.duration,

@@ -460,7 +460,7 @@ export class MusicService {
     get_user_playlists?: () => Promise<CompactPlaylistsResult>
     get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
-    download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
+    download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
     get_new_releases?: () => Promise<CompactPlaylist[]>
@@ -483,7 +483,7 @@ export class MusicService {
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
         get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
-        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
+        download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
         get_new_releases?: () => Promise<CompactPlaylist[]>
