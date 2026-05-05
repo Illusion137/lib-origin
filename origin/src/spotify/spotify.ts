@@ -23,6 +23,7 @@ import type { SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLib
 import { reinterpret_cast } from '../../../common/cast';
 import { try_json_parse } from "@common/utils/parse_util";
 import type { Query } from "./types/Query";
+import type { SeekTables } from './types/SeekTables';
 
 const Buffer = BufferRN.Buffer;
 export namespace Spotify {
@@ -569,6 +570,13 @@ export namespace Spotify {
             deltas: [{ ops: [{ kind: 3, rem: { items: [{ uri: opts.playlist_uri }], itemsAsKey: true } }], info: { source: { client: 5 } } }], wantResultingRevisions: false, wantSyncResult: false, nonces: []
         }
         return await post_data_with_client<{}>("https://spclient.wg.spotify.com/playlist/v2/playlist", payload, "requires_credentials", opts);
+    }
 
+    export async function seektables(opts: {file_id: string} & Opts){
+        const seektables_response = await rozfetch<SeekTables>(`https://seektables.spotifycdn.com/v1/seektable/${opts.file_id}`);
+        if("error" in seektables_response) return seektables_response;
+        const seektables_data = await seektables_response.json();
+        if("error" in seektables_data) return seektables_data;
+        return seektables_data;
     }
 }
