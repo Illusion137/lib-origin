@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:lib-origin}/SillyTest",
+            "name": "Debug SillyTest (SillyTest)",
+            "target": "SillyTest",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug SillyTest (SillyTest)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:lib-origin}/SillyTest",
+            "name": "Release SillyTest (SillyTest)",
+            "target": "SillyTest",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release SillyTest (SillyTest)"
+        }
+    ]
+}
