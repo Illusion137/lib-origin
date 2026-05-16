@@ -4,6 +4,7 @@ import * as Origin from '@origin/index';
 import { generror } from "@common/utils/error_util";
 import type { Track } from "./types";
 import type { PromiseResult, ResponseError } from "@common/types";
+import { Prefs } from "@illusive/prefs";
 import { remove_topic } from "@common/utils/clean_util";
 import { extract_strings_from_pattern, is_empty, seconds_of } from "@common/utils/util";
 import { reinterpret_cast } from '../../common/cast';
@@ -63,6 +64,25 @@ export namespace Lyrics {
         if(typeof lyrics_response === "object") return lyrics_response;
         return {plain: lyrics_response, synced: undefined};
     }
+    async function youtube_music_lyrics_try(track: Track): PromiseResult<LyricsResult> {
+        const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
+        const opts = { cookie_jar };
+        const ytcfg_result = await Origin.YouTubeMusic.fetch_initial_data(opts);
+        if (!ytcfg_result.ok || ytcfg_result.ytcfg === undefined) return generror("YouTube Music lyrics: failed to fetch ytcfg", "LOW");
+        const watch_next = await Origin.YouTubeMusic.get_watch_next(opts, ytcfg_result.ytcfg, {
+            playlistId: `RDAMVM${track.youtube_id}`,
+            videoId: track.youtube_id,
+            isAudioOnly: true,
+            enablePersistentPlaylistPanel: true,
+            tunerSettingValue: "AUTOMIX_SETTING_NORMAL",
+        });
+        if ("error" in watch_next) return watch_next;
+        if (!watch_next.lyrics_browse_id) return generror("YouTube Music lyrics: no lyrics browse ID", "INFO", { track: small_track(track) });
+        const lyrics = await Origin.YouTubeMusic.get_lyrics(opts, ytcfg_result.ytcfg, watch_next.lyrics_browse_id);
+        if ("error" in lyrics) return lyrics;
+        if (!lyrics.lyrics) return generror("YouTube Music lyrics: empty lyrics", "INFO", { track: small_track(track) });
+        return { plain: lyrics.lyrics, synced: undefined };
+    }
     async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
         // LRCLib pass
         for (const search_query of search_queries) {
@@ -75,6 +95,11 @@ export namespace Lyrics {
             const result = await genius_lyrics_try_good_result(track, search_query);
             if ("error" in result) continue;
             return result;
+        }
+        // YouTube Music pass (last resort — only for YouTube-based tracks that have album metadata)
+        if (track.youtube_id !== undefined && track.album !== undefined) {
+            const result = await youtube_music_lyrics_try(track);
+            if (!("error" in result)) return result;
         }
         return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_queries });
     }

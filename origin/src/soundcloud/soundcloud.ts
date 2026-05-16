@@ -10,6 +10,7 @@ import { try_json_parse } from "@common/utils/parse_util";
 import { reinterpret_cast } from '@common/cast';
 import type { ArtistStories } from "./types/ArtistStories";
 import type { SelectionItem, SoundCloudMixedSelection } from "./types/MixedSelection";
+import type { ResolvedStation } from "./types/ResolvedStation";
 import BufferRN from "buffer/";
 const Buffer = BufferRN.Buffer;
 
@@ -319,7 +320,15 @@ export namespace SoundCloud {
             case "REPOSTS": return "reposts";
         }
     }
-
+    export async function resolve<T extends Record<any, any>>(opts: Opts & {url: string}): PromiseResult<T>{
+        const params = {
+            ...get_locale_params(opts),
+            url: opts.url
+        };
+        const resolve_response = await rozfetch<T>(`https://api-v2.soundcloud.com/resolve?${encode_params(params)}`, api_method_options(opts));
+        if("error" in resolve_response) return resolve_response;
+        return await resolve_response.json();
+    }
     export async function permalink_to_artist_id(opts: Opts & { "artist_permalink": string }) {
         opts.artist_permalink = urlid(opts.artist_permalink, "soundcloud.com/");
         opts.artist_permalink = `https://soundcloud.com/${opts.artist_permalink}`;
@@ -328,15 +337,7 @@ export namespace SoundCloud {
             if ("error" in client_id) return client_id;
             opts.client_id = client_id.client_id;
         }
-        const params = {
-            ...get_locale_params(opts),
-            url: opts.artist_permalink
-        };
-
-        const resolve_response = await rozfetch<UserData>(`https://api-v2.soundcloud.com/resolve?${encode_params(params)}`, api_method_options(opts));
-        if ("error" in resolve_response) return resolve_response;
-
-        const resolved_user = await resolve_response.json();
+        const resolved_user = await resolve<UserData>({...opts, url: opts.artist_permalink});
         if ("error" in resolved_user) return resolved_user;
         return { id: String(resolved_user.id), client_id: opts.client_id, hydration: { hydratable: "user", data: resolved_user } as HydratableUser };
     }
@@ -407,6 +408,12 @@ export namespace SoundCloud {
                 limit: opts.limit ?? 50, offset: opts.offset ?? 0
             }
         });
+    }
+    export async function station_from_track(opts: Opts & {track_id: number}){
+        return station_base({...opts, station_url: `https://soundcloud.com/discover/sets/track-stations:${opts.track_id}`});
+    }
+    export async function station_base(opts: Opts & {station_url: string}){
+        return await resolve<ResolvedStation>({...opts, url: opts.station_url});
     }
     export async function listening_history(opts: Opts & { limit?: number, offset?: number }) {
         return await apiget<HistoryTrack>({ ...opts, path: `me/play-history/tracks`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0 } });

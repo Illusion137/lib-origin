@@ -378,6 +378,15 @@ export interface StatefullMusicSearchResponse {
     search_data: MusicSearchResponse;
 }
 
+export interface MusicServiceRelatedSection {
+    title: string;
+    tracks: Track[];
+    playlists: CompactPlaylist[];
+}
+export interface MusicServiceRelated {
+    sections: MusicServiceRelatedSection[];
+    error?: ResponseError;
+}
 export interface MusicServiceArtist {
     name: string;
     latest_release?: CompactPlaylist;
@@ -462,6 +471,7 @@ export class MusicService {
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
     download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
+    get_related?: (id: string) => Promise<MusicServiceRelated>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
     get_new_releases?: () => Promise<CompactPlaylist[]>
     get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[] | undefined>
@@ -485,6 +495,7 @@ export class MusicService {
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
         download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
+        get_related?: (id: string) => Promise<MusicServiceRelated>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
         get_new_releases?: () => Promise<CompactPlaylist[]>
         get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[] | undefined>,
@@ -518,6 +529,7 @@ export class MusicService {
         this.get_playlist_continuation = s.get_playlist_continuation
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
+        this.get_related = s.get_related;
         this.get_artist = s.get_artist;
         this.get_new_releases = s.get_new_releases;
         this.get_latest_releases = s.get_latest_releases;

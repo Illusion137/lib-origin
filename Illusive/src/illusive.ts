@@ -7,7 +7,8 @@ import { bandlab_download_from_id, soundcloud_download_from_id, youtube_download
 import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, bandlab_get_playlist_continuation, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
-import { get_soundcloud_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
+import { get_soundcloud_track_mix, get_youtube_music_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
+import { soundcloud_get_related, youtube_music_get_related } from '@illusive/get_related';
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, illusi_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
 import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
@@ -78,6 +79,7 @@ export namespace Illusive {
             add_tracks_to_playlist: youtube_add_tracks_to_playlist,
             delete_tracks_from_playlist: youtube_delete_tracks_from_playlist,
             get_track_mix: get_youtube_track_mix,
+            get_related: youtube_music_get_related,
             download_from_id: youtube_download_from_id,
             get_artist: youtube_music_get_artist,
             get_latest_releases: youtube_music_get_latest_releases
@@ -100,6 +102,8 @@ export namespace Illusive {
             delete_playlist: youtube_music_delete_playlist,
             add_tracks_to_playlist: youtube_music_add_tracks_to_playlist,
             delete_tracks_from_playlist: youtube_music_delete_tracks_from_playlist,
+            get_track_mix: get_youtube_music_track_mix,
+            get_related: youtube_music_get_related,
             get_artist: youtube_music_get_artist,
             get_new_releases: youtube_music_get_new_releases,
             get_latest_releases: youtube_music_get_latest_releases
@@ -184,6 +188,7 @@ export namespace Illusive {
             add_tracks_to_playlist: soundcloud_add_tracks_to_playlist,
             delete_tracks_from_playlist: soundcloud_delete_tracks_from_playlist,
             get_track_mix: get_soundcloud_track_mix,
+            get_related: soundcloud_get_related,
             download_from_id: soundcloud_download_from_id,
             get_artist: soundcloud_get_artist,
             get_latest_releases: soundcloud_get_latest_releases,

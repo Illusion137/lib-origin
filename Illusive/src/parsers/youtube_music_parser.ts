@@ -5,12 +5,33 @@ import { find_album_year, parse_subtitle_text } from '@origin/youtube_music/pars
 import type { ArtistCarouselContent, ArtistTopTrack } from '@origin/youtube_music/types/ArtistResults_0';
 import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
 import type { MusicCardShelfRenderer, MusicResponsiveListItemRenderer2, SearchMusicResponsiveListItemRenderer } from '@origin/youtube_music/types/SearchResults_0';
-import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack } from '@origin/youtube_music/types/types';
+import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack, WatchNextQueueTrack } from '@origin/youtube_music/types/types';
+import type { RelatedSection } from '@origin/youtube_music/parser';
 import { best_thumbnail, create_uri, is_duration_string, youtube_music_split_artists, youtube_views_number } from '@illusive/illusive_utils';
-import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, NamedUUID, Runs, Track } from '@illusive/types';
-import { reinterpret_cast } from '../../../common/cast';
+import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, MusicServiceRelatedSection, NamedUUID, Runs, Track } from '@illusive/types';
+import { reinterpret_cast } from '@common/cast';
+import { Prefs } from '@illusive/prefs';
+import * as Origin from '@origin/index';
+import { generror } from '@common/utils/error_util';
 
 const responsive_item_types = ["Song", "Video", "Single", "Album", "Playlist", "EP", "Profile"];
+
+export async function get_ytm_ctx() {
+    const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
+    const opts = { cookie_jar };
+    const ytcfg_result = await Origin.YouTubeMusic.fetch_initial_data(opts);
+    if (!ytcfg_result.ok || ytcfg_result.ytcfg === undefined) return generror("YouTube Music: failed to fetch ytcfg", "LOW");
+    return { opts, ytcfg: ytcfg_result.ytcfg };
+}
+export function watch_next_payload(video_id: string): Origin.YouTubeMusic.WatchNextPayload {
+    return {
+        playlistId: `RDAMVM${video_id}`,
+        videoId: video_id,
+        isAudioOnly: true,
+        enablePersistentPlaylistPanel: true,
+        tunerSettingValue: "AUTOMIX_SETTING_NORMAL",
+    };
+}
 
 function includes_plays_text(ptext: string){
     if(ptext === undefined) return false;
@@ -332,4 +353,75 @@ export function parse_youtube_music_artist_similar_artist(item: ArtistCarouselCo
         profile_artwork_url: best_thumbnail(item.musicTwoRowItemRenderer.thumbnailRenderer.musicThumbnailRenderer.thumbnail.thumbnails)?.url,
         is_official_artist_channel: true
     }
+}
+
+export function parse_youtube_music_queue_track(track: WatchNextQueueTrack): Track {
+    return {
+        uid: generate_new_uid(track.title),
+        title: track.title,
+        artists: track.artists.map(parse_youtube_music_compact_line_artist),
+        album: track.album ? parse_youtube_music_compact_line_artist(track.album) : undefined,
+        artwork_url: best_thumbnail(track.thumbnails)?.url,
+        duration: parse_time(track.duration),
+        youtube_id: track.video_id || undefined,
+        youtubemusic_id: track.playlist_set_video_id || undefined,
+    };
+}
+
+function as_record(value: unknown): Record<string, any> | undefined {
+    if (typeof value !== 'object' || value === null) return undefined;
+    return value as Record<string, any>;
+}
+
+export function parse_youtube_music_related_two_row_item(item: unknown): CompactPlaylist | undefined {
+    const i = as_record(item);
+    if (!i) return undefined;
+    const browse_id: string | undefined = i.navigationEndpoint?.browseEndpoint?.browseId;
+    const title: string = parse_runs(i.title?.runs ?? []);
+    if (!title) return undefined;
+    const thumbnails = i.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    const artists: NamedUUID[] = (i.subtitle?.runs ?? [] as any[])
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        .filter((r: any) => r.navigationEndpoint?.browseEndpoint?.browseId)
+        .map((r: any) => ({ name: r.text as string, uri: create_uri("youtubemusic", r.navigationEndpoint.browseEndpoint.browseId as string) }));
+    return {
+        title: { name: title, uri: browse_id ? create_uri("youtubemusic", browse_id) : null },
+        artist: artists,
+        artwork_thumbnails: thumbnails,
+        artwork_url: best_thumbnail(thumbnails)?.url,
+        type: "ALBUM"
+    };
+}
+
+export function parse_youtube_music_related_responsive_item(item: unknown): Track | undefined {
+    const i = as_record(item);
+    if (!i) return undefined;
+    const video_id: string | undefined =
+        i.playlistItemData?.videoId ??
+        i.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId;
+    if (!video_id) return undefined;
+    const title: string = parse_runs(i.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? []);
+    if (!title) return undefined;
+    const artist_runs: Runs = i.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [];
+    const thumbnails = i.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    return {
+        uid: generate_new_uid(title),
+        title,
+        artists: youtube_music_split_artists(artist_runs),
+        duration: NaN,
+        youtube_id: video_id,
+        artwork_url: best_thumbnail(thumbnails)?.url,
+    };
+}
+
+export function parse_youtube_music_related_sections(sections: RelatedSection[]): MusicServiceRelatedSection[] {
+    return sections.map(section => ({
+        title: section.title,
+        tracks: section.type === "shelf"
+            ? section.items.map(parse_youtube_music_related_responsive_item).filter((x): x is Track => x !== undefined)
+            : [],
+        playlists: section.type === "carousel"
+            ? section.items.map(parse_youtube_music_related_two_row_item).filter((x): x is CompactPlaylist => x !== undefined)
+            : [],
+    }));
 }
