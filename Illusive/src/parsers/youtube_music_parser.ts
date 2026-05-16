@@ -204,6 +204,12 @@ function parse_youtube_music_search_top_result_album(card: MusicCardShelfRendere
         artwork_thumbnails: card.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails
     }
 }
+function card_explicit_badge(card: MusicCardShelfRenderer): Track['explicit'] {
+    if (card.subtitleBadges?.[0]?.musicInlineBadgeRenderer?.icon?.iconType === "MUSIC_EXPLICIT_BADGE") return "EXPLICIT";
+    if (card.contents?.[0]?.musicResponsiveListItemRenderer?.badges?.[0]?.musicInlineBadgeRenderer?.icon?.iconType === "MUSIC_EXPLICIT_BADGE") return "EXPLICIT";
+    return "NONE";
+}
+
 async function parse_youtube_music_search_top_result_track(card: MusicCardShelfRenderer, get_playlist: (id: string) => Promise<MusicServicePlaylist>): Promise<Track|undefined>{
     if(card.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId === undefined) return undefined;
     const title = parse_runs(card.title.runs);
@@ -220,7 +226,7 @@ async function parse_youtube_music_search_top_result_track(card: MusicCardShelfR
         album: album_maybe?.error === undefined ? {name: album_maybe?.title ?? "", uri: potential_endpoint === undefined ? null : create_uri("youtubemusic", potential_endpoint)} : undefined,
         artists: possible_artists.map(item => ({name: item.text, uri: item.navigationEndpoint === undefined ? null : create_uri("youtubemusic", item.navigationEndpoint.browseEndpoint!.browseId)})),
         duration: parse_time(duration),
-        explicit: card.subtitleBadges === undefined ? "NONE" : card.subtitleBadges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
+        explicit: card_explicit_badge(card),
         youtube_id: card.title.runs[0].navigationEndpoint.watchEndpoint.videoId,
         plays: youtube_views_number(plays),
         artwork_url: best_thumbnail(card.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url
@@ -242,7 +248,7 @@ function parse_youtube_music_search_top_result_track_2(card: MusicCardShelfRende
         album: album_maybe?.error === undefined ? undefined : undefined,
         artists: possible_artists.map(item => ({name: item.text, uri: item.navigationEndpoint === undefined ? null : create_uri("youtubemusic", item.navigationEndpoint.browseEndpoint!.browseId)})),
         duration: parse_time(duration),
-        explicit: card.subtitleBadges === undefined ? "NONE" : card.subtitleBadges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
+        explicit: card_explicit_badge(card),
         youtube_id: card.title.runs[0].navigationEndpoint.watchEndpoint.videoId,
         plays: youtube_views_number(plays)
     }

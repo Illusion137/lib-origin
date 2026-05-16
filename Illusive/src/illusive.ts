@@ -356,7 +356,7 @@ export namespace Illusive {
         }
     }
 
-    interface ConvertTrackOptsNull {
+    export interface ConvertTrackOptsNull {
         to_music_service?: MusicServiceType;
         deep_convert?: boolean;
         proxies?: Origin.Proxy.Proxy[];

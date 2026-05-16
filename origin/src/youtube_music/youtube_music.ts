@@ -252,7 +252,7 @@ export namespace YouTubeMusic {
 	}
 	export async function get_only_artist_tracks(opts: Opts, artist_response: ICFGData<ReturnType<typeof Parser.parse_artist_contents>>) {
 		const music_shelf_renderer_endpoint_id: string | undefined = artist_response.data.top_shelf?.bottomEndpoint?.browseEndpoint?.browseId?.replace("VL", "");
-		if (music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", "MEDIUM", { opts });
+		if (music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", "LOW", { opts });
 		const playlist_response = await get_playlist(opts, music_shelf_renderer_endpoint_id);
 		return playlist_response;
 	}
