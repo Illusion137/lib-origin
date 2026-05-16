@@ -10,6 +10,8 @@ import { clean_album_title } from "@illusive/parsers/apple_music_parser";
 import { Prefs } from "@illusive/prefs";
 import type { ISOString, NamedUUID, OnErrorCallback, Promises, Track, TrackMetaData } from "@illusive/types";
 import { and, eq } from 'drizzle-orm';
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { fs } from "@native/fs/fs";
 import { SQLfs } from "./sql_fs";
 import { SQLGlobal } from "./sql_global";
 import { db } from "@illusive/db/database";
@@ -290,6 +292,24 @@ export namespace SQLTracks {
         const thumbnail_uri = track.uid + ext;
         const thumbnail_download = await SQLfs.download_to_file(best_artwork, SQLfs.thumbnail_directory(thumbnail_uri));
         if (error_undefined(thumbnail_download) === undefined) return;
+        if (!is_empty(track.youtube_id) && is_empty(track.artwork_url)) {
+            const full_path = SQLfs.thumbnail_directory(thumbnail_uri);
+            try {
+                const imageRef = await ImageManipulator.manipulate(full_path).renderAsync();
+                const { width, height } = imageRef;
+                if (width !== height) {
+                    const size = Math.min(width, height);
+                    const cropped = await ImageManipulator.manipulate(full_path)
+                        .crop({ originX: (width - size) / 2, originY: (height - size) / 2, width: size, height: size })
+                        .renderAsync();
+                    const result = await cropped.saveAsync({ compress: 1, format: SaveFormat.JPEG });
+                    await SQLfs.delete_item(full_path);
+                    await fs().move(result.uri, full_path, {});
+                }
+            } catch (e) {
+                console.warn("Failed to crop thumbnail:", e);
+            }
+        }
         await db.update(tracks_table).set({ thumbnail_uri }).where(eq(tracks_table.uid, track.uid));
         await ChangeTracker.log_change('tracks', 'update', track.uid, { thumbnail_uri });
         SQLGlobal.update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
