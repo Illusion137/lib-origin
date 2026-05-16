@@ -130,7 +130,7 @@ export interface SystemPlaylist {
 // ─── Selection Item ───────────────────────────────────────────────────────
 
 /** Items within a selection can be playlists, system playlists, or users */
-type SelectionItem = Playlist | SystemPlaylist | BaseUser;
+export type SelectionItem = Playlist | SystemPlaylist | BaseUser;
 
 // ─── Selection ────────────────────────────────────────────────────────────
 

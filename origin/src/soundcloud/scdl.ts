@@ -33,7 +33,11 @@ export namespace SoundCloudDL {
             dl_url = potential_dl_url;
             break;
         }
-        if(dl_url === undefined) return generror("Unable to find good transcoding", "MEDIUM", { permalink, cookie_jar });
+        if(dl_url === undefined) {
+            if(sound_hyrdration.data.media.transcodings.find(transcoding => transcoding.format.protocol.includes("encrypted")))
+                return generror("Only encrypted transcodings", "LOW", { permalink, cookie_jar });
+            return generror("Unable to find good transcoding", "MEDIUM", { permalink, cookie_jar });
+        } 
         if (dl_cache_full() && is_empty(dl_cache.dls.find(item => item.permalink === permalink)))
             dl_cache.dls.push({ permalink, url: dl_url });
         return dl_url;
