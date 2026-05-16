@@ -3,7 +3,6 @@ import { ChangeTracker } from './change_tracker';
 import type { NetworkMonitor } from './network_monitor';
 import { db } from '../database';
 import {
-    new_releases_table,
     playlists_table,
     playlists_tracks_table,
     sync_metadata_table,
@@ -12,12 +11,10 @@ import {
 import { and, eq } from 'drizzle-orm';
 import type {
     CompressedChange,
-    LocalNewRelease,
     LocalPlaylist,
     LocalPlaylistTrack,
     LocalTableName,
     LocalTrack,
-    RemoteNewReleaseInsert,
     RemotePlaylistInsert,
     RemotePlaylistTrackInsert,
     RemoteTrackInsert,
@@ -145,29 +142,29 @@ function parse_playlist_track_record_id(record_id: string): { playlist_uuid: str
     };
 }
 
-function new_release_identity_key(title_value: unknown): string | null {
-    if (title_value === null || title_value === undefined) return null;
-    const parsed = typeof title_value === 'string' ? (() => {
-        try {
-            return JSON.parse(title_value) as unknown;
-        } catch {
-            return title_value;
-        }
-    })() : title_value;
+// function new_release_identity_key(title_value: unknown): string | null {
+//     if (title_value === null || title_value === undefined) return null;
+//     const parsed = typeof title_value === 'string' ? (() => {
+//         try {
+//             return JSON.parse(title_value) as unknown;
+//         } catch {
+//             return title_value;
+//         }
+//     })() : title_value;
 
-    if (!parsed) return null;
-    if (typeof parsed === 'object' && 'uri' in parsed) {
-        const uri = (parsed as { uri?: unknown }).uri;
-        if (typeof uri === 'string' && uri.length > 0) return `uri:${uri}`;
-    }
+//     if (!parsed) return null;
+//     if (typeof parsed === 'object' && 'uri' in parsed) {
+//         const uri = (parsed as { uri?: unknown }).uri;
+//         if (typeof uri === 'string' && uri.length > 0) return `uri:${uri}`;
+//     }
 
-    try {
-        return `json:${JSON.stringify(parsed)}`;
-    } catch {
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        return `raw:${String(parsed)}`;
-    }
-}
+//     try {
+//         return `json:${JSON.stringify(parsed)}`;
+//     } catch {
+//         // eslint-disable-next-line @typescript-eslint/no-base-to-string
+//         return `raw:${String(parsed)}`;
+//     }
+// }
 
 async function get_authed_user_uid(supabase: SupabaseClient<Database>): Promise<string | null> {
     const { data: { session } } = await supabase.auth.getSession();
@@ -397,20 +394,20 @@ export class SyncEngine {
                 .upsert(batch.map(pt => this.playlist_track_to_insert(pt)), { onConflict: 'uuid,track_uid' });
         }
 
-        // Push all local new_releases (push-only, insert with conflict ignore).
-        const all_nr = await db.select().from(new_releases_table);
-        for (let i = 0; i < all_nr.length; i += BATCH_SIZE) {
-            const batch = all_nr.slice(i, i + BATCH_SIZE);
-            const rows = batch.flatMap(r => {
-                const key = new_release_identity_key(r.title);
-                if (key === null) return [];
-                return [this.new_release_to_insert(r, user_uid)];
-            });
-            if (rows.length > 0) {
-                await this.supabase.from('new_releases')
-                    .upsert(rows, { onConflict: 'user_uid,title', ignoreDuplicates: true });
-            }
-        }
+        // TODO Push all local new_releases (push-only, insert with conflict ignore).
+        // const all_nr = await db.select().from(new_releases_table);
+        // for (let i = 0; i < all_nr.length; i += BATCH_SIZE) {
+        //     const batch = all_nr.slice(i, i + BATCH_SIZE);
+        //     const rows = batch.flatMap(r => {
+        //         const key = new_release_identity_key(r.title);
+        //         if (key === null) return [];
+        //         return [this.new_release_to_insert(r, user_uid)];
+        //     });
+        //     if (rows.length > 0) {
+        //         await this.supabase.from('new_releases')
+        //             .upsert(rows, { onConflict: 'user_uid,title', ignoreDuplicates: true });
+        //     }
+        // }
 
         // Reset all pull watermarks so everything is re-fetched from epoch.
         for (const table_name of PULL_TABLES) {
@@ -518,11 +515,12 @@ export class SyncEngine {
                 case 'playlists': await this.push_playlist_change(change, user_uid); break;
                 case 'playlists_tracks': await this.push_playlist_track_change(change, user_uid); break;
                 case 'new_releases': {
-                    const nr_result = await this.push_new_release_change(change, user_uid);
-                    if (nr_result === 'dropped') {
-                        return { outcome: 'dropped', reason: `new_release invalid identity: ${change.record_id}` };
-                    }
                     break;
+                    // TODO const nr_result = await this.push_new_release_change(change, user_uid);
+                    // if (nr_result === 'dropped') {
+                    //     return { outcome: 'dropped', reason: `new_release invalid identity: ${change.record_id}` };
+                    // }
+                    // break;
                 }
             }
             return { outcome: 'synced' };
@@ -696,45 +694,45 @@ export class SyncEngine {
      * Returns 'dropped' when the entry has an invalid identity and can never be pushed.
      * Throws for transient errors so the caller retries.
      */
-    private async push_new_release_change(change: CompressedChange, user_uid: string): Promise<'ok' | 'dropped'> {
-        // Server never deletes new_releases — silently treat local deletes as synced.
-        if (change.operation === 'delete') return 'ok';
+    // private async push_new_release_change(change: CompressedChange, user_uid: string): Promise<'ok' | 'dropped'> {
+    //     // Server never deletes new_releases — silently treat local deletes as synced.
+    //     if (change.operation === 'delete') return 'ok';
 
-        const data = change.data as Partial<LocalNewRelease> | null;
+    //     const data = change.data as Partial<LocalNewRelease> | null;
 
-        // Resolve the local release record.
-        let full_release: LocalNewRelease | undefined;
-        if (data?.id != null) {
-            full_release = await db.select().from(new_releases_table)
-                .where(eq(new_releases_table.id, data.id)).get();
-        }
-        if (!full_release) {
-            const all_releases = await db.select().from(new_releases_table);
-            full_release = all_releases.find(r => {
-                return new_release_identity_key(r.title) === `uri:${change.record_id}`;
-            });
-        }
-        if (!full_release) return 'ok'; // Already gone locally — nothing to push.
+    //     // Resolve the local release record.
+    //     let full_release: LocalNewRelease | undefined;
+    //     if (data?.id != null) {
+    //         full_release = await db.select().from(new_releases_table)
+    //             .where(eq(new_releases_table.id, data.id)).get();
+    //     }
+    //     if (!full_release) {
+    //         const all_releases = await db.select().from(new_releases_table);
+    //         full_release = all_releases.find(r => {
+    //             return new_release_identity_key(r.title) === `uri:${change.record_id}`;
+    //         });
+    //     }
+    //     if (!full_release) return 'ok'; // Already gone locally — nothing to push.
 
-        const identity_key = new_release_identity_key(full_release.title);
-        if (identity_key === null) {
-            // Invalid title identity: this entry can never be pushed — drop it.
-            console.warn(`[SyncEngine] new_release invalid title identity: ${change.record_id}`);
-            return 'dropped';
-        }
+    //     const identity_key = new_release_identity_key(full_release.title);
+    //     if (identity_key === null) {
+    //         // Invalid title identity: this entry can never be pushed — drop it.
+    //         console.warn(`[SyncEngine] new_release invalid title identity: ${change.record_id}`);
+    //         return 'dropped';
+    //     }
 
-        const release: LocalNewRelease = change.operation === 'update'
-            ? { ...full_release, ...data }
-            : full_release;
+    //     const release: LocalNewRelease = change.operation === 'update'
+    //         ? { ...full_release, ...data }
+    //         : full_release;
 
-        const row = this.new_release_to_insert(release, user_uid);
+    //     const row = this.new_release_to_insert(release, user_uid);
 
-        // Insert with ignoreDuplicates — on conflict with existing server row, do nothing.
-        const { error } = await this.supabase.from('new_releases')
-            .upsert(row, { onConflict: 'user_uid,title', ignoreDuplicates: true });
-        if (error) throw error;
-        return 'ok';
-    }
+    //     // Insert with ignoreDuplicates — on conflict with existing server row, do nothing.
+    //     const { error } = await this.supabase.from('new_releases')
+    //         .upsert(row, { onConflict: 'user_uid,title', ignoreDuplicates: true });
+    //     if (error) throw error;
+    //     return 'ok';
+    // }
 
     // -------------------------------------------------------------------------
     // Error helpers
@@ -1297,22 +1295,22 @@ export class SyncEngine {
         };
     }
 
-    private new_release_to_insert(r: LocalNewRelease, user_uid: string): RemoteNewReleaseInsert {
-        return {
-            user_uid,
-            title: r.title,
-            artist: r.artist,
-            artwork_url: r.artwork_url,
-            artwork_thumbnails: r.artwork_thumbnails,
-            explicit: r.explicit,
-            album_type: r.album_type,
-            type: r.type,
-            date: r.date,
-            song_track: r.song_track ?? null,
-            deleted: false,
-            created_at: safe_to_iso(r.created_at),
-        };
-    }
+    // private new_release_to_insert(r: LocalNewRelease, user_uid: string): RemoteNewReleaseInsert {
+    //     return {
+    //         user_uid,
+    //         title: r.title,
+    //         artist: r.artist,
+    //         artwork_url: r.artwork_url,
+    //         artwork_thumbnails: r.artwork_thumbnails,
+    //         explicit: r.explicit,
+    //         album_type: r.album_type,
+    //         type: r.type,
+    //         date: r.date,
+    //         song_track: r.song_track ?? null,
+    //         deleted: false,
+    //         created_at: safe_to_iso(r.created_at),
+    //     };
+    // }
 
     // -------------------------------------------------------------------------
     // remote → local shapes
