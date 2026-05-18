@@ -9045,6 +9045,10 @@ react-native-permissions@^5.4.4:
   resolved "https://registry.yarnpkg.com/react-native-permissions/-/react-native-permissions-5.4.4.tgz#8a63b001fc0f9e88426c36b21a6fe379c4533b04"
   integrity sha512-WB5lRCBGXETfuaUhem2vgOceb9+URCeyfKpLGFSwoOffLuyJCA6+NTR3l1KLkrK4Ykxsig37z16/shUVufmt7A==
 
+"react-native-ptp@https://github.com/Illusion137/react-native-ptp":
+  version "0.1.0"
+  resolved "https://github.com/Illusion137/react-native-ptp#7e9ee78ddd8cc59a4c147e775d786ecf4ec63309"
+
 react-native-randombytes@^3.6.1:
   version "3.6.2"
   resolved "https://registry.yarnpkg.com/react-native-randombytes/-/react-native-randombytes-3.6.2.tgz#dd8efecd15ff6173ba9010579da983ecdec47ced"
@@ -9121,6 +9125,10 @@ react-native-uuid@^2.0.3:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/react-native-uuid/-/react-native-uuid-2.0.4.tgz#0c4f345523c5feac0282d3a51fe19887727df988"
   integrity sha512-LSJNeh559qC17fgVPBsWuTSW/OygFp2dwTcf94IQBLYft5FzIQS9pCsuT36OPvyvDOMb6yiGr6TafaJDnz9PPQ==
+
+"react-native-vibenet@https://github.com/Illusion137/react-native-vibenet":
+  version "0.0.1"
+  resolved "https://github.com/Illusion137/react-native-vibenet#91d4f812ffb22dd80ce2a69aed714d79cb1fafc9"
 
 react-native-webview@^13.16.1:
   version "13.16.1"
