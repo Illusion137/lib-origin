@@ -68,8 +68,8 @@ export namespace LSQLParser {
         const song_track = is_empty(sql_playlist.song_track) ? undefined : try_json_parse<LT1720.Track>(sql_playlist.song_track!);
         return {
             ...sql_playlist,
-            title: "error" in title ? {name: "UNKNOWN", uri: null} : title,
-            artist: "error" in artist ? [] : artist,
+            title: "error" in title ? {name: "UNKNOWN", uri: null} : title as any,
+            artist: "error" in artist ? [] : artist as any,
             artwork_thumbnails: artwork_thumbnails === undefined || "error" in artwork_thumbnails ? undefined : artwork_thumbnails,
             song_track: song_track === undefined || song_track === null || "error" in song_track ? undefined : song_track
         }

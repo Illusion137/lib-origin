@@ -39,6 +39,10 @@ export function unsampled_tracks_service(service: MusicServiceType, tracks: Trac
         case "Spotify":      return tracks.filter(track => is_empty(track.spotify_id));
         case "Illusi":       return tracks.filter(track => is_empty(track.illusi_id));
         case "BandLab":      return tracks.filter(track => is_empty(track.bandlab_id));
+        case "Audiomack":    return tracks.filter(track => is_empty(track.audiomack_id));
+        case "Deezer":       return tracks.filter(track => is_empty(track.deezer_id));
+        case "Tidal":        return tracks.filter(track => is_empty(track.tidal_id));
+        case "Pandora":      return tracks.filter(track => is_empty(track.pandora_id));
         case "Musi":
         case "API":
         default: return [];

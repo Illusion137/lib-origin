@@ -6,7 +6,7 @@ import TrackPlayer, {
     RepeatMode,
     TrackType
 }
-    from 'react-native-track-player';
+from 'react-native-track-player';
 import { is_empty, recreate } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
@@ -25,6 +25,7 @@ import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
+import { VibesSampler } from './vibes_sampler';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
@@ -149,6 +150,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     if (!("error" in nt_response)) track = nt_response;
     // Note: TrackPlayer will auto removed failed files, don't bother with checking if file exist
     const artwork = resolved_artwork(track.playback!.artwork);
+    VibesSampler.predict_track_save_result(track).catch(catch_log);
     return {
         url: url_data.url,
         title: track.title,

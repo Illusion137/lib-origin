@@ -1,399 +1,452 @@
-import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, IllusiveThumbnail, InheritedPlaylist, InheritedSearch, ISOString, LinkedPlaylist, NamedUUID, Track, TrackMetaData } from '@illusive/types';
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, ISOString } from "@illusive/types";
 
-// ---------------------------------------------------------------------------
-// Supabase Database type definitions
-// Mirrors the schema in supabase/migrations/20260324000000_init.sql
-// ---------------------------------------------------------------------------
+export type Json = any;
 
 export interface Database {
-    __InternalSupabase: {
-        PostgrestVersion: '13.0.5'
-    }
-    public: {
-        Tables: {
-
-            // ----------------------------------------------------------------
-            // tracks — global enrichment pool (shared across all users)
-            // ----------------------------------------------------------------
-            tracks: {
-                Row: {
-                    uid: string
-                    title: string
-                    alt_title: string
-                    artists: NamedUUID[]
-                    duration: number
-                    prods: string
-                    genre: string
-                    tags: string[]
-                    explicit: ExplicitMode
-                    unreleased: boolean
-                    album: NamedUUID
-                    illusi_id: string
-                    imported_id: string
-                    youtube_id: string
-                    youtubemusic_id: string
-                    soundcloud_id: number
-                    soundcloud_permalink: string
-                    spotify_id: string
-                    amazonmusic_id: string
-                    applemusic_id: string
-                    bandlab_id: string
-                    artwork_url: string
-                    deleted: boolean
-                    created_at: string
-                    modified_at: string
-                }
-                Insert: {
-                    uid: string
-                    title?: string
-                    alt_title?: string
-                    artists?: NamedUUID[]
-                    duration?: number
-                    prods?: string
-                    genre?: string
-                    tags?: string[]
-                    explicit?: ExplicitMode
-                    unreleased?: boolean
-                    album?: NamedUUID
-                    illusi_id?: string
-                    imported_id?: string
-                    youtube_id?: string
-                    youtubemusic_id?: string
-                    soundcloud_id?: number
-                    soundcloud_permalink?: string
-                    spotify_id?: string
-                    amazonmusic_id?: string
-                    applemusic_id?: string
-                    bandlab_id?: string
-                    artwork_url?: string
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Update: {
-                    uid?: string
-                    title?: string
-                    alt_title?: string
-                    artists?: NamedUUID[]
-                    duration?: number
-                    prods?: string
-                    genre?: string
-                    tags?: string[]
-                    explicit?: ExplicitMode
-                    unreleased?: boolean
-                    album?: NamedUUID
-                    illusi_id?: string
-                    imported_id?: string
-                    youtube_id?: string
-                    youtubemusic_id?: string
-                    soundcloud_id?: number
-                    soundcloud_permalink?: string
-                    spotify_id?: string
-                    amazonmusic_id?: string
-                    applemusic_id?: string
-                    bandlab_id?: string
-                    artwork_url?: string
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Relationships: []
-            }
-
-            // ----------------------------------------------------------------
-            // utracks — per-user track ownership + personal data
-            // ----------------------------------------------------------------
-            utracks: {
-                Row: {
-                    id: number
-                    user_uid: string
-                    track_uid: string
-                    plays: number
-                    meta: TrackMetaData
-                    deleted: boolean
-                    created_at: string
-                    modified_at: string
-                }
-                Insert: {
-                    id?: number
-                    user_uid: string
-                    track_uid: string
-                    plays?: number
-                    meta?: TrackMetaData
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Update: {
-                    id?: number
-                    user_uid?: string
-                    track_uid?: string
-                    plays?: number
-                    meta?: TrackMetaData
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: 'utracks_track_uid_fkey'
-                        columns: ['track_uid']
-                        isOneToOne: false
-                        referencedRelation: 'tracks'
-                        referencedColumns: ['uid']
-                    }
-                ]
-            }
-
-            // ----------------------------------------------------------------
-            // playlists — per-user
-            // ----------------------------------------------------------------
-            playlists: {
-                Row: {
-                    id: number
-                    uuid: string
-                    user_uid: string | null
-                    title: string
-                    description: string
-                    pinned: boolean
-                    archived: boolean
-                    sort: string
-                    public: boolean
-                    public_uuid: string
-                    inherited_playlists: InheritedPlaylist[]
-                    inherited_searchs: InheritedSearch[]
-                    linked_playlists: LinkedPlaylist[]
-                    deleted: boolean
-                    created_at: string
-                    modified_at: string
-                }
-                Insert: {
-                    id?: number
-                    uuid: string
-                    user_uid?: string | null
-                    title?: string
-                    description?: string
-                    pinned?: boolean
-                    archived?: boolean
-                    sort?: string
-                    public?: boolean
-                    public_uuid?: string
-                    inherited_playlists?: InheritedPlaylist[]
-                    inherited_searchs?: InheritedSearch[]
-                    linked_playlists?: LinkedPlaylist[]
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Update: {
-                    id?: number
-                    uuid?: string
-                    user_uid?: string | null
-                    title?: string
-                    description?: string
-                    pinned?: boolean
-                    archived?: boolean
-                    sort?: string
-                    public?: boolean
-                    public_uuid?: string
-                    inherited_playlists?: InheritedPlaylist[]
-                    inherited_searchs?: InheritedSearch[]
-                    linked_playlists?: LinkedPlaylist[]
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Relationships: []
-            }
-
-            // ----------------------------------------------------------------
-            // playlists_tracks — per-user junction
-            // ----------------------------------------------------------------
-            playlists_tracks: {
-                Row: {
-                    id: number
-                    uuid: string
-                    track_uid: string
-                    deleted: boolean
-                    created_at: string
-                    modified_at: string
-                }
-                Insert: {
-                    id?: number
-                    uuid: string
-                    track_uid: string
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Update: {
-                    id?: number
-                    uuid?: string
-                    track_uid?: string
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: 'playlists_tracks_track_uid_fkey'
-                        columns: ['track_uid']
-                        isOneToOne: false
-                        referencedRelation: 'tracks'
-                        referencedColumns: ['uid']
-                    }
-                ]
-            }
-
-            // ----------------------------------------------------------------
-            // new_releases — per-user
-            // ----------------------------------------------------------------
-            new_releases: {
-                Row: {
-                    id: number
-                    user_uid: string | null
-                    title: NamedUUID
-                    artist: NamedUUID[]
-                    artwork_url: string
-                    artwork_thumbnails: IllusiveThumbnail[]
-                    explicit: ExplicitMode
-                    album_type: CompactPlaylistAlbumType
-                    type: CompactPlaylistType
-                    date: ISOString
-                    song_track: Track | null
-                    deleted: boolean
-                    created_at: string
-                    modified_at: string
-                }
-                Insert: {
-                    id?: number
-                    user_uid?: string | null
-                    title?: NamedUUID
-                    artist?: NamedUUID[]
-                    artwork_url?: string
-                    artwork_thumbnails?: IllusiveThumbnail[]
-                    explicit?: ExplicitMode
-                    album_type?: CompactPlaylistAlbumType
-                    type?: CompactPlaylistType
-                    date?: ISOString
-                    song_track?: Track | null
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Update: {
-                    id?: number
-                    user_uid?: string | null
-                    title?: NamedUUID
-                    artist?: NamedUUID[]
-                    artwork_url?: string
-                    artwork_thumbnails?: IllusiveThumbnail[]
-                    explicit?: ExplicitMode
-                    album_type?: CompactPlaylistAlbumType
-                    type?: CompactPlaylistType
-                    date?: ISOString
-                    song_track?: Track | null
-                    deleted?: boolean
-                    created_at?: string
-                    modified_at?: string
-                }
-                Relationships: []
-            }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      new_releases: {
+        Row: {
+          album_type: CompactPlaylistAlbumType
+          artist: Json
+          artwork_thumbnails: Json
+          artwork_url: string
+          created_at: string
+          date: ISOString
+          deleted: boolean
+          explicit: ExplicitMode
+          id: number
+          modified_at: string
+          song_track: Json | null
+          title: Json
+          type: CompactPlaylistType
+          user_uid: string | null
         }
-        Views: Record<never, never>
-        Functions: {
-            resolve_or_insert_tracks: {
-                Args: { tracks_json: unknown }
-                Returns: { local_uid: string; canonical_uid: string }[]
-            }
+        Insert: {
+          album_type?: string
+          artist?: Json
+          artwork_thumbnails?: Json
+          artwork_url?: string
+          created_at?: string
+          date?: string
+          deleted?: boolean
+          explicit?: string
+          id?: number
+          modified_at?: string
+          song_track?: Json | null
+          title?: Json
+          type?: string
+          user_uid?: string | null
         }
-        Enums: Record<never, never>
-        CompositeTypes: Record<never, never>
+        Update: {
+          album_type?: string
+          artist?: Json
+          artwork_thumbnails?: Json
+          artwork_url?: string
+          created_at?: string
+          date?: string
+          deleted?: boolean
+          explicit?: string
+          id?: number
+          modified_at?: string
+          song_track?: Json | null
+          title?: Json
+          type?: string
+          user_uid?: string | null
+        }
+        Relationships: []
+      }
+      playlists: {
+        Row: {
+          archived: boolean
+          created_at: string
+          deleted: boolean
+          description: string
+          id: number
+          inherited_playlists: Json
+          inherited_searchs: Json
+          linked_playlists: Json
+          modified_at: string
+          pinned: boolean
+          public: boolean
+          public_uuid: string
+          sort: string
+          title: string
+          user_uid: string | null
+          uuid: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          deleted?: boolean
+          description?: string
+          id?: number
+          inherited_playlists?: Json
+          inherited_searchs?: Json
+          linked_playlists?: Json
+          modified_at?: string
+          pinned?: boolean
+          public?: boolean
+          public_uuid?: string
+          sort?: string
+          title?: string
+          user_uid?: string | null
+          uuid: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          deleted?: boolean
+          description?: string
+          id?: number
+          inherited_playlists?: Json
+          inherited_searchs?: Json
+          linked_playlists?: Json
+          modified_at?: string
+          pinned?: boolean
+          public?: boolean
+          public_uuid?: string
+          sort?: string
+          title?: string
+          user_uid?: string | null
+          uuid?: string
+        }
+        Relationships: []
+      }
+      playlists_tracks: {
+        Row: {
+          created_at: string
+          deleted: boolean
+          id: number
+          modified_at: string
+          track_uid: string
+          uuid: string
+        }
+        Insert: {
+          created_at?: string
+          deleted?: boolean
+          id?: number
+          modified_at?: string
+          track_uid: string
+          uuid: string
+        }
+        Update: {
+          created_at?: string
+          deleted?: boolean
+          id?: number
+          modified_at?: string
+          track_uid?: string
+          uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlists_tracks_track_uid_fkey"
+            columns: ["track_uid"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      tracks: {
+        Row: {
+          acousticness: number
+          album: Json
+          alt_title: string
+          amazonmusic_id: string
+          applemusic_id: string
+          artists: Json
+          artwork_url: string
+          audiomack_id: string
+          bandlab_id: string
+          created_at: string
+          danceability: number
+          deezer_id: string
+          deleted: boolean
+          duration: number
+          energy: number
+          explicit: ExplicitMode
+          genre: string
+          illusi_id: string
+          imported_id: string
+          instrumentalness: number
+          liveness: number
+          modified_at: string
+          pandora_id: string
+          prods: string
+          soundcloud_id: number
+          soundcloud_permalink: string
+          speechiness: number
+          spotify_id: string
+          tags: Json
+          tidal_id: string
+          title: string
+          uid: string
+          unreleased: boolean
+          valence: number
+          youtube_id: string
+          youtubemusic_id: string
+        }
+        Insert: {
+          acousticness?: number
+          album?: Json
+          alt_title?: string
+          amazonmusic_id?: string
+          applemusic_id?: string
+          artists?: Json
+          artwork_url?: string
+          audiomack_id?: string
+          bandlab_id?: string
+          created_at?: string
+          danceability?: number
+          deezer_id?: string
+          deleted?: boolean
+          duration?: number
+          energy?: number
+          explicit?: string
+          genre?: string
+          illusi_id?: string
+          imported_id?: string
+          instrumentalness?: number
+          liveness?: number
+          modified_at?: string
+          pandora_id?: string
+          prods?: string
+          soundcloud_id?: number
+          soundcloud_permalink?: string
+          speechiness?: number
+          spotify_id?: string
+          tags?: Json
+          tidal_id?: string
+          title?: string
+          uid: string
+          unreleased?: boolean
+          valence?: number
+          youtube_id?: string
+          youtubemusic_id?: string
+        }
+        Update: {
+          acousticness?: number
+          album?: Json
+          alt_title?: string
+          amazonmusic_id?: string
+          applemusic_id?: string
+          artists?: Json
+          artwork_url?: string
+          audiomack_id?: string
+          bandlab_id?: string
+          created_at?: string
+          danceability?: number
+          deezer_id?: string
+          deleted?: boolean
+          duration?: number
+          energy?: number
+          explicit?: string
+          genre?: string
+          illusi_id?: string
+          imported_id?: string
+          instrumentalness?: number
+          liveness?: number
+          modified_at?: string
+          pandora_id?: string
+          prods?: string
+          soundcloud_id?: number
+          soundcloud_permalink?: string
+          speechiness?: number
+          spotify_id?: string
+          tags?: Json
+          tidal_id?: string
+          title?: string
+          uid?: string
+          unreleased?: boolean
+          valence?: number
+          youtube_id?: string
+          youtubemusic_id?: string
+        }
+        Relationships: []
+      }
+      utracks: {
+        Row: {
+          created_at: string
+          deleted: boolean
+          id: number
+          meta: Json
+          modified_at: string
+          plays: number
+          track_uid: string
+          user_uid: string
+        }
+        Insert: {
+          created_at?: string
+          deleted?: boolean
+          id?: number
+          meta?: Json
+          modified_at?: string
+          plays?: number
+          track_uid: string
+          user_uid: string
+        }
+        Update: {
+          created_at?: string
+          deleted?: boolean
+          id?: number
+          meta?: Json
+          modified_at?: string
+          plays?: number
+          track_uid?: string
+          user_uid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "utracks_track_uid_fkey"
+            columns: ["track_uid"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
     }
+    Views: Record<never, never>
+    Functions: {
+      resolve_or_insert_tracks: {
+        Args: { tracks_json: Json }
+        Returns: {
+          canonical_uid: string
+          local_uid: string
+        }[]
+      }
+    }
+    Enums: Record<never, never>
+    CompositeTypes: Record<never, never>
+  }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-    DefaultSchemaTableNameOrOptions extends
-        | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-        | { schema: keyof DatabaseWithoutInternals },
-    TableName extends DefaultSchemaTableNameOrOptions extends {
-        schema: keyof DatabaseWithoutInternals
-    }
-        ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-              DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-        : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-    ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-          DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
-          Row: infer R
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
       }
-        ? R
-        : never
-    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-      ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
-            Row: infer R
-        }
-          ? R
-          : never
+      ? R
       : never
+    : never
 
 export type TablesInsert<
-    DefaultSchemaTableNameOrOptions extends
-        | keyof DefaultSchema['Tables']
-        | { schema: keyof DatabaseWithoutInternals },
-    TableName extends DefaultSchemaTableNameOrOptions extends {
-        schema: keyof DatabaseWithoutInternals
-    }
-        ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-        : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-    ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-          Insert: infer I
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
       }
-        ? I
-        : never
-    : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-            Insert: infer I
-        }
-          ? I
-          : never
+      ? I
       : never
+    : never
 
 export type TablesUpdate<
-    DefaultSchemaTableNameOrOptions extends
-        | keyof DefaultSchema['Tables']
-        | { schema: keyof DatabaseWithoutInternals },
-    TableName extends DefaultSchemaTableNameOrOptions extends {
-        schema: keyof DatabaseWithoutInternals
-    }
-        ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-        : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-    ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-          Update: infer U
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
       }
-        ? U
-        : never
-    : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-            Update: infer U
-        }
-          ? U
-          : never
+      ? U
       : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
-    public: {
-        Enums: {},
-    },
+  public: {
+    Enums: {},
+  },
 } as const

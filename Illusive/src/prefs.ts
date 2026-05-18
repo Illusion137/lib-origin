@@ -59,9 +59,16 @@ export namespace Prefs {
         has_synced_lyrics_dl: 0,
         plays_from_artist: 0,
         plays_from_album: 0,
-        // plays_in_past_month: 0,
+        plays_in_past_month: 0,
         explicit: 0,
-        no_explicit: 0
+        no_explicit: 0,
+        acousticness: 0,
+        danceability: 0,
+        energy: 0,
+        instrumentalness: 0,
+        liveness: 0,
+        speechiness: 0,
+        valence: 0,
     };
     type Bias = typeof default_track_shuffle_bias;
 
@@ -74,6 +81,10 @@ export namespace Prefs {
         amazon_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
         apple_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
         bandlab_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        audiomack_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        deezer_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        pandora_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        tidal_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
         user_uuid: { default_value: user_uuid, current_value: user_uuid, type: "STRING" } as BasePref<string, OtherPrefTypes>,
         last_synced: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
         automatic_new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,

@@ -22,9 +22,9 @@ export namespace P2P {
     // One-way latency estimate in ms, updated via ping-pong on each connection
     let rtt = 80;
     let connected_peers: string[] = [];
-    let discovered_peers = new Map<string, PeerInfo>();
+    const discovered_peers = new Map<string, PeerInfo>();
     // peer_id → PeerInfo for peers who sent an invitation (host side)
-    let invited_peers = new Map<string, PeerInfo>();
+    const invited_peers = new Map<string, PeerInfo>();
     let pending_timers: ReturnType<typeof setTimeout>[] = [];
     let listener_removers: (() => void)[] = [];
     // Debounce: don't re-broadcast the same play/pause state twice in a row
@@ -264,13 +264,13 @@ export namespace P2P {
                 case 'pause':
                     if (role !== 'guest') break;
                     clear_pending();
-                    schedule(() => TrackPlayer.pause().catch(() => {}), msg.execute_at);
+                    schedule(async () => TrackPlayer.pause().catch(() => {}), msg.execute_at);
                     break;
 
                 case 'seek':
                     if (role !== 'guest') break;
                     clear_pending();
-                    schedule(() => TrackPlayer.seekTo(msg.position).catch(() => {}), msg.execute_at);
+                    schedule(async () => TrackPlayer.seekTo(msg.position).catch(() => {}), msg.execute_at);
                     break;
 
                 case 'track':
@@ -294,7 +294,7 @@ export namespace P2P {
         schedule(() => {
             GLOBALS.global_var.play_tracks(track, [track], 'p2p');
             // Give TrackPlayer ~600ms to load before seeking
-            setTimeout(() => TrackPlayer.seekTo(position).catch(() => {}), 600);
+            setTimeout(async () => TrackPlayer.seekTo(position).catch(() => {}), 600);
         }, execute_at);
     }
 

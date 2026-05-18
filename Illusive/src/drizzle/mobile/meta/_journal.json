@@ -43,6 +43,13 @@
       "when": 1775256309114,
       "tag": "0005_equal_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779065912398,
+      "tag": "0006_illegal_harry_osborn",
+      "breakpoints": true
     }
   ]
 }

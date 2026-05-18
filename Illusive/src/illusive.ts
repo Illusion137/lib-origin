@@ -3,16 +3,16 @@ import { TimedCache, type PromiseResult, type ResponseError } from "@common/type
 import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_array } from "@common/utils/util";
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, illusi_add_tracks_to_playlist, illusi_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from "@illusive/add_delete_tracks_from_playlist";
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, illusi_create_playlist, illusi_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from "@illusive/create_delete_playlist";
-import { bandlab_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from "@illusive/download_from_id";
+import { audiomack_download_from_id, bandlab_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from "@illusive/download_from_id";
 import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
-import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, bandlab_get_playlist, bandlab_get_playlist_continuation, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
+import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, audiomack_get_playlist, bandlab_get_playlist, bandlab_get_playlist_continuation, deezer_get_playlist, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, pandora_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, tidal_get_playlist, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from "@illusive/get_playlist";
 import { get_soundcloud_track_mix, get_youtube_music_track_mix, get_youtube_track_mix } from "@illusive/get_track_mix";
 import { soundcloud_get_related, youtube_music_get_related } from '@illusive/get_related';
-import { amazon_music_get_user_playlists, apple_music_get_user_playlists, bandlab_get_user_playlists, illusi_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
+import { amazon_music_get_user_playlists, apple_music_get_user_playlists, audiomack_get_user_playlists, bandlab_get_user_playlists, deezer_get_user_playlists, illusi_get_user_playlists, pandora_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, tidal_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from "@illusive/get_user_playlist";
 import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from "@illusive/illusive_utils";
 import { Prefs } from "@illusive/prefs";
-import { amazon_music_search, apple_music_search, illusi_search, soundcloud_search, soundcloud_search_continuation, spotify_search, youtube_music_search, youtube_search } from "@illusive/search";
+import { amazon_music_search, apple_music_search, audiomack_search, deezer_search, illusi_search, pandora_search, soundcloud_search, soundcloud_search_continuation, spotify_search, tidal_search, youtube_music_search, youtube_search } from "@illusive/search";
 import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from "@illusive/types";
 import { MusicService } from "@illusive/types";
 import { illusi_get_new_releases, soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
@@ -208,6 +208,78 @@ export namespace Illusive {
             get_user_playlists: bandlab_get_user_playlists,
             download_from_id: bandlab_download_from_id,
         });
+    const audiomack = new MusicService(
+        {
+            app_icon: 'https://play-lh.googleusercontent.com/N8jJ89I7bTbahRBzqb62BAbNQtmhFleBdHrUkEIgPiSb3QbAXQ=s128',
+            web_view_url: 'https://audiomack.com/',
+            pref_cookie_jar: "audiomack_cookie_jar",
+            valid_playlist_url_regex: /(https?:\/\/)?(www\.|m\.)?audiomack\.com\/.+\/(album|playlist)\/.+/i,
+            link_text: 'https://audiomack.com/.../album/... or \n - https://audiomack.com/.../playlist/...',
+            required_cookie_credentials: [],
+            get_user_playlists: audiomack_get_user_playlists,
+            get_playlist: audiomack_get_playlist,
+            search: audiomack_search,
+            explore: undefined,
+            create_playlist: undefined,
+            delete_playlist: undefined,
+            add_tracks_to_playlist: undefined,
+            delete_tracks_from_playlist: undefined,
+            download_from_id: audiomack_download_from_id,
+        });
+    const deezer = new MusicService(
+        {
+            app_icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple112/v4/15/e4/19/15e419a5-0d27-4ae7-c80f-c7f03b0e79e8/AppIcon-0-0-1x_U007emarketing-0-0-0-5-0-0-0-85-220.png/246x0w.webp',
+            web_view_url: 'https://www.deezer.com/',
+            pref_cookie_jar: "deezer_cookie_jar",
+            valid_playlist_url_regex: /(https?:\/\/)?(www\.)?deezer\.com\/([a-z]{2}\/)?(?:album|playlist)\/.+/i,
+            link_text: 'https://www.deezer.com/album/... or \n - https://www.deezer.com/playlist/...',
+            required_cookie_credentials: [],
+            cookie_jar_callback: () => Prefs.get_pref("deezer_cookie_jar"),
+            get_user_playlists: deezer_get_user_playlists,
+            get_playlist: deezer_get_playlist,
+            search: deezer_search,
+            explore: undefined,
+            create_playlist: undefined,
+            delete_playlist: undefined,
+            add_tracks_to_playlist: undefined,
+            delete_tracks_from_playlist: undefined,
+        });
+    const pandora = new MusicService(
+        {
+            app_icon: 'https://is4-ssl.mzstatic.com/image/thumb/Purple112/v4/6a/5c/2f/6a5c2fb5-3b50-db50-7e4e-78e1ebaa71d5/AppIcon-1x_U007emarketing-0-7-0-85-220.png/246x0w.webp',
+            web_view_url: 'https://www.pandora.com/',
+            pref_cookie_jar: "pandora_cookie_jar",
+            valid_playlist_url_regex: /(https?:\/\/)?(www\.)?pandora\.com\/(playlist|station)\/.+/i,
+            link_text: 'https://www.pandora.com/playlist/...',
+            required_cookie_credentials: [],
+            cookie_jar_callback: () => Prefs.get_pref("pandora_cookie_jar"),
+            get_user_playlists: pandora_get_user_playlists,
+            get_playlist: pandora_get_playlist,
+            search: pandora_search,
+            explore: undefined,
+            create_playlist: undefined,
+            delete_playlist: undefined,
+            add_tracks_to_playlist: undefined,
+            delete_tracks_from_playlist: undefined,
+        });
+    const tidal = new MusicService(
+        {
+            app_icon: 'https://is3-ssl.mzstatic.com/image/thumb/Purple122/v4/2c/f5/2d/2cf52d6b-9a74-88ce-3a68-7c08e2cdf2e1/AppIcon-0-0-1x_U007emarketing-0-0-0-10-0-0-0-85-220.png/246x0w.webp',
+            web_view_url: 'https://listen.tidal.com/',
+            pref_cookie_jar: "tidal_cookie_jar",
+            valid_playlist_url_regex: /(https?:\/\/)(www\.)?tidal\.com\/browse\/(album|playlist)\/.+/i,
+            link_text: 'https://tidal.com/browse/album/... or \n - https://tidal.com/browse/playlist/...',
+            required_cookie_credentials: [],
+            cookie_jar_callback: () => Prefs.get_pref("tidal_cookie_jar"),
+            get_user_playlists: tidal_get_user_playlists,
+            get_playlist: tidal_get_playlist,
+            search: tidal_search,
+            explore: undefined,
+            create_playlist: undefined,
+            delete_playlist: undefined,
+            add_tracks_to_playlist: undefined,
+            delete_tracks_from_playlist: undefined,
+        });
     const api = new MusicService(
         {
             app_icon: illusi_dark_icon_index,
@@ -227,6 +299,10 @@ export namespace Illusive {
         ["Illusi", illusi],
         ["Musi", musi],
         ["BandLab", bandlab],
+        ["Audiomack", audiomack],
+        ["Deezer", deezer],
+        ["Pandora", pandora],
+        ["Tidal", tidal],
         ["API", api],
     ]);
     export const free_music_services: MusicServiceType[] = ["API", "Illusi", "Musi", "YouTube", "Spotify", "SoundCloud", "Apple Music"];
@@ -244,6 +320,8 @@ export namespace Illusive {
             return download_url_timed_cache.update(key, await music_service.get("SoundCloud")!.download_from_id!(track.soundcloud_permalink!, quality!, retry_mode ? track : undefined));
         else if (!is_empty(track.bandlab_id))
             return download_url_timed_cache.update(key, await music_service.get("BandLab")!.download_from_id!(track.bandlab_id!, quality!, retry_mode ? track : undefined));
+        else if (!is_empty(track.audiomack_id))
+            return download_url_timed_cache.update(key, await music_service.get("Audiomack")!.download_from_id!(track.audiomack_id!, quality!, retry_mode ? track : undefined));
         const new_track_data = await convert_track(track, {});
         if ("error" in new_track_data) return new_track_data;
         if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror("No track data found in getting download_url", "CRITICAL", { track, quality, redownload_mode });

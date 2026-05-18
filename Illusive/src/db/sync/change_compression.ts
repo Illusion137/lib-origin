@@ -1,3 +1,4 @@
+import type { Playlist, Track } from '@illusive/types';
 import type { ChangeOp, CompressedChange, LocalTableName } from './types';
 
 export interface ChangeLogLikeRow {
@@ -110,7 +111,7 @@ function is_zero_means_unknown_field(field_name: string): boolean {
 }
 
 function is_optional_field(field_name: string): boolean {
-    const optional_fields = [
+    const optional_fields: (keyof Track | keyof Playlist)[] = [
         'alt_title',
         'prods',
         'genre',
@@ -122,9 +123,10 @@ function is_optional_field(field_name: string): boolean {
         'amazonmusic_id',
         'applemusic_id',
         'bandlab_id',
+        'audiomack_id',
         'artwork_url',
         'thumbnail_uri',
         'lyrics_uri',
     ];
-    return optional_fields.includes(field_name);
+    return (optional_fields as string[]).includes(field_name);
 }

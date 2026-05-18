@@ -27,6 +27,9 @@ export function get_first_word_str(args: string[], i: number): string{
 export function get_word_num(args: string[], i: number): number{
     return parseInt((args?.[i] ?? "").trim());
 }
+export function get_word_float(args: string[], i: number): number{
+    return parseFloat((args?.[i] ?? "").trim());
+}
 
 export function included_in(str1: string, from_str: string): boolean{
     return from_str.trim().toLowerCase().includes(str1.trim().toLowerCase());
@@ -100,10 +103,30 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         condition: (track) => !is_empty(track.amazonmusic_id),
         description: "Has a Amazon Music ID"
     },
-        {
+    {
         flag: '@bl',
         condition: (track) => !is_empty(track.bandlab_id),
         description: "Has a BandLab ID"
+    },
+    {
+        flag: '@amk',
+        condition: (track) => !is_empty(track.audiomack_id),
+        description: "Has an Audiomack ID"
+    },
+    {
+        flag: '@dz',
+        condition: (track) => !is_empty(track.deezer_id),
+        description: "Has a Deezer ID"
+    },
+    {
+        flag: '@td',
+        condition: (track) => !is_empty(track.tidal_id),
+        description: "Has a Tidal ID"
+    },
+    {
+        flag: '@pda',
+        condition: (track) => !is_empty(track.pandora_id),
+        description: "Has a Pandora ID"
     },
     {
         flag: '@sp',
@@ -284,6 +307,90 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
         flag: '@ddl',
         condition: (track, args) => (new Date(track.meta?.downloaded_date ?? 0)).getTime() <= Date.now() - (get_word_num(args, 0) * 1000 * 60 * 60 * 24),
         description: "Downloaded before [x] days ago",
+        args: 1
+    },
+    {
+        flag: '@acl',
+        condition: (track, args) => (track.acousticness ?? 0) <= get_word_float(args, 0),
+        description: "Acousticness confidence less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@acg',
+        condition: (track, args) => (track.acousticness ?? 0) >= get_word_float(args, 0),
+        description: "Acousticness confidence greater than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@isl',
+        condition: (track, args) => (track.instrumentalness ?? 0) <= get_word_float(args, 0),
+        description: "Instrumentalness confidence less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@isg',
+        condition: (track, args) => (track.instrumentalness ?? 0) >= get_word_float(args, 0),
+        description: "Instrumentalness confidence greater than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@lvl',
+        condition: (track, args) => (track.liveness ?? 0) <= get_word_float(args, 0),
+        description: "Liveness confidence less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@lvg',
+        condition: (track, args) => (track.liveness ?? 0) >= get_word_float(args, 0),
+        description: "Liveness confidence greater than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@dcl',
+        condition: (track, args) => (track.danceability ?? 0) <= get_word_float(args, 0),
+        description: "Danceability percentage less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@dcg',
+        condition: (track, args) => (track.danceability ?? 0) >= get_word_float(args, 0),
+        description: "Danceability percentage greater than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@egl',
+        condition: (track, args) => (track.energy ?? 0) <= get_word_float(args, 0),
+        description: "Energy percentage less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@egg',
+        condition: (track, args) => (track.energy ?? 0) >= get_word_float(args, 0),
+        description: "Energy percentage greater than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@vll',
+        condition: (track, args) => (track.valence ?? 0) <= get_word_float(args, 0),
+        description: "Valence percentage less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@vlg',
+        condition: (track, args) => (track.valence ?? 0) >= get_word_float(args, 0),
+        description: "Valence percentage greater than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@spl',
+        condition: (track, args) => (track.speechiness ?? 0) <= get_word_float(args, 0),
+        description: "Speechiness percentage less than or equal to [x](0-1)",
+        args: 1
+    },
+    {
+        flag: '@spg',
+        condition: (track, args) => (track.speechiness ?? 0) >= get_word_float(args, 0),
+        description: "Speechiness percentage greater than or equal to [x](0-1)",
         args: 1
     },
     {

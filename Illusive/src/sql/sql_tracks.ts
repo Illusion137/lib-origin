@@ -102,6 +102,11 @@ export namespace SQLTracks {
             applemusic_id: is_empty(track.applemusic_id) ? new_track.applemusic_id : track.applemusic_id,
             soundcloud_id: is_empty(track.soundcloud_id) ? new_track.soundcloud_id : track.soundcloud_id,
             soundcloud_permalink: is_empty(track.soundcloud_permalink) ? new_track.soundcloud_permalink : track.soundcloud_permalink,
+            bandlab_id: is_empty(track.bandlab_id) ? new_track.bandlab_id : track.bandlab_id,
+            audiomack_id: is_empty(track.audiomack_id) ? new_track.audiomack_id : track.audiomack_id,
+            deezer_id: is_empty(track.deezer_id) ? new_track.deezer_id : track.deezer_id,
+            tidal_id: is_empty(track.tidal_id) ? new_track.tidal_id : track.tidal_id,
+            pandora_id: is_empty(track.pandora_id) ? new_track.pandora_id : track.pandora_id,
             artwork_url: is_empty(track.artwork_url) ? new_track.artwork_url : track.artwork_url,
             meta: track.meta
         }

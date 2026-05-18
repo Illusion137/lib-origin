@@ -47,6 +47,12 @@ export async function youtube_download_from_id(video_id: string, quality: string
     } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", "MEDIUM", { video_id, quality }); }
 }
 
+export async function audiomack_download_from_id(track_id: string, _: string): Promise<DownloadFromIdResult | ResponseError> {
+    const url = await Origin.AudiomackDL.get_stream_url({ track_id });
+    if (typeof url === "object") return url;
+    return { url };
+}
+
 export async function bandlab_download_from_id(song_id: string, _: string): Promise<DownloadFromIdResult | ResponseError> {
     const cookie_jar = Prefs.get_pref('bandlab_cookie_jar');
     const url_response = await Origin.BandLab.get_download_url(song_id, {

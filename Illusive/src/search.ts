@@ -19,6 +19,12 @@ import { parse_amazon_music_search_track } from '@illusive/track_parser';
 import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from '@illusive/types';
 import type * as IllusiveTypes from '@illusive/types';
 import { parse_spotify_search_album, parse_spotify_search_track, parse_spotify_similar_artist } from './parsers/spotify_parser';
+import { audiomack_parse_track } from './parsers/audiomack_parser';
+import { deezer_parse_track } from './parsers/deezer_parser';
+import { pandora_parse_track } from './parsers/pandora_parser';
+import { tidal_parse_track } from './parsers/tidal_parser';
+import type { Track as AudiomackTrack } from '@origin/audiomack/types';
+import type { DeezerTrack } from '@origin/deezer/types';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
     return {
@@ -220,7 +226,18 @@ export async function illusi_search(query: string, opts?: SearchOpts): Promise<M
             amazonmusic_id:       t.amazonmusic_id,
             applemusic_id:        t.applemusic_id,
             bandlab_id:           t.bandlab_id,
+            audiomack_id:         t.audiomack_id,
+            deezer_id:            t.deezer_id,
+            tidal_id:             t.tidal_id,
+            pandora_id:           t.pandora_id,
             artwork_url:          t.artwork_url,
+            acousticness:         t.acousticness,
+            danceability:         t.danceability,
+            energy:               t.energy,
+            instrumentalness:     t.instrumentalness,
+            liveness:             t.liveness,
+            speechiness:          t.speechiness,
+            valence:              t.valence,
             plays:                0,
             meta:                 default_meta,
         })),
@@ -228,6 +245,59 @@ export async function illusi_search(query: string, opts?: SearchOpts): Promise<M
         albums:     [],
         artists:    [],
         continuation: null,
+    };
+}
+
+export async function audiomack_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+    const search_response = await Origin.Audiomack.search({ query, limit: opts?.limit ?? 20 });
+    if ("error" in search_response) return default_search(search_response);
+    return {
+        tracks: (search_response.results as AudiomackTrack[]).map(audiomack_parse_track),
+        playlists: [],
+        albums: [],
+        artists: [],
+        continuation: null
+    };
+}
+
+export async function deezer_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+    const cookie_jar = get_cookie_jar('deezer_cookie_jar');
+    const search_response = await Origin.Deezer.search({ query, type: "track", limit: opts?.limit ?? 25, cookie_jar });
+    if ("error" in search_response) return default_search(search_response);
+    return {
+        tracks: (search_response.data as DeezerTrack[]).map(deezer_parse_track),
+        playlists: [],
+        albums: [],
+        artists: [],
+        continuation: null
+    };
+}
+
+export async function pandora_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+    const cookie_jar = get_cookie_jar('pandora_cookie_jar');
+    const search_response = await Origin.Pandora.search({ query, types: ["TR"], page_size: opts?.limit ?? 20, cookie_jar });
+    if ("error" in search_response) return default_search(search_response);
+    const track_ids = search_response.results.tracks?.pandoraIds ?? [];
+    const tracks = track_ids.map(id => search_response.annotations[id]).filter(t => t?.type === "TR");
+    return {
+        tracks: tracks.map(pandora_parse_track),
+        playlists: [],
+        albums: [],
+        artists: [],
+        continuation: null
+    };
+}
+
+export async function tidal_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+    const cookie_jar = get_cookie_jar('tidal_cookie_jar');
+    const search_response = await Origin.Tidal.search({ query, types: ["TRACKS"], limit: opts?.limit ?? 20, cookie_jar });
+    if ("error" in search_response) return default_search(search_response);
+    return {
+        tracks: search_response.tracks.items.map(tidal_parse_track),
+        playlists: [],
+        albums: [],
+        artists: [],
+        continuation: null
     };
 }
 

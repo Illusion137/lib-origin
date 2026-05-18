@@ -1,6 +1,6 @@
 import { gen_uuid, generate_new_uid } from '@common/utils/util';
 import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, IllusiveThumbnail, InheritedPlaylist, InheritedSearch, ISOString, LinkedPlaylist, NamedUUID, SortType, Track, TrackMetaData } from "@illusive/types";
-import { index, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, int, sqliteTable, text, numeric } from "drizzle-orm/sqlite-core";
 
 const tracks_config = {
     id: int().primaryKey({autoIncrement: true}).notNull(),
@@ -26,6 +26,10 @@ const tracks_config = {
     amazonmusic_id: text().notNull().default(""),
     applemusic_id: text().notNull().default(""),
     bandlab_id: text().notNull().default(""),
+    audiomack_id: text().notNull().default(""),
+    deezer_id: text().notNull().default(""),
+    pandora_id: text().notNull().default(""),
+    tidal_id: text().notNull().default(""),
     artwork_url: text().notNull().default(""),
     thumbnail_uri: text().notNull().default(""),
     media_uri: text().notNull().default(""),
@@ -36,9 +40,16 @@ const tracks_config = {
         last_played_date: new Date().toISOString() as ISOString,
         plays: 0,
     })),
+    acousticness: numeric({mode: "number"}).notNull().default(0),
+    danceability: numeric({mode: "number"}).notNull().default(0),
+    energy: numeric({mode: "number"}).notNull().default(0),
+    instrumentalness: numeric({mode: "number"}).notNull().default(0),
+    liveness: numeric({mode: "number"}).notNull().default(0),
+    speechiness: numeric({mode: "number"}).notNull().default(0),
+    valence: numeric({mode: "number"}).notNull().default(0),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now())
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_config = {
