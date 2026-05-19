@@ -210,7 +210,7 @@ export namespace Illusive {
         });
     const audiomack = new MusicService(
         {
-            app_icon: 'https://play-lh.googleusercontent.com/N8jJ89I7bTbahRBzqb62BAbNQtmhFleBdHrUkEIgPiSb3QbAXQ=s128',
+            app_icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/39/1a/3c/391a3cad-ac8a-ee2e-e8a4-108c82e44df2/AppIcon-1-0-0-1x_U007emarketing-0-6-0-85-220.png/350x350.png',
             web_view_url: 'https://audiomack.com/',
             pref_cookie_jar: "audiomack_cookie_jar",
             valid_playlist_url_regex: /(https?:\/\/)?(www\.|m\.)?audiomack\.com\/.+\/(album|playlist)\/.+/i,
@@ -228,7 +228,7 @@ export namespace Illusive {
         });
     const deezer = new MusicService(
         {
-            app_icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple112/v4/15/e4/19/15e419a5-0d27-4ae7-c80f-c7f03b0e79e8/AppIcon-0-0-1x_U007emarketing-0-0-0-5-0-0-0-85-220.png/246x0w.webp',
+            app_icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/72/ab/c4/72abc424-a563-d0b6-7a97-df403e557927/AppIcon-0-0-1x_U007epad-0-11-0-0-85-220.png/350x350.png',
             web_view_url: 'https://www.deezer.com/',
             pref_cookie_jar: "deezer_cookie_jar",
             valid_playlist_url_regex: /(https?:\/\/)?(www\.)?deezer\.com\/([a-z]{2}\/)?(?:album|playlist)\/.+/i,
@@ -246,7 +246,7 @@ export namespace Illusive {
         });
     const pandora = new MusicService(
         {
-            app_icon: 'https://is4-ssl.mzstatic.com/image/thumb/Purple112/v4/6a/5c/2f/6a5c2fb5-3b50-db50-7e4e-78e1ebaa71d5/AppIcon-1x_U007emarketing-0-7-0-85-220.png/246x0w.webp',
+            app_icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/ef/cf/38/efcf3803-0465-9d0f-c773-348caaf33a87/AppIcon-0-0-1x_U007epad-0-1-0-0-85-220.png/350x350.png',
             web_view_url: 'https://www.pandora.com/',
             pref_cookie_jar: "pandora_cookie_jar",
             valid_playlist_url_regex: /(https?:\/\/)?(www\.)?pandora\.com\/(playlist|station)\/.+/i,
@@ -264,7 +264,7 @@ export namespace Illusive {
         });
     const tidal = new MusicService(
         {
-            app_icon: 'https://is3-ssl.mzstatic.com/image/thumb/Purple122/v4/2c/f5/2d/2cf52d6b-9a74-88ce-3a68-7c08e2cdf2e1/AppIcon-0-0-1x_U007emarketing-0-0-0-10-0-0-0-85-220.png/246x0w.webp',
+            app_icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/4f/00/ce/4f00ceac-b719-64cc-6c4c-bd9aea0895d4/AppIcon-0-0-1x_U007epad-0-1-0-85-220.png/350x350.png',
             web_view_url: 'https://listen.tidal.com/',
             pref_cookie_jar: "tidal_cookie_jar",
             valid_playlist_url_regex: /(https?:\/\/)(www\.)?tidal\.com\/browse\/(album|playlist)\/.+/i,
