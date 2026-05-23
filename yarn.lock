@@ -9030,6 +9030,10 @@ react-native-mmkv@^3.3.0:
   resolved "https://registry.yarnpkg.com/react-native-mmkv/-/react-native-mmkv-3.3.3.tgz#1f0326f6314e23725af8145964343224d074e6cd"
   integrity sha512-GMsfOmNzx0p5+CtrCFRVtpOOMYNJXuksBVARSQrCFaZwjUyHJdQzcN900GGaFFNTxw2fs8s5Xje//RDKj9+PZA==
 
+"react-native-mr-lecture@https://github.com/Illusion137/mr-lecture":
+  version "0.1.0"
+  resolved "https://github.com/Illusion137/mr-lecture#7b3460dc1ce3841deda2a496f05e6870b104d3a6"
+
 react-native-nitro-modules@^0.35.2:
   version "0.35.2"
   resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.35.2.tgz#75fbcd42a73d93540c0069d42098d9dc6c12ea7e"

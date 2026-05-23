@@ -132,6 +132,13 @@ export namespace Prefs {
         use_cookies_on_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_artist: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
         dev_mode: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
+
+        audiobook_player_display_mode: { default_value: 'cover_only', current_value: 'cover_only', type: "STRING", visible: true, section: "Audiobooks", description: "What the audiobook player shows while listening: cover art, inline book images, or scrolling reader" } as BasePref<'cover_only' | 'book_images' | 'reader_follow_along', OtherPrefTypes>,
+        audiobook_tts_engine: { default_value: 'avs', current_value: 'avs', type: "STRING", visible: true, section: "Audiobooks", description: "Voice synthesis engine used when generating audiobook audio" } as BasePref<'avs' | 'piper', OtherPrefTypes>,
+        audiobook_tts_voice_id: { default_value: '', current_value: '', type: "STRING", visible: true, section: "Audiobooks", description: "Voice ID for audiobook generation — leave empty to use the device default" } as BasePref<string, OtherPrefTypes>,
+        audiobook_tts_rate: { default_value: 1.0, current_value: 1.0, type: "NUMBER", range: { start: 0.5, end: 2.0 }, visible: true, section: "Audiobooks", description: "Speech rate for audiobook generation (0.5 - 2.0)" } as BasePref<number, OtherPrefTypes>,
+        audiobook_auto_generate: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Audiobooks", description: "Automatically generate audio for a new audiobook on import" } as BasePref<boolean, OtherPrefTypes>,
+        audiobook_reader_highlight_active: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Audiobooks", description: "Highlight the currently spoken paragraph in reader follow-along mode" } as BasePref<boolean, OtherPrefTypes>,
     };
     export type PrefOptions = keyof typeof prefs;
     const user_uuid_key: PrefOptions = "user_uuid";

@@ -8,6 +8,7 @@ import m0003 from './0003_keen_masked_marvel.sql';
 import m0004 from './0004_green_bloodstrike.sql';
 import m0005 from './0005_equal_rafael_vega.sql';
 import m0006 from './0006_illegal_harry_osborn.sql';
+import m0007 from './0007_rapid_loa.sql';
 
   export default {
     journal,
@@ -18,7 +19,8 @@ m0002,
 m0003,
 m0004,
 m0005,
-m0006
+m0006,
+m0007
     }
   }
   

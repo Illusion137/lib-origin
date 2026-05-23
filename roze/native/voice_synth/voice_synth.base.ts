@@ -21,4 +21,5 @@ export interface VoiceSynth {
     get_voices: () => Promise<VoiceBank[]>;
     speak: (text: string, opts: VoiceOptions) => Promise<any>;
     speak_export: (texts: VoiceExportBatchTexts, opts: VoiceOptions) => Promise<any>;
+    set_engine?: (engine: string) => void;
 }

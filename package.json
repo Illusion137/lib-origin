@@ -133,6 +133,7 @@
     "react-native-ios-context-menu": "^3.1.0-0",
     "react-native-level-fs": "^3.0.1",
     "react-native-mmkv": "^3.3.0",
+    "react-native-mr-lecture": "https://github.com/Illusion137/mr-lecture",
     "react-native-nitro-modules": "^0.35.2",
     "react-native-os": "^1.2.6",
     "react-native-permissions": "^5.4.4",

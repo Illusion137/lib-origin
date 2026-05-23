@@ -451,4 +451,15 @@ export namespace FileParser {
             return generror_catch(e, "Failed to parse txt", "CRITICAL", { file_path_or_url, file_path_err, opts });
         }
     }
+
+    export async function parse(source: string, opts: ParseFileOpts = {}): PromiseResult<Roz> {
+        const ext = pathlib.extname(source).toLowerCase();
+        switch (ext) {
+            case ".epub": return parse_epub(source, opts);
+            case ".pdf":  return parse_pdf(source, { paragraph_gap: "autodetect", ...opts });
+            case ".docx": return parse_docx(source, opts);
+            case ".txt":  return parse_txt(source, pathlib.basename(source, ext), opts);
+            default:      return parse_roz(source, opts);
+        }
+    }
 }

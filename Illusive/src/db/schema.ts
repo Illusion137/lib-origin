@@ -158,3 +158,36 @@ const change_log_config = {
 
 export const sync_metadata_table = sqliteTable("sync_metadata", sync_metadata_config);
 export const change_log_table = sqliteTable("change_log", change_log_config);
+
+const audiobooks_config = {
+	id: int().primaryKey({ autoIncrement: true }).notNull(),
+	uuid: text().notNull().unique().$defaultFn(gen_uuid),
+	version: int().notNull().default(1),
+	title: text().notNull().default(""),
+	author: text().notNull().default(""),
+	publisher: text().notNull().default(""),
+	cover: text().notNull().default(""),
+	date: text().notNull().default(""),
+	series_name: text().notNull().default(""),
+	series_no: int().notNull().default(0),
+	source_file: text().notNull().default(""),
+	source_file_type: text().notNull().default("FILEBASE"),
+	roz_uri: text().notNull().default(""),
+	source_raw_uri: text().notNull().default(""),
+	total_duration_ms: int().notNull().default(0),
+	chapter_count: int().notNull().default(0),
+	tts_engine: text().notNull().default(""),
+	tts_voice_id: text().notNull().default(""),
+	last_chapter_index: int().notNull().default(0),
+	last_chapter_timestamp_ms: int().notNull().default(0),
+	total_listened_ms: int().notNull().default(0),
+	added_date: text().notNull().$defaultFn(() => new Date().toISOString()),
+	last_read_date: text().notNull().default(""),
+	deleted: int({ mode: 'boolean' }).notNull().default(false),
+	created_at: int().notNull().$defaultFn(() => Date.now()),
+	modified_at: int().notNull().$defaultFn(() => Date.now()),
+} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+
+export const audiobooks_table = sqliteTable("audiobooks", audiobooks_config, (table) => ([index("audiobooks_uuid_idx").on(table.uuid)]));
+export type AudiobookTableItem = typeof audiobooks_table.$inferSelect;
+export type AudiobookTableInsert = typeof audiobooks_table.$inferInsert;
