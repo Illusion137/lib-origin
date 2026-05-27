@@ -361,4 +361,7 @@ ${challenge_js}`);
             items: view.items.filter(item => !opts.filter || item.href.includes(opts.path))
         }
     }
+    export function select_item(item: ViewItems['items'][0]){
+        return `https://server.elscione.com${item.href}`;
+    }
 }
