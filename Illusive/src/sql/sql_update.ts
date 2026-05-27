@@ -20,6 +20,7 @@ import {
     new_releases_table,
     playlists_table,
     playlists_tracks_table,
+    sync_metadata_table,
     tracks_table
 } from "@illusive/db/schema";
 import { LSQLParser } from "@illusive/legacy/1720/legacy_sql_parser";
@@ -247,6 +248,14 @@ export namespace SQLUpdate {
                     console.warn("Failed to crop thumbnail for track", track.uid, e);
                 }
             }
+            return true;
+        });
+        await update_to("21.0.0", async() => {
+            // Pull watermarks were previously stamped with client `Date.now()` instead of the
+            // server's max `modified_at`. A client clock ahead of the DB could leave watermarks
+            // permanently past unseen server rows. Clearing sync_metadata triggers a full re-pull
+            // from epoch on the next sync cycle — equivalent to the pull-reset half of resync().
+            await db.delete(sync_metadata_table);
             return true;
         });
     }

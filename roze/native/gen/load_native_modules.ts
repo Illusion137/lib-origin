@@ -9,6 +9,7 @@ import { load_native_zip } from "@native/zip/zip";
 import { load_native_ffprobe } from "@native/ffprobe/ffprobe";
 import { load_native_jseval } from "@native/jseval/jseval";
 import { load_native_document_picker } from "@native/document_picker/document_picker";
+import { load_native_sqlite } from "@native/sqlite/sqlite";
 
 export async function load_native_modules() {
 	await Promise.all([
@@ -22,6 +23,7 @@ export async function load_native_modules() {
 		load_native_zip(),
 		load_native_ffprobe(),
 		load_native_jseval(),
-		load_native_document_picker()
+		load_native_document_picker(),
+		load_native_sqlite(),
 	]);
 }

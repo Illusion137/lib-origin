@@ -23,6 +23,7 @@ import { SQLRecentlyPlayed } from '@illusive/sql/sql_recently_played';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
+import { breadcrumb } from '@common/sentry_error_handler';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
 import { VibesSampler } from './vibes_sampler';
@@ -151,13 +152,27 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     // Note: TrackPlayer will auto removed failed files, don't bother with checking if file exist
     const artwork = resolved_artwork(track.playback!.artwork);
     VibesSampler.predict_track_save_result(track).catch(catch_log);
+    const artwork_payload = typeof artwork === "number" ? artwork : artwork.uri;
+    breadcrumb('track-player', 'illusive_track_to_track_player_track', {
+        title: track.title,
+        artwork_type: typeof artwork_payload,
+        artwork_uri: typeof artwork_payload === 'string' ? artwork_payload : null,
+        artwork_scheme: typeof artwork_payload === 'string'
+            ? (artwork_payload.startsWith('file:///') ? 'file:///'
+                : artwork_payload.startsWith('file://') ? 'file://'
+                : artwork_payload.startsWith('file:/') ? 'file:/'
+                : artwork_payload.startsWith('http') ? 'http'
+                : 'other')
+            : 'asset',
+        has_thumbnail_uri: !is_empty(track.thumbnail_uri),
+    });
     return {
         url: url_data.url,
         title: track.title,
         artist: artist_string(track),
         album: track.album?.name,
         duration: track.duration,
-        artwork: typeof artwork === "number" ? artwork : artwork.uri,
+        artwork: artwork_payload,
         type: is_empty(track.soundcloud_id) ? TrackType.HLS : TrackType.HLS,
         headers: {},
         contentType: 'audio/mp4',
@@ -287,11 +302,19 @@ export async function track_player_on_error(data: { error: string }) {
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => { return });
     TrackPlayer.addEventListener(Event.PlaybackError, async (data) => {
+        breadcrumb('track-player', 'PlaybackError', { data: data as unknown as Record<string, unknown> });
         await track_player_on_error(reinterpret_cast<{ error: string }>(data));
     });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             if (data.index === undefined) return;
+            const active = GLOBALS.global_var.playing_tracks[data.index];
+            breadcrumb('track-player', 'PlaybackActiveTrackChanged', {
+                index: data.index,
+                title: active?.title,
+                added: active?.playback?.added,
+                successful: active?.playback?.successful,
+            });
             updated_metadata_mutex = false;
             const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
             if (illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
@@ -335,9 +358,9 @@ export async function playback_service() {
             check_push_next_track(data.track).catch(catch_log);
         } catch (_) { }
     });
-    TrackPlayer.addEventListener(Event.RemotePrevious, async () => { await track_player_previous(); });
-    TrackPlayer.addEventListener(Event.RemoteNext, async () => { await track_player_next(); });
-    TrackPlayer.addEventListener(Event.RemotePause, async () => { await TrackPlayer.pause(); });
-    TrackPlayer.addEventListener(Event.RemotePlay, async () => { await TrackPlayer.play(); });
-    TrackPlayer.addEventListener(Event.RemoteSeek, async (data) => { await TrackPlayer.seekTo(data.position); });
+    TrackPlayer.addEventListener(Event.RemotePrevious, async () => { breadcrumb('track-player', 'RemotePrevious'); await track_player_previous(); });
+    TrackPlayer.addEventListener(Event.RemoteNext, async () => { breadcrumb('track-player', 'RemoteNext'); await track_player_next(); });
+    TrackPlayer.addEventListener(Event.RemotePause, async () => { breadcrumb('track-player', 'RemotePause'); await TrackPlayer.pause(); });
+    TrackPlayer.addEventListener(Event.RemotePlay, async () => { breadcrumb('track-player', 'RemotePlay'); await TrackPlayer.play(); });
+    TrackPlayer.addEventListener(Event.RemoteSeek, async (data) => { breadcrumb('track-player', 'RemoteSeek', { position: data.position }); await TrackPlayer.seekTo(data.position); });
 }

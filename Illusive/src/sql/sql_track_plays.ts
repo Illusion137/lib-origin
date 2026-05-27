@@ -4,6 +4,7 @@ import type { Track } from "@illusive/types";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { groupby } from "@common/utils/util";
 import { DrizzleUtils } from "@common/utils/drizzle_utils";
+import { sqlite } from "@native/sqlite/sqlite";
 
 export namespace SQLTrackPlays {
     interface DateRange {
@@ -40,7 +41,7 @@ export namespace SQLTrackPlays {
     }
     export function count_all_track_plays_sync(date_range: DateRange) {
         const { date_start, date_end } = date_range_num(date_range);
-        const dz = new DrizzleUtils(db.$client);
+        const dz = new DrizzleUtils(sqlite().wrap_client(db.$client));
         const timestamps_objs = dz.get_all_sync_dz(db.select({ track_uid: track_plays_table.track_uid, created_at: track_plays_table.created_at })
             .from(track_plays_table)
             .where(
@@ -54,7 +55,7 @@ export namespace SQLTrackPlays {
     }
     export function all_track_plays_sync(date_range: DateRange) {
         const { date_start, date_end } = date_range_num(date_range);
-        const dz = new DrizzleUtils(db.$client);
+        const dz = new DrizzleUtils(sqlite().wrap_client(db.$client));
         const timestamps_objs = dz.get_all_sync_dz(db.select({ track_uid: track_plays_table.track_uid, created_at: track_plays_table.created_at })
             .from(track_plays_table)
             .where(
@@ -82,7 +83,7 @@ export namespace SQLTrackPlays {
     }
     export function count_track_plays_sync(track_uid: Track['uid'], date_range: DateRange) {
         const { date_start, date_end } = date_range_num(date_range);
-        const dz = new DrizzleUtils(db.$client);
+        const dz = new DrizzleUtils(sqlite().wrap_client(db.$client));
         const timestamps_objs = dz.get_all_sync_dz(db.select({ created_at: track_plays_table.created_at })
             .from(track_plays_table)
             .where(
@@ -97,7 +98,7 @@ export namespace SQLTrackPlays {
     }
     export function get_track_plays_dates_sync(track_uid: Track['uid'], date_range: DateRange) {
         const { date_start, date_end } = date_range_num(date_range);
-        const dz = new DrizzleUtils(db.$client);
+        const dz = new DrizzleUtils(sqlite().wrap_client(db.$client));
         const timestamps_objs = dz.get_all_sync_dz(db.select({ created_at: track_plays_table.created_at })
             .from(track_plays_table)
             .where(

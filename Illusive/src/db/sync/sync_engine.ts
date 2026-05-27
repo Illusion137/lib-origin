@@ -776,31 +776,42 @@ export class SyncEngine {
         // Subtract a small overlap (2 s) to tolerate clock skew between client and DB server.
         const last_sync_iso = new Date((metadata?.last_sync_at ?? 0) - 2000).toISOString();
 
-        const pull_started_at = Date.now();
-        const pull_started_iso = new Date(pull_started_at).toISOString();
-
         switch (table_name) {
-            case 'tracks': await this.pull_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
-            case 'playlists': await this.pull_playlists(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
-            case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, pull_started_iso, pull_started_at, user_uid); break;
+            case 'tracks': await this.pull_tracks(last_sync_iso, user_uid); break;
+            case 'playlists': await this.pull_playlists(last_sync_iso, user_uid); break;
+            case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, user_uid); break;
             case "new_releases":
             default: break;
         }
     }
 
-    private async save_pull_watermark(table_name: SyncableLocalTableName, pull_started_at: number) {
+    /**
+     * Watermark is the maximum server-side `modified_at` observed in this pull.
+     * Using the server's own timestamp (not client `Date.now()`) avoids skipping
+     * rows when the client clock runs ahead of the DB clock.
+     * If nothing was observed we leave the existing watermark untouched —
+     * the next sync re-queries the same range and is cheap when empty.
+     */
+    private async save_pull_watermark(table_name: SyncableLocalTableName, max_modified_at_ms: number) {
+        if (max_modified_at_ms <= 0) return;
         await db
             .insert(sync_metadata_table)
-            .values({ table_name, last_sync_at: pull_started_at, last_modified_at: pull_started_at })
+            .values({ table_name, last_sync_at: max_modified_at_ms, last_modified_at: max_modified_at_ms })
             .onConflictDoUpdate({
                 target: sync_metadata_table.table_name,
-                set: { last_sync_at: pull_started_at, last_modified_at: pull_started_at },
+                set: { last_sync_at: max_modified_at_ms, last_modified_at: max_modified_at_ms },
             });
     }
 
-    private async pull_tracks(last_sync_iso: string, pull_started_iso: string, pull_started_at: number, user_uid: string) {
+    private async pull_tracks(last_sync_iso: string, user_uid: string) {
         const pending_track_changes = await this.get_pending_change_sets('tracks');
         const owned_uids = await this.get_owned_track_uids_all(user_uid);
+
+        let max_modified_at = 0;
+        const observe = (iso: unknown) => {
+            const v = safe_to_epoch_merge(iso);
+            if (v > max_modified_at) max_modified_at = v;
+        };
 
         // PASS A: utracks changes (delete/restore + user meta fields).
         let offset = 0;
@@ -810,7 +821,6 @@ export class SyncEngine {
                 .select('*, tracks(*)')
                 .eq('user_uid', user_uid)
                 .gte('modified_at', last_sync_iso)
-                .lte('modified_at', pull_started_iso)
                 .order('modified_at', { ascending: true })
                 .order('id', { ascending: true })
                 .range(offset, offset + PULL_PAGE_SIZE - 1);
@@ -819,8 +829,10 @@ export class SyncEngine {
             if (!utrack_rows || utrack_rows.length === 0) break;
 
             for (const row of utrack_rows) {
+                observe(row.modified_at);
                 const track_data = row.tracks as Database['public']['Tables']['tracks']['Row'] | null;
                 if (!track_data) continue;
+                observe(track_data.modified_at);
 
                 const merged: RemoteTrackWithUserData = {
                     ...track_data,
@@ -851,7 +863,6 @@ export class SyncEngine {
                         .from('tracks')
                         .select('*')
                         .gte('modified_at', last_sync_iso)
-                        .lte('modified_at', pull_started_iso)
                         .in('uid', uid_chunk)
                         .order('modified_at', { ascending: true })
                         .order('uid', { ascending: true })
@@ -861,6 +872,7 @@ export class SyncEngine {
                     if (!global_rows || global_rows.length === 0) break;
 
                     for (const track_row of global_rows) {
+                        observe(track_row.modified_at);
                         try {
                             await this.apply_global_track(track_row, pending_track_changes);
                         } catch (err) {
@@ -875,7 +887,7 @@ export class SyncEngine {
             }
         }
 
-        await this.save_pull_watermark('tracks', pull_started_at);
+        await this.save_pull_watermark('tracks', max_modified_at);
     }
 
     /**
@@ -1095,8 +1107,9 @@ export class SyncEngine {
         return base;
     }
 
-    private async pull_playlists(last_sync_iso: string, pull_started_iso: string, pull_started_at: number, user_uid: string) {
+    private async pull_playlists(last_sync_iso: string, user_uid: string) {
         const pending_changes = await this.get_pending_change_sets('playlists');
+        let max_modified_at = 0;
 
         let offset = 0;
         while (true) {
@@ -1105,7 +1118,6 @@ export class SyncEngine {
                 .select('*')
                 .eq('user_uid', user_uid)
                 .gte('modified_at', last_sync_iso)
-                .lte('modified_at', pull_started_iso)
                 .order('modified_at', { ascending: true })
                 .order('uuid', { ascending: true })
                 .range(offset, offset + PULL_PAGE_SIZE - 1);
@@ -1114,6 +1126,8 @@ export class SyncEngine {
             if (!data || data.length === 0) break;
 
             for (const row of data) {
+                const row_mod = safe_to_epoch_merge(row.modified_at);
+                if (row_mod > max_modified_at) max_modified_at = row_mod;
                 const record_id = row.uuid;
                 const has_pending_upsert = pending_changes.upserts.has(record_id);
                 const has_pending_delete = pending_changes.deletes.has(record_id);
@@ -1145,11 +1159,12 @@ export class SyncEngine {
             offset += data.length;
         }
         db.$client.flushPendingReactiveQueries();
-        await this.save_pull_watermark('playlists', pull_started_at);
+        await this.save_pull_watermark('playlists', max_modified_at);
     }
 
-    private async pull_playlists_tracks(last_sync_iso: string, pull_started_iso: string, pull_started_at: number, user_uid: string) {
+    private async pull_playlists_tracks(last_sync_iso: string, user_uid: string) {
         const pending_changes = await this.get_pending_change_sets('playlists_tracks');
+        let max_modified_at = 0;
 
         const { data: user_playlists, error: user_playlist_error } = await this.supabase
             .from('playlists')
@@ -1159,10 +1174,7 @@ export class SyncEngine {
         this.assert_supabase_ok('pull_playlists_tracks user playlists fetch', user_playlist_error);
 
         const playlist_uuids = (user_playlists ?? []).map(p => p.uuid);
-        if (playlist_uuids.length === 0) {
-            await this.save_pull_watermark('playlists_tracks', pull_started_at);
-            return;
-        }
+        if (playlist_uuids.length === 0) return;
 
         const uuid_chunks = chunk_array(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
         for (const uuid_chunk of uuid_chunks) {
@@ -1173,7 +1185,6 @@ export class SyncEngine {
                     .select('*')
                     .in('uuid', uuid_chunk)
                     .gte('modified_at', last_sync_iso)
-                    .lte('modified_at', pull_started_iso)
                     .order('modified_at', { ascending: true })
                     .order('id', { ascending: true })
                     .range(offset, offset + PULL_PAGE_SIZE - 1);
@@ -1182,6 +1193,8 @@ export class SyncEngine {
                 if (!data || data.length === 0) break;
 
                 for (const row of data) {
+                    const row_mod = safe_to_epoch_merge(row.modified_at);
+                    if (row_mod > max_modified_at) max_modified_at = row_mod;
                     const record_id = `${row.uuid}:${row.track_uid}`;
                     const has_pending_upsert = pending_changes.upserts.has(record_id);
                     const has_pending_delete = pending_changes.deletes.has(record_id);
@@ -1226,7 +1239,7 @@ export class SyncEngine {
             }
         }
         db.$client.flushPendingReactiveQueries();
-        await this.save_pull_watermark('playlists_tracks', pull_started_at);
+        await this.save_pull_watermark('playlists_tracks', max_modified_at);
     }
 
     // -------------------------------------------------------------------------

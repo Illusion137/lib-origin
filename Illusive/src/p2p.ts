@@ -2,6 +2,7 @@ import { createPTP, type PeerInfo, type PTP } from "react-native-ptp";
 import TrackPlayer, { Event, State } from "react-native-track-player";
 import { GLOBALS } from "./globals";
 import { Prefs } from "./prefs";
+import type { Track } from "./types";
 
 type SyncCmd =
     | { cmd: 'play';  position: number; execute_at: number }
@@ -11,8 +12,13 @@ type SyncCmd =
     | { cmd: 'state'; track_uid: string; position: number; is_playing: boolean; execute_at: number }
     | { cmd: 'ping';  sent_at: number }
     | { cmd: 'pong';  sent_at: number }
+    | { cmd: 'track_info'; title: string; artists_str: string; artwork_url?: string;
+        youtube_id?: string; youtubemusic_id?: string; soundcloud_id?: number;
+        spotify_id?: string; soundcloud_permalink?: string;
+        position: number; is_playing: boolean; execute_at: number }
 
 export type { PeerInfo };
+export type TrackInfoCmd = Extract<SyncCmd, { cmd: 'track_info' }>;
 
 export namespace P2P {
     const SERVICE_NAME = "illusi-p2p";
@@ -29,6 +35,7 @@ export namespace P2P {
     let listener_removers: (() => void)[] = [];
     // Debounce: don't re-broadcast the same play/pause state twice in a row
     let last_broadcast_state: State | null = null;
+    let track_info_callback: ((info: TrackInfoCmd) => void) | null = null;
 
     // ─── PTP instance ──────────────────────────────────────────────
 
@@ -116,9 +123,11 @@ export namespace P2P {
     export function browse(opts: {
         on_peer_found?: (peer: PeerInfo) => void;
         on_peer_lost?: (peer_id: string) => void;
+        on_track_info?: (info: TrackInfoCmd) => void;
     } = {}) {
         role = 'guest';
         discovered_peers.clear();
+        track_info_callback = opts.on_track_info ?? null;
 
         ptp().onPeerFound = (peer) => {
             discovered_peers.set(peer.peerId, peer);
@@ -162,6 +171,26 @@ export namespace P2P {
         broadcast_cmd({ cmd: 'seek', position, execute_at: target() });
     }
 
+    /** Broadcast encoded track info to all connected guests. Call from the host screen. */
+    export function broadcast_track_info(track: Track, position: number, is_playing: boolean) {
+        if (role !== 'host' || connected_peers.length === 0) return;
+        const artwork = typeof track.playback?.artwork === 'string' ? track.playback.artwork : track.artwork_url;
+        broadcast_cmd({
+            cmd: 'track_info',
+            title: track.title,
+            artists_str: track.artists.map(a => a.name).join(', '),
+            artwork_url: artwork,
+            youtube_id: track.youtube_id,
+            youtubemusic_id: track.youtubemusic_id,
+            soundcloud_id: track.soundcloud_id,
+            spotify_id: track.spotify_id,
+            soundcloud_permalink: track.soundcloud_permalink,
+            position,
+            is_playing,
+            execute_at: target(),
+        });
+    }
+
     /** Tear down the session, stop advertising/browsing, clean up listeners. */
     export function disconnect() {
         clear_pending();
@@ -172,6 +201,7 @@ export namespace P2P {
         invited_peers.clear();
         role = 'idle';
         last_broadcast_state = null;
+        track_info_callback = null;
         ptp_instance?.destroy();
         ptp_instance = null;
     }
@@ -282,6 +312,11 @@ export namespace P2P {
                 case 'state':
                     if (role !== 'guest') break;
                     handle_state_sync(msg.track_uid, msg.position, msg.is_playing, msg.execute_at);
+                    break;
+
+                case 'track_info':
+                    if (role !== 'guest') break;
+                    track_info_callback?.(msg);
                     break;
             }
         } catch (_) {}
