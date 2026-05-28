@@ -34,7 +34,8 @@ const ignore_sources: string[] = [
     ".husky",
     "dist-roze-native",
     "illusicord",
-    ".epub"
+    ".epub",
+    "SillyTest",
 ];
 function keep_file(src: string): boolean {
     for (const ignore_source of ignore_sources)
