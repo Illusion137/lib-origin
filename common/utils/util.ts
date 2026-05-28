@@ -270,3 +270,9 @@ export async function catch_function_async<T>(func: () => Promise<T>, on_error: 
     try { return await func(); } catch (error) { on_error(error as Error); }
     return reinterpret_cast<T>({});
 }
+
+export function join_uri(base: string, ...paths: string[]): string {
+    if (paths.length === 0) return base;
+    const sep = base.endsWith('/') ? '' : '/';
+    return base + sep + paths.join('/');
+}

@@ -1,4 +1,4 @@
-import { is_empty } from '@common/utils/util';
+import { is_empty, join_uri } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { fs } from '@native/fs/fs';
 import path_lib from 'path-browserify';
@@ -6,12 +6,6 @@ import path_lib from 'path-browserify';
 export namespace SQLfs {
     let cached_temp_directory: (...paths: string[]) => string = () => "";
     let cached_document_directory: (...paths: string[]) => string = () => "";
-
-    function join_uri(base: string, ...paths: string[]): string {
-        if (paths.length === 0) return base;
-        const sep = base.endsWith('/') ? '' : '/';
-        return base + sep + paths.join('/');
-    }
 
     export async function cache_load_directories() {
         const hold_temp_directory = await fs().temp_directory();

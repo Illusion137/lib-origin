@@ -24,5 +24,5 @@ export interface FileSystem {
 	copy: (from_path: string, to_path: string, opts: NoOverwriteOpts) => Promise<unknown>;
 	make_directory: (path: string) => Promise<unknown>;
 	remove: (path: string) => Promise<unknown>;
-	download_to_file: (uri: string, to_path?: string) => PromiseResult<string>;
+	download_to_file: (uri: string, to_path?: string, headers?: Record<string, string>) => PromiseResult<string>;
 }
