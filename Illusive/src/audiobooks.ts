@@ -13,6 +13,7 @@ import { extract_file_extension } from "@common/utils/util";
 import { generror, generror_catch } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
 import { reinterpret_cast } from "@common/cast";
+import type { CookieJar } from "@common/utils/cookie_util";
 import type { PromiseResult } from "@common/types";
 
 export type AudiobookTTSEngine = 'avs' | 'piper';
@@ -256,6 +257,62 @@ export namespace Audiobooks {
 		} catch (e) {
 			return generror_catch(e, "Failed to generate full audiobook audio", "CRITICAL", { uuid });
 		}
+	}
+
+	export interface AddFromRemoteUrlOpts {
+		url: string;
+		title?: string;
+		source_file_type?: string;
+	}
+
+	export async function add_from_remote_url(opts: AddFromRemoteUrlOpts): PromiseResult<AudiobookTableItem> {
+		try {
+			const inserted = await SQLAudiobook.insert_audiobook({
+				title: opts.title ?? "",
+				source_file: "",
+				source_file_type: opts.source_file_type ?? "REMOTE",
+				source_raw_uri: opts.url,
+			});
+			await setup_audiobook_dirs(inserted.uuid);
+			return inserted;
+		} catch (e) {
+			return generror_catch(e, "Failed to add audiobook from remote URL", "MEDIUM", { url: opts.url });
+		}
+	}
+
+	export interface DownloadAudiobookOpts {
+		cookie_jar?: CookieJar;
+		headers?: Record<string, string>;
+		user_agent?: string;
+	}
+
+	export async function download_audiobook(uuid: string, opts: DownloadAudiobookOpts = {}): PromiseResult<string> {
+		try {
+			const meta = await SQLAudiobook.get_audiobook_by_uuid(uuid);
+			if (!meta) return generror(`Audiobook ${uuid} not found`, "MEDIUM", { uuid });
+			if (!meta.source_raw_uri) return generror(`Audiobook ${uuid} has no source URI`, "MEDIUM", { uuid, title: meta.title });
+			await setup_audiobook_dirs(uuid);
+			const ext = extract_file_extension(meta.source_raw_uri) || ".bin";
+			const dest_rel = rel_source_path(uuid, ext);
+			const dest_path = full_path(dest_rel);
+			const headers: Record<string, string> = {
+				"user-agent": opts.user_agent ?? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+				accept: "*/*",
+				...(opts.headers ?? {})
+			};
+			if (opts.cookie_jar !== undefined) headers.cookie = opts.cookie_jar.toString();
+			const download_result = await fs().download_to_file(meta.source_raw_uri, dest_path, headers);
+			if (typeof download_result !== "string") return download_result;
+			await SQLAudiobook.update_audiobook(uuid, { source_file: dest_rel });
+			return dest_path;
+		} catch (e) {
+			return generror_catch(e, "Failed to download audiobook", "MEDIUM", { uuid });
+		}
+	}
+
+	export function resolve_source_path(meta: AudiobookTableItem): string | undefined {
+		if (!meta.source_file) return undefined;
+		return full_path(meta.source_file);
 	}
 
 	export async function upgrade_audiobook_roz_versions(): Promise<void> {
