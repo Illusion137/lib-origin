@@ -347,6 +347,22 @@ export namespace Illusive {
         return { tracks: mix_response.tracks, new_track_data: new_track_data.track };
     }
 
+    export async function get_station_tracks(track: Track): Promise<Track[] | ResponseError> {
+        if (!is_empty(track.youtube_id)) {
+            // TODO unfuck this shit
+            const related_result = await music_service.get("YouTube")!.get_related!(track.youtube_id!);
+            if("error" in related_result && related_result.error !== undefined) return related_result.error;
+            const found_track_section = related_result.sections.find(section => (section.tracks ?? []).length > 0);
+            if(found_track_section) return found_track_section.tracks;
+        }
+        else if (!is_empty(track.soundcloud_id)) {
+            const related_result = await music_service.get("SoundCloud")!.get_related!(String(track.soundcloud_id));
+            if("error" in related_result && related_result.error !== undefined) return related_result.error;
+            return related_result.sections[0].tracks;
+        }
+        return [];
+    }
+
     export function get_youtube_lowest_quality_thumbnail_uri(video_id: string) {
         return `https://i.ytimg.com/vi/${video_id}/1.jpg`;
     }
