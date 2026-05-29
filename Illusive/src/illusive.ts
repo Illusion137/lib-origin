@@ -349,16 +349,14 @@ export namespace Illusive {
 
     export async function get_station_tracks(track: Track): Promise<Track[] | ResponseError> {
         if (!is_empty(track.youtube_id)) {
-            // TODO unfuck this shit
             const related_result = await music_service.get("YouTube")!.get_related!(track.youtube_id!);
-            if("error" in related_result && related_result.error !== undefined) return related_result.error;
-            const found_track_section = related_result.sections.find(section => (section.tracks ?? []).length > 0);
-            if(found_track_section) return found_track_section.tracks;
+            if ("error" in related_result && related_result.error !== undefined) return related_result.error;
+            return related_result.tracks;
         }
-        else if (!is_empty(track.soundcloud_id)) {
+        if (!is_empty(track.soundcloud_id) && music_service.get("SoundCloud")?.has_credentials()) {
             const related_result = await music_service.get("SoundCloud")!.get_related!(String(track.soundcloud_id));
-            if("error" in related_result && related_result.error !== undefined) return related_result.error;
-            return related_result.sections[0].tracks;
+            if ("error" in related_result && related_result.error !== undefined) return related_result.error;
+            return related_result.tracks;
         }
         return [];
     }

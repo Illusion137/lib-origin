@@ -396,7 +396,7 @@ export interface MusicServiceRelatedSection {
     playlists: CompactPlaylist[];
 }
 export interface MusicServiceRelated {
-    sections: MusicServiceRelatedSection[];
+    tracks: Track[];
     error?: ResponseError;
 }
 export interface MusicServiceArtist {
