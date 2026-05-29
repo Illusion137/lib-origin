@@ -61,7 +61,7 @@ export async function setup_track_player(): Promise<boolean> {
                 Capability.SeekTo,
                 Capability.PlayFromSearch,
             ],
-            progressUpdateEventInterval: 0.25,
+            progressUpdateEventInterval: 1,
         });
         await TrackPlayer.setRepeatMode(RepeatMode.Off);
         await TrackPlayer.setEqualizer(Prefs.equalizer_presets[Prefs.get_pref('equalizer_preset')] as unknown as number[]);
