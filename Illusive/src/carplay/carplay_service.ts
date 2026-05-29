@@ -67,17 +67,6 @@ export async function carplay_artwork(four_track: Track[], thumbnail_uri?: strin
     return resolved_artwork(four_track[0]?.playback?.artwork);
 }
 
-function artwork_to_uri(artwork: Artwork | null): string | null {
-    if (artwork === null) return null;
-    if (typeof artwork === 'string') return artwork;
-    if (typeof artwork === 'object' && 'uri' in artwork && typeof artwork.uri === 'string') return artwork.uri;
-    return null;
-}
-
-function image_source_from_uri(uri: string | null): { uri: string } | null {
-    if (uri === null) return null;
-    return { uri: uri.startsWith('/') ? `file://${uri}` : uri };
-}
 
 function glyph_for_playlist(title: string): GlyphName {
     switch (title) {
@@ -94,9 +83,6 @@ function glyph_for_playlist(title: string): GlyphName {
 }
 
 async function playlist_image(playlist: CompactPlaylistData): Promise<GridAutoImage> {
-    const artwork = await carplay_artwork(playlist.four_track ?? [], playlist.thumbnail_uri).catch(() => null);
-    const source = image_source_from_uri(artwork_to_uri(artwork));
-    if (source !== null) return { type: 'asset', image: source };
     return { type: 'glyph', name: glyph_for_playlist(playlist.title) };
 }
 
@@ -231,8 +217,8 @@ function header_actions(playlists: CompactPlaylistData[], mode: PlayMode): Heade
         onPress: () => cycle_play_mode(playlists),
     } as const;
     const shuffle_button = {
-        type: 'image',
-        image: { type: 'glyph', name: 'shuffle' },
+        type: 'text',
+        title: 'Shuffle',
         onPress: () => shuffle_all_libraries(playlists),
     } as const;
     return {
@@ -282,9 +268,10 @@ async function build_root(): Promise<void> {
 
     grid_template = new GridTemplate({
         title: { text: ROOT_TITLE },
-        buttons,
+        buttons: [],
         headerActions: header_actions(playlists, mode),
     });
+    await grid_template.updateGrid(buttons);
     await grid_template.setRootTemplate();
     breadcrumb('carplay', 'build_root.done', { button_count: buttons.length });
 }
