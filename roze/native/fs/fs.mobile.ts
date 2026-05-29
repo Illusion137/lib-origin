@@ -29,10 +29,6 @@ export const mobile_fs: FileSystem = {
 		}
 	},
 	get_info: async (path: string) => {
-		// `expo-file-system/legacy.getInfoAsync` can hang indefinitely on iOS
-		// when the async FS bridge is back-pressured (e.g. while another large
-		// write is queued). The new `expo-file-system` API is synchronous via
-		// JSI, so it never stalls regardless of bridge state.
 		try {
 			const path_info = Paths.info(path);
 			if (!path_info.exists) {
@@ -43,10 +39,7 @@ export const mobile_fs: FileSystem = {
 			try {
 				const meta = is_directory ? new Directory(path).info() : new File(path).info();
 				file_modified_ms = meta.modificationTime ?? 0;
-			} catch {
-				// Falling back to legacy stat is acceptable here — by this point
-				// we already know the path exists, we just couldn't read mtime.
-			}
+			} catch {}
 			return { exists: true, file_modified_ms, is_directory, uri: path };
 		} catch (_) {
 			return { exists: false, file_modified_ms: 0, is_directory: false, uri: path };
