@@ -6,8 +6,10 @@ import { join } from 'node:path';
 function wrap_better_sqlite3_client(client: InstanceType<typeof Database>): RawSQLiteConnection {
 	return {
 		execute_sync: (sql, params = []) =>
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			client.prepare(sql).all(...params) as any[],
 		execute_async: async (sql, params = []) =>
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			client.prepare(sql).all(...params) as any[],
 		execute_statement: async (sql, params = []) => {
 			client.prepare(sql).run(...params);
