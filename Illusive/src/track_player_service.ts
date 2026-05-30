@@ -6,7 +6,7 @@ import TrackPlayer, {
     RepeatMode,
     TrackType
 }
-from 'react-native-track-player';
+    from 'react-native-track-player';
 import { is_empty, recreate } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
@@ -77,9 +77,18 @@ export async function save_past_queue() {
     await Prefs.save_pref('past_queue', { index, tracks: GLOBALS.global_var.playing_tracks.map(track => ({ ...track, playback: undefined, downloading_data: undefined })) });
 }
 
+const queue_modified_listeners = new Set<() => void>();
+export function subscribe_track_player_queue_modified(listener: () => void): () => void {
+    queue_modified_listeners.add(listener);
+    return () => { queue_modified_listeners.delete(listener); };
+}
+
 export async function on_modify_track_player_queue() {
     await save_past_queue();
     await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
+    for (const listener of queue_modified_listeners) {
+        try { listener(); } catch { };
+    }
 }
 
 export async function insert_track_into_player_queue(track_data: Track, plus_index: number) {
@@ -160,9 +169,9 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         artwork_scheme: typeof artwork_payload === 'string'
             ? (artwork_payload.startsWith('file:///') ? 'file:///'
                 : artwork_payload.startsWith('file://') ? 'file://'
-                : artwork_payload.startsWith('file:/') ? 'file:/'
-                : artwork_payload.startsWith('http') ? 'http'
-                : 'other')
+                    : artwork_payload.startsWith('file:/') ? 'file:/'
+                        : artwork_payload.startsWith('http') ? 'http'
+                            : 'other')
             : 'asset',
         has_thumbnail_uri: !is_empty(track.thumbnail_uri),
     });
