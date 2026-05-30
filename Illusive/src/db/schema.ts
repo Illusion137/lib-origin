@@ -50,6 +50,7 @@ const tracks_config = {
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
     modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_config = {
@@ -69,7 +70,8 @@ const playlists_config = {
     date: text().notNull().$defaultFn(() => new Date().toISOString()),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now())
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_tracks_config = {
@@ -78,6 +80,8 @@ const playlists_tracks_config = {
     track_uid: text().notNull(),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const new_releases_config = {
@@ -93,6 +97,8 @@ const new_releases_config = {
     song_track: text({mode: 'json'}).$type<Track>(),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const artists_config = {
@@ -137,6 +143,7 @@ const sync_metadata_config = {
     id: int().primaryKey({ autoIncrement: true }),
     table_name: text().notNull().unique(),
     last_sync_at: int().notNull().default(0),
+    last_pushed_at: int().notNull().default(0),
     last_modified_at: int().notNull().default(0),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
@@ -156,8 +163,18 @@ const change_log_config = {
     dropped: int({ mode: 'boolean' }).notNull().default(false),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
+const sync_deletes_config = {
+    id: int().primaryKey({ autoIncrement: true }),
+    table_name: text().notNull(),
+    record_id: text().notNull(),
+    deleted_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
+} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+
 export const sync_metadata_table = sqliteTable("sync_metadata", sync_metadata_config);
 export const change_log_table = sqliteTable("change_log", change_log_config);
+export const sync_deletes_table = sqliteTable("sync_deletes", sync_deletes_config, (table) => ([index("sync_deletes_table_idx").on(table.table_name)]));
+export type SQLSyncDelete = typeof sync_deletes_table.$inferSelect;
 
 const audiobooks_config = {
 	id: int().primaryKey({ autoIncrement: true }).notNull(),

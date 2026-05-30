@@ -57,6 +57,13 @@
       "when": 1779513050398,
       "tag": "0007_rapid_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1780531200000,
+      "tag": "0008_glorious_dirty_row",
+      "breakpoints": true
     }
   ]
 }

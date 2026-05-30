@@ -1,10 +1,18 @@
 /* eslint-disable @typescript-eslint/no-extraneous-class */
 
 import { db } from '../database';
-import { change_log_table } from '../schema';
-import { eq, and, inArray, asc, lt } from 'drizzle-orm';
-import type { CompressedChange, LocalTableName } from './types';
-import { compress_record_changes, type ChangeLogLikeRow } from './change_compression';
+import {
+    artists_table,
+    backpack_table,
+    new_releases_table,
+    playlists_table,
+    playlists_tracks_table,
+    recently_played_tracks_table,
+    track_plays_table,
+    tracks_table,
+} from '../schema';
+import { and, eq, like } from 'drizzle-orm';
+import type { LocalTableName } from './types';
 
 export class ChangeTracker {
     private static on_change_callback?: () => void;
@@ -13,201 +21,86 @@ export class ChangeTracker {
         ChangeTracker.on_change_callback = callback;
     }
 
-    /**
-     * Log a change to the change log table
-     */
     static async log_change(
         table_name: LocalTableName,
-        operation: 'insert' | 'update' | 'delete',
+        _operation: 'insert' | 'update' | 'delete',
         record_id: string | number,
-        data: unknown
+        _data: unknown,
     ) {
-        await db.insert(change_log_table).values({
-            table_name,
-            operation,
-            record_id: String(record_id),
-            data: data,
-            synced: false,
-        });
+        const now = Date.now();
+        const id = String(record_id);
+        switch (table_name) {
+            case 'tracks':
+                await db.update(tracks_table)
+                    .set({ modified_at: now })
+                    .where(eq(tracks_table.uid, id));
+                break;
+            case 'playlists':
+                await db.update(playlists_table)
+                    .set({ modified_at: now })
+                    .where(eq(playlists_table.uuid, id));
+                break;
+            case 'playlists_tracks': {
+                const colon = id.indexOf(':');
+                if (colon > 0) {
+                    const uuid = id.substring(0, colon);
+                    const track_uid = id.substring(colon + 1);
+                    await db.update(playlists_tracks_table)
+                        .set({ modified_at: now })
+                        .where(and(
+                            eq(playlists_tracks_table.uuid, uuid),
+                            eq(playlists_tracks_table.track_uid, track_uid),
+                        ));
+                }
+                break;
+            }
+            case 'new_releases': {
+                if (id.startsWith('nr_')) {
+                    const numeric_id = Number(id.slice(3));
+                    if (Number.isFinite(numeric_id)) {
+                        await db.update(new_releases_table)
+                            .set({ modified_at: now })
+                            .where(eq(new_releases_table.id, numeric_id));
+                    }
+                } else {
+                    await db.update(new_releases_table)
+                        .set({ modified_at: now })
+                        .where(like(new_releases_table.title, `%"uri":"${id}"%`));
+                }
+                break;
+            }
+            case 'artists':
+                await db.update(artists_table)
+                    .set({ modified_at: now })
+                    .where(eq(artists_table.uri, id));
+                break;
+            case 'backpack':
+                await db.update(backpack_table)
+                    .set({ modified_at: now })
+                    .where(eq(backpack_table.uid, id));
+                break;
+            case 'recently_played_tracks':
+                await db.update(recently_played_tracks_table)
+                    .set({ modified_at: now })
+                    .where(eq(recently_played_tracks_table.uid, id));
+                break;
+            case 'track_plays': {
+                // No stable string key — fall back to numeric id if supplied that way.
+                const numeric_id = Number(id);
+                if (Number.isFinite(numeric_id)) {
+                    await db.update(track_plays_table)
+                        .set({ modified_at: now })
+                        .where(eq(track_plays_table.id, numeric_id));
+                }
+                break;
+            }
+            default: {
+                const _exhaustive: never = table_name;
+                void _exhaustive;
+                break;
+            }
+        }
         db.$client.flushPendingReactiveQueries();
         ChangeTracker.on_change_callback?.();
     }
-
-    /**
-     * Get pending changes with intelligent compression:
-     * 1. Consolidate multiple updates to same record into one
-     * 2. Remove insert+delete for same record (net zero)
-     * 3. Convert insert+updates into single insert
-     * 4. Keep only final state for each record
-     *
-     * Rows marked dropped=true are excluded entirely.
-     */
-    static async get_pending_changes(batch_size = 100): Promise<CompressedChange[]> {
-        // Get all unsynced, non-dropped changes ordered by creation time
-        const all_changes = await db
-            .select()
-            .from(change_log_table)
-            .where(and(
-                eq(change_log_table.synced, false),
-                eq(change_log_table.dropped, false),
-            ))
-            .orderBy(asc(change_log_table.created_at));
-
-        if (all_changes.length === 0) {
-            return [];
-        }
-
-        // Group changes by table and record
-        const changes_by_record = new Map<string, typeof all_changes>();
-
-        for (const change of all_changes) {
-            const key = `${change.table_name}:${change.record_id}`;
-            if (!changes_by_record.has(key)) {
-                changes_by_record.set(key, []);
-            }
-            changes_by_record.get(key)!.push(change);
-        }
-
-        // Compress changes for each record
-        const compressed: CompressedChange[] = [];
-
-        for (const [key, record_changes] of changes_by_record.entries()) {
-            const colon_idx = key.indexOf(':');
-            const table_name = key.substring(0, colon_idx);
-            const record_id = key.substring(colon_idx + 1);
-            const compressed_change = compress_record_changes(
-                table_name as LocalTableName,
-                record_id,
-                record_changes as ChangeLogLikeRow[]
-            );
-
-            if (compressed_change) {
-                compressed.push(compressed_change);
-            }
-        }
-
-        // Return up to batch_size compressed changes
-        return compressed.slice(0, batch_size);
-    }
-
-    static compress_record_changes_for_tests(
-        table_name: LocalTableName,
-        record_id: string,
-        changes: ChangeLogLikeRow[]
-    ): CompressedChange | null {
-        return compress_record_changes(table_name, record_id, changes);
-    }
-
-    /**
-     * Mark changes as synced
-     */
-    static async mark_as_synced(change_ids: number[]) {
-        if (change_ids.length === 0) return;
-
-        await db
-            .update(change_log_table)
-            .set({ synced: true })
-            .where(inArray(change_log_table.id, change_ids));
-    }
-
-    /**
-     * Mark changes as dropped — irrecoverable, will no longer be retried.
-     * Sets both dropped=true and synced=true so they are excluded from pending queries.
-     */
-    static async mark_as_dropped(change_ids: number[], reason = '') {
-        if (change_ids.length === 0) return;
-
-        await db
-            .update(change_log_table)
-            .set({ dropped: true, synced: true, last_error: reason })
-            .where(inArray(change_log_table.id, change_ids));
-    }
-
-    /**
-     * Get statistics about pending changes
-     */
-    static async get_sync_stats() {
-        const pending = await db
-            .select()
-            .from(change_log_table)
-            .where(and(
-                eq(change_log_table.synced, false),
-                eq(change_log_table.dropped, false),
-            ));
-
-        const stats_by_table: Record<string, { inserts: number; updates: number; deletes: number }> = {};
-
-        for (const change of pending) {
-            if (!stats_by_table[change.table_name]) {
-                stats_by_table[change.table_name] = { inserts: 0, updates: 0, deletes: 0 };
-            }
-
-            if (change.operation === 'insert') stats_by_table[change.table_name].inserts++;
-            if (change.operation === 'update') stats_by_table[change.table_name].updates++;
-            if (change.operation === 'delete') stats_by_table[change.table_name].deletes++;
-        }
-
-        return {
-            total_pending: pending.length,
-            by_table: stats_by_table,
-        };
-    }
-
-    /**
-     * Delete changelog entries that can never be synced:
-     * - insert+delete pairs for the same record (net-zero, compress to null)
-     * These stay with synced=false indefinitely otherwise, clogging the changelog.
-     */
-    static async delete_irresolvable_changes(): Promise<number> {
-        const all_changes = await db
-            .select()
-            .from(change_log_table)
-            .where(and(
-                eq(change_log_table.synced, false),
-                eq(change_log_table.dropped, false),
-            ))
-            .orderBy(asc(change_log_table.created_at));
-
-        if (all_changes.length === 0) return 0;
-
-        const changes_by_record = new Map<string, typeof all_changes>();
-        for (const change of all_changes) {
-            const key = `${change.table_name}:${change.record_id}`;
-            if (!changes_by_record.has(key)) changes_by_record.set(key, []);
-            changes_by_record.get(key)!.push(change);
-        }
-
-        const ids_to_delete: number[] = [];
-        for (const [key, record_changes] of changes_by_record.entries()) {
-            const colon_idx = key.indexOf(':');
-            const table_name = key.substring(0, colon_idx) as LocalTableName;
-            const record_id = key.substring(colon_idx + 1);
-            const compressed = compress_record_changes(table_name, record_id, record_changes as ChangeLogLikeRow[]);
-            if (compressed === null) {
-                ids_to_delete.push(...record_changes.map(c => c.id));
-            }
-        }
-
-        if (ids_to_delete.length === 0) return 0;
-
-        await db.delete(change_log_table).where(inArray(change_log_table.id, ids_to_delete));
-        return ids_to_delete.length;
-    }
-
-    /**
-     * Clean up old synced changes
-     */
-    static async cleanup_old_changes(days_to_keep = 30) {
-        const cutoff_time = Date.now() - (days_to_keep * 24 * 60 * 60 * 1000);
-
-        await db
-            .delete(change_log_table)
-            .where(
-                and(
-                    eq(change_log_table.synced, true),
-                    lt(change_log_table.created_at, cutoff_time)
-                )
-            );
-    }
 }
-
