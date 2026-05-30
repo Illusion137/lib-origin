@@ -103,6 +103,7 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
     const top_result = await parse_youtube_music_search_top_result(search_response.data.contents.find(item => item.musicCardShelfRenderer !== undefined)?.musicCardShelfRenderer, youtube_music_get_playlist);
     const results = search_response.data.contents.flatMap(item => {
         if (item.musicShelfRenderer) return item.musicShelfRenderer.contents.map(c => c.musicResponsiveListItemRenderer);         
+         
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         if (item.itemSectionRenderer) return item.itemSectionRenderer.contents.map(c => c.musicResponsiveListItemRenderer).filter((c): c is NonNullable<typeof c> => c !== undefined);
         return [];

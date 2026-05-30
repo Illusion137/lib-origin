@@ -16,8 +16,8 @@ export async function upload_sqlite_db() {
 export async function upload_playlist_thumbnail(playlist: Playlist, callback: (playlist: Playlist) => Promise<void>) {
     try {
         const img = await document_picker().pick_image();
-        if(img === null) return;
-        if("error" in img) {
+        if (img === null) return;
+        if ("error" in img) {
             alert_error(img);
             return;
         }
@@ -35,8 +35,8 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: (p
 export async function upload_playlist_thumbnail_document(playlist: Playlist, callback: (playlist: Playlist) => Promise<void>) {
     try {
         const img = await document_picker().pick_image();
-        if(img === null) return;
-        if("error" in img) {
+        if (img === null) return;
+        if ("error" in img) {
             alert_error(img);
             return;
         }
@@ -54,8 +54,8 @@ export async function upload_playlist_thumbnail_document(playlist: Playlist, cal
 export async function upload_track_thumbnail(track: Track, callback: (track: Track) => Promise<void>) {
     try {
         const img = await document_picker().pick_image();
-        if(img === null) return;
-        if("error" in img) {
+        if (img === null) return;
+        if ("error" in img) {
             alert_error(img);
             return;
         }
@@ -74,7 +74,7 @@ export async function upload_music_files() {
     try {
         const audio_files = await document_picker().pick_multiple_files(["public.audio", "public.movie"]);
         if ("error" in audio_files) {
-            alert_error(audio_files);
+            if (!audio_files.error.message.includes("canceled")) alert_error(audio_files);
             return;
         }
 
