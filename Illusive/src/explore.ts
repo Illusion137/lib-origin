@@ -16,6 +16,8 @@ import { call_wtimeout } from "@common/utils/timed_util";
 import * as Origin from '@origin/index';
 import { soundcloud_parse_system_playlist } from "./parsers/soundcloud_parser";
 import { supabase } from "./db/supabase";
+import { FSCache } from "@common/fs_cache";
+import type { SelectionItem } from "@origin/soundcloud/types/MixedSelection";
 
 export namespace Explore {
 	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = "PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI";
@@ -120,6 +122,11 @@ export namespace Explore {
 		}
 	}
 	export async function get_recommended_playlists(): Promise<FullPlaylist[]> {
+		const REC_SOUNDCLOUD_CACHE_KEY = "REC_SOUNDCLOUD_CACHCE_KEY";
+		const REC_SOUNDCLOUD_CACHE_EXPIRES_MS = milliseconds_of({days: 1});
+		const cache_hit = await FSCache.check_cache<SelectionItem[]>(REC_SOUNDCLOUD_CACHE_KEY, REC_SOUNDCLOUD_CACHE_EXPIRES_MS, {});
+		if(cache_hit) return cache_hit.filter(item => item.kind === "system-playlist")
+			.map(soundcloud_parse_system_playlist);
 		if (!Illusive.music_service.get('SoundCloud')?.has_credentials()) return [];
 		const recommended_playlists_urn = "soundcloud:selections:personalized-tracks";
 		const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
@@ -127,6 +134,7 @@ export namespace Explore {
 		if ("error" in mixed_selection) return [];
 		const recommended_playlists_section = mixed_selection.data.collection.find(item => item.urn.startsWith(recommended_playlists_urn))?.items.collection;
 		if (!recommended_playlists_section) return [];
+		await FSCache.insert_cache(REC_SOUNDCLOUD_CACHE_KEY, recommended_playlists_section, {});
 		const playlists = recommended_playlists_section.filter(item => item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		return playlists;

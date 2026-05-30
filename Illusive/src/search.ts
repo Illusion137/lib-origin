@@ -131,10 +131,6 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
     if((top_result?.side_contents.length ?? 0) > 0){
         tracks.push(...top_result!.side_contents);
     }
-    // console.log(tracks);
-    // console.log(playlists);
-    // console.log(albums);
-    // console.log(artists);
     if(results){
         for(const content of results){
             const type = determine_music_responsive_list_item_renderer(content);
@@ -146,6 +142,8 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
                 case "EP":
                 case "Single":
                 case "Album":
+                    albums.push(parse_youtube_music_search_playlist(content));
+                    break;
                 case "Playlist":
                     playlists.push(parse_youtube_music_search_playlist(content));
                     break;

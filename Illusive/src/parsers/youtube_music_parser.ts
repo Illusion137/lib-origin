@@ -176,7 +176,7 @@ export function parse_youtube_music_search_playlist(playlist: SearchMusicRespons
     const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
     const title_runs = title_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
 
-    const album_endpoint = playlist.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.playlistId ?? playlist.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl?.replace('"/playlist?list=', '') ?? title_runs[0].navigationEndpoint?.browseEndpoint?.browseId.replace('"/playlist?list=', '');
+    const album_endpoint = playlist.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.playlistId ?? playlist.navigationEndpoint.browseEndpoint?.browseId ?? playlist.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl?.replace('"/playlist?list=', '') ?? title_runs[0].navigationEndpoint?.browseEndpoint?.browseId.replace('"/playlist?list=', '');
 
     return {
         title: {name: parse_runs(title_runs), uri: album_endpoint === undefined ? null : create_uri("youtubemusic", album_endpoint)},
