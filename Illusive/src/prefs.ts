@@ -25,24 +25,75 @@ export namespace Prefs {
 
     export const equalizer_presets = {
         "Default": [0, 0, 0, 0, 0, 0],
+
+        // Bass variants
         "Super Bass Boost": [8, 6, 2, 0, -1, -2],
         "Bass Boost": [6, 4, 2, 0, -1, -2],
-        "Small Boost": [3, 2, 1, 0, 0, 0],
-        "Treble Boost": [-2, -1, 0, 2, 4, 6],
-        "Vocal Boost": [-2, -1, 1, 3, 4, 2],
-        "Loudness": [5, 3, 1, 0, 2, 4],
-        "Rock": [4, 2, 1, 1, 3, 5],
-        "Pop": [-1, 1, 3, 4, 2, 1],
-        "Classical": [0, 1, 2, 1, 0, 2],
-        "Jazz": [2, 2, 1, 0, 2, 3],
-        "Electronic": [5, 3, 0, 1, 4, 6],
-        "Hip-Hop": [6, 4, 2, 0, 1, -1],
-        "Acoustic": [-1, 0, 2, 3, 2, 1],
-        "Dance": [5, 3, 0, 2, 4, 5],
-        "Podcast": [-3, -2, 1, 3, 4, 3],
-        "Movie": [4, 2, 0, 2, 3, 4],
+        "Bass Reducer": [-6, -4, -2, 0, 0, 0],
+        "Deep Bass": [10, 7, 3, 0, -1, -2],
+        "Punchy Bass": [7, 3, 1, 0, -1, -1],
+        "Sub Bass": [10, 8, 4, 0, -2, -3],
         "Low Bass": [-6, -4, -2, 0, 0, 0],
         "No Bass": [-12, -6, -2, 0, 0, 0],
+
+        // Treble variants
+        "Treble Boost": [-2, -1, 0, 2, 4, 6],
+        "Treble Reducer": [0, 0, 0, -2, -4, -6],
+        "Air": [-1, 0, 0, 1, 3, 7],
+
+        // Boost variants
+        "Small Boost": [3, 2, 1, 0, 0, 0],
+        "Loudness": [5, 3, 1, 0, 2, 4],
+        "Full Boost": [5, 4, 3, 3, 4, 5],
+        "V-Shape": [6, 3, -1, -1, 3, 6],
+        "Flat Cut": [-3, -3, -3, -3, -3, -3],
+
+        // Vocal variants
+        "Vocal Boost": [-2, -1, 1, 3, 4, 2],
+        "Voice Clarity": [-3, -2, 2, 4, 3, 1],
+        "Podcast": [-3, -2, 1, 3, 4, 3],
+        "Karaoke": [-5, -3, 1, 4, 5, 3],
+        "Broadcast": [-2, 0, 2, 4, 4, 2],
+
+        // Genre
+        "Rock": [4, 2, 1, 1, 3, 5],
+        "Hard Rock": [6, 3, 1, 2, 4, 6],
+        "Metal": [7, 4, 1, 2, 4, 7],
+        "Pop": [-1, 1, 3, 4, 2, 1],
+        "K-Pop": [2, 2, 4, 4, 3, 2],
+        "Classical": [0, 1, 2, 1, 0, 2],
+        "Orchestra": [2, 1, 2, 1, 1, 3],
+        "Jazz": [2, 2, 1, 0, 2, 3],
+        "Blues": [5, 3, 1, 0, 2, 4],
+        "Soul": [4, 3, 2, 1, 2, 3],
+        "R&B": [6, 4, 2, 1, 2, 2],
+        "Hip-Hop": [6, 4, 2, 0, 1, -1],
+        "Trap": [8, 5, 2, 0, 0, -1],
+        "Electronic": [5, 3, 0, 1, 4, 6],
+        "EDM": [6, 4, 0, 2, 5, 7],
+        "House": [5, 3, 0, 1, 4, 5],
+        "Techno": [5, 2, 0, 2, 3, 5],
+        "Ambient": [3, 2, 1, 0, 1, 3],
+        "Lofi": [4, 3, 2, -1, -2, -3],
+        "Acoustic": [-1, 0, 2, 3, 2, 1],
+        "Folk": [1, 1, 2, 2, 1, 2],
+        "Country": [2, 1, 1, 2, 3, 4],
+        "Reggae": [5, 3, -1, -2, 2, 3],
+        "Latin": [3, 2, 1, 2, 4, 5],
+        "Dance": [5, 3, 0, 2, 4, 5],
+        "Funk": [5, 3, 2, 1, 2, 2],
+        "Punk": [5, 2, 0, 1, 3, 5],
+        "Gospel": [3, 2, 2, 3, 4, 3],
+
+        // Media / use-case
+        "Movie": [4, 2, 0, 2, 3, 4],
+        "Gaming": [5, 3, 1, 2, 4, 5],
+        "Sports Commentary": [-2, 0, 1, 3, 4, 3],
+        "Night Mode": [-2, -1, 0, 1, 1, -1],
+        "Headphones": [3, 2, 1, 1, 2, 4],
+        "Earbuds": [4, 3, 2, 1, 3, 5],
+        "Laptop Speakers": [5, 4, 2, 1, 0, -1],
+        "Large Room": [4, 2, 0, 1, 2, 4],
     } as const;
     export type EqualizerPreset = keyof typeof equalizer_presets;
     interface PastQueue { index: number; tracks: Track[]; }
