@@ -256,7 +256,7 @@ export namespace SQLTracks {
         await db.insert(tracks_table).values(new_track);
         await ChangeTracker.log_change('tracks', 'insert', track.uid, new_track);
 
-        const parsed_track = sql_track_to_track(track)
+        const parsed_track = sql_track_to_track(new_track)
         if ("error" in parsed_track) return;
         SQLGlobal.add_global_track_item(parsed_track);
         if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);

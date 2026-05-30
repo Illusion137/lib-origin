@@ -251,11 +251,27 @@ export namespace SQLUpdate {
             return true;
         });
         await update_to("21.0.0", async() => {
-            // Pull watermarks were previously stamped with client `Date.now()` instead of the
-            // server's max `modified_at`. A client clock ahead of the DB could leave watermarks
-            // permanently past unseen server rows. Clearing sync_metadata triggers a full re-pull
-            // from epoch on the next sync cycle — equivalent to the pull-reset half of resync().
+            await db.delete(change_log_table);
             await db.delete(sync_metadata_table);
+            // Reparing tracks (once again lol)
+            const now = Date.now();
+            const tracks = await db.select().from(tracks_table);
+            for (const track of tracks) {
+                const meta = track.meta;
+                if (meta == null) continue;
+                const added_at = meta.added_date ? new Date(meta.added_date).getTime() : 0;
+                if (added_at > 0) continue;
+                const downloaded = meta.downloaded_date;
+                if (!downloaded) continue;
+                const downloaded_at = new Date(downloaded).getTime();
+                if (!Number.isFinite(downloaded_at) || downloaded_at <= 0) continue;
+                await db.update(tracks_table)
+                    .set({
+                        meta: { ...meta, added_date: downloaded },
+                        modified_at: now,
+                    })
+                    .where(eq(tracks_table.uid, track.uid));
+            }
             return true;
         });
     }
