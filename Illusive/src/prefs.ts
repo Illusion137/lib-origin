@@ -175,6 +175,7 @@ export namespace Prefs {
         warmup_soundcloud: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup" } as BasePref<boolean, OtherPrefTypes>,
 
         // Settings that have a chance of breaking things; use with caution; all disabled by default
+        enable_vibes_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
         enable_linker: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
         enable_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
         fastpack: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,

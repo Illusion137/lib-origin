@@ -28,6 +28,7 @@ export namespace Constants {
     export const new_releases_artist_watch_small_amount = 25;
     export const download_queue_max_length = 3;
     export const download_lyrics_queue_max_length = 1;
+    export const vibes_sampler_queue_max_length = 1;
     export const tracks_per_sample = 3;
     export const long_press_delay = 250;
     export const cached_ids_duration_milliseconds = 2000;
