@@ -25,6 +25,8 @@ import { pandora_parse_track } from './parsers/pandora_parser';
 import { tidal_parse_track } from './parsers/tidal_parser';
 import type { Track as AudiomackTrack } from '@origin/audiomack/types';
 import type { DeezerTrack } from '@origin/deezer/types';
+import type { MusicResponsiveListItemRenderer2 } from '@origin/youtube_music/types/SearchResults_0';
+import { reinterpret_cast } from '@common/cast';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
     return {
@@ -104,8 +106,9 @@ export async function youtube_music_search(query: string, opts?: SearchOpts): Pr
     const results = search_response.data.contents.flatMap(item => {
         if (item.musicShelfRenderer) return item.musicShelfRenderer.contents.map(c => c.musicResponsiveListItemRenderer);         
          
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        if (item.itemSectionRenderer) return item.itemSectionRenderer.contents.map(c => c.musicResponsiveListItemRenderer).filter((c): c is NonNullable<typeof c> => c !== undefined);
+        if (item.itemSectionRenderer) return item.itemSectionRenderer.contents
+            .map(c => reinterpret_cast<MusicResponsiveListItemRenderer2>(c.musicResponsiveListItemRenderer))
+            .filter((c): c is NonNullable<typeof c> => c !== undefined);
         return [];
     });
     
