@@ -1,6 +1,6 @@
 // Intercept both packages before tsx/node tries to load them
 const mock = { id: "", filename: "", loaded: true, exports: {} };
-const packages = ["drizzle-orm/op-sqlite", "@op-engineering/op-sqlite", "react-native", "react-native-mmkv"];
+const packages = ["drizzle-orm/op-sqlite", "@op-engineering/op-sqlite", "react-native", "react-native-mmkv", "react-native-quick-base64", "react-native-quick-crypto"];
 
 packages.forEach((pkg) => {
 	try {
