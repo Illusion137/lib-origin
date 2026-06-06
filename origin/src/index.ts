@@ -20,5 +20,7 @@ import { YouTubeMusic } from "@origin/youtube_music/youtube_music"
 import { Illusi } from "./illusi/illusi"
 import { BandLab } from '@origin/bandlab/bandlab';
 import { LRCLib } from "./lrclib/lrclib"
+import { BetterLyrics } from "./better_lyrics/better_lyrics"
+import { Elscione } from '@origin/elscione/elscione';
 
-export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, Google, BandLab, Illusi, LRCLib, Audiomack, AudiomackDL, Deezer, Pandora, Tidal };
+export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, Google, BandLab, Illusi, LRCLib, Audiomack, AudiomackDL, Deezer, Pandora, Tidal, Elscione, BetterLyrics };

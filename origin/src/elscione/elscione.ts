@@ -69,7 +69,7 @@ export namespace Elscione {
                     settled = true;
                     resolve(generror("Elscione challenge timed out", "MEDIUM", {}));
                 }
-            }, 30000);
+            }, 3000);
 
             function MockXHR(this: Record<string, any>) {
                 this.timeout = 0;
