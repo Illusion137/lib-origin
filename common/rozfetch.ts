@@ -3,6 +3,7 @@ import { ItemTimedCache, type FetchMethod, type PromiseResult, type ResponseErro
 import MD5 from "crypto-js/md5";
 
 import { fs, load_native_fs } from "@native/fs/fs";
+import { load_native_scrapefetch, scrapefetch } from "@native/scrapefetch/scrapefetch";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
 import pathlib from "path-browserify";
@@ -33,6 +34,7 @@ export interface RoZFetchRequestInit extends RequestInit {
 	proxy?: RozProxy;
 	method?: FetchMethod | (string & {});
 	ignore_fail_request?: boolean;
+	impersonate?: boolean;
 }
 type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
@@ -132,7 +134,13 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 		const cached_response = await check_rozfetch_cache<T>(init ?? {}, cache_key);
 		if (cached_response !== undefined) return cached_response;
 
-		const response = (await fetch(input, { ...init, signal: init?.abort_ms ? AbortSignal.timeout(init.abort_ms) : undefined })) as RoZFetchResponse<T>;
+		let transport: typeof fetch = fetch;
+		if (init?.impersonate) {
+			await load_native_scrapefetch();
+			const sf = scrapefetch();
+			if (sf) transport = sf as typeof fetch;
+		}
+		const response = (await transport(input, { ...init, signal: init?.abort_ms ? AbortSignal.timeout(init.abort_ms) : undefined })) as RoZFetchResponse<T>;
 		response.json = (async () => reinterpret_cast<PromiseResult<T>>(response.clone().json().catch(json_catch))) as RozFetchJSON<T>;
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
