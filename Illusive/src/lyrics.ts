@@ -47,7 +47,7 @@ export namespace Lyrics {
             return { plain: best_result.plainLyrics, synced: typeof best_result.syncedLyrics !== "string" ? undefined : best_result.syncedLyrics };
         }
         else {
-            const lrclib_result = await Origin.LRCLib.get({
+            const lrclib_result = await Origin.LRCLib.get_cached({
                 track_name: track.title, 
                 artist_name: track.artists?.[0]?.name ?? "", 
                 album_name: track.album?.name ?? "", 
