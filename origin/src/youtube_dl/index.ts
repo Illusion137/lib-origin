@@ -35,7 +35,7 @@ export namespace YouTubeDL {
         await load_native_potoken();
         await load_native_jseval();
         innertube_client = await Innertube.create({
-            cache: new RCache(true, await fs().temp_directory()),
+            cache: new RCache(true, await fs().temp_directory())
         });
         return innertube_client;
     }

@@ -38,7 +38,7 @@ export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
         artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
     }
 }
-export function soundcloud_parse_user(user: User) {
+export function soundcloud_parse_user(user: User): IllusiveTypes.CompactArtist {
     return {
         name: {name: user.username, uri: create_uri("soundcloud", user.permalink_url)},
         profile_artwork_url: user.avatar_url,

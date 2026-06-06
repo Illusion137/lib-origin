@@ -1,6 +1,6 @@
 import { json_catch, milliseconds_of } from "@common/utils/util";
 import { GLOBALS } from "./globals";
-import type { CompactPlaylist, FullPlaylist, MusicServiceType, Track } from "./types";
+import type { CompactArtist, CompactPlaylist, FullPlaylist, MusicServiceType, Track } from "./types";
 import { FutsalShuffle } from "./futsal_shuffle";
 import { reinterpret_cast } from "@common/cast";
 import { Illusive } from "./illusive";
@@ -14,10 +14,11 @@ import { artist_watch } from "./artist_watch";
 import { Prefs } from "./prefs";
 import { call_wtimeout } from "@common/utils/timed_util";
 import * as Origin from '@origin/index';
-import { soundcloud_parse_system_playlist } from "./parsers/soundcloud_parser";
+import { soundcloud_parse_system_playlist, soundcloud_parse_user } from "./parsers/soundcloud_parser";
 import { supabase } from "./db/supabase";
 import { FSCache } from "@common/fs_cache";
 import type { SelectionItem } from "@origin/soundcloud/types/MixedSelection";
+import type { ArtistRecommendation } from "@origin/soundcloud/types/Search";
 
 export namespace Explore {
 	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = "PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI";
@@ -122,7 +123,7 @@ export namespace Explore {
 		}
 	}
 	export async function get_recommended_playlists(): Promise<FullPlaylist[]> {
-		const REC_SOUNDCLOUD_CACHE_KEY = "REC_SOUNDCLOUD_CACHCE_KEY";
+		const REC_SOUNDCLOUD_CACHE_KEY = "REC_SOUNDCLOUD_PLAYLISTS_CACHE_KEY";
 		const REC_SOUNDCLOUD_CACHE_EXPIRES_MS = milliseconds_of({days: 1});
 		const cache_hit = await FSCache.check_cache<SelectionItem[]>(REC_SOUNDCLOUD_CACHE_KEY, REC_SOUNDCLOUD_CACHE_EXPIRES_MS, {});
 		if(cache_hit) return cache_hit.filter(item => item.kind === "system-playlist")
@@ -139,6 +140,20 @@ export namespace Explore {
 			.map(soundcloud_parse_system_playlist);
 		return playlists;
 	}
+
+	export async function get_recommended_artists(): Promise<CompactArtist[]> {
+		const REC_SOUNDCLOUD_CACHE_KEY = "REC_SOUNDCLOUD_ARTISTS_CACHE_KEY";
+		const REC_SOUNDCLOUD_CACHE_EXPIRES_MS = milliseconds_of({days: 3});
+		const cache_hit = await FSCache.check_cache<{data: {collection: ArtistRecommendation[]}}>(REC_SOUNDCLOUD_CACHE_KEY, REC_SOUNDCLOUD_CACHE_EXPIRES_MS, {});
+		if(cache_hit) return cache_hit.data.collection.map(item => soundcloud_parse_user(item.user));
+		if (!Illusive.music_service.get('SoundCloud')?.has_credentials()) return [];
+		const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
+		const artists = await Origin.SoundCloud.who_to_follow({cookie_jar});
+		if("error" in artists) return [];
+		await FSCache.insert_cache(REC_SOUNDCLOUD_CACHE_KEY, artists, {});
+		return artists.data.collection.map(item => soundcloud_parse_user(item.user));
+	}
+
 	export async function get_illusi_public_playlists(): Promise<CompactPlaylist[]> {
 		const { data: { session } } = await supabase().auth.getSession();
 		if (session?.access_token === undefined) {
