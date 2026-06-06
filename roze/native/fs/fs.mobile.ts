@@ -1,6 +1,6 @@
-import { generror_catch } from "@common/utils/error_util";
+import { generror, generror_catch } from "@common/utils/error_util";
 import { gen_uuid } from "@common/utils/util";
-import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "@native/fs/fs.base";
+import type { DownloadSavable, FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import * as expo_fs from "expo-file-system/legacy";
 import { Directory, File, Paths } from "expo-file-system";
 import path_lib from "path";
@@ -89,5 +89,43 @@ export const mobile_fs: FileSystem = {
 		} catch (error) {
 			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });
 		}
+	},
+	download_resumable: (opts: ResumableDownloadOpts) => {
+		const download_options = opts.headers ? { headers: opts.headers } : {};
+		const task = expo_fs.createDownloadResumable(
+			opts.uri,
+			opts.to_path,
+			download_options,
+			(p) => opts.on_progress?.(p.totalBytesWritten, p.totalBytesExpectedToWrite),
+			opts.resume_data
+		);
+		let last_savable: DownloadSavable = { url: opts.uri, to_path: opts.to_path, headers: opts.headers, resume_data: opts.resume_data };
+		return {
+			start: async () => {
+				try {
+					const result = opts.resume_data ? await task.resumeAsync() : await task.downloadAsync();
+					if (!result) return generror("Resumable download returned no result", "MEDIUM", { uri: opts.uri, to_path: opts.to_path });
+					return result.uri;
+				} catch (error) {
+					return generror_catch(error, "Failed resumable download", "MEDIUM", { uri: opts.uri, to_path: opts.to_path });
+				}
+			},
+			pause: async () => {
+				try {
+					const state = await task.pauseAsync();
+					last_savable = { url: state.url, to_path: state.fileUri, headers: opts.headers, resume_data: state.resumeData ?? undefined };
+					return state.resumeData ?? undefined;
+				} catch {
+					return undefined;
+				}
+			},
+			savable: () => {
+				try {
+					const s = task.savable();
+					last_savable = { url: s.url, to_path: s.fileUri, headers: opts.headers, resume_data: s.resumeData ?? undefined };
+				} catch { /* keep last known savable */ }
+				return last_savable;
+			}
+		};
 	}
 };

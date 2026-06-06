@@ -13,6 +13,24 @@ export interface FileInfo {
 	file_modified_ms: number;
 	uri: string;
 }
+export interface DownloadSavable {
+	url: string;
+	to_path: string;
+	headers?: Record<string, string>;
+	resume_data?: string;
+}
+export interface ResumableDownloadOpts {
+	uri: string;
+	to_path: string;
+	headers?: Record<string, string>;
+	resume_data?: string;
+	on_progress?: (written_bytes: number, total_bytes: number) => void;
+}
+export interface ResumableDownload {
+	start: () => PromiseResult<string>;
+	pause: () => Promise<string | undefined>;
+	savable: () => DownloadSavable;
+}
 export interface FileSystem {
 	temp_directory: (...paths: string[]) => Promise<string>;
 	document_directory: (...paths: string[]) => Promise<string>;
@@ -25,4 +43,5 @@ export interface FileSystem {
 	make_directory: (path: string) => Promise<unknown>;
 	remove: (path: string) => Promise<unknown>;
 	download_to_file: (uri: string, to_path?: string, headers?: Record<string, string>) => PromiseResult<string>;
+	download_resumable: (opts: ResumableDownloadOpts) => ResumableDownload;
 }
