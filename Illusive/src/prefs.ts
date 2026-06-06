@@ -381,6 +381,38 @@ export namespace Prefs {
         },
     }
 
+    export const neon_noir_theme: Theme = {
+        dark: true,
+        colors: {
+            default_primary_color: '#00eeff',
+            primary: get_pref('primary_color'),
+            secondary: '#ff0090',
+            background: '#07070f',
+            primary_dark: '#0a0a20',
+            card: '#0d0d1c',
+            title: '#dff8ff',
+            text: '#c0e8f8',
+            subtext: '#3a5868',
+            deeptext: '#1a2430',
+            border: '#121228',
+            notification: '#00ccee',
+            shelf: '#0b0b1e',
+            tabInactive: '#385868',
+            line: '#0e1624',
+            searchInput: '#12162e',
+            searchPlaceholder: '#284458',
+            inactive: '#284458',
+            red: '#ff2244',
+            green: '#00ff88',
+            orange: '#ff8c00',
+            playingSong: '#0a0c20',
+            playScreen: '#0a0c20',
+            track: '#0a0c20',
+            highlightPressColor: '#00d8ee',
+            black: '#030308',
+        },
+    }
+
     export const sage_mist_theme: Theme = {
         dark: false,
         colors: {
@@ -413,7 +445,7 @@ export namespace Prefs {
         },
     }
 
-    export const ember_forge_theme: Theme = {
+        export const ember_forge_theme: Theme = {
         dark: true,
         colors: {
             default_primary_color: '#e8920a',
@@ -442,6 +474,38 @@ export namespace Prefs {
             track: '#1c1608',
             highlightPressColor: '#d4a030',
             black: '#080600',
+        },
+    }
+
+    export const crimson_void_theme: Theme = {
+        dark: true,
+        colors: {
+            default_primary_color: '#cc0033',
+            primary: get_pref('primary_color'),
+            secondary: '#880044',
+            background: '#0c0808',
+            primary_dark: '#1e0808',
+            card: '#140808',
+            title: '#ffe4e4',
+            text: '#f0d0d0',
+            subtext: '#784848',
+            deeptext: '#2e1818',
+            border: '#200c0c',
+            notification: '#cc2244',
+            shelf: '#180a0a',
+            tabInactive: '#684040',
+            line: '#1c0e0e',
+            searchInput: '#220e0e',
+            searchPlaceholder: '#583838',
+            inactive: '#583838',
+            red: '#ff2244',
+            green: '#44aa66',
+            orange: '#dd6622',
+            playingSong: '#180a0a',
+            playScreen: '#180a0a',
+            track: '#180a0a',
+            highlightPressColor: '#cc4444',
+            black: '#060404',
         },
     }
 
@@ -481,10 +545,12 @@ export namespace Prefs {
         light: light_theme,
         dark: dark_theme,
         oled: oled_theme,
-        cozy_dark: cozy_dark_theme,
         mist_light: sage_mist_theme,
+        crimson_void: crimson_void_theme,
+        neon_noir: neon_noir_theme,
         forge_dark: ember_forge_theme,
-        ocean_dark: deep_ocean_theme
+        ocean_dark: deep_ocean_theme,
+        cozy_dark: cozy_dark_theme,
     }
 
     export async function try_remove_from_recent_searches(query: string) {
