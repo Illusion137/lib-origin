@@ -2,6 +2,7 @@ import type { RozChapterContents, RozContent } from '@roze/types/roz';
 import type { TocElement } from 'epub2/lib/epub/const';
 import type Roz from '@roze/types/roz';
 import EPub from '@lib/epub2';
+import BufferRN from "buffer/";
 import pathlib from 'path-browserify';
 import { gen_uuid } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
@@ -17,6 +18,8 @@ import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_cont
 import mammoth from "@lib/mammoth";
 import { image_size } from '@native/image_size/image_size';
 
+const Buffer = BufferRN.Buffer;
+
 export namespace FileParser {
     interface ParseFileOpts {
         download_to_directory?: string;
@@ -30,6 +33,10 @@ export namespace FileParser {
         } catch (_) {
             return false;
         }
+    }
+
+    function strip_file_scheme(p: string): string {
+        return p.startsWith("file://") ? p.slice("file://".length) : p;
     }
 
     async function transform_url_to_path(file_path_or_url: string, file_extension: FileExtension, opts: ParseFileOpts): PromiseResult<string> {
@@ -134,12 +141,11 @@ export namespace FileParser {
         try {
             const epub = await EPub.createAsync(file_path_err);
             const sections = await parse_epub_flow(epub);
-
             const roz_sections = await parse_epub_sections_to_roz_content(epub, sections);
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "EPUB",
                 title: epub.metadata.title ?? "Unknown EPub",
                 author: epub.metadata.creator ?? null,
@@ -378,7 +384,7 @@ export namespace FileParser {
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "PDF",
                 title: pdf_info.Title ?? pathlib.basename(file_path_or_url),
                 author: pdf_info.Author ?? null,
@@ -406,7 +412,7 @@ export namespace FileParser {
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "DOCX",
                 title: pathlib.basename(file_path_or_url),
                 author: null,
@@ -432,7 +438,7 @@ export namespace FileParser {
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "TXT",
                 title: title,
                 author: null,
