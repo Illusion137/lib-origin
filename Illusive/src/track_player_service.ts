@@ -326,6 +326,8 @@ export async function playback_service() {
             });
             updated_metadata_mutex = false;
             const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
+            // playing_tracks is emptied while the audiobook player owns TrackPlayer; bail so we don't crash or inject music tracks
+            if (illusi_track === undefined) return;
             if (illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
 
@@ -349,6 +351,8 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async (data) => {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
+            // no-op while the audiobook player owns TrackPlayer (music queue cleared)
+            if (illusi_track === undefined) return;
 
             if (is_in_reset_mutex_threshold(illusi_track, data.position)) {
                 updated_metadata_mutex = false;

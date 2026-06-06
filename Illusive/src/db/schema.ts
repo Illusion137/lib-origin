@@ -187,6 +187,7 @@ const audiobooks_config = {
 	date: text().notNull().default(""),
 	series_name: text().notNull().default(""),
 	series_no: int().notNull().default(0),
+	sort_index: int().notNull().default(0),
 	source_file: text().notNull().default(""),
 	source_file_type: text().notNull().default("FILEBASE"),
 	roz_uri: text().notNull().default(""),

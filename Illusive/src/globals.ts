@@ -16,6 +16,8 @@ const global_var = {
     playing_queue: [] as string[],
     can_play_again_mutex: false,
     kill_audioplayer: () => {return},
+    open_audiobook: (uuid: string) => {uuid;},
+    enhance_audiobook_cover: async (uuid: string, source_path: string): Promise<string | undefined> => {uuid; source_path; return undefined;},
     play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => {first_track; tracks; playlist_name;},
     download_track: async(track: Track, redownload?: boolean): Promise<DownloadTrackResult> => {track; redownload; return "GOOD";},
     download_track_lyrics: async(track: Track): Promise<LyricsDownloadingResult> => {track; return reinterpret_cast<LyricsDownloadingResult>("GOOD");},

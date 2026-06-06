@@ -6,8 +6,11 @@ import type { RozChapterContents } from "@roze/types/roz";
 import { FileParser } from "@roze/file";
 import { upgrade_roz_version } from "@roze/index";
 import { AudiobookGen } from "@roze/audiobook_gen";
+import { save_base64_image_to_file } from "@roze/utils";
 import { SQLfs } from "@illusive/sql/sql_fs";
 import { SQLAudiobook } from "@illusive/sql/sql_audiobook";
+import { Constants } from "@illusive/constants";
+import { GLOBALS } from "@illusive/globals";
 import type { AudiobookTableInsert, AudiobookTableItem } from "@illusive/db/schema";
 import { extract_file_extension } from "@common/utils/util";
 import { generror, generror_catch } from "@common/utils/error_util";
@@ -48,8 +51,28 @@ export namespace Audiobooks {
 	function rel_dir(uuid: string) { return `${uuid}/`; }
 	function rel_roz_path(uuid: string) { return `${uuid}/${uuid}.roz`; }
 	function rel_source_path(uuid: string, ext: string) { return `${uuid}/source${ext}`; }
-	function rel_chapter_audio_path(uuid: string, chapter_uuid: string) { return `${uuid}/chapters/${chapter_uuid}.caf`; }
+	function rel_chapter_audio_path(uuid: string, chapter_uuid: string, ext: string) { return `${uuid}/chapters/${chapter_uuid}${ext}`; }
 	function full_path(rel: string) { return SQLfs.audiobook_directory(rel); }
+
+	function to_relative(abs_path: string): string {
+		const marker = Constants.audiobooks_archive_path;
+		const idx = abs_path.lastIndexOf(marker);
+		return idx >= 0 ? abs_path.slice(idx + marker.length) : abs_path;
+	}
+
+	function cover_ext_from_data_uri(cover: string): string {
+		const mime = cover.split(';')[0].split('/')[1] ?? "";
+		const cleaned = mime.replace(/[^a-z0-9]/gi, '').toLowerCase();
+		return cleaned.length > 0 ? cleaned : "png";
+	}
+
+	async function save_cover(uuid: string, cover: string | null | undefined): Promise<string> {
+		if (!cover || cover.length === 0) return "";
+		const rel = `${uuid}/cover.${cover_ext_from_data_uri(cover)}`;
+		const result = await save_base64_image_to_file(cover, full_path(rel), "NO_REGISTER");
+		if (typeof result.write_result === "object") return "";
+		return rel;
+	}
 
 	async function write_roz_file(roz_uri: string, roz: Roz): Promise<void> {
 		await SQLfs.create_file(full_path(roz_uri), JSON.stringify(roz));
@@ -72,14 +95,14 @@ export namespace Audiobooks {
 		await SQLfs.mkdir(full_path(`${uuid}/chapters/`));
 	}
 
-	function build_insert(roz: Roz, source_raw_uri: string): AudiobookTableInsert {
+	function build_insert(roz: Roz, source_raw_uri: string, cover: string): AudiobookTableInsert {
 		return {
 			uuid: roz.uuid,
 			version: roz.version,
 			title: roz.title,
 			author: roz.author ?? "",
 			publisher: roz.publisher ?? "",
-			cover: "",
+			cover,
 			date: roz.date ?? "",
 			series_name: roz.series_name ?? "",
 			series_no: roz.series_no ?? 0,
@@ -100,8 +123,9 @@ export namespace Audiobooks {
 			const ext = extract_file_extension(source) || ".bin";
 			const raw_rel = rel_source_path(roz.uuid, ext);
 			await fs().copy(source, full_path(raw_rel), {});
+			const cover_path = await save_cover(roz.uuid, roz.cover);
 			await write_roz_file(rel_roz_path(roz.uuid), roz);
-			return await SQLAudiobook.insert_audiobook(build_insert(roz, raw_rel));
+			return await SQLAudiobook.insert_audiobook(build_insert(roz, raw_rel, cover_path));
 		} catch (e) {
 			return generror_catch(e, "Failed to import audiobook", "CRITICAL", { source });
 		}
@@ -110,8 +134,9 @@ export namespace Audiobooks {
 	export async function create_audiobook_from_roz(roz: Roz, _opts?: AudiobookImportOpts): PromiseResult<AudiobookTableItem> {
 		try {
 			await setup_audiobook_dirs(roz.uuid);
+			const cover_path = await save_cover(roz.uuid, roz.cover);
 			await write_roz_file(rel_roz_path(roz.uuid), roz);
-			return await SQLAudiobook.insert_audiobook(build_insert(roz, ""));
+			return await SQLAudiobook.insert_audiobook(build_insert(roz, "", cover_path));
 		} catch (e) {
 			return generror_catch(e, "Failed to create audiobook from roz", "CRITICAL", { uuid: roz.uuid });
 		}
@@ -121,16 +146,20 @@ export namespace Audiobooks {
 		try {
 			const meta = await SQLAudiobook.get_audiobook_by_uuid(uuid);
 			if (!meta) return generror(`Audiobook ${uuid} not found`, "MEDIUM", { uuid });
-			if (!meta.source_raw_uri) return generror(`Audiobook ${uuid} has no raw source stored`, "MEDIUM", { uuid, title: meta.title });
-			const parse_result = await FileParser.parse(full_path(meta.source_raw_uri));
+			const local_rel = meta.source_file || meta.source_raw_uri;
+			if (!local_rel) return generror(`Audiobook ${uuid} has no raw source stored`, "MEDIUM", { uuid, title: meta.title });
+			const parse_result = await FileParser.parse(full_path(local_rel));
 			if ("error" in parse_result) return parse_result;
 			const roz = parse_result;
+			roz.uuid = meta.uuid;
+			const cover_path = await save_cover(meta.uuid, roz.cover);
 			await save_roz(meta, roz);
 			await SQLAudiobook.update_audiobook(uuid, {
 				version: roz.version,
 				title: roz.title,
 				author: roz.author ?? "",
 				publisher: roz.publisher ?? "",
+				cover: cover_path,
 				date: roz.date ?? "",
 				series_name: roz.series_name ?? "",
 				series_no: roz.series_no ?? 0,
@@ -214,7 +243,8 @@ export namespace Audiobooks {
 			if ("error" in result) return result;
 
 			if (result.chapter.audio_path) {
-				const dest_rel = rel_chapter_audio_path(uuid, result.chapter.uuid);
+				const ext = extract_file_extension(result.chapter.audio_path, "none") || ".caf";
+				const dest_rel = rel_chapter_audio_path(uuid, result.chapter.uuid, ext);
 				await fs().move(result.chapter.audio_path, full_path(dest_rel), {});
 				result.chapter.audio_path = dest_rel;
 			}
@@ -280,39 +310,137 @@ export namespace Audiobooks {
 		}
 	}
 
-	export interface DownloadAudiobookOpts {
+	export interface RemoteRequestOpts {
 		cookie_jar?: CookieJar;
 		headers?: Record<string, string>;
 		user_agent?: string;
 	}
 
-	export async function download_audiobook(uuid: string, opts: DownloadAudiobookOpts = {}): PromiseResult<string> {
+	export function build_remote_headers(opts: RemoteRequestOpts): Record<string, string> {
+		const headers: Record<string, string> = {
+			"user-agent": opts.user_agent ?? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+			accept: "*/*",
+			...(opts.headers ?? {})
+		};
+		if (opts.cookie_jar !== undefined) headers.cookie = opts.cookie_jar.toString();
+		return headers;
+	}
+
+	export function remote_source_dest(uuid: string, url: string): { rel: string; abs: string } {
+		const ext = extract_file_extension(url) || ".bin";
+		const rel = rel_source_path(uuid, ext);
+		return { rel, abs: full_path(rel) };
+	}
+
+	export interface PrepareRemoteImportOpts {
+		url: string;
+		title?: string;
+		source_file_type?: string;
+	}
+
+	export async function prepare_remote_import(opts: PrepareRemoteImportOpts): PromiseResult<AudiobookTableItem> {
 		try {
-			const meta = await SQLAudiobook.get_audiobook_by_uuid(uuid);
-			if (!meta) return generror(`Audiobook ${uuid} not found`, "MEDIUM", { uuid });
-			if (!meta.source_raw_uri) return generror(`Audiobook ${uuid} has no source URI`, "MEDIUM", { uuid, title: meta.title });
-			await setup_audiobook_dirs(uuid);
-			const ext = extract_file_extension(meta.source_raw_uri) || ".bin";
-			const dest_rel = rel_source_path(uuid, ext);
-			const dest_path = full_path(dest_rel);
-			const headers: Record<string, string> = {
-				"user-agent": opts.user_agent ?? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
-				accept: "*/*",
-				...(opts.headers ?? {})
-			};
-			if (opts.cookie_jar !== undefined) headers.cookie = opts.cookie_jar.toString();
-			const download_result = await fs().download_to_file(meta.source_raw_uri, dest_path, headers);
-			if (typeof download_result !== "string") return download_result;
-			await SQLAudiobook.update_audiobook(uuid, { source_file: dest_rel });
-			return dest_path;
+			const inserted = await SQLAudiobook.insert_audiobook({
+				title: opts.title ?? "",
+				source_file: "",
+				source_file_type: opts.source_file_type ?? "REMOTE",
+				source_raw_uri: opts.url,
+			});
+			await setup_audiobook_dirs(inserted.uuid);
+			return inserted;
 		} catch (e) {
-			return generror_catch(e, "Failed to download audiobook", "MEDIUM", { uuid });
+			return generror_catch(e, "Failed to prepare remote import", "MEDIUM", { url: opts.url });
 		}
+	}
+
+	export interface FinalizeRemoteImportOpts {
+		title?: string;
+	}
+
+	export async function finalize_remote_import(uuid: string, downloaded_path: string, opts: FinalizeRemoteImportOpts = {}): PromiseResult<AudiobookTableItem> {
+		try {
+			const source_rel = to_relative(downloaded_path);
+			const parse_result = await FileParser.parse(downloaded_path);
+			if ("error" in parse_result) return parse_result;
+			const roz = parse_result;
+			roz.uuid = uuid;
+
+			const cover_path = await save_cover(uuid, roz.cover);
+			const roz_rel = rel_roz_path(uuid);
+			await write_roz_file(roz_rel, roz);
+
+			await SQLAudiobook.update_audiobook(uuid, {
+				version: roz.version,
+				title: roz.title || (opts.title ?? ""),
+				author: roz.author ?? "",
+				publisher: roz.publisher ?? "",
+				cover: cover_path,
+				date: roz.date ?? "",
+				series_name: roz.series_name ?? "",
+				series_no: roz.series_no ?? 0,
+				source_file: source_rel,
+				source_file_type: roz.source_file_type,
+				roz_uri: roz_rel,
+				chapter_count: roz.chapters.length,
+			});
+
+			const better_cover = await GLOBALS.global_var.enhance_audiobook_cover?.(uuid, downloaded_path);
+			if (better_cover && better_cover.length > 0) {
+				await SQLAudiobook.update_audiobook(uuid, { cover: better_cover });
+			}
+
+			const updated = await SQLAudiobook.get_audiobook_by_uuid(uuid);
+			if (!updated) return generror(`Audiobook ${uuid} not found after import`, "MEDIUM", { uuid });
+			return updated;
+		} catch (e) {
+			return generror_catch(e, "Failed to finalize remote import", "CRITICAL", { uuid });
+		}
+	}
+
+	export interface ImportFromRemoteUrlOpts extends RemoteRequestOpts {
+		url: string;
+		title?: string;
+		source_file_type?: string;
+	}
+
+	export async function import_from_remote_url(opts: ImportFromRemoteUrlOpts): PromiseResult<AudiobookTableItem> {
+		let inserted: AudiobookTableItem | undefined;
+		try {
+			const prepared = await prepare_remote_import(opts);
+			if ("error" in prepared) return prepared;
+			inserted = prepared;
+
+			const { abs } = remote_source_dest(inserted.uuid, opts.url);
+			const download_result = await fs().download_to_file(opts.url, abs, build_remote_headers(opts));
+			if (typeof download_result !== "string") {
+				await cleanup_failed_import(inserted.uuid);
+				return download_result;
+			}
+
+			const finalized = await finalize_remote_import(inserted.uuid, download_result, { title: opts.title });
+			if ("error" in finalized) {
+				await cleanup_failed_import(inserted.uuid);
+				return finalized;
+			}
+			return finalized;
+		} catch (e) {
+			if (inserted !== undefined) await cleanup_failed_import(inserted.uuid);
+			return generror_catch(e, "Failed to import audiobook from remote URL", "CRITICAL", { url: opts.url, uuid: inserted?.uuid });
+		}
+	}
+
+	export async function cleanup_failed_import(uuid: string): Promise<void> {
+		await Promise.resolve(SQLAudiobook.delete_audiobook(uuid)).catch(() => { });
+		await fs().remove(full_path(rel_dir(uuid))).catch(() => { });
 	}
 
 	export function resolve_source_path(meta: AudiobookTableItem): string | undefined {
 		if (!meta.source_file) return undefined;
 		return full_path(meta.source_file);
+	}
+
+	export function resolve_relative_path(rel: string): string {
+		return full_path(rel);
 	}
 
 	export async function upgrade_audiobook_roz_versions(): Promise<void> {
