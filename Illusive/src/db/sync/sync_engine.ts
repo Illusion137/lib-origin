@@ -218,6 +218,11 @@ export class SyncEngine {
     private is_syncing = false;
     private is_initialized = false;
     private is_destroyed = false;
+    // Count of in-memory global-track mutations made silently during a pull, so
+    // pull_tracks can notify listeners ONCE at the end. Notifying per row cloned
+    // the whole library and re-rendered every screen per pulled track — a
+    // sustained JS-thread saturation on large sync batches.
+    private pull_dirty_global_tracks = 0;
     private resync_requested = false;
     private consecutive_failures = 0;
     private last_error_message?: string;
@@ -819,7 +824,16 @@ export class SyncEngine {
         const last_sync_iso = new Date((metadata?.last_sync_at ?? 0) - 2000).toISOString();
 
         switch (table_name) {
-            case 'tracks': await this.pull_tracks(last_sync_iso, user_uid); break;
+            case 'tracks':
+                try {
+                    await this.pull_tracks(last_sync_iso, user_uid);
+                } finally {
+                    // Flush silent per-row global-track mutations ONCE per pull —
+                    // also on error exits (page-fetch throw mid-pull), so listeners
+                    // never miss mutations that were already applied.
+                    this.flush_pull_dirty_global_tracks();
+                }
+                break;
             case 'playlists': await this.pull_playlists(last_sync_iso, user_uid); break;
             case 'playlists_tracks': await this.pull_playlists_tracks(last_sync_iso, user_uid); break;
         }
@@ -927,7 +941,22 @@ export class SyncEngine {
             }
         }
 
+        // Global-track listeners are flushed once per pull by
+        // flush_pull_dirty_global_tracks() in pull_table_changes' finally,
+        // which also covers error exits.
         await this.save_pull_watermark('tracks', max_modified_at);
+    }
+
+    /**
+     * Notify global-track listeners once for all silent per-row mutations made
+     * during a pull (the per-row update/delete/add calls pass notify=false).
+     * Invoked from pull_table_changes' finally so listeners are flushed even
+     * when a pull aborts partway through.
+     */
+    private flush_pull_dirty_global_tracks() {
+        if (this.pull_dirty_global_tracks === 0) return;
+        this.pull_dirty_global_tracks = 0;
+        SQLGlobal.notify_global_tracks_updated();
     }
 
     /**
@@ -1048,7 +1077,8 @@ export class SyncEngine {
 
         const merged = this.remote_merge_global(existing, row);
         await db.update(tracks_table).set(merged).where(eq(tracks_table.uid, uid));
-        SQLGlobal.update_global_track_item(uid, { ...existing, ...merged } as LocalTrack);
+        SQLGlobal.update_global_track_item(uid, { ...existing, ...merged } as LocalTrack, false);
+        this.pull_dirty_global_tracks++;
     }
 
     private async apply_track(
@@ -1072,7 +1102,8 @@ export class SyncEngine {
                         modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at)),
                     })
                     .where(eq(tracks_table.uid, row.uid));
-                SQLGlobal.delete_global_track_item(row.uid);
+                SQLGlobal.delete_global_track_item(row.uid, false);
+                this.pull_dirty_global_tracks++;
             }
             return;
         }
@@ -1101,14 +1132,16 @@ export class SyncEngine {
 
             await db.update(tracks_table).set(merged)
                 .where(eq(tracks_table.uid, row.uid));
-            SQLGlobal.update_global_track_item(row.uid, { ...existing, ...merged } as LocalTrack);
+            SQLGlobal.update_global_track_item(row.uid, { ...existing, ...merged } as LocalTrack, false);
+            this.pull_dirty_global_tracks++;
             return;
         }
 
         // Insert new track received from remote.
         const local = this.remote_track_to_local(row);
         await db.insert(tracks_table).values(local);
-        SQLGlobal.add_global_track_item(local as LocalTrack);
+        SQLGlobal.add_global_track_item(local as LocalTrack, false);
+        this.pull_dirty_global_tracks++;
     }
 
     // -------------------------------------------------------------------------

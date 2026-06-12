@@ -234,13 +234,15 @@ export namespace SQLTracks {
     }
 
     export async function insert_all_tracks(tracks: Track[]) {
-        const promise_tracks: Promises = [];
+        const promise_tracks: Promise<boolean>[] = [];
         for (const track of tracks)
-            promise_tracks.push(insert_track(track));
-        await Promise.all(promise_tracks);
+            promise_tracks.push(insert_track(track, false));
+        const inserted = await Promise.all(promise_tracks);
+        if (inserted.some(Boolean)) SQLGlobal.notify_global_tracks_updated();
     }
-    export async function insert_track(track: Track) {
-        if (track_exists(track, GLOBALS.global_var.sql_tracks)) return;
+
+    export async function insert_track(track: Track, notify = true): Promise<boolean> {
+        if (track_exists(track, GLOBALS.global_var.sql_tracks)) return false;
         const new_track_meta = {
             ...reinterpret_cast<TrackMetaData>(track.meta),
             added_date: reinterpret_cast<ISOString>(new Date().toISOString()),
@@ -257,11 +259,12 @@ export namespace SQLTracks {
         await ChangeTracker.log_change('tracks', 'insert', track.uid, new_track);
 
         const parsed_track = sql_track_to_track(new_track)
-        if ("error" in parsed_track) return;
-        SQLGlobal.add_global_track_item(parsed_track);
+        if ("error" in parsed_track) return false;
+        SQLGlobal.add_global_track_item(parsed_track, notify);
         if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
         if (Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
         if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
+        return true;
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
         const sanitized_track = {
@@ -285,9 +288,18 @@ export namespace SQLTracks {
         return merged_track;
     }
     export async function delete_track(track_uid: Track['uid']) {
-        await db.delete(tracks_table).where(eq(tracks_table.uid, track_uid));
+        await db.update(tracks_table).set({ deleted: true }).where(eq(tracks_table.uid, track_uid));
         await ChangeTracker.log_change('tracks', 'delete', track_uid, { uid: track_uid });
         SQLGlobal.delete_global_track_item(track_uid);
+    }
+    export async function undelete_track(track_uid: Track['uid']) {
+        await db.update(tracks_table).set({ deleted: false }).where(eq(tracks_table.uid, track_uid));
+        await ChangeTracker.log_change('tracks', 'update', track_uid, { uid: track_uid });
+        const track = await db.select().from(tracks_table).where(eq(tracks_table.uid, track_uid)).get();
+        if (track === undefined) return;
+        const itrack = sql_track_to_track(track);
+        if ("error" in itrack) return;
+        SQLGlobal.add_global_track_item(itrack);
     }
 
     export async function download_thumbnail(track: Track) {

@@ -7,7 +7,7 @@ import { SQLTracks } from './sql/sql_tracks';
 import { SQLRecentlyPlayed } from './sql/sql_recently_played';
 import { SQLPlaylists } from './sql/sql_playlists';
 import { load_native_modules } from '@native/gen/load_native_modules';
-import { miscnative } from '@native/miscnative/miscnative';
+import { load_native_miscnative } from '@native/miscnative/miscnative';
 import { SQLfs } from './sql/sql_fs';
 import { db, is_database_connected, load_database } from './db/database';
 import { Illusive } from './illusive';
@@ -17,7 +17,7 @@ import { reinterpret_cast } from '../../common/cast';
 import { Constants } from './constants';
 import { YouTubeDL } from '@origin/youtube_dl';
 import { SoundCloud } from '@origin/index';
-import { ffmpeg } from '@native/ffmpeg/ffmpeg';
+import { ffmpeg, load_native_ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { SQLUpdate } from './sql/sql_update';
 import { SQLArtists } from './sql/sql_artists';
 import { catch_log } from '@common/utils/error_util';
@@ -27,9 +27,13 @@ import { supabase } from './db/supabase';
 import { SyncEngine } from './db/sync/sync_engine';
 import { NetworkMonitor } from './db/sync/network_monitor';
 import { FutsalShuffle } from './futsal_shuffle';
-import { fs } from '@native/fs/fs';
+import { fs, load_native_fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
 import { run_startup_links } from './linker';
+import { load_native_mmkv } from '@native/mmkv/mmkv';
+import { load_native_sqlite } from '@native/sqlite/sqlite';
+import { breadcrumb } from '@common/sentry_error_handler';
+import * as Sentry from "@sentry/react-native";
 
 export let sync_engine_instance: SyncEngine | null = null;
 let sync_engine_start_promise: Promise<void> | null = null;
@@ -77,6 +81,7 @@ function reset_auth_sync_subscription() {
 }
 
 export async function warmup_client() {
+    await load_native_ffmpeg();
     await ffmpeg().execute_args(['-L']);
     if (Prefs.get_pref('warmup_youtube')) {
         await YouTubeDL.get_innertube_client();
@@ -89,13 +94,31 @@ export async function warmup_client() {
 export async function illusi_startup(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: typeof GLOBALS.global_var.set_theme, bottom_alert: typeof GLOBALS.global_var.bottom_alert, on_finish_essentials: () => {
 
 }) {
+    const startup_t0 = Date.now();
+    const phase_timings: [string, number][] = [];
+    let last_phase_ms = 0;
+
+    const phase = (name: string) => {
+        const elapsed = Date.now() - startup_t0;
+        const section_ms = elapsed - last_phase_ms;
+        phase_timings.push([name, elapsed]);
+        last_phase_ms = elapsed;
+        breadcrumb("startup", `illusi_startup: ${name}`, { elapsed_ms: elapsed, section_ms });
+    };
+
     await catch_function_async(async () => {
-        await load_native_modules();
+        phase("native modules start");
+        await Promise.all([
+            load_native_fs(),
+            load_native_mmkv(),
+            load_native_sqlite()
+        ]);
+        phase("native modules done");
 
         await SQLfs.cache_load_directories();
         await Prefs.load_mmkv_module();
-
         await Prefs.load_prefs();
+        phase("prefs loaded");
 
         // await Prefs.save_pref('database_version', "17.2.0");
         // await delete_database();
@@ -108,6 +131,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         };
 
         await migrate(db, migrations).catch(catch_log);
+        phase("db migrated");
 
         GLOBALS.global_var.play_tracks = play_tracks;
         GLOBALS.global_var.download_track = download_track;
@@ -138,11 +162,21 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             }
         }
         await Prefs.save_pref('latest_version', version);
+        phase("update check done");
 
         await SQLTracks.fetch_track_data();
+        phase(`tracks fetched`);
+        Sentry.setContext("library", { track_count: GLOBALS.global_var.sql_tracks.length });
 
-        // Start sync for the current session and maintain a single engine lifecycle.
-        const { data: { session } } = await supabase().auth.getSession();
+        const SESSION_TIMEOUT_MS = 4000;
+        const session_result = await Promise.race([
+            supabase().auth.getSession().catch(() => null),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), SESSION_TIMEOUT_MS))
+        ]);
+        const session = session_result?.data?.session ?? null;
+        if (session_result === null) {
+            breadcrumb("startup", "supabase.getSession timed out — no internet?", { timeout_ms: SESSION_TIMEOUT_MS });
+        }
         if (session) {
             // Do not block app startup on long-running initial sync.
             void start_sync_engine().catch(catch_log);
@@ -165,7 +199,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             await Promise.all([
                 SQLRecentlyPlayed.cleanup_recently_played(),
                 SQLPlaylists.all_playlists_data("PROMISE"),
-                miscnative().keep_mobile_awake()
+                load_native_miscnative().then(async(m) => m.keep_mobile_awake())
             ]).catch(catch_log);
         })().catch(catch_log);
 
@@ -174,6 +208,18 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         warmup_client().catch(catch_log);
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
         run_startup_links(Prefs.get_pref('linker_links')).catch(catch_log);
+
+        const total_ms = Date.now() - startup_t0;
+        const phase_summary = Object.fromEntries(phase_timings.map(([name, ms], i) => [name, `${i > 0 ? ms - phase_timings[i - 1][1] : ms}ms`]));
+        breadcrumb("startup", "illusi_startup: complete", { total_ms, ...phase_summary });
+
+        if (total_ms > 2800) {
+            Sentry.captureMessage("Slow app startup", {
+                level: "warning",
+                tags: { perf: "startup" },
+                extra: { total_ms, track_count: GLOBALS.global_var.sql_tracks.length, ...phase_summary }
+            });
+        }
     }, (error) => GLOBALS.global_var.bottom_alert("Illusi Startup Failed", "ERROR", { error }))
 }
 
@@ -212,6 +258,7 @@ export async function on_app_load(version: string, play_tracks: typeof GLOBALS.g
         if (maybe_initial_shortcut?.userInfo && default_playlist_names.includes((maybe_initial_shortcut.userInfo as { uuid: string }).uuid)) {
             await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
         }
+        await load_native_modules();
     });
     set_is_loading(false);
 }

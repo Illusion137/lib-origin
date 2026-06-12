@@ -274,7 +274,7 @@ export namespace SQLPlaylists {
         const tracks = await playlist_tracks(playlist_uuid);
         await delete_all_tracks_playlist(tracks.map(t => ({track_uid: t.uid, uuid: playlist_uuid})));
         await db.transaction(async(tx) => {
-            await tx.delete(playlists_table).where(eq(playlists_table.uuid, playlist_uuid));
+            await tx.update(playlists_table).set({deleted: true}).where(eq(playlists_table.uuid, playlist_uuid));
         });
         await ChangeTracker.log_change('playlists', 'delete', playlist_uuid, {uuid: playlist_uuid});
     }

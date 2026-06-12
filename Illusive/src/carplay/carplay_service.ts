@@ -151,20 +151,41 @@ function tracks_sections(tracks: Track[]): Section<ListTemplate> {
 }
 
 async function open_playlist(playlist: CompactPlaylistData): Promise<void> {
+    const session = carplay_session;
     breadcrumb('carplay', 'playlist.open', { title: playlist.title, type: playlist.type });
     const tracks = await playlist.track_callback();
+    if (session !== carplay_session || !carplay_available()) {
+        breadcrumb('carplay', 'playlist.open.stale', { title: playlist.title });
+        return;
+    }
     breadcrumb('carplay', 'playlist.tracks_loaded', { title: playlist.title, count: tracks.length });
     const list = new ListTemplate({
         title: { text: playlist.title },
         sections: tracks_sections(tracks),
     });
+    if (session !== carplay_session || !carplay_available()) return;
     await list.push();
 }
 
 let grid_template: GridTemplate | null = null;
 let is_initialized = false;
+let is_connected = false;
+let carplay_session = 0;
 let remove_connect_listener: (() => void) | null = null;
 let remove_disconnect_listener: (() => void) | null = null;
+
+function carplay_available(): boolean {
+    return is_initialized && is_connected;
+}
+
+function native_is_connected(): boolean {
+    try {
+        return HybridAutoPlay.isConnected();
+    } catch (e) {
+        catch_log(e);
+        return false;
+    }
+}
 
 async function build_playlist_button(playlist: CompactPlaylistData): Promise<GridButton<GridTemplate>> {
     const image = await playlist_image(playlist);
@@ -180,21 +201,26 @@ function more_playlists_button(overflow: CompactPlaylistData[]): GridButton<Grid
         title: { text: 'More Playlists' },
         image: { type: 'glyph', name: 'playlist_play' },
         onPress: () => {
-            const list = new ListTemplate({
-                title: { text: 'All Playlists' },
-                sections: {
-                    type: 'default',
-                    items: overflow.map(playlist => ({
-                        type: 'default' as const,
-                        title: { text: playlist.title },
-                        detailedText: { text: `${playlist.track_count} tracks` },
-                        image: { type: 'glyph', name: glyph_for_playlist(playlist.title) },
-                        browsable: true,
-                        onPress: () => { open_playlist(playlist).catch(catch_log); },
-                    })),
-                },
-            });
-            list.push().catch(catch_log);
+            try {
+                if (!carplay_available()) return;
+                const list = new ListTemplate({
+                    title: { text: 'All Playlists' },
+                    sections: {
+                        type: 'default',
+                        items: overflow.map(playlist => ({
+                            type: 'default' as const,
+                            title: { text: playlist.title },
+                            detailedText: { text: `${playlist.track_count} tracks` },
+                            image: { type: 'glyph', name: glyph_for_playlist(playlist.title) },
+                            browsable: true,
+                            onPress: () => { open_playlist(playlist).catch(catch_log); },
+                        })),
+                    },
+                });
+                list.push().catch(catch_log);
+            } catch (e) {
+                catch_log(e);
+            }
         },
     };
 }
@@ -228,10 +254,15 @@ function header_actions(playlists: CompactPlaylistData[], mode: PlayMode): Heade
 }
 
 function cycle_play_mode(playlists: CompactPlaylistData[]): void {
-    const next = next_play_mode(current_play_mode());
-    breadcrumb('carplay', 'cycle_play_mode', { next });
-    Prefs.save_pref('carplay_play_mode', next).catch(catch_log);
-    grid_template?.setHeaderActions(header_actions(playlists, next)).catch(catch_log);
+    try {
+        const next = next_play_mode(current_play_mode());
+        breadcrumb('carplay', 'cycle_play_mode', { next });
+        Prefs.save_pref('carplay_play_mode', next).catch(catch_log);
+        if (!carplay_available()) return;
+        grid_template?.setHeaderActions(header_actions(playlists, next)).catch(catch_log);
+    } catch (e) {
+        catch_log(e);
+    }
 }
 
 function shuffle_all_libraries(playlists: CompactPlaylistData[]): void {
@@ -261,28 +292,41 @@ async function gather_playlists(): Promise<CompactPlaylistData[]> {
 }
 
 async function build_root(): Promise<void> {
+    const session = carplay_session;
     const playlists = await gather_playlists();
+    if (session !== carplay_session || !carplay_available()) return;
     const mode = current_play_mode();
     breadcrumb('carplay', 'build_root.start', { playlist_count: playlists.length, mode });
     const buttons = await build_grid_buttons(playlists);
+    if (session !== carplay_session || !carplay_available()) {
+        breadcrumb('carplay', 'build_root.stale');
+        return;
+    }
 
-    grid_template = new GridTemplate({
+    const template = new GridTemplate({
         title: { text: ROOT_TITLE },
         buttons: [],
         headerActions: header_actions(playlists, mode),
     });
-    await grid_template.updateGrid(buttons);
-    await grid_template.setRootTemplate();
+    grid_template = template;
+    await template.updateGrid(buttons);
+    if (session !== carplay_session || !carplay_available()) return;
+    await template.setRootTemplate();
     breadcrumb('carplay', 'build_root.done', { button_count: buttons.length });
 }
 
 function on_connect(): void {
+    if (!is_initialized) return;
     breadcrumb('carplay', 'didConnect');
+    is_connected = true;
+    carplay_session++;
     build_root().catch(catch_log);
 }
 
 function on_disconnect(): void {
     breadcrumb('carplay', 'didDisconnect');
+    is_connected = false;
+    carplay_session++;
     grid_template = null;
 }
 
@@ -290,24 +334,41 @@ export namespace CarPlayService {
     export function init(): void {
         if (is_initialized) return;
         is_initialized = true;
-        breadcrumb('carplay', 'service.init', { already_connected: HybridAutoPlay.isConnected() });
-        remove_connect_listener = HybridAutoPlay.addListener('didConnect', on_connect);
-        remove_disconnect_listener = HybridAutoPlay.addListener('didDisconnect', on_disconnect);
-        if (HybridAutoPlay.isConnected()) on_connect();
+        const already_connected = native_is_connected();
+        breadcrumb('carplay', 'service.init', { already_connected });
+        try {
+            // on_connect may fire during this call.
+            remove_connect_listener = HybridAutoPlay.addListener('didConnect', on_connect);
+            remove_disconnect_listener = HybridAutoPlay.addListener('didDisconnect', on_disconnect);
+        } catch (e) {
+            catch_log(e);
+        }
+        if (already_connected && !is_connected) on_connect();
     }
 
     export function destroy(): void {
+        if (!is_initialized && remove_connect_listener === null && remove_disconnect_listener === null) return;
         breadcrumb('carplay', 'service.destroy');
-        remove_connect_listener?.();
-        remove_disconnect_listener?.();
+        is_initialized = false;
+        is_connected = false;
+        carplay_session++;
+        try {
+            remove_connect_listener?.();
+        } catch (e) {
+            catch_log(e);
+        }
+        try {
+            remove_disconnect_listener?.();
+        } catch (e) {
+            catch_log(e);
+        }
         remove_connect_listener = null;
         remove_disconnect_listener = null;
         grid_template = null;
-        is_initialized = false;
     }
 
     export function refresh(): void {
-        if (!is_initialized || !HybridAutoPlay.isConnected()) return;
+        if (!is_initialized || !is_connected || !native_is_connected()) return;
         breadcrumb('carplay', 'service.refresh');
         build_root().catch(catch_log);
     }

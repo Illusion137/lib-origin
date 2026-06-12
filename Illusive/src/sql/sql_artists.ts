@@ -36,7 +36,7 @@ export namespace SQLArtists {
     export async function insert_sql_artists(sql_artist: SQLArtistInsert){
         artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
         artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
-        await db.insert(artists_table).values(sql_artist);
+        await db.insert(artists_table).values(sql_artist).onConflictDoUpdate({set: sql_artist, target: artists_table.uri});
         // await ChangeTracker.log_change('artists', 'insert', sql_artist.uri, sql_artist);
     }
 
