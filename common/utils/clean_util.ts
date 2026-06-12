@@ -6,4 +6,3 @@ export function remove_special_chars(str: string) {
 }
 
 export function remove_topic(title: string) { return title.replace(" - Topic", '').replace(/\(@.+?\)/,''); }
-export function remove_prod(title: string) { return title.replace(/\(.+?\)/g, '').replace(/prod\. .+/, ''); }

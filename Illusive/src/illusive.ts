@@ -405,10 +405,14 @@ export namespace Illusive {
     }
 
     export async function get_best_track_artwork(document_directory: string, track: Track): Promise<Artwork> {
+        if (!is_empty(track.thumbnail_uri)) {
+            if (track.thumbnail_uri!.includes(track.uid))
+                return pathlib.join(document_directory, Constants.thumbnail_archive_path, track.thumbnail_uri!);
+            else
+                return pathlib.join(document_directory, Constants.custom_thumbnail_archive_path, track.thumbnail_uri!);
+        }
         if (!is_empty(track.imported_id))
             return imported_thumbnail_index;
-        if (!is_empty(track.thumbnail_uri))
-            return pathlib.join(document_directory, Constants.thumbnail_archive_path, track.thumbnail_uri!);
         if (!is_empty(track.artwork_url))
             return await get_highest_quality_service_thumbnail_uri(track.artwork_url!);
         if (!is_empty(track.youtube_id))

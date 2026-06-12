@@ -7,6 +7,7 @@ import type { ResponseError } from '@common/types';
 import { is_empty, milliseconds_of, urlid } from '@common/utils/util';
 import { parse_playlist_continuation_contents } from '@origin/youtube/parser';
 import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
+import type { ContinuationItemViewModel } from "@origin/youtube/types/PlaylistResultsW";
 import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
 import type * as YTMUSIC_CONTINUATION from "@origin/youtube_music/types/Continuation";
 import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
@@ -61,7 +62,8 @@ export async function musi_get_playlist(url: string): Promise<MusicServicePlayli
     };
 }
 
-interface YouTubePlaylistContinuation { "ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation }
+// the first playlist page yields the new lockup layout's ContinuationItemViewModel, continuation pages the old Continuation shape
+interface YouTubePlaylistContinuation { "ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation | ContinuationItemViewModel }
 export async function youtube_get_playlist(url: string, fetch_opts?: RoZFetchRequestInit): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_playlist({
@@ -81,7 +83,7 @@ export async function youtube_get_playlist_continuation(opts: YouTubePlaylistCon
     const playlist_response = await Origin.YouTube.get_continuation({ cookie_jar }, opts.ytcfg, opts.continuation);
     if ("error" in playlist_response) return { tracks: [], continuation: null, error: playlist_response };
     const parsed_playlist = parse_playlist_continuation_contents(playlist_response);
-    return { tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: { ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation } as YouTubePlaylistContinuation }
+    return { tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: parsed_playlist.continuation === null ? null : { ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation } as YouTubePlaylistContinuation }
 }
 
 interface YouTubeMusicPlaylistContinuation { "url": string, "ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation | YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs, "artwork_url"?: string }
