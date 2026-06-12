@@ -3,7 +3,7 @@ import { generate_new_uid } from "@common/utils/util";
 import { create_uri } from "@illusive/illusive_utils";
 import type { ISOString } from "@illusive/types";
 import type * as IllusiveTypes from "@illusive/types";
-import { remove_prod } from "@common/utils/clean_util";
+import { parse_track_title_artist } from "@illusive/parsers/title_parser";
 import { reinterpret_cast } from "@common/cast";
 import type { SnippetedTrack } from "@origin/soundcloud/types/ArtistStories";
 import type { SystemPlaylist } from "@origin/soundcloud/types/MixedSelection";
@@ -15,28 +15,28 @@ export function sc_highest_artwork(artwork_url: string) {
 }
 
 export function soundcloud_parse_track_snippet(track: SnippetedTrack): IllusiveTypes.Track {
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(track.title),
-        title: remove_prod(track.title),
+        title: track.title,
         artists: [{name: track.user.username, uri: create_uri("soundcloud", track.user.permalink)}],
         duration: Math.floor(track.duration / 1000),
         soundcloud_id: track.id,
         soundcloud_permalink: track.permalink_url,
         artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
-    }
+    })
 }
 
 export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(track.title),
-        title: remove_prod(track.title),
+        title: track.title,
         artists: [{name: track.user.username, uri: create_uri("soundcloud", track.user.permalink)}],
         plays: track.playback_count ?? 0,
         duration: Math.floor(track.duration / 1000),
         soundcloud_id: track.id,
         soundcloud_permalink: track.permalink_url,
         artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
-    }
+    })
 }
 export function soundcloud_parse_user(user: User): IllusiveTypes.CompactArtist {
     return {
