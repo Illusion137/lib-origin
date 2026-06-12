@@ -7,11 +7,54 @@ import type { LockupViewModel, PlaylistHeaderRenderer } from "@origin/youtube/ty
 import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "@origin/youtube/types/SearchResultsM";
 import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/youtube/types/SearchResultsW";
 import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
-import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicServicePlaylistBase, Track } from "@illusive/types";
+import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, IllusiveURI, MusicServicePlaylistBase, NamedUUID, Track } from "@illusive/types";
 import { YTNodes } from "youtubei.js/agnostic";
 import { YouTubeDL, type VideoInfo } from '@origin/youtube_dl/index';
 import type { PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsWContinuation";
 // import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
+
+function youtube_artist_uri_from_endpoint(endpoint: any): IllusiveURI | null {
+    const browse_id = endpoint?.browseEndpoint?.canonicalBaseUrl ?? endpoint?.browseEndpoint?.browseId;
+    return browse_id === undefined ? null : create_uri("youtube", browse_id);
+}
+
+function dedup_youtube_artists(artists: NamedUUID[]): NamedUUID[] {
+    const seen = new Set<string>();
+    return artists.filter(artist => {
+        const key = artist.uri ?? artist.name.trim().toLowerCase();
+        if (key === "" || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function youtube_video_renderer_artists(track: VideoRenderer): NamedUUID[] {
+    const byline_runs = (track.shortBylineText?.runs ?? track.ownerText?.runs ?? []) as any[];
+    const collaborator_artists = byline_runs.flatMap(run => {
+        const list_items = run?.navigationEndpoint?.showDialogCommand?.panelLoadingStrategy?.inlineContent
+            ?.dialogViewModel?.customContent?.listViewModel?.listItems;
+        if (!Array.isArray(list_items)) return [];
+
+        return list_items.map(item => {
+            const list_item = item?.listItemViewModel;
+            const title = list_item?.title;
+            const endpoint = title?.commandRuns?.find(command_run => command_run?.onTap?.innertubeCommand !== undefined)
+                ?.onTap?.innertubeCommand
+                ?? list_item?.rendererContext?.commandContext?.onTap?.innertubeCommand;
+            return {
+                name: title?.content ?? "",
+                uri: youtube_artist_uri_from_endpoint(endpoint),
+            } as NamedUUID;
+        }).filter(artist => !is_empty(artist.name));
+    });
+
+    if (collaborator_artists.length > 0) return dedup_youtube_artists(collaborator_artists);
+
+    return dedup_youtube_artists([{
+        name: parse_runs(track?.shortBylineText?.runs),
+        uri: youtube_artist_uri_from_endpoint(byline_runs[0]?.navigationEndpoint),
+    }]);
+}
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;
@@ -47,11 +90,10 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
 export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] } | { compact_video_renderer: VideoWithContextRenderer[] } | { playlist_panel_video_renderer: PlaylistPanelVideoRenderer[] } | { playlist_video_renderer: PlaylistVideoRenderer[] } | {lockup_view_model: LockupViewModel[] }): Track[] {
     if ("video_renderer" in videos) {
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
-            const artist_id = track?.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl;
             return parse_track_title_artist({
                 uid: generate_new_uid(parse_runs(track.title.runs)),
                 title: parse_runs(track.title.runs),
-                artists: [{ name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null }],
+                artists: youtube_video_renderer_artists(track),
                 duration: parse_time(track.lengthText.simpleText),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(track?.shortViewCountText?.simpleText)
