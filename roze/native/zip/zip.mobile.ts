@@ -1,11 +1,22 @@
 import type { Zip } from "@native/zip/zip.base";
 import { listZipContents, streamFileFromZip, unzipFile, createZipFile } from 'react-native-zip-stream';
-import JSZip from "jszip";
-import BufferRN from "buffer/";
+import type JSZip from "jszip";
 import { fs } from "@native/fs/fs";
 import { generror, generror_catch } from "@common/utils/error_util";
 
-const Buffer = BufferRN.Buffer as unknown as BufferConstructor;
+let jszip_ctor_cache: (new () => JSZip) | null = null;
+async function get_jszip(): Promise<new () => JSZip> {
+    if (jszip_ctor_cache) return jszip_ctor_cache;
+    jszip_ctor_cache = (await import("jszip")).default as unknown as new () => JSZip;
+    return jszip_ctor_cache;
+}
+
+let buffer_cache: BufferConstructor | null = null;
+async function get_buffer(): Promise<BufferConstructor> {
+    if (buffer_cache) return buffer_cache;
+    buffer_cache = (await import("buffer/")).Buffer as unknown as BufferConstructor;
+    return buffer_cache;
+}
 
 const JSZIP_CACHE_MAX = 4;
 const jszip_cache = new Map<string, Promise<JSZip | null>>();
@@ -20,7 +31,8 @@ async function load_jszip(file_path: string): Promise<JSZip | null> {
     const loader = (async (): Promise<JSZip | null> => {
         const base64 = await fs().read_as_string(to_file_uri(file_path), { encoding: "base64" });
         if (typeof base64 !== "string") return null;
-        return new JSZip().loadAsync(base64, { base64: true });
+        const JSZipCtor = await get_jszip();
+        return new JSZipCtor().loadAsync(base64, { base64: true });
     })();
     if (jszip_cache.size >= JSZIP_CACHE_MAX) {
         const oldest = jszip_cache.keys().next().value;
@@ -86,6 +98,7 @@ export const mobile_zip: Zip = {
         }
     },
     stream_entry: async (file_path, entry) => {
+        const Buffer = await get_buffer();
         if (jszip_cache.has(file_path)) {
             const archive = await load_jszip(file_path);
             const file = archive?.file(entry);
