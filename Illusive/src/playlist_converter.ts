@@ -5,6 +5,7 @@ import { Illusive } from "./illusive";
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { mutilate_to_service_playlist, playlist_tracks_differences_actions, type MutilatePlaylistMode, type MutilatePlaylistResponse } from "./playlist_utils";
 import { SQLTracks } from "@illusive/sql/sql_tracks";
+import { SQLGlobal } from "@illusive/sql/sql_global";
 import { Prefs } from "@illusive/prefs";
 import { Wifi } from "@illusive/illusi/src/wifi_utils";
 import { sample_tracks_meta, sample_tracks_service, speed_sample_unavailable_tracks } from "@illusive/sampler";
@@ -13,13 +14,15 @@ export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incom
     const track_uids = incoming_tracks.map(({ uid }) => uid);
 
     if (mode === "ADD") {
+        let inserted_any = false;
         const resolved_track_uids = await Promise.all(incoming_tracks.map(async (track) => {
             const incoming_ids = new Set(all_track_ids(track));
             const existing = GLOBALS.global_var.sql_tracks.find(t => all_track_ids(t).some(id => incoming_ids.has(id)));
             if (existing) return existing.uid;
-            await SQLTracks.insert_track(track);
+            if (await SQLTracks.insert_track(track, false)) inserted_any = true;
             return track.uid;
         }));
+        if (inserted_any) SQLGlobal.notify_global_tracks_updated();
 
         if ("title" in convert_opts) {
             const all_playlists = await SQLPlaylists.all_playlists_data();
