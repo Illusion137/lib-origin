@@ -107,6 +107,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
     if ("url" in download_uri && download_uri.url.includes("file://")) {
         return generror("File already exists", "CRITICAL", downloading);
     }
+    const had_empty_duration = is_empty(downloading.track.duration);
     const nt_handle = await handle_new_track_data(downloading.track, download_uri);
     if (!("error" in nt_handle)) downloading.track = nt_handle;
     else return nt_handle;
@@ -187,8 +188,9 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
     if (audio_duration_seconds === -1) return generror("Unable to access audio metadata duration", "CRITICAL");
 
     if (Math.round(audio_duration_seconds) < 3) return generror(`Invalid Duration: ${audio_duration_seconds}`, "CRITICAL");
-    else if (is_empty(downloading.track.duration) || is_empty(downloading.track.duration)) {
-        await SQLTracks.update_track(downloading.track.uid, { ...downloading.track, duration: audio_duration_seconds })
+    else if (is_empty(downloading.track.duration) || had_empty_duration) {
+        downloading.track = { ...downloading.track, duration: audio_duration_seconds };
+        await SQLTracks.update_track(downloading.track.uid, downloading.track);
     }
     else if (!number_epsilon_distance(audio_duration_seconds, downloading.track.duration, Constants.download_duration_epsilon)) {
         return generror(`Epsilon Duration > ${Constants.download_duration_epsilon} With ${Math.abs(audio_duration_seconds - downloading.track.duration)}`, "CRITICAL");
@@ -225,7 +227,7 @@ export const track_lyrics_downloader = new AsyncFNQueue<LyricsDownloading, Await
 
 export async function download_track_lyrics(track: Track) {
     if (!is_empty(track.lyrics_uri) || !is_empty(track.synced_lyrics_uri)) return "EXISTS";
-    if (!is_empty(track.imported_id) || !is_empty(track.bandlab_id) || !is_empty(track.soundcloud_id)) return "EXISTS";
+    if (!is_empty(track.bandlab_id)) return "EXISTS";
     const result = await track_lyrics_downloader.push_into_queue({ track, uid: track.uid });
     if (typeof result === "object" && "error" in result) return result;
     if (result === "EXISTS") return result;

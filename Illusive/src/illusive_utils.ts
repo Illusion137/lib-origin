@@ -293,6 +293,10 @@ export function track_to_illusive_uri(track: Track): IllusiveURI{
 		amazonmusic_id: "amazonmusic",
 		applemusic_id: "applemusic",
 		bandlab_id: "bandlab",
+		audiomack_id: "audiomack",
+		deezer_id: "deezer",
+		tidal_id: "tidal",
+		pandora_id: "pandora",
 		artwork_url: "illusi",
 		thumbnail_uri: "illusi",
 		media_uri: "illusi",
@@ -300,7 +304,14 @@ export function track_to_illusive_uri(track: Track): IllusiveURI{
 		synced_lyrics_uri: "illusi",
 		meta: "illusi",
 		playback: "illusi",
-		downloading_data: "illusi"
+		downloading_data: "illusi",
+		acousticness: "illusi",
+		danceability: "illusi",
+		energy: "illusi",
+		instrumentalness: "illusi",
+		liveness: "illusi",
+		speechiness: "illusi",
+		valence: "illusi"
 	};
 	const primary_key = track_primary_key(track);
 	const music_service_uri = primary_key_to_music_service_uri[primary_key];
@@ -355,6 +366,14 @@ export function music_service_uri_to_music_service(music_service_uri: MusicServi
 			return "SoundCloud";
 		case "bandlab":
 			return "BandLab";
+		case "audiomack":
+			return "Audiomack";
+		case "deezer":
+			return "Deezer";
+		case "tidal":
+			return "Tidal";
+		case "pandora":
+			return "Pandora";
 		case "api":
 			return "API";
 	}
@@ -379,6 +398,14 @@ export function music_service_to_music_service_uri(music_service_uri: MusicServi
 			return "soundcloud";
 		case "BandLab":
 			return "bandlab";
+		case "Audiomack":
+			return "audiomack";
+		case "Deezer":
+			return "deezer";
+		case "Tidal":
+			return "tidal";
+		case "Pandora":
+			return "pandora";
 		case "API":
 			return "api";
 	}
@@ -523,7 +550,15 @@ export function music_service_track_primary_key(type: MusicServiceType): keyof T
 		case "Illusi":
 			return "illusi_id";
 		case "BandLab":
-			return "bandlab_id"
+			return "bandlab_id";
+		case "Audiomack":
+			return "audiomack_id";
+		case "Deezer":
+			return "deezer_id";
+		case "Tidal":
+			return "tidal_id";
+		case "Pandora":
+			return "pandora_id";
 		case "API":
 			return "uid";
 		default:

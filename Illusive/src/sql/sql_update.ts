@@ -20,6 +20,7 @@ import {
     new_releases_table,
     playlists_table,
     playlists_tracks_table,
+    sync_metadata_table,
     tracks_table
 } from "@illusive/db/schema";
 import { LSQLParser } from "@illusive/legacy/1720/legacy_sql_parser";
@@ -27,7 +28,9 @@ import type { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 import { fs } from "@native/fs/fs";
 import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import { Illusive } from "@illusive/illusive";
-import { ne } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { SQLfs } from "@illusive/sql/sql_fs";
 
 export namespace SQLUpdate {
     type Version = `${number}.${number}.${number}`;
@@ -221,6 +224,54 @@ export namespace SQLUpdate {
             const BAD_BANDLAB_THRESHOLD = 100;
             if(bandlab_tracks.length > BAD_BANDLAB_THRESHOLD) {
                 await db.delete(tracks_table).where(ne(tracks_table.bandlab_id, ""));
+            }
+            return true;
+        });
+        await update_to("20.2.13", async() => {
+            const tracks = await db.select().from(tracks_table).where(
+                and(ne(tracks_table.youtube_id, ""), eq(tracks_table.artwork_url, ""), ne(tracks_table.thumbnail_uri, ""))
+            );
+            GLOBALS.global_var.bottom_alert(`Don't close out of app, must fix ${tracks.length} tracks`, "INFO");
+            for (const track of tracks) {
+                const full_path = SQLfs.thumbnail_directory(track.thumbnail_uri);
+                try {
+                    const imageRef = await ImageManipulator.manipulate(full_path).renderAsync();
+                    const { width, height } = imageRef;
+                    if (width === height) continue;
+                    const size = Math.min(width, height);
+                    const cropped = await ImageManipulator.manipulate(full_path)
+                        .crop({ originX: (width - size) / 2, originY: (height - size) / 2, width: size, height: size })
+                        .renderAsync();
+                    const result = await cropped.saveAsync({ compress: 1, format: SaveFormat.JPEG });
+                    await SQLfs.delete_item(full_path);
+                    await fs().move(result.uri, full_path, {});
+                } catch (e) {
+                    console.warn("Failed to crop thumbnail for track", track.uid, e);
+                }
+            }
+            return true;
+        });
+        await update_to("21.0.0", async() => {
+            await db.delete(change_log_table);
+            await db.delete(sync_metadata_table);
+            // Reparing tracks (once again lol)
+            const now = Date.now();
+            const tracks = await db.select().from(tracks_table);
+            for (const track of tracks) {
+                const meta = track.meta;
+                if (meta == null) continue;
+                const added_at = meta.added_date ? new Date(meta.added_date).getTime() : 0;
+                if (added_at > 0) continue;
+                const downloaded = meta.downloaded_date;
+                if (!downloaded) continue;
+                const downloaded_at = new Date(downloaded).getTime();
+                if (!Number.isFinite(downloaded_at) || downloaded_at <= 0) continue;
+                await db.update(tracks_table)
+                    .set({
+                        meta: { ...meta, added_date: downloaded },
+                        modified_at: now,
+                    })
+                    .where(eq(tracks_table.uid, track.uid));
             }
             return true;
         });

@@ -80,11 +80,18 @@ export namespace FutsalShuffle {
                 : Math.min(days_of({ milliseconds: icache.most_recent_played_ms - new Date(track.meta.last_played_date).getTime() }), 20),
             plays_from_album: icache.plays_from_albums.get(track.album?.uri ?? "") ?? 0,
             plays_from_artist: icache.plays_from_artist.get(track.artists?.[0]?.uri ?? "") ?? 0,
-            // plays_in_past_month: icache.plays_in_past_month.get(track.uid) ?? 0,
+            plays_in_past_month: icache.plays_in_past_month.get(track.uid) ?? 0,
             recent_add_date: !track.meta?.added_date || new Date(track.meta.added_date).getTime() === 0
                 ? 0
                 : Math.min(days_of({ milliseconds: icache.most_recent_added_ms - new Date(track.meta.added_date).getTime() }), 20),
             total_plays: 100 * ((track.meta?.plays ?? 0) / icache.max_plays_in_library),
+            acousticness: !is_empty(track.acousticness) ? track.acousticness! - 0.5 : 0,
+            danceability: !is_empty(track.danceability) ? track.danceability! - 0.5 : 0,
+            energy: !is_empty(track.energy) ? track.energy! - 0.5 : 0,
+            instrumentalness: !is_empty(track.instrumentalness) ? track.instrumentalness! - 0.5 : 0,
+            liveness: !is_empty(track.liveness) ? track.liveness! - 0.5 : 0,
+            speechiness: !is_empty(track.speechiness) ? track.speechiness! - 0.5 : 0,
+            valence: !is_empty(track.valence) ? track.valence! - 0.5 : 0,
         };
     }
 

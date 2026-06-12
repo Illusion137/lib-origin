@@ -4,7 +4,7 @@ import os from "os";
 import path_lib from "path";
 import { gen_uuid } from "@common/utils/util";
 import { Readable } from "stream";
-import type { FileSystem, EncodingOpts, NoOverwriteOpts } from "@native/fs/fs.base";
+import type { FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import type { ReadableStream } from "stream/web";
 import { finished } from "stream/promises";
 import { generror_catch } from "@common/utils/error_util";
@@ -98,5 +98,14 @@ export const node_fs: FileSystem = {
 		} catch (error) {
 			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });
 		}
-	}
+	},
+	download_resumable: (opts: ResumableDownloadOpts) => ({
+		start: async () => {
+			const result = await node_fs.download_to_file(opts.uri, opts.to_path, opts.headers);
+			if (typeof result === "string") opts.on_progress?.(1, 1);
+			return result;
+		},
+		pause: async () => undefined,
+		savable: () => ({ url: opts.uri, to_path: opts.to_path, headers: opts.headers })
+	})
 };

@@ -103,7 +103,7 @@ export async function catch_ignore(_: unknown) {
     return;
 }
 
-export async function catch_log(e: unknown) {
+export function catch_log(e: unknown) {
     console.error(e);
     return;
 }

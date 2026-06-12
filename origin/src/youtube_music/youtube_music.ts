@@ -252,7 +252,7 @@ export namespace YouTubeMusic {
 	}
 	export async function get_only_artist_tracks(opts: Opts, artist_response: ICFGData<ReturnType<typeof Parser.parse_artist_contents>>) {
 		const music_shelf_renderer_endpoint_id: string | undefined = artist_response.data.top_shelf?.bottomEndpoint?.browseEndpoint?.browseId?.replace("VL", "");
-		if (music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", "MEDIUM", { opts });
+		if (music_shelf_renderer_endpoint_id === undefined) return generror("Unable to fetch YouTube Music only Artist Tracks", "LOW", { opts });
 		const playlist_response = await get_playlist(opts, music_shelf_renderer_endpoint_id);
 		return playlist_response;
 	}
@@ -431,5 +431,33 @@ export namespace YouTubeMusic {
 			{ action: "ACTION_SET_PLAYLIST_DESCRIPTION", playlistDescription: playlist_data.description }
 		];
 		return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
+	}
+
+	export interface WatchNextPayload {
+		playlistId: string;
+		videoId?: string;
+		params?: string;
+		queueContextParams?: string;
+		enablePersistentPlaylistPanel?: boolean;
+		tunerSettingValue?: string;
+		isAudioOnly?: boolean;
+		responsiveSignals?: object;
+	}
+	export async function get_watch_next(opts: Opts, ytcfg: YTCFG, payload: WatchNextPayload) {
+		const response = await post_check_response(opts, ytcfg, "next?prettyPrint=false", payload);
+		if ("error" in response) return response;
+		return Parser.parse_watch_next(await response.json());
+	}
+	export async function get_lyrics(opts: Opts, ytcfg: YTCFG, lyrics_browse_id: string) {
+		if (!lyrics_browse_id.startsWith("MPLYt_")) return generror("Invalid lyrics browseId, expected MPLYt_ prefix", "LOW", { lyrics_browse_id });
+		const response = await post_check_response(opts, ytcfg, "browse?prettyPrint=false", { browseId: lyrics_browse_id });
+		if ("error" in response) return response;
+		return Parser.parse_lyrics(await response.json());
+	}
+	export async function get_related(opts: Opts, ytcfg: YTCFG, related_browse_id: string) {
+		if (!related_browse_id.startsWith("MPTRt_")) return generror("Invalid related browseId, expected MPTRt_ prefix", "LOW", { related_browse_id });
+		const response = await post_check_response(opts, ytcfg, "browse?prettyPrint=false", { browseId: related_browse_id });
+		if ("error" in response) return response;
+		return Parser.parse_related(await response.json());
 	}
 }

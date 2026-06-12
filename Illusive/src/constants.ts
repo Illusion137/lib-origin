@@ -5,8 +5,9 @@ export namespace Constants {
     export const media_archive_path = "media_archive/";
     export const lyrics_archive_path = "lyrics_archive/";
     export const synced_lyrics_archive_path = "synced_lyrics_archive/";
+    export const audiobooks_archive_path = "audiobooks_archive/";
 
-    export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path, synced_lyrics_archive_path];
+    export const default_directories = [custom_thumbnail_archive_path, thumbnail_archive_path, media_archive_path, lyrics_archive_path, synced_lyrics_archive_path, audiobooks_archive_path];
     export const default_directories_wsql = default_directories.concat(sqlite_directory);
 
     export const library_write_playlist = "LIBRARY";
@@ -27,6 +28,7 @@ export namespace Constants {
     export const new_releases_artist_watch_small_amount = 25;
     export const download_queue_max_length = 3;
     export const download_lyrics_queue_max_length = 1;
+    export const vibes_sampler_queue_max_length = 1;
     export const tracks_per_sample = 3;
     export const long_press_delay = 250;
     export const cached_ids_duration_milliseconds = 2000;

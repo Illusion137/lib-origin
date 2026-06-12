@@ -1,4 +1,4 @@
-import { is_empty } from '@common/utils/util';
+import { is_empty, join_uri } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { fs } from '@native/fs/fs';
 import path_lib from 'path-browserify';
@@ -6,12 +6,6 @@ import path_lib from 'path-browserify';
 export namespace SQLfs {
     let cached_temp_directory: (...paths: string[]) => string = () => "";
     let cached_document_directory: (...paths: string[]) => string = () => "";
-
-    function join_uri(base: string, ...paths: string[]): string {
-        if (paths.length === 0) return base;
-        const sep = base.endsWith('/') ? '' : '/';
-        return base + sep + paths.join('/');
-    }
 
     export async function cache_load_directories() {
         const hold_temp_directory = await fs().temp_directory();
@@ -32,6 +26,7 @@ export namespace SQLfs {
     export function media_directory(item: string) { return document_directory(Constants.media_archive_path) + forward_item(item); }
     export function lyrics_directory(item: string) { return document_directory(Constants.lyrics_archive_path) + forward_item(item); }
     export function synced_lyrics_directory(item: string) { return document_directory(Constants.synced_lyrics_archive_path) + forward_item(item); }
+    export function audiobook_directory(item: string) { return document_directory(Constants.audiobooks_archive_path) + forward_item(item); }
 
     export async function recreate_directories() {
         for (const dir of Constants.default_directories) {

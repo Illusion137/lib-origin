@@ -15,7 +15,7 @@ export const global_var = {
     past_track_index: 0,
     playing_queue: [] as string[],
     can_play_again_mutex: false,
-    play_tracks: (first_track: Track, tracks: Track[], playlist_name: string) => {first_track; tracks; playlist_name;},
+    play_tracks: (first_track: Track, tracks: Track[], playlist_name: string, force_order?: boolean) => {first_track; tracks; playlist_name; force_order;},
     download_track: async(track: Track, redownload?: boolean, progress_updater?: SetState, start_download?: SetState, set_finished_downloaded?: SetState): Promise<DownloadTrackResult> => {track;redownload;progress_updater;start_download;set_finished_downloaded; return reinterpret_cast<DownloadTrackResult>({});},
     playlist_cache: new TimedCache<string, {tracks: Track[], playlist_data: Playlist & {creator?: NamedUUID[]}, continuation?: unknown}>(Constants.playlist_cache_duration_seconds * 1000),
     artist_cache: new TimedCache<string, {artist_data: MusicServiceArtist}>(Constants.playlist_cache_duration_seconds * 1000),

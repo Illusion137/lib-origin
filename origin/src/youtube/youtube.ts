@@ -3,6 +3,7 @@ import type { CookieJar } from "@common/utils/cookie_util";
 import type { PromiseResult, ResponseError } from '@common/types';
 import { extract_string_from_pattern, urlid } from "@common/utils/util";
 import type { Continuation } from "@origin/youtube/types/Continuation";
+import type { ContinuationItemViewModel } from "@origin/youtube/types/PlaylistResultsW";
 import type { ContinuedResults_0 } from '@origin/youtube/types/ContinuedResults_0';
 import type { CreatePlaylist } from "@origin/youtube/types/CreatePlaylist";
 import type { InitialData } from '@origin/youtube/types/types';
@@ -188,9 +189,10 @@ export namespace YouTube {
 		try {
 			const icfg = await get_initial_data_config(opts, init_url, tuser_agent);
 			if ("error" in icfg) return icfg;
+			const parsed = parser(icfg.initial_data);
 			return {
 				icfg,
-				data: parser(icfg.initial_data)
+				data: parsed
 			};
 		} catch (error) { return generror_catch(error, "Failed to parse YouTube", "CRITICAL", { opts, init_url }); }
 	}
@@ -210,13 +212,16 @@ export namespace YouTube {
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
 	export async function get_youtube_mix(opts: Opts, video_id: string): PromiseICFGData<typeof Parser.parse_mix_contents> { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RDMM`, Parser.parse_mix_contents, user_agent_windows); }
 	export async function get_library(opts: Opts): PromiseICFGData<typeof Parser.parse_library_contents> { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
-	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation, path?: string) {
+	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation | ContinuationItemViewModel, path?: string) {
 		try {
 			const query_params = {
 				prettyPrint: false
 			}
 			const payload = {
-				continuation: next_con.continuationEndpoint.continuationCommand.token,
+				// initial playlist pages use the new lockup layout (ContinuationItemViewModel), continuation pages the old renderer shape
+				continuation: "continuationEndpoint" in next_con
+					? next_con.continuationEndpoint.continuationCommand.token
+					: next_con.continuationCommand.innertubeCommand.continuationCommand.token,
 			};
 			const response = await post_check_response<ContinuedResults_0>(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
 			if ("error" in response) throw response.error;

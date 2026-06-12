@@ -6,6 +6,10 @@ function error_message(error: ResponseError) {
     return error.error.stack ?? error.error.message;
 }
 
+export function breadcrumb(category: string, message: string, data?: Record<string, unknown>) {
+    Sentry.addBreadcrumb({ category, message, data, level: "info" });
+}
+
 export function initialize_sentry_severity_handler() {
     SEVERITY_HANDLER_MAP.INFO = (error: ResponseError) => {
         Sentry.addBreadcrumb({ message: error_message(error), level: "info" });

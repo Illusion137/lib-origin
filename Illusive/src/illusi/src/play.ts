@@ -12,7 +12,7 @@ import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { catch_ignore } from '@common/utils/error_util';
 
-export async function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string) {
+export async function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string, force_order?: boolean) {
     if(tracks.length === 0) return [];
     if(!GLOBALS.global_var.can_play_again_mutex || !is_empty(start_track.imported_id) || !is_empty(start_track.media_uri)) {
         GLOBALS.global_var.can_play_again_mutex = true;
@@ -24,7 +24,7 @@ export async function filter_play_tracks(start_track: Track, tracks: Track[], pl
             tracks = tracks.filter((item) => !is_empty(item.media_uri));
         }
         if(tracks.length > 0)
-            tracks = Illusive.shuffle_tracks(Prefs.get_pref('always_shuffle') ? "SHUFFLE" : "ORDER", tracks, start_track);
+            tracks = Illusive.shuffle_tracks(force_order ? "ORDER" : Prefs.get_pref('always_shuffle') ? "SHUFFLE" : "ORDER", tracks, start_track);
         GLOBALS.global_var.can_play_again_mutex = false;
         return tracks;
     } else {

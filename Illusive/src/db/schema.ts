@@ -1,6 +1,6 @@
 import { gen_uuid, generate_new_uid } from '@common/utils/util';
 import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, IllusiveThumbnail, InheritedPlaylist, InheritedSearch, ISOString, LinkedPlaylist, NamedUUID, SortType, Track, TrackMetaData } from "@illusive/types";
-import { index, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, int, sqliteTable, text, numeric } from "drizzle-orm/sqlite-core";
 
 const tracks_config = {
     id: int().primaryKey({autoIncrement: true}).notNull(),
@@ -26,6 +26,10 @@ const tracks_config = {
     amazonmusic_id: text().notNull().default(""),
     applemusic_id: text().notNull().default(""),
     bandlab_id: text().notNull().default(""),
+    audiomack_id: text().notNull().default(""),
+    deezer_id: text().notNull().default(""),
+    pandora_id: text().notNull().default(""),
+    tidal_id: text().notNull().default(""),
     artwork_url: text().notNull().default(""),
     thumbnail_uri: text().notNull().default(""),
     media_uri: text().notNull().default(""),
@@ -36,9 +40,17 @@ const tracks_config = {
         last_played_date: new Date().toISOString() as ISOString,
         plays: 0,
     })),
+    acousticness: numeric({mode: "number"}).notNull().default(0),
+    danceability: numeric({mode: "number"}).notNull().default(0),
+    energy: numeric({mode: "number"}).notNull().default(0),
+    instrumentalness: numeric({mode: "number"}).notNull().default(0),
+    liveness: numeric({mode: "number"}).notNull().default(0),
+    speechiness: numeric({mode: "number"}).notNull().default(0),
+    valence: numeric({mode: "number"}).notNull().default(0),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now())
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_config = {
@@ -58,7 +70,8 @@ const playlists_config = {
     date: text().notNull().$defaultFn(() => new Date().toISOString()),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now())
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const playlists_tracks_config = {
@@ -67,6 +80,8 @@ const playlists_tracks_config = {
     track_uid: text().notNull(),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const new_releases_config = {
@@ -82,6 +97,8 @@ const new_releases_config = {
     song_track: text({mode: 'json'}).$type<Track>(),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
+    modified_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
 const artists_config = {
@@ -126,6 +143,7 @@ const sync_metadata_config = {
     id: int().primaryKey({ autoIncrement: true }),
     table_name: text().notNull().unique(),
     last_sync_at: int().notNull().default(0),
+    last_pushed_at: int().notNull().default(0),
     last_modified_at: int().notNull().default(0),
     deleted: int({ mode: 'boolean' }).notNull().default(false),
     created_at: int().notNull().$defaultFn(() => Date.now()),
@@ -145,5 +163,49 @@ const change_log_config = {
     dropped: int({ mode: 'boolean' }).notNull().default(false),
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
+const sync_deletes_config = {
+    id: int().primaryKey({ autoIncrement: true }),
+    table_name: text().notNull(),
+    record_id: text().notNull(),
+    deleted_at: int().notNull().$defaultFn(() => Date.now()),
+    sync_error: text(),
+} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+
 export const sync_metadata_table = sqliteTable("sync_metadata", sync_metadata_config);
 export const change_log_table = sqliteTable("change_log", change_log_config);
+export const sync_deletes_table = sqliteTable("sync_deletes", sync_deletes_config, (table) => ([index("sync_deletes_table_idx").on(table.table_name)]));
+export type SQLSyncDelete = typeof sync_deletes_table.$inferSelect;
+
+const audiobooks_config = {
+	id: int().primaryKey({ autoIncrement: true }).notNull(),
+	uuid: text().notNull().unique().$defaultFn(gen_uuid),
+	version: int().notNull().default(1),
+	title: text().notNull().default(""),
+	author: text().notNull().default(""),
+	publisher: text().notNull().default(""),
+	cover: text().notNull().default(""),
+	date: text().notNull().default(""),
+	series_name: text().notNull().default(""),
+	series_no: int().notNull().default(0),
+	sort_index: int().notNull().default(0),
+	source_file: text().notNull().default(""),
+	source_file_type: text().notNull().default("FILEBASE"),
+	roz_uri: text().notNull().default(""),
+	source_raw_uri: text().notNull().default(""),
+	total_duration_ms: int().notNull().default(0),
+	chapter_count: int().notNull().default(0),
+	tts_engine: text().notNull().default(""),
+	tts_voice_id: text().notNull().default(""),
+	last_chapter_index: int().notNull().default(0),
+	last_chapter_timestamp_ms: int().notNull().default(0),
+	total_listened_ms: int().notNull().default(0),
+	added_date: text().notNull().$defaultFn(() => new Date().toISOString()),
+	last_read_date: text().notNull().default(""),
+	deleted: int({ mode: 'boolean' }).notNull().default(false),
+	created_at: int().notNull().$defaultFn(() => Date.now()),
+	modified_at: int().notNull().$defaultFn(() => Date.now()),
+} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+
+export const audiobooks_table = sqliteTable("audiobooks", audiobooks_config, (table) => ([index("audiobooks_uuid_idx").on(table.uuid)]));
+export type AudiobookTableItem = typeof audiobooks_table.$inferSelect;
+export type AudiobookTableInsert = typeof audiobooks_table.$inferInsert;

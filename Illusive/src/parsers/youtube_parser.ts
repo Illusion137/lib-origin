@@ -1,15 +1,60 @@
 import { parse_runs, parse_time } from "@common/utils/parse_util";
-import { extract_string_from_pattern, generate_new_uid, is_empty } from "@common/utils/util";
+import { generate_new_uid, is_empty } from "@common/utils/util";
+import { parse_track_title_artist } from "@illusive/parsers/title_parser";
 import type { PlaylistPanelVideoRenderer } from "@origin/youtube/types/MixResults_0";
 import type { PageHeaderViewModel } from "@origin/youtube/types/PageHeaderViewModel";
-import type { PlaylistHeaderRenderer, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
+import type { LockupViewModel, PlaylistHeaderRenderer } from "@origin/youtube/types/PlaylistResultsW";
 import type { CompactChannelRenderer, CompactPlaylistRenderer, VideoWithContextRenderer } from "@origin/youtube/types/SearchResultsM";
 import type { ChannelRenderer, PlaylistRenderer, VideoRenderer } from "@origin/youtube/types/SearchResultsW";
 import { best_thumbnail, create_uri, youtube_views_number } from "@illusive/illusive_utils";
-import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, ExplicitMode, MusicServicePlaylistBase, Track } from "@illusive/types";
+import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, IllusiveURI, MusicServicePlaylistBase, NamedUUID, Track } from "@illusive/types";
 import { YTNodes } from "youtubei.js/agnostic";
 import { YouTubeDL, type VideoInfo } from '@origin/youtube_dl/index';
+import type { PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsWContinuation";
 // import type { VideoInfo } from "youtubei.js/dist/src/parser/youtube";
+
+function youtube_artist_uri_from_endpoint(endpoint: any): IllusiveURI | null {
+    const browse_id = endpoint?.browseEndpoint?.canonicalBaseUrl ?? endpoint?.browseEndpoint?.browseId;
+    return browse_id === undefined ? null : create_uri("youtube", browse_id);
+}
+
+function dedup_youtube_artists(artists: NamedUUID[]): NamedUUID[] {
+    const seen = new Set<string>();
+    return artists.filter(artist => {
+        const key = artist.uri ?? artist.name.trim().toLowerCase();
+        if (key === "" || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function youtube_video_renderer_artists(track: VideoRenderer): NamedUUID[] {
+    const byline_runs = (track.shortBylineText?.runs ?? track.ownerText?.runs ?? []) as any[];
+    const collaborator_artists = byline_runs.flatMap(run => {
+        const list_items = run?.navigationEndpoint?.showDialogCommand?.panelLoadingStrategy?.inlineContent
+            ?.dialogViewModel?.customContent?.listViewModel?.listItems;
+        if (!Array.isArray(list_items)) return [];
+
+        return list_items.map(item => {
+            const list_item = item?.listItemViewModel;
+            const title = list_item?.title;
+            const endpoint = title?.commandRuns?.find(command_run => command_run?.onTap?.innertubeCommand !== undefined)
+                ?.onTap?.innertubeCommand
+                ?? list_item?.rendererContext?.commandContext?.onTap?.innertubeCommand;
+            return {
+                name: title?.content ?? "",
+                uri: youtube_artist_uri_from_endpoint(endpoint),
+            } as NamedUUID;
+        }).filter(artist => !is_empty(artist.name));
+    });
+
+    if (collaborator_artists.length > 0) return dedup_youtube_artists(collaborator_artists);
+
+    return dedup_youtube_artists([{
+        name: parse_runs(track?.shortBylineText?.runs),
+        uri: youtube_artist_uri_from_endpoint(byline_runs[0]?.navigationEndpoint),
+    }]);
+}
 
 export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['metadata'] {
     let songs;
@@ -42,102 +87,13 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
     };
 }
 
-export function extract_youtube_title_info(track: Track) {
-    const prods_0 = extract_string_from_pattern(track.title, / ?[([] ?prod\.?(.+?)[)]]/ig, "INFO");
-    const prods_1 = extract_string_from_pattern(track.title, / ?[([] ?produced\.?(.+?)[)]]/ig, "INFO");
-    const prods: string[] = [prods_0, prods_1].filter(item => typeof item === "string").map(item => item.replace(/ by /i, ''));
-    const feats_0 = extract_string_from_pattern(track.title, / ?[([] ?ft\.?(.+?)[)]]/ig, "INFO");
-    const feats_1 = extract_string_from_pattern(track.title, / ?[([] ?feat\.?(.+?)[)]]/ig, "INFO");
-    const feats: string[] = [feats_0, feats_1].filter(item => typeof item === "string");
-    const unreleased = / ?[([] ?unreleased ?[)]]/ig.test(track.title) || / unreleased/g.test(track.title);
-    const explicit = / ?[([] ?explicit ?[)]]/ig.test(track.title) || / ?[([] ?explicit version ?[)]]/ig.test(track.title);
-    const clean = / ?[([].*?clean.*?[)]]/ig.test(track.title);
-    return {
-        prods: prods[0],
-        feats: feats[0],
-        unreleased,
-        explicit,
-        clean
-    }
-}
-export function clean_youtube_title(title: string) {
-    return title
-        .replace(/ ?full song ?/ig, '')
-        .replace(/ ?[([] ?prod\.?.+?[)]]/ig, '')
-        .replace(/ ?[([] ?dir\.?.+?[)]]/ig, '')
-        .replace(/ ?[([] ?ft\.?.+?[)]]/ig, '')
-        .replace(/ ?[([] ?feat\.?.+?[)]]/ig, '')
-        .replace(/ ?[([] ?w\/.+?[)]]/ig, '')
-        .replace(/ ?[([] ?unreleased ?[)]]/ig, '')
-        .replace(/ ?[([] ?explicit ?[)]]/ig, '')
-        .replace(/ ?[([] ?explicit version ?[)]]/ig, '')
-        .replace(/ ?[([] ?official ?[)]]/ig, '')
-        .replace(/ ?[([] ?legendado ?[)]]/ig, '')
-        .replace(/ ?[([] ?full video ?[)]]/ig, '')
-        .replace(/ ?[([] ?video version ?[)]]/ig, '')
-        .replace(/ ?[([] ?music ?[)]]/ig, '')
-        .replace(/ ?[([] ?audio ?[)]]/ig, '')
-        .replace(/ ?[([] ?video ?[)]]/ig, '')
-        .replace(/ ?[([] ?lyrics? ?[)]]/ig, '')
-        .replace(/ ?[([] ?lyrics? video ?[)]]/ig, '')
-        .replace(/ ?[([] ?music video ?[)]]/ig, '')
-        .replace(/ ?[([] ?official audio ?[)]]/ig, '')
-        .replace(/ ?[([] ?official video ?[)]]/ig, '')
-        .replace(/ ?[([] ?official visual ?[)]]/ig, '')
-        .replace(/ ?[([] ?official lyrics? ?[)]]/ig, '')
-        .replace(/ ?[([] ?official lyrics? video ?[)]]/ig, '')
-        .replace(/ ?[([] ?exclusive music video ?[)]]/ig, '')
-        .replace(/ ?[([] ?official music video ?[)]]/ig, '')
-        .replace(/ ?[([].*?official music video ?[)]]/ig, '')
-        .replace(/ ?[([] ?visualizer ?[)]]/ig, '')
-        .replace(/ ?[([] ?visualiser ?[)]]/ig, '')
-        .replace(/ ?[([] ?official visualizer ?[)]]/ig, '')
-        .replace(/ ?[([] ?official mv ?[)]]/ig, '')
-        .replace(/ ?[([] ?reupload ?[)]]/ig, '')
-        .replace(/ ?[([] ?bass boosted ?[)]]/ig, '')
-        .replace(/ ?[([] ?HD ?[)]]/ig, '')
-        .replace(/ ?[([] ?HQ ?[)]]/ig, '')
-        .replace(/ ?[([] ?remix ?[)]]/ig, '')
-        .replace(/ ?[([] ?ost ?[)]]/ig, '')
-        .replace(/ ?[([] ?fanmade ?[)]]/ig, '')
-        .replace(/ ?[([] ?extended ?[)]]/ig, '')
-        .replace(/ ?[([] ?tik tok ?[)]]/ig, '')
-        .replace(/ ?[([] ?tiktok ?[)]]/ig, '')
-        .replace(/ ?[([] ?amv ?[)]]/ig, '')
-        .replace(/ ?[([] ?full ?[)]]/ig, '')
-        .replace(/ ?[([] ?full song ?[)]]/ig, '')
-        .replace(/ ?[([] ?best version ?[)]]/ig, '')
-        .replace(/ ?[([] ?best ?[)]]/ig, '')
-        .replace(/ ?[([].*?only.*?[)]]/ig, '')
-        .replace(/ ?[([].*?remix.*?[)]]/ig, '')
-        .replace(/ ?[([].*?clean.*?[)]]/ig, '')
-        .replace(/ ?[([].*?by.*?[)]]/ig, '')
-        .replace(/unreleased/ig, '');
-}
-export function parse_youtube_title_artist(track: Track): Track {
-    const new_title = clean_youtube_title(track.title);
-    const info = extract_youtube_title_info(track);
-    const joined_artists = !is_empty(info.feats) ? track.artists.concat({ name: info.feats, uri: null }) : track.artists;
-    return {
-        ...track,
-        title: new_title,
-        alt_title: track.title,
-        artists: joined_artists,
-        explicit: (info.explicit ? "EXPLICIT" :
-            info.clean ? "CLEAN" : "NONE") as ExplicitMode,
-        unreleased: info.unreleased,
-        prods: info.prods,
-    }
-}
-
-export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] } | { compact_video_renderer: VideoWithContextRenderer[] } | { playlist_panel_video_renderer: PlaylistPanelVideoRenderer[] } | { playlist_video_renderer: PlaylistVideoRenderer[] }): Track[] {
+export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] } | { compact_video_renderer: VideoWithContextRenderer[] } | { playlist_panel_video_renderer: PlaylistPanelVideoRenderer[] } | { playlist_video_renderer: PlaylistVideoRenderer[] } | {lockup_view_model: LockupViewModel[] }): Track[] {
     if ("video_renderer" in videos) {
         return videos.video_renderer.filter(track => !is_empty(track?.lengthText?.simpleText)).map(track => {
-            const artist_id = track?.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl;
-            return parse_youtube_title_artist({
+            return parse_track_title_artist({
                 uid: generate_new_uid(parse_runs(track.title.runs)),
                 title: parse_runs(track.title.runs),
-                artists: [{ name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null }],
+                artists: youtube_video_renderer_artists(track),
                 duration: parse_time(track.lengthText.simpleText),
                 youtube_id: track.videoId,
                 plays: youtube_views_number(track?.shortViewCountText?.simpleText)
@@ -146,7 +102,7 @@ export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] }
     } else if ("compact_video_renderer" in videos) {
         return videos.compact_video_renderer.filter(track => !is_empty(track?.lengthText?.runs)).map(track => {
             const artist_id = track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl;
-            return parse_youtube_title_artist({
+            return parse_track_title_artist({
                 uid: generate_new_uid(parse_runs(track?.headline.runs)),
                 title: parse_runs(track?.headline.runs),
                 artists: [{ name: parse_runs(track?.shortBylineText.runs), uri: artist_id ? create_uri("youtube", artist_id) : null }],
@@ -157,7 +113,7 @@ export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] }
         });
     } else if ("playlist_panel_video_renderer" in videos) {
         return videos.playlist_panel_video_renderer.filter(track => !is_empty(track?.lengthText.simpleText)).map(track => {
-            return parse_youtube_title_artist({
+            return parse_track_title_artist({
                 uid: generate_new_uid(track.title.simpleText),
                 title: track.title.simpleText,
                 artists: [{ name: parse_runs(track.shortBylineText.runs), uri: create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId) }],
@@ -166,8 +122,8 @@ export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] }
             } as Track)
         });
     }
-    else return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
-        return parse_youtube_title_artist({
+    else if("playlist_video_renderer" in videos) return videos.playlist_video_renderer.filter(track => !is_empty(track?.lengthSeconds)).map(track => {
+        return parse_track_title_artist({
             uid: generate_new_uid(parse_runs(track.title.runs)),
             title: parse_runs(track.title.runs),
             artists: track?.shortBylineText?.runs ? [{ name: parse_runs(track.shortBylineText.runs), uri: track.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtube", track.shortBylineText.runs[0].navigationEndpoint.browseEndpoint?.browseId) }]
@@ -176,7 +132,28 @@ export function youtube_parse_videos(videos: { video_renderer: VideoRenderer[] }
             plays: youtube_views_number(track.videoInfo?.runs?.[0]?.text),
             youtube_id: track.videoId,
         });
-    })
+    });
+     else if ("lockup_view_model" in videos) {
+        return videos.lockup_view_model.map(track => {
+            const meta = track.metadata.lockupMetadataViewModel;
+            const artist_name = meta.metadata.contentMetadataViewModel.metadataRows[0]?.metadataParts[0]?.text?.content ?? "";
+            const browse_id = meta.image.decoratedAvatarViewModel?.rendererContext.commandContext.onTap.innertubeCommand.browseEndpoint.browseId;
+            const duration_text = track.contentImage.thumbnailViewModel.overlays
+                .find(o => o.thumbnailBottomOverlayViewModel)
+                ?.thumbnailBottomOverlayViewModel?.badges[0]?.thumbnailBadgeViewModel?.text ?? "";
+            const viewsText = meta.metadata.contentMetadataViewModel.metadataRows[1]?.metadataParts[0]?.text?.content;
+            return parse_track_title_artist({
+                uid: generate_new_uid(meta.title.content),
+                title: meta.title.content,
+                artists: [{ name: artist_name, uri: browse_id ? create_uri("youtube", browse_id) : null }],
+                duration: parse_time(duration_text),
+                plays: youtube_views_number(viewsText ?? ""),
+                youtube_id: track.contentId,
+            } as Track);
+        });
+    }
+    console.warn("Failed to identify YouTube tracks like: ", JSON.stringify(videos[0]));
+    return [];
 }
 
 export function youtube_parse_playlists(playlists: { playlist_renderer: PlaylistRenderer[] } | { compact_playlist_renderer: CompactPlaylistRenderer[] }): CompactPlaylist[] {

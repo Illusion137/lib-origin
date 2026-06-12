@@ -7,6 +7,7 @@ import type { ResponseError } from '@common/types';
 import { is_empty, milliseconds_of, urlid } from '@common/utils/util';
 import { parse_playlist_continuation_contents } from '@origin/youtube/parser';
 import type * as YT_CONTINUATION from "@origin/youtube/types/Continuation";
+import type { ContinuationItemViewModel } from "@origin/youtube/types/PlaylistResultsW";
 import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
 import type * as YTMUSIC_CONTINUATION from "@origin/youtube_music/types/Continuation";
 import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
@@ -30,6 +31,10 @@ import { get_main_key } from '@common/utils/fetch_util';
 import { parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './parsers/spotify_parser';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
 import { bandlab_parse_track } from './parsers/bandlab_parser';
+import { audiomack_parse_track } from './parsers/audiomack_parser';
+import { deezer_parse_track } from './parsers/deezer_parser';
+import { pandora_parse_track } from './parsers/pandora_parser';
+import { tidal_parse_track, tidal_cover_url } from './parsers/tidal_parser';
 import rozfetch from '@common/rozfetch';
 import { get_local_illusi_playlist } from './gen/illusi_playlists_links';
 import { supabase } from './db/supabase';
@@ -57,7 +62,8 @@ export async function musi_get_playlist(url: string): Promise<MusicServicePlayli
     };
 }
 
-interface YouTubePlaylistContinuation { "ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation }
+// the first playlist page yields the new lockup layout's ContinuationItemViewModel, continuation pages the old Continuation shape
+interface YouTubePlaylistContinuation { "ytcfg": YT_YTCFG.YTCFG, "continuation": YT_CONTINUATION.Continuation | ContinuationItemViewModel }
 export async function youtube_get_playlist(url: string, fetch_opts?: RoZFetchRequestInit): Promise<MusicServicePlaylist> {
     const cookie_jar = Prefs.get_pref("youtube_cookie_jar");
     const playlist_response = await Origin.YouTube.get_playlist({
@@ -77,7 +83,7 @@ export async function youtube_get_playlist_continuation(opts: YouTubePlaylistCon
     const playlist_response = await Origin.YouTube.get_continuation({ cookie_jar }, opts.ytcfg, opts.continuation);
     if ("error" in playlist_response) return { tracks: [], continuation: null, error: playlist_response };
     const parsed_playlist = parse_playlist_continuation_contents(playlist_response);
-    return { tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: { ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation } as YouTubePlaylistContinuation }
+    return { tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: parsed_playlist.continuation === null ? null : { ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation } as YouTubePlaylistContinuation }
 }
 
 interface YouTubeMusicPlaylistContinuation { "url": string, "ytcfg": YTMUSIC_YTCFG.YTCFG, "continuation": YTMUSIC_CONTINUATION.Continuation | YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer, "type": "ALBUM" | "PLAYLIST", "artist"?: Runs, "album"?: Runs, "artwork_url"?: string }
@@ -444,4 +450,119 @@ export async function bandlab_get_playlist_continuation(opts: BandlabPlaylistCon
         tracks: playlist_response.data.map(bandlab_parse_track),
         continuation: playlist_response.data.length < BANDLAB_TRACK_LIMIT || typeof playlist_response.paging.cursors.after !== "string" ? null : { url: opts.url, after: playlist_response.paging.cursors.after } as BandlabPlaylistContinuation
     }
+}
+
+export async function audiomack_get_playlist(url: string): Promise<MusicServicePlaylist> {
+    const slug = Origin.Audiomack.url_to_slug(url);
+    const parts = slug.split("/");
+    if (parts.length >= 3 && parts[1] === "album") {
+        const result = await Origin.Audiomack.get_album({ artist_slug: parts[0], album_slug: parts[2] });
+        if ("error" in result) return default_playlist(result);
+        return {
+            title: result.title,
+            creator: [{ name: result.artist, uri: create_uri("audiomack", result.artist_slug) }],
+            artwork_url: result.image_large || result.image,
+            tracks: (result.tracks ?? []).map(audiomack_parse_track),
+            continuation: null
+        };
+    }
+    if (parts.length >= 2) {
+        const result = await Origin.Audiomack.get_playlist({ playlist_slug: slug });
+        if ("error" in result) return default_playlist(result);
+        return {
+            title: result.title,
+            creator: [{ name: result.artist, uri: create_uri("audiomack", result.artist_slug) }],
+            artwork_url: result.image,
+            tracks: (result.tracks ?? []).map(audiomack_parse_track),
+            continuation: null
+        };
+    }
+    return default_playlist(generror("Invalid Audiomack playlist URL", "LOW", { url }));
+}
+
+const DEEZER_TRACK_LIMIT = 100;
+export async function deezer_get_playlist(url: string): Promise<MusicServicePlaylist> {
+    const cookie_jar = Prefs.get_pref("deezer_cookie_jar");
+    const id = Origin.Deezer.url_to_id(url);
+    if (url.includes("/album/")) {
+        const album = await Origin.Deezer.get_album({ album_id: id, cookie_jar });
+        if ("error" in album) return default_playlist(album);
+        const tracks_response = await Origin.Deezer.get_album_tracks({ album_id: id, cookie_jar, limit: DEEZER_TRACK_LIMIT });
+        if ("error" in tracks_response) return default_playlist(tracks_response);
+        return {
+            title: album.title,
+            creator: [{ name: album.artist.name, uri: create_uri("deezer", String(album.artist.id)) }],
+            artwork_url: album.cover_xl || album.cover_big,
+            date: album.release_date as ISOString,
+            tracks: (tracks_response.data).map(deezer_parse_track),
+            continuation: null
+        };
+    }
+    const playlist = await Origin.Deezer.get_playlist({ playlist_id: id, cookie_jar });
+    if ("error" in playlist) return default_playlist(playlist);
+    const tracks_response = await Origin.Deezer.get_playlist_tracks({ playlist_id: id, cookie_jar, limit: DEEZER_TRACK_LIMIT });
+    if ("error" in tracks_response) return default_playlist(tracks_response);
+    return {
+        title: playlist.title,
+        creator: [{ name: playlist.creator.name, uri: null }],
+        artwork_url: playlist.picture_xl || playlist.picture_big,
+        description: playlist.description,
+        tracks: (tracks_response.data).map(deezer_parse_track),
+        continuation: null
+    };
+}
+
+export async function pandora_get_playlist(url: string): Promise<MusicServicePlaylist> {
+    const cookie_jar = Prefs.get_pref("pandora_cookie_jar");
+    const pandora_id_match = /\b((?:PL|SF):[A-Za-z0-9:]+)/.exec(url);
+    if (!pandora_id_match) return default_playlist(generror("Could not extract Pandora ID from URL", "LOW", { url }));
+    const pandora_id = pandora_id_match[1];
+    if (pandora_id.startsWith("SF:")) {
+        const result = await Origin.Pandora.get_station_playlist({ station_id: pandora_id, cookie_jar });
+        if ("error" in result) return default_playlist(result);
+        return {
+            title: pandora_id,
+            tracks: result.tracks.map(pandora_parse_track),
+            continuation: null
+        };
+    }
+    const result = await Origin.Pandora.get_playlist({ pandora_id, cookie_jar });
+    if ("error" in result) return default_playlist(result);
+    return {
+        title: "",
+        tracks: result.tracks.map(pandora_parse_track),
+        continuation: null
+    };
+}
+
+const TIDAL_TRACK_LIMIT = 100;
+export async function tidal_get_playlist(url: string): Promise<MusicServicePlaylist> {
+    const cookie_jar = Prefs.get_pref("tidal_cookie_jar");
+    const id = Origin.Tidal.url_to_id(url);
+    if (url.includes("/album/")) {
+        const album = await Origin.Tidal.get_album({ album_id: id, cookie_jar });
+        if ("error" in album) return default_playlist(album);
+        const tracks_response = await Origin.Tidal.get_album_tracks({ album_id: id, cookie_jar, limit: TIDAL_TRACK_LIMIT });
+        if ("error" in tracks_response) return default_playlist(tracks_response);
+        return {
+            title: album.title,
+            creator: album.artists.map(a => ({ name: a.name, uri: create_uri("tidal", String(a.id)) })),
+            artwork_url: tidal_cover_url(album.cover),
+            date: album.releaseDate as ISOString,
+            tracks: tracks_response.items.map(tidal_parse_track),
+            continuation: null
+        };
+    }
+    const playlist = await Origin.Tidal.get_playlist({ playlist_uuid: id, cookie_jar });
+    if ("error" in playlist) return default_playlist(playlist);
+    const tracks_response = await Origin.Tidal.get_playlist_tracks({ playlist_uuid: id, cookie_jar, limit: TIDAL_TRACK_LIMIT });
+    if ("error" in tracks_response) return default_playlist(tracks_response);
+    return {
+        title: playlist.title,
+        creator: [{ name: playlist.creator.name ?? String(playlist.creator.id), uri: null }],
+        artwork_url: tidal_cover_url(playlist.squareImage),
+        description: playlist.description,
+        tracks: tracks_response.items.map(tidal_parse_track),
+        continuation: null
+    };
 }

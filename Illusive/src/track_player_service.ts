@@ -23,8 +23,10 @@ import { SQLRecentlyPlayed } from '@illusive/sql/sql_recently_played';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
+import { breadcrumb } from '@common/sentry_error_handler';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
+import { VibesSampler } from './vibes_sampler';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
@@ -59,7 +61,7 @@ export async function setup_track_player(): Promise<boolean> {
                 Capability.SeekTo,
                 Capability.PlayFromSearch,
             ],
-            progressUpdateEventInterval: 0.25,
+            progressUpdateEventInterval: 1,
         });
         await TrackPlayer.setRepeatMode(RepeatMode.Off);
         await TrackPlayer.setEqualizer(Prefs.equalizer_presets[Prefs.get_pref('equalizer_preset')] as unknown as number[]);
@@ -75,9 +77,18 @@ export async function save_past_queue() {
     await Prefs.save_pref('past_queue', { index, tracks: GLOBALS.global_var.playing_tracks.map(track => ({ ...track, playback: undefined, downloading_data: undefined })) });
 }
 
+const queue_modified_listeners = new Set<() => void>();
+export function subscribe_track_player_queue_modified(listener: () => void): () => void {
+    queue_modified_listeners.add(listener);
+    return () => { queue_modified_listeners.delete(listener); };
+}
+
 export async function on_modify_track_player_queue() {
     await save_past_queue();
     await check_push_next_track(await TrackPlayer.getActiveTrackIndex() ?? 0);
+    for (const listener of queue_modified_listeners) {
+        try { listener(); } catch { };
+    }
 }
 
 export async function insert_track_into_player_queue(track_data: Track, plus_index: number) {
@@ -149,13 +160,28 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     if (!("error" in nt_response)) track = nt_response;
     // Note: TrackPlayer will auto removed failed files, don't bother with checking if file exist
     const artwork = resolved_artwork(track.playback!.artwork);
+    VibesSampler.predict_track_save_result(track).catch(catch_log);
+    const artwork_payload = typeof artwork === "number" ? artwork : artwork.uri;
+    breadcrumb('track-player', 'illusive_track_to_track_player_track', {
+        title: track.title,
+        artwork_type: typeof artwork_payload,
+        artwork_uri: typeof artwork_payload === 'string' ? artwork_payload : null,
+        artwork_scheme: typeof artwork_payload === 'string'
+            ? (artwork_payload.startsWith('file:///') ? 'file:///'
+                : artwork_payload.startsWith('file://') ? 'file://'
+                    : artwork_payload.startsWith('file:/') ? 'file:/'
+                        : artwork_payload.startsWith('http') ? 'http'
+                            : 'other')
+            : 'asset',
+        has_thumbnail_uri: !is_empty(track.thumbnail_uri),
+    });
     return {
         url: url_data.url,
         title: track.title,
         artist: artist_string(track),
         album: track.album?.name,
         duration: track.duration,
-        artwork: typeof artwork === "number" ? artwork : artwork.uri,
+        artwork: artwork_payload,
         type: is_empty(track.soundcloud_id) ? TrackType.HLS : TrackType.HLS,
         headers: {},
         contentType: 'audio/mp4',
@@ -285,13 +311,23 @@ export async function track_player_on_error(data: { error: string }) {
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => { return });
     TrackPlayer.addEventListener(Event.PlaybackError, async (data) => {
+        breadcrumb('track-player', 'PlaybackError', { data: data as unknown as Record<string, unknown> });
         await track_player_on_error(reinterpret_cast<{ error: string }>(data));
     });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             if (data.index === undefined) return;
+            const active = GLOBALS.global_var.playing_tracks[data.index];
+            breadcrumb('track-player', 'PlaybackActiveTrackChanged', {
+                index: data.index,
+                title: active?.title,
+                added: active?.playback?.added,
+                successful: active?.playback?.successful,
+            });
             updated_metadata_mutex = false;
             const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
+            // playing_tracks is emptied while the audiobook player owns TrackPlayer; bail so we don't crash or inject music tracks
+            if (illusi_track === undefined) return;
             if (illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
 
@@ -315,6 +351,8 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async (data) => {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
+            // no-op while the audiobook player owns TrackPlayer (music queue cleared)
+            if (illusi_track === undefined) return;
 
             if (is_in_reset_mutex_threshold(illusi_track, data.position)) {
                 updated_metadata_mutex = false;
@@ -333,9 +371,9 @@ export async function playback_service() {
             check_push_next_track(data.track).catch(catch_log);
         } catch (_) { }
     });
-    TrackPlayer.addEventListener(Event.RemotePrevious, async () => { await track_player_previous(); });
-    TrackPlayer.addEventListener(Event.RemoteNext, async () => { await track_player_next(); });
-    TrackPlayer.addEventListener(Event.RemotePause, async () => { await TrackPlayer.pause(); });
-    TrackPlayer.addEventListener(Event.RemotePlay, async () => { await TrackPlayer.play(); });
-    TrackPlayer.addEventListener(Event.RemoteSeek, async (data) => { await TrackPlayer.seekTo(data.position); });
+    TrackPlayer.addEventListener(Event.RemotePrevious, async () => { breadcrumb('track-player', 'RemotePrevious'); await track_player_previous(); });
+    TrackPlayer.addEventListener(Event.RemoteNext, async () => { breadcrumb('track-player', 'RemoteNext'); await track_player_next(); });
+    TrackPlayer.addEventListener(Event.RemotePause, async () => { breadcrumb('track-player', 'RemotePause'); await TrackPlayer.pause(); });
+    TrackPlayer.addEventListener(Event.RemotePlay, async () => { breadcrumb('track-player', 'RemotePlay'); await TrackPlayer.play(); });
+    TrackPlayer.addEventListener(Event.RemoteSeek, async (data) => { breadcrumb('track-player', 'RemoteSeek', { position: data.position }); await TrackPlayer.seekTo(data.position); });
 }

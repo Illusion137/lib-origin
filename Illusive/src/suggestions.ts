@@ -70,7 +70,11 @@ export namespace Suggestions {
             case "Illusi": 
             case "Amazon Music":
             case "Apple Music":
-            case "BandLab": 
+            case "BandLab":
+            case "Audiomack":
+            case "Deezer":
+            case "Tidal":
+            case "Pandora":
             case "API": 
             default:
                 return await get_illusi_suggestions(query);

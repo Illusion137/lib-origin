@@ -6,6 +6,7 @@ import { replace_html_codes } from "@roze/utils";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 type LangCode = keyof typeof languages;
 
+// TODO maybe integrate this into Illusi lyrics
 export namespace Translate {
     export async function google_translate_html_get_api_key(otps: {
         fetch_opts?: RoZFetchRequestInit;

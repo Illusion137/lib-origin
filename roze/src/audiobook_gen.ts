@@ -110,7 +110,13 @@ export namespace AudiobookGen {
         };
     }
     export async function roz_full_audio(roz: Roz, opts: RozFullAudioOpts, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"): PromiseResult<RozFullAudio> {
-        const chapter_audiobooks = await Promise.all(roz.chapters.map(async (chapter) => roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options)));
+        // Sequential, not Promise.all: each chapter spins up its own pool of native
+        // TTS synthesizers, so running every chapter at once spawns chapters x pool
+        // instances and freezes the app. One chapter at a time keeps it bounded.
+        const chapter_audiobooks: Awaited<ReturnType<typeof roz_chapter_to_audiobook>>[] = [];
+        for (const chapter of roz.chapters) {
+            chapter_audiobooks.push(await roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options));
+        }
         const bad_audiobook = chapter_audiobooks.find(chapter => "error" in chapter);
         if (bad_audiobook) return bad_audiobook;
         roz.chapters = reinterpret_cast<typeof roz.chapters>(chapter_audiobooks);
@@ -127,7 +133,11 @@ export namespace AudiobookGen {
         return { ffmpeg_gen_result, roz, srt_file_path, youtube_chapters_file_path };
     }
     export async function roz_to_chapter_full_audio(roz: Roz, opts: RozFullAudioOpts, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}) {
-        const chapter_audiobooks = await Promise.all(roz.chapters.map(async (chapter) => roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options)));
+        // Sequential to keep the native TTS pool bounded across chapters (see roz_full_audio).
+        const chapter_audiobooks: Awaited<ReturnType<typeof roz_chapter_to_audiobook>>[] = [];
+        for (const chapter of roz.chapters) {
+            chapter_audiobooks.push(await roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options));
+        }
         return chapter_audiobooks;
     }
     export async function roz_audio_data_to_static_flv(roz: Roz, callbacks: RozToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES") {
@@ -191,11 +201,6 @@ export namespace AudiobookGen {
                 i += lookahead_distance;
             }
         }
-        /*
-            If single image then it'll last till next image [if cover !== null ? MAX(15 min) : INFINITY]
-            If multiple images then it'll spread out till next image
-        */
-
         const ffmpeg_gen_result = await generate_dynamic_video_with_audio(duration_images, full_audio.ffmpeg_gen_result.out_file_path, full_audio.srt_file_path, ".mp4", clean_temp_files, callbacks.on_ffmpeg_stats, callbacks.on_ffmpeg_data);
         return { ffmpeg_gen_result, full_audio };
     }

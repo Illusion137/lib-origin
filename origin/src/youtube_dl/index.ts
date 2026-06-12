@@ -35,7 +35,7 @@ export namespace YouTubeDL {
         await load_native_potoken();
         await load_native_jseval();
         innertube_client = await Innertube.create({
-            cache: new RCache(true, await fs().temp_directory()),
+            cache: new RCache(true, await fs().temp_directory())
         });
         return innertube_client;
     }
@@ -154,10 +154,10 @@ export namespace YouTubeDL {
 
         const player_response = await make_player_request(client, video_id);
         const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
-        if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", "MEDIUM", { video_id });
+        if (video_playback_ustreamer_config === undefined) return generror("ustreamerConfig not found", "LOW", { video_id, player_response });
 
         const sabr_server_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
-        if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "MEDIUM", { video_id });
+        if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "LOW", { video_id, player_response });
 
         const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return

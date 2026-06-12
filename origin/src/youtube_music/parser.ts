@@ -7,7 +7,7 @@ import type { NewReleasesAlbums, Run2 } from "@origin/youtube_music/types/NewRel
 import type { PlaylistResults_0 } from "@origin/youtube_music/types/PlaylistResults_0";
 import type { SearchResults_0 } from "@origin/youtube_music/types/SearchResults_0";
 import type { SuggestionMusicResponsiveListItemRenderer } from "@origin/youtube_music/types/SearchSuggestions";
-import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack } from "@origin/youtube_music/types/types";
+import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack, WatchNextQueueTrack, WatchNextResult, LyricsResult } from "@origin/youtube_music/types/types";
 import { youtube_views_number } from "@illusive/illusive_utils";
 
 const separator = '•';
@@ -130,6 +130,72 @@ export function parse_track_search_suggestion(suggestion: SuggestionMusicRespons
     }
 }
 
+function parse_playlist_panel_video_renderer(renderer: any): WatchNextQueueTrack {
+    const long_byline_runs = renderer.longBylineText?.runs ?? [];
+    const [artists_runs, album_runs] = parse_subtitle_text(long_byline_runs);
+    const album_run = album_runs?.find((run: any) => run.navigationEndpoint?.browseEndpoint?.browseId);
+    return {
+        title: parse_runs(renderer.title?.runs ?? []),
+        artists: artists_runs?.map((run: any) => ({
+            name: run.text,
+            browse_id: run.navigationEndpoint?.browseEndpoint?.browseId ?? ""
+        })).filter((artist: any) => !not_artist_names.includes(artist.name.trim())) ?? [],
+        album: album_run ? {
+            name: album_run.text,
+            browse_id: album_run.navigationEndpoint?.browseEndpoint?.browseId ?? ""
+        } : undefined,
+        thumbnails: renderer.thumbnail?.thumbnails ?? [],
+        duration: parse_runs(renderer.lengthText?.runs ?? []),
+        video_id: renderer.videoId ?? "",
+        playlist_set_video_id: renderer.playlistSetVideoId ?? "",
+        selected: renderer.selected ?? false
+    };
+}
+export function parse_watch_next(data: any): WatchNextResult {
+    const tabs = data?.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs ?? [];
+    const queue_contents = tabs[0]?.tabRenderer?.content?.musicQueueRenderer?.content?.playlistPanelRenderer?.contents ?? [];
+    const queue: WatchNextQueueTrack[] = queue_contents.map((item: any) => {
+        if (item.playlistPanelVideoRenderer) return parse_playlist_panel_video_renderer(item.playlistPanelVideoRenderer);
+        if (item.playlistPanelVideoWrapperRenderer) return parse_playlist_panel_video_renderer(item.playlistPanelVideoWrapperRenderer.primaryRenderer.playlistPanelVideoRenderer);
+        return undefined;
+    }).filter((item: any) => item !== undefined);
+    return {
+        queue,
+        lyrics_browse_id: tabs[1]?.tabRenderer?.endpoint?.browseEndpoint?.browseId,
+        related_browse_id: tabs[2]?.tabRenderer?.endpoint?.browseEndpoint?.browseId
+    };
+}
+export function parse_lyrics(data: any): LyricsResult {
+    const shelf = data?.contents?.sectionListRenderer?.contents?.[0]?.musicDescriptionShelfRenderer;
+    return {
+        lyrics: parse_runs(shelf?.description?.runs ?? []),
+        source: shelf?.footer ? parse_runs(shelf.footer.runs) : undefined
+    };
+}
+export interface RelatedSection {
+    type: "carousel" | "shelf";
+    title: string;
+    items: unknown[];
+}
+export function parse_related(data: any): RelatedSection[] {
+    const contents: any[] = data?.contents?.sectionListRenderer?.contents ?? [];
+    return contents.reduce<RelatedSection[]>((acc, section: any) => {
+        if (section.musicCarouselShelfRenderer) {
+            acc.push({
+                type: "carousel",
+                title: parse_runs(section.musicCarouselShelfRenderer.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs ?? []),
+                items: section.musicCarouselShelfRenderer.contents?.map((item: any) => (item.musicTwoRowItemRenderer ?? item.musicResponsiveListItemRenderer) as unknown) ?? []
+            });
+        } else if (section.musicShelfRenderer) {
+            acc.push({
+                type: "shelf",
+                title: parse_runs(section.musicShelfRenderer.title?.runs ?? []),
+                items: section.musicShelfRenderer.contents?.map((item: any) => item.musicResponsiveListItemRenderer as unknown) ?? []
+            });
+        }
+        return acc;
+    }, []);
+}
 function is_numeric(num: any) { return !isNaN(num) }
 export function find_album_year(album: ArtistCarouselContent): number {
     return parseInt(album.musicTwoRowItemRenderer.subtitle.runs.find(run => is_numeric(run.text))?.text ?? "0");

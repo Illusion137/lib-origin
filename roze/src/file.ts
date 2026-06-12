@@ -2,6 +2,7 @@ import type { RozChapterContents, RozContent } from '@roze/types/roz';
 import type { TocElement } from 'epub2/lib/epub/const';
 import type Roz from '@roze/types/roz';
 import EPub from '@lib/epub2';
+import BufferRN from "buffer/";
 import pathlib from 'path-browserify';
 import { gen_uuid } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
@@ -9,13 +10,15 @@ import { Counter, type FileExtension, type PromiseResult } from '@common/types';
 import { force_json_parse, parse_pdf_date, try_json_parse } from '@common/utils/parse_util';
 import { generror, generror_catch } from '@common/utils/error_util';
 import { gen_temp_file_name, get_temp_file_path } from '@native/fs/fs_utils';
-import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import pdfjs_lib, { type PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
-import sharp, { type Channels } from 'sharp';
+import type { TextItem } from '@lib/pdfjs';
+import pdfjs_lib, { type PDFDocumentProxy } from "@lib/pdfjs";
+import sharp, { type Channels } from '@lib/sharp';
 import { reinterpret_cast } from '@common/cast';
 import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from './utils';
-import mammoth from "mammoth";
-import { imageSize } from 'image-size';
+import mammoth from "@lib/mammoth";
+import { image_size } from '@native/image_size/image_size';
+
+const Buffer = BufferRN.Buffer;
 
 export namespace FileParser {
     interface ParseFileOpts {
@@ -30,6 +33,10 @@ export namespace FileParser {
         } catch (_) {
             return false;
         }
+    }
+
+    function strip_file_scheme(p: string): string {
+        return p.startsWith("file://") ? p.slice("file://".length) : p;
     }
 
     async function transform_url_to_path(file_path_or_url: string, file_extension: FileExtension, opts: ParseFileOpts): PromiseResult<string> {
@@ -85,19 +92,21 @@ export namespace FileParser {
                 if (roz_contents[i].type !== "IMAGE") continue;
                 roz_contents[i] = { ...roz_contents[i], content: await epub_get_image_base64(epub, roz_contents[i].content) }
             }
-            roz_contents = roz_contents.filter(content => {
-                if (content.type !== "IMAGE") return true;
+            const filtered_contents: typeof roz_contents = [];
+            for (const content of roz_contents) {
+                if (content.type !== "IMAGE") { filtered_contents.push(content); continue; }
                 const base64_data = content.content.split(';base64,').pop() ?? "";
                 const buffer = Buffer.from(base64_data, 'base64');
-                const size = imageSize(buffer);
+                const size = image_size().image_size(buffer);
                 const ratio = size.height / size.width;
-                if (size.height < IMAGE_HEIGHT_MIN) return false;
-                if (size.width < IMAGE_WIDTH_MIN) return false;
-                if (ratio > IMAGE_RATIO_MAX) return false;
-                if (ratio < IMAGE_RATIO_MIN) return false;
-                if (ratio >= IMAGE_RATIO_SQUARE_MIN && ratio <= IMAGE_RATIO_SQUARE_MAX) return false;
-                return true;
-            });
+                if (size.height < IMAGE_HEIGHT_MIN) continue;
+                if (size.width < IMAGE_WIDTH_MIN) continue;
+                if (ratio > IMAGE_RATIO_MAX) continue;
+                if (ratio < IMAGE_RATIO_MIN) continue;
+                if (ratio >= IMAGE_RATIO_SQUARE_MIN && ratio <= IMAGE_RATIO_SQUARE_MAX) continue;
+                filtered_contents.push(content);
+            }
+            roz_contents = filtered_contents;
             if (section.chapter.title || section.chapter.id?.toLowerCase() === "cover" || section.chapter.id?.toLowerCase() === "titlepage") {
                 roz_sections.push({
                     ...section,
@@ -132,12 +141,11 @@ export namespace FileParser {
         try {
             const epub = await EPub.createAsync(file_path_err);
             const sections = await parse_epub_flow(epub);
-
             const roz_sections = await parse_epub_sections_to_roz_content(epub, sections);
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "EPUB",
                 title: epub.metadata.title ?? "Unknown EPub",
                 author: epub.metadata.creator ?? null,
@@ -335,7 +343,7 @@ export namespace FileParser {
                     if (fn_id === pdfjs_lib.OPS.paintImageXObject || fn_id === pdfjs_lib.OPS.paintImageXObjectRepeat) {
                         push_paragraph_if_needed();
 
-                        const image_name = args[0];
+                        const image_name = args[0] as string;
                         const image_obj = await new Promise<any>((resolve) => {
                             page.objs.get(image_name, (img: any) => resolve(img));
                         });
@@ -376,7 +384,7 @@ export namespace FileParser {
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "PDF",
                 title: pdf_info.Title ?? pathlib.basename(file_path_or_url),
                 author: pdf_info.Author ?? null,
@@ -404,7 +412,7 @@ export namespace FileParser {
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "DOCX",
                 title: pathlib.basename(file_path_or_url),
                 author: null,
@@ -430,7 +438,7 @@ export namespace FileParser {
             return {
                 version: 1,
                 uuid: gen_uuid(),
-                source_file: pathlib.resolve(file_path_or_url),
+                source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
                 source_file_type: "TXT",
                 title: title,
                 author: null,
@@ -449,6 +457,17 @@ export namespace FileParser {
         }
         catch (e) {
             return generror_catch(e, "Failed to parse txt", "CRITICAL", { file_path_or_url, file_path_err, opts });
+        }
+    }
+
+    export async function parse(source: string, opts: ParseFileOpts = {}): PromiseResult<Roz> {
+        const ext = pathlib.extname(source).toLowerCase();
+        switch (ext) {
+            case ".epub": return parse_epub(source, opts);
+            case ".pdf":  return parse_pdf(source, { paragraph_gap: "autodetect", ...opts });
+            case ".docx": return parse_docx(source, opts);
+            case ".txt":  return parse_txt(source, pathlib.basename(source, ext), opts);
+            default:      return parse_roz(source, opts);
         }
     }
 }

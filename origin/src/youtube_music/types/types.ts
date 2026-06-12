@@ -32,3 +32,22 @@ export interface YouTubeMusicTrack {
 	album?: YouTubeMusicNammedBrowseID;
 	plays?: number;
 }
+export interface WatchNextQueueTrack {
+	title: string;
+	artists: YouTubeMusicNammedBrowseID[];
+	album?: YouTubeMusicNammedBrowseID;
+	thumbnails: YouTubeMusicThumbnail[];
+	duration: string;
+	video_id: string;
+	playlist_set_video_id: string;
+	selected: boolean;
+}
+export interface WatchNextResult {
+	queue: WatchNextQueueTrack[];
+	lyrics_browse_id?: string;
+	related_browse_id?: string;
+}
+export interface LyricsResult {
+	lyrics: string;
+	source?: string;
+}

@@ -68,6 +68,78 @@ export class EPub extends EventEmitter
 		return Object.getPrototypeOf(this).constructor as typeof EPub;
 	}
 
+	protected _normalizeFilename(filename: string): string
+	{
+		if (!filename)
+		{
+			return filename;
+		}
+
+		if (!/^file:/i.test(filename))
+		{
+			return filename;
+		}
+
+		let normalized = filename.replace(/^file:\/*/i, '');
+		if (normalized.startsWith('localhost/'))
+		{
+			normalized = normalized.slice('localhost/'.length);
+		}
+		const isWindowsPath = /^[A-Za-z]:[\\/]/.test(normalized);
+		if (!normalized.startsWith('/') && !isWindowsPath)
+		{
+			normalized = `/${normalized}`;
+		}
+
+		return decodeURIComponent(normalized);
+	}
+
+	protected _normalizeZipName(name: string): string
+	{
+		if (!name)
+		{
+			return name;
+		}
+
+		const cleaned = name.replace(/\0/g, '').trim();
+		const normalized = posix.normalize(cleaned.replace(/\\/g, '/'));
+		return normalized
+			.replace(/^(\.\/)+/, '')
+			.replace(/^\/+/, '')
+			.replace(/\/+$/, '')
+			.toLowerCase();
+	}
+
+	protected _findRootFileFromOpf(): string | null
+	{
+		const priorities = new Map([
+			['content.opf', 0],
+			['package.opf', 1],
+			['book.opf', 2],
+		]);
+
+		const candidates = this.zip_names
+			.map((entry) => ({ entry, norm: this._normalizeZipName(entry) }))
+			.filter((item) => item.norm.endsWith('.opf'));
+
+		if (!candidates.length)
+		{
+			return null;
+		}
+
+		candidates.sort((a, b) =>
+		{
+			const aBase = posix.basename(a.norm);
+			const bBase = posix.basename(b.norm);
+			const aPriority = priorities.has(aBase) ? priorities.get(aBase)! : 10;
+			const bPriority = priorities.has(bBase) ? priorities.get(bBase)! : 10;
+			if (aPriority !== bPriority) return aPriority - bPriority;
+			return a.norm.length - b.norm.length;
+		});
+
+		return candidates[0].entry;
+	}
+
 	protected _zipReadFile(name: string, cb: (err: Error | null, data: Buffer) => void): void
 	{
 		zip().stream_entry(this.filename, name).then(result =>
@@ -87,7 +159,7 @@ export class EPub extends EventEmitter
 	{
 		super();
 
-		this.filename = epubfile;
+		this.filename = this._normalizeFilename(epubfile);
 
 		this.imageroot = (imagewebroot || this._getStatic().IMAGE_ROOT).trim();
 		this.linkroot = (chapterwebroot || this._getStatic().LINK_ROOT).trim();
@@ -166,7 +238,7 @@ export class EPub extends EventEmitter
 
 		for (i = 0, len = this.zip_names.length; i < len; i++)
 		{
-			if (this.zip_names[i].toLowerCase() == "mimetype")
+			if (posix.basename(this._normalizeZipName(this.zip_names[i])) == "mimetype")
 			{
 				this.mimeFile = this.zip_names[i];
 				break;
@@ -174,7 +246,7 @@ export class EPub extends EventEmitter
 		}
 		if (!this.mimeFile)
 		{
-			this.emit("error", new Error("No mimetype file in archive"));
+			this.getRootFiles();
 			return;
 		}
 		this._zipReadFile(this.mimeFile, (err, data) =>
@@ -224,7 +296,7 @@ export class EPub extends EventEmitter
 		let i, len;
 		for (i = 0, len = this.zip_names.length; i < len; i++)
 		{
-			if (this.zip_names[i].toLowerCase() == "meta-inf/container.xml")
+			if (this._normalizeZipName(this.zip_names[i]).endsWith("meta-inf/container.xml"))
 			{
 				this.containerFile = this.zip_names[i];
 				break;
@@ -232,6 +304,31 @@ export class EPub extends EventEmitter
 		}
 		if (!this.containerFile)
 		{
+			const containerCandidates = this.zip_names
+				.map((entry) => ({ entry, norm: this._normalizeZipName(entry) }))
+				.filter((item) => posix.basename(item.norm) === 'container.xml');
+			if (containerCandidates.length)
+			{
+				containerCandidates.sort((a, b) =>
+				{
+					const aHasMeta = a.norm.includes('meta-inf/');
+					const bHasMeta = b.norm.includes('meta-inf/');
+					if (aHasMeta !== bHasMeta) return aHasMeta ? -1 : 1;
+					return a.norm.length - b.norm.length;
+				});
+				this.containerFile = containerCandidates[0].entry;
+			}
+		}
+		if (!this.containerFile)
+		{
+			const fallbackRootFile = this._findRootFileFromOpf();
+			if (fallbackRootFile)
+			{
+				this.rootFile = fallbackRootFile;
+				this.handleRootFile();
+				return;
+			}
+
 			this.emit("error", new Error("No container file in archive"));
 			return;
 		}
@@ -292,9 +389,19 @@ export class EPub extends EventEmitter
 					return;
 				}
 
+				const normalizedFilename = this._normalizeZipName(filename as any as string);
+				const containerNormalized = this._normalizeZipName(this.containerFile);
+				const containerRoot = containerNormalized.endsWith("meta-inf/container.xml")
+					? containerNormalized.slice(0, containerNormalized.length - "meta-inf/container.xml".length)
+					: `${posix.dirname(containerNormalized)}/`;
+				const filenameCandidates = new Set([
+					normalizedFilename,
+					posix.join(containerRoot, normalizedFilename)
+				]);
+
 				for (i = 0, len = this.zip_names.length; i < len; i++)
 				{
-					if (this.zip_names[i].toLowerCase() == (filename as any as string))
+					if (filenameCandidates.has(this._normalizeZipName(this.zip_names[i])))
 					{
 						this.rootFile = this.zip_names[i];
 						break;

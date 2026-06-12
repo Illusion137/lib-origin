@@ -318,6 +318,12 @@ export interface SectionListRenderer {
 export interface Content2 {
     musicCardShelfRenderer?: MusicCardShelfRenderer
     musicShelfRenderer?: MusicShelfRenderer
+    itemSectionRenderer?: ItemSectionRenderer
+}
+
+export interface ItemSectionRenderer {
+    contents: {musicResponsiveListItemRenderer?: MusicResponsiveListItemRenderer2}[]
+    trackingParams: string
 }
 
 export interface MusicCardShelfRenderer {

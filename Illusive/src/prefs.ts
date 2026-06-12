@@ -1,6 +1,6 @@
 import { CookieJar } from "@common/utils/cookie_util";
 import type { HexColor, LinkerLink, Track } from '@illusive/types';
-import { gen_uuid } from '@common/utils/util';
+import { gen_small_id, gen_uuid } from '@common/utils/util';
 import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref, type BasePrefLoadMap, type BasePrefSaveMap, type BasePrefTypes } from '@native/mmkv/mmkv_utils';
 import { fs } from '@native/fs/fs';
 import type { MMKVModule } from '@native/mmkv/mmkv.base';
@@ -25,24 +25,75 @@ export namespace Prefs {
 
     export const equalizer_presets = {
         "Default": [0, 0, 0, 0, 0, 0],
+
+        // Bass variants
         "Super Bass Boost": [8, 6, 2, 0, -1, -2],
         "Bass Boost": [6, 4, 2, 0, -1, -2],
-        "Small Boost": [3, 2, 1, 0, 0, 0],
-        "Treble Boost": [-2, -1, 0, 2, 4, 6],
-        "Vocal Boost": [-2, -1, 1, 3, 4, 2],
-        "Loudness": [5, 3, 1, 0, 2, 4],
-        "Rock": [4, 2, 1, 1, 3, 5],
-        "Pop": [-1, 1, 3, 4, 2, 1],
-        "Classical": [0, 1, 2, 1, 0, 2],
-        "Jazz": [2, 2, 1, 0, 2, 3],
-        "Electronic": [5, 3, 0, 1, 4, 6],
-        "Hip-Hop": [6, 4, 2, 0, 1, -1],
-        "Acoustic": [-1, 0, 2, 3, 2, 1],
-        "Dance": [5, 3, 0, 2, 4, 5],
-        "Podcast": [-3, -2, 1, 3, 4, 3],
-        "Movie": [4, 2, 0, 2, 3, 4],
+        "Bass Reducer": [-6, -4, -2, 0, 0, 0],
+        "Deep Bass": [10, 7, 3, 0, -1, -2],
+        "Punchy Bass": [7, 3, 1, 0, -1, -1],
+        "Sub Bass": [10, 8, 4, 0, -2, -3],
         "Low Bass": [-6, -4, -2, 0, 0, 0],
         "No Bass": [-12, -6, -2, 0, 0, 0],
+
+        // Treble variants
+        "Treble Boost": [-2, -1, 0, 2, 4, 6],
+        "Treble Reducer": [0, 0, 0, -2, -4, -6],
+        "Air": [-1, 0, 0, 1, 3, 7],
+
+        // Boost variants
+        "Small Boost": [3, 2, 1, 0, 0, 0],
+        "Loudness": [5, 3, 1, 0, 2, 4],
+        "Full Boost": [5, 4, 3, 3, 4, 5],
+        "V-Shape": [6, 3, -1, -1, 3, 6],
+        "Flat Cut": [-3, -3, -3, -3, -3, -3],
+
+        // Vocal variants
+        "Vocal Boost": [-2, -1, 1, 3, 4, 2],
+        "Voice Clarity": [-3, -2, 2, 4, 3, 1],
+        "Podcast": [-3, -2, 1, 3, 4, 3],
+        "Karaoke": [-5, -3, 1, 4, 5, 3],
+        "Broadcast": [-2, 0, 2, 4, 4, 2],
+
+        // Genre
+        "Rock": [4, 2, 1, 1, 3, 5],
+        "Hard Rock": [6, 3, 1, 2, 4, 6],
+        "Metal": [7, 4, 1, 2, 4, 7],
+        "Pop": [-1, 1, 3, 4, 2, 1],
+        "K-Pop": [2, 2, 4, 4, 3, 2],
+        "Classical": [0, 1, 2, 1, 0, 2],
+        "Orchestra": [2, 1, 2, 1, 1, 3],
+        "Jazz": [2, 2, 1, 0, 2, 3],
+        "Blues": [5, 3, 1, 0, 2, 4],
+        "Soul": [4, 3, 2, 1, 2, 3],
+        "R&B": [6, 4, 2, 1, 2, 2],
+        "Hip-Hop": [6, 4, 2, 0, 1, -1],
+        "Trap": [8, 5, 2, 0, 0, -1],
+        "Electronic": [5, 3, 0, 1, 4, 6],
+        "EDM": [6, 4, 0, 2, 5, 7],
+        "House": [5, 3, 0, 1, 4, 5],
+        "Techno": [5, 2, 0, 2, 3, 5],
+        "Ambient": [3, 2, 1, 0, 1, 3],
+        "Lofi": [4, 3, 2, -1, -2, -3],
+        "Acoustic": [-1, 0, 2, 3, 2, 1],
+        "Folk": [1, 1, 2, 2, 1, 2],
+        "Country": [2, 1, 1, 2, 3, 4],
+        "Reggae": [5, 3, -1, -2, 2, 3],
+        "Latin": [3, 2, 1, 2, 4, 5],
+        "Dance": [5, 3, 0, 2, 4, 5],
+        "Funk": [5, 3, 2, 1, 2, 2],
+        "Punk": [5, 2, 0, 1, 3, 5],
+        "Gospel": [3, 2, 2, 3, 4, 3],
+
+        // Media / use-case
+        "Movie": [4, 2, 0, 2, 3, 4],
+        "Gaming": [5, 3, 1, 2, 4, 5],
+        "Sports Commentary": [-2, 0, 1, 3, 4, 3],
+        "Night Mode": [-2, -1, 0, 1, 1, -1],
+        "Headphones": [3, 2, 1, 1, 2, 4],
+        "Earbuds": [4, 3, 2, 1, 3, 5],
+        "Laptop Speakers": [5, 4, 2, 1, 0, -1],
+        "Large Room": [4, 2, 0, 1, 2, 4],
     } as const;
     export type EqualizerPreset = keyof typeof equalizer_presets;
     interface PastQueue { index: number; tracks: Track[]; }
@@ -59,9 +110,16 @@ export namespace Prefs {
         has_synced_lyrics_dl: 0,
         plays_from_artist: 0,
         plays_from_album: 0,
-        // plays_in_past_month: 0,
+        plays_in_past_month: 0,
         explicit: 0,
-        no_explicit: 0
+        no_explicit: 0,
+        acousticness: 0,
+        danceability: 0,
+        energy: 0,
+        instrumentalness: 0,
+        liveness: 0,
+        speechiness: 0,
+        valence: 0,
     };
     type Bias = typeof default_track_shuffle_bias;
 
@@ -74,6 +132,10 @@ export namespace Prefs {
         amazon_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
         apple_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
         bandlab_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        audiomack_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        deezer_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        pandora_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
+        tidal_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
         user_uuid: { default_value: user_uuid, current_value: user_uuid, type: "STRING" } as BasePref<string, OtherPrefTypes>,
         last_synced: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
         automatic_new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
@@ -91,6 +153,7 @@ export namespace Prefs {
         theme: { default_value: 'dark', current_value: 'dark', type: "STRING" } as BasePref<PossibleThemes, OtherPrefTypes>,
         track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS" } as BasePref<Bias, OtherPrefTypes>,
         carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: "STRING" } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
+        p2p_name: { default_value: `sumi!-${gen_small_id()}`, current_value: `sumi!-${gen_small_id()}`, type: "STRING" } as BasePref<string, OtherPrefTypes>,
         
         default_playlist_max_size: { default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
         recently_played_max_size: { default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
@@ -112,6 +175,7 @@ export namespace Prefs {
         warmup_soundcloud: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup" } as BasePref<boolean, OtherPrefTypes>,
 
         // Settings that have a chance of breaking things; use with caution; all disabled by default
+        enable_vibes_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
         enable_linker: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
         enable_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
         fastpack: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
@@ -120,6 +184,13 @@ export namespace Prefs {
         use_cookies_on_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_artist: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
         dev_mode: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
+
+        audiobook_player_display_mode: { default_value: 'cover_only', current_value: 'cover_only', type: "STRING", visible: true, section: "Audiobooks", description: "What the audiobook player shows while listening: cover art, inline book images, or scrolling reader" } as BasePref<'cover_only' | 'book_images' | 'reader_follow_along', OtherPrefTypes>,
+        audiobook_tts_engine: { default_value: 'avs', current_value: 'avs', type: "STRING", visible: true, section: "Audiobooks", description: "Voice synthesis engine used when generating audiobook audio" } as BasePref<'avs' | 'piper', OtherPrefTypes>,
+        audiobook_tts_voice_id: { default_value: '', current_value: '', type: "STRING", visible: true, section: "Audiobooks", description: "Voice ID for audiobook generation — leave empty to use the device default" } as BasePref<string, OtherPrefTypes>,
+        audiobook_tts_rate: { default_value: 1.0, current_value: 1.0, type: "NUMBER", range: { start: 0.5, end: 2.0 }, visible: true, section: "Audiobooks", description: "Speech rate for audiobook generation (0.5 - 2.0)" } as BasePref<number, OtherPrefTypes>,
+        audiobook_auto_generate: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Audiobooks", description: "Automatically generate audio for a new audiobook on import" } as BasePref<boolean, OtherPrefTypes>,
+        audiobook_reader_highlight_active: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Audiobooks", description: "Highlight the currently spoken paragraph in reader follow-along mode" } as BasePref<boolean, OtherPrefTypes>,
     };
     export type PrefOptions = keyof typeof prefs;
     const user_uuid_key: PrefOptions = "user_uuid";
@@ -311,6 +382,38 @@ export namespace Prefs {
         },
     }
 
+    export const neon_noir_theme: Theme = {
+        dark: true,
+        colors: {
+            default_primary_color: '#00eeff',
+            primary: get_pref('primary_color'),
+            secondary: '#ff0090',
+            background: '#07070f',
+            primary_dark: '#0a0a20',
+            card: '#0d0d1c',
+            title: '#dff8ff',
+            text: '#c0e8f8',
+            subtext: '#3a5868',
+            deeptext: '#1a2430',
+            border: '#121228',
+            notification: '#00ccee',
+            shelf: '#0b0b1e',
+            tabInactive: '#385868',
+            line: '#0e1624',
+            searchInput: '#12162e',
+            searchPlaceholder: '#284458',
+            inactive: '#284458',
+            red: '#ff2244',
+            green: '#00ff88',
+            orange: '#ff8c00',
+            playingSong: '#0a0c20',
+            playScreen: '#0a0c20',
+            track: '#0a0c20',
+            highlightPressColor: '#00d8ee',
+            black: '#030308',
+        },
+    }
+
     export const sage_mist_theme: Theme = {
         dark: false,
         colors: {
@@ -343,7 +446,7 @@ export namespace Prefs {
         },
     }
 
-    export const ember_forge_theme: Theme = {
+        export const ember_forge_theme: Theme = {
         dark: true,
         colors: {
             default_primary_color: '#e8920a',
@@ -372,6 +475,38 @@ export namespace Prefs {
             track: '#1c1608',
             highlightPressColor: '#d4a030',
             black: '#080600',
+        },
+    }
+
+    export const crimson_void_theme: Theme = {
+        dark: true,
+        colors: {
+            default_primary_color: '#cc0033',
+            primary: get_pref('primary_color'),
+            secondary: '#880044',
+            background: '#0c0808',
+            primary_dark: '#1e0808',
+            card: '#140808',
+            title: '#ffe4e4',
+            text: '#f0d0d0',
+            subtext: '#784848',
+            deeptext: '#2e1818',
+            border: '#200c0c',
+            notification: '#cc2244',
+            shelf: '#180a0a',
+            tabInactive: '#684040',
+            line: '#1c0e0e',
+            searchInput: '#220e0e',
+            searchPlaceholder: '#583838',
+            inactive: '#583838',
+            red: '#ff2244',
+            green: '#44aa66',
+            orange: '#dd6622',
+            playingSong: '#180a0a',
+            playScreen: '#180a0a',
+            track: '#180a0a',
+            highlightPressColor: '#cc4444',
+            black: '#060404',
         },
     }
 
@@ -411,10 +546,12 @@ export namespace Prefs {
         light: light_theme,
         dark: dark_theme,
         oled: oled_theme,
-        cozy_dark: cozy_dark_theme,
         mist_light: sage_mist_theme,
+        crimson_void: crimson_void_theme,
+        neon_noir: neon_noir_theme,
         forge_dark: ember_forge_theme,
-        ocean_dark: deep_ocean_theme
+        ocean_dark: deep_ocean_theme,
+        cozy_dark: cozy_dark_theme,
     }
 
     export async function try_remove_from_recent_searches(query: string) {

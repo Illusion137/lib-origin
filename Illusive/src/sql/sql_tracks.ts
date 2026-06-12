@@ -10,6 +10,8 @@ import { clean_album_title } from "@illusive/parsers/apple_music_parser";
 import { Prefs } from "@illusive/prefs";
 import type { ISOString, NamedUUID, OnErrorCallback, Promises, Track, TrackMetaData } from "@illusive/types";
 import { and, eq } from 'drizzle-orm';
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { fs } from "@native/fs/fs";
 import { SQLfs } from "./sql_fs";
 import { SQLGlobal } from "./sql_global";
 import { db } from "@illusive/db/database";
@@ -100,6 +102,11 @@ export namespace SQLTracks {
             applemusic_id: is_empty(track.applemusic_id) ? new_track.applemusic_id : track.applemusic_id,
             soundcloud_id: is_empty(track.soundcloud_id) ? new_track.soundcloud_id : track.soundcloud_id,
             soundcloud_permalink: is_empty(track.soundcloud_permalink) ? new_track.soundcloud_permalink : track.soundcloud_permalink,
+            bandlab_id: is_empty(track.bandlab_id) ? new_track.bandlab_id : track.bandlab_id,
+            audiomack_id: is_empty(track.audiomack_id) ? new_track.audiomack_id : track.audiomack_id,
+            deezer_id: is_empty(track.deezer_id) ? new_track.deezer_id : track.deezer_id,
+            tidal_id: is_empty(track.tidal_id) ? new_track.tidal_id : track.tidal_id,
+            pandora_id: is_empty(track.pandora_id) ? new_track.pandora_id : track.pandora_id,
             artwork_url: is_empty(track.artwork_url) ? new_track.artwork_url : track.artwork_url,
             meta: track.meta
         }
@@ -227,13 +234,15 @@ export namespace SQLTracks {
     }
 
     export async function insert_all_tracks(tracks: Track[]) {
-        const promise_tracks: Promises = [];
+        const promise_tracks: Promise<boolean>[] = [];
         for (const track of tracks)
-            promise_tracks.push(insert_track(track));
-        await Promise.all(promise_tracks);
+            promise_tracks.push(insert_track(track, false));
+        const inserted = await Promise.all(promise_tracks);
+        if (inserted.some(Boolean)) SQLGlobal.notify_global_tracks_updated();
     }
-    export async function insert_track(track: Track) {
-        if (track_exists(track, GLOBALS.global_var.sql_tracks)) return;
+
+    export async function insert_track(track: Track, notify = true): Promise<boolean> {
+        if (track_exists(track, GLOBALS.global_var.sql_tracks)) return false;
         const new_track_meta = {
             ...reinterpret_cast<TrackMetaData>(track.meta),
             added_date: reinterpret_cast<ISOString>(new Date().toISOString()),
@@ -249,12 +258,13 @@ export namespace SQLTracks {
         await db.insert(tracks_table).values(new_track);
         await ChangeTracker.log_change('tracks', 'insert', track.uid, new_track);
 
-        const parsed_track = sql_track_to_track(track)
-        if ("error" in parsed_track) return;
-        SQLGlobal.add_global_track_item(parsed_track);
+        const parsed_track = sql_track_to_track(new_track)
+        if ("error" in parsed_track) return false;
+        SQLGlobal.add_global_track_item(parsed_track, notify);
         if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
         if (Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
         if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
+        return true;
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
         const sanitized_track = {
@@ -278,9 +288,18 @@ export namespace SQLTracks {
         return merged_track;
     }
     export async function delete_track(track_uid: Track['uid']) {
-        await db.delete(tracks_table).where(eq(tracks_table.uid, track_uid));
+        await db.update(tracks_table).set({ deleted: true }).where(eq(tracks_table.uid, track_uid));
         await ChangeTracker.log_change('tracks', 'delete', track_uid, { uid: track_uid });
         SQLGlobal.delete_global_track_item(track_uid);
+    }
+    export async function undelete_track(track_uid: Track['uid']) {
+        await db.update(tracks_table).set({ deleted: false }).where(eq(tracks_table.uid, track_uid));
+        await ChangeTracker.log_change('tracks', 'update', track_uid, { uid: track_uid });
+        const track = await db.select().from(tracks_table).where(eq(tracks_table.uid, track_uid)).get();
+        if (track === undefined) return;
+        const itrack = sql_track_to_track(track);
+        if ("error" in itrack) return;
+        SQLGlobal.add_global_track_item(itrack);
     }
 
     export async function download_thumbnail(track: Track) {
@@ -290,6 +309,24 @@ export namespace SQLTracks {
         const thumbnail_uri = track.uid + ext;
         const thumbnail_download = await SQLfs.download_to_file(best_artwork, SQLfs.thumbnail_directory(thumbnail_uri));
         if (error_undefined(thumbnail_download) === undefined) return;
+        if (!is_empty(track.youtube_id) && is_empty(track.artwork_url)) {
+            const full_path = SQLfs.thumbnail_directory(thumbnail_uri);
+            try {
+                const imageRef = await ImageManipulator.manipulate(full_path).renderAsync();
+                const { width, height } = imageRef;
+                if (width !== height) {
+                    const size = Math.min(width, height);
+                    const cropped = await ImageManipulator.manipulate(full_path)
+                        .crop({ originX: (width - size) / 2, originY: (height - size) / 2, width: size, height: size })
+                        .renderAsync();
+                    const result = await cropped.saveAsync({ compress: 1, format: SaveFormat.JPEG });
+                    await SQLfs.delete_item(full_path);
+                    await fs().move(result.uri, full_path, {});
+                }
+            } catch (e) {
+                console.warn("Failed to crop thumbnail:", e);
+            }
+        }
         await db.update(tracks_table).set({ thumbnail_uri }).where(eq(tracks_table.uid, track.uid));
         await ChangeTracker.log_change('tracks', 'update', track.uid, { thumbnail_uri });
         SQLGlobal.update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);

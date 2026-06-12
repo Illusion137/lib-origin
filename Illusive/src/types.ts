@@ -222,6 +222,10 @@ interface Basic_Track<T, U, V, X> {
     amazonmusic_id?: string
     applemusic_id?: string
     bandlab_id?: string
+    audiomack_id?: string
+    deezer_id?: string
+    pandora_id?: string
+    tidal_id?: string
     artwork_url?: string
     thumbnail_uri?: string
     media_uri?: string
@@ -230,6 +234,13 @@ interface Basic_Track<T, U, V, X> {
     meta?: U
     playback?: TrackPlaybackData
     downloading_data?: TrackDownloadingData
+    acousticness?: number;
+    danceability?: number;
+    energy?: number;
+    instrumentalness?: number;
+    liveness?: number;
+    speechiness?: number;
+    valence?: number;
 }
 
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
@@ -241,8 +252,9 @@ export interface SmallTrack {
     youtube_id: Track['youtube_id'];
     soundcloud_permalink: Track['soundcloud_permalink'];
     bandlab_id: Track['bandlab_id'];
+    audiomack_id: Track['audiomack_id'];
 }
-export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['youtube_id'], SmallTrack['soundcloud_permalink'], SmallTrack['bandlab_id']];
+export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['youtube_id'], SmallTrack['soundcloud_permalink'], SmallTrack['bandlab_id'], Track['audiomack_id']];
 
 export type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK" | "INTERSECTION";
 export interface InheritedPlaylist {
@@ -378,6 +390,15 @@ export interface StatefullMusicSearchResponse {
     search_data: MusicSearchResponse;
 }
 
+export interface MusicServiceRelatedSection {
+    title: string;
+    tracks: Track[];
+    playlists: CompactPlaylist[];
+}
+export interface MusicServiceRelated {
+    tracks: Track[];
+    error?: ResponseError;
+}
 export interface MusicServiceArtist {
     name: string;
     latest_release?: CompactPlaylist;
@@ -428,8 +449,8 @@ export interface IllusiveExplore {
 
 export type ParsedUri = [MusicServiceURI, string]
 
-export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "BandLab" | "API";
-export type MusicServiceURI = "illusi" | "musi" | "youtube" | "youtubemusic" | "spotify" | "amazonmusic" | "applemusic" | "soundcloud" | "bandlab" | "api";
+export type MusicServiceType = "Illusi" | "Musi" | "YouTube" | "YouTube Music" | "Spotify" | "Amazon Music" | "Apple Music" | "SoundCloud" | "BandLab" | "Audiomack" | "Deezer" | "Tidal" | "Pandora" | "API";
+export type MusicServiceURI = "illusi" | "musi" | "youtube" | "youtubemusic" | "spotify" | "amazonmusic" | "applemusic" | "soundcloud" | "bandlab" | "audiomack" | "deezer" | "tidal" | "pandora" | "api";
 export type MusicServiceURIPath = "playlist" | "artist" | "album"
 export type MusicServicePlaylistTitle = string;
 export type MusicServicePlaylistURL = string;
@@ -460,8 +481,9 @@ export class MusicService {
     get_user_playlists?: () => Promise<CompactPlaylistsResult>
     get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
-    download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>
+    download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>
     get_track_mix?: (id: string) => Promise<TrackMix>
+    get_related?: (id: string) => Promise<MusicServiceRelated>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
     get_new_releases?: () => Promise<CompactPlaylist[]>
     get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[] | undefined>
@@ -483,8 +505,9 @@ export class MusicService {
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
         get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
-        download_from_id?: (id: string, quality: string) => Promise<DownloadFromIdResult | ResponseError>,
+        download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>,
         get_track_mix?: (id: string) => Promise<TrackMix>,
+        get_related?: (id: string) => Promise<MusicServiceRelated>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
         get_new_releases?: () => Promise<CompactPlaylist[]>
         get_latest_releases?: (id: string, opts?: ArtistOpts) => Promise<CompactPlaylist[] | undefined>,
@@ -518,6 +541,7 @@ export class MusicService {
         this.get_playlist_continuation = s.get_playlist_continuation
         this.download_from_id = s.download_from_id;
         this.get_track_mix = s.get_track_mix;
+        this.get_related = s.get_related;
         this.get_artist = s.get_artist;
         this.get_new_releases = s.get_new_releases;
         this.get_latest_releases = s.get_latest_releases;
@@ -545,6 +569,10 @@ export class MusicService {
             applemusic: "https://music.apple.com/library/playlist/",
             soundcloud: "https://soundcloud.com/",
             bandlab: "https://www.bandlab.com/",
+            audiomack: "https://www.audiomack.com/",
+            deezer: "https://www.deezer.com/us/",
+            tidal: "https://www.tidal.com/",
+            pandora: "https://www.pandora.com/",
             api: "",
         };
         for (const playlist of account_playlists.playlists) {

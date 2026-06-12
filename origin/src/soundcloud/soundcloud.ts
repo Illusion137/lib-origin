@@ -9,14 +9,15 @@ import { generror } from "@common/utils/error_util";
 import { try_json_parse } from "@common/utils/parse_util";
 import { reinterpret_cast } from '@common/cast';
 import type { ArtistStories } from "./types/ArtistStories";
+import type { SelectionItem, SoundCloudMixedSelection } from "./types/MixedSelection";
+import type { ResolvedStation } from "./types/ResolvedStation";
 import BufferRN from "buffer/";
-import type { SoundCloudMixedSelection } from "./types/MixedSelection";
 const Buffer = BufferRN.Buffer;
 
 export namespace SoundCloud {
     const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
     type Opts = BaseOpts & { client_id?: (string | ResponseError) };
-    let app_version = 1774492604;
+    let app_version = 1778677443;
     const client_cache = { client: { client_id: null as null | string, user_id: null as null | string }, enabled: true };
 
     export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
@@ -59,7 +60,7 @@ export namespace SoundCloud {
             method: "GET",
             cache_opts: {
                 cache_ms: milliseconds_of({ hours: 1 }),
-                cache_mode: "file"
+                cache_mode: "memory"
             },
             ...opts.fetch_opts
         }
@@ -95,7 +96,7 @@ export namespace SoundCloud {
             cache_opts: {
                 cache_ms: milliseconds_of({ hours: 1 }),
                 cache_ms_fail: milliseconds_of({ seconds: 10 }),
-                cache_mode: "file"
+                cache_mode: "memory"
             },
             ...opts.fetch_opts
         }
@@ -171,17 +172,17 @@ export namespace SoundCloud {
             app_locale: "en"
         }
     }
-    export async function apiget<T>(opts: Opts & { path: string, params?: Record<string, any>, hydration_url?: string, requires_cookies?: boolean }) {
+    export async function apiget<T>(opts: Opts & { path: string, params?: Record<string, any>, hydration_url?: string, requires_cookies?: boolean, hydration?: Awaited<ReturnType<typeof get_hydration>>}) {
         if (opts.requires_cookies ?? false) {
             const has_cookies = requires_cookies(opts);
             if ("error" in has_cookies) return has_cookies;
         }
-        let hydration = {} as Awaited<ReturnType<typeof get_hydration>>;
+        let hydration = (opts.hydration ?? {}) as Awaited<ReturnType<typeof get_hydration>>;
         if (opts.client_id === undefined) {
-            hydration = await get_hydration(opts.hydration_url ?? `https://soundcloud.com/`, opts);
+            if(!opts.hydration) hydration = await get_hydration(opts.hydration_url ?? `https://soundcloud.com/`, opts);
             if ("error" in hydration) return hydration;
             if (opts.client_id === undefined) {
-                const client_id = await get_client_id({ ...opts, scripts: hydration.scripts_urls });
+                const client_id = await get_client_id({ ...opts, scripts: hydration?.scripts_urls });
                 if (!("error" in client_id)) {
                     opts.client_id = client_id.client_id;
                 }
@@ -319,7 +320,15 @@ export namespace SoundCloud {
             case "REPOSTS": return "reposts";
         }
     }
-
+    export async function resolve<T extends Record<any, any>>(opts: Opts & {url: string}): PromiseResult<T>{
+        const params = {
+            ...get_locale_params(opts),
+            url: opts.url
+        };
+        const resolve_response = await rozfetch<T>(`https://api-v2.soundcloud.com/resolve?${encode_params(params)}`, api_method_options(opts));
+        if("error" in resolve_response) return resolve_response;
+        return await resolve_response.json();
+    }
     export async function permalink_to_artist_id(opts: Opts & { "artist_permalink": string }) {
         opts.artist_permalink = urlid(opts.artist_permalink, "soundcloud.com/");
         opts.artist_permalink = `https://soundcloud.com/${opts.artist_permalink}`;
@@ -328,15 +337,7 @@ export namespace SoundCloud {
             if ("error" in client_id) return client_id;
             opts.client_id = client_id.client_id;
         }
-        const params = {
-            ...get_locale_params(opts),
-            url: opts.artist_permalink
-        };
-
-        const resolve_response = await rozfetch<UserData>(`https://api-v2.soundcloud.com/resolve?${encode_params(params)}`, api_method_options(opts));
-        if ("error" in resolve_response) return resolve_response;
-
-        const resolved_user = await resolve_response.json();
+        const resolved_user = await resolve<UserData>({...opts, url: opts.artist_permalink});
         if ("error" in resolved_user) return resolved_user;
         return { id: String(resolved_user.id), client_id: opts.client_id, hydration: { hydratable: "user", data: resolved_user } as HydratableUser };
     }
@@ -408,6 +409,12 @@ export namespace SoundCloud {
             }
         });
     }
+    export async function station_from_track(opts: Opts & {track_id: number}){
+        return station_base({...opts, station_url: `https://soundcloud.com/discover/sets/track-stations:${opts.track_id}`});
+    }
+    export async function station_base(opts: Opts & {station_url: string}){
+        return await resolve<ResolvedStation>({...opts, url: opts.station_url});
+    }
     export async function listening_history(opts: Opts & { limit?: number, offset?: number }) {
         return await apiget<HistoryTrack>({ ...opts, path: `me/play-history/tracks`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0 } });
     }
@@ -430,6 +437,22 @@ export namespace SoundCloud {
             ))
         }
         return await apipost<null>({ ...opts, path: `me/artist-shortcuts/read-updates`, payload });
+    }
+    type FeedTypes = "TrackPost"|"TrackRepost"|"PlaylistPost";
+    export async function feed(opts: Opts & {limit?: number; offset?: number; feed_types?: FeedTypes[]; promoted_playlist?: boolean}){
+        const hydration = await get_hydration("https://soundcloud.com/feed", opts);
+        if("error" in hydration) return hydration;
+        const me_user = hydration.hydration.find(hydratable => hydratable.hydratable === "meUser");
+        if(!me_user) return generror("Failed to find meUser in feed hydration", "MEDIUM", {opts, hydration});
+        const params = {
+            limit: opts.limit ?? 10,
+            offset: opts.offset ?? 0,
+            activityTypes: (opts.feed_types ?? ["TrackPost","TrackRepost","PlaylistPost"]).join(","),
+            sc_a_id: me_user.data.ppid,
+            user_urn: me_user.data.urn,
+            promoted_playlist: opts.promoted_playlist ?? true
+        };
+        return await apiget<SelectionItem>({...opts, path: "stream", params, hydration});
     }
     export async function mixed_selections(opts: Opts) {
         return await apiget_cast<SoundCloudMixedSelection>({ ...opts, path: `mixed-selections` });

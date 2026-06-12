@@ -135,6 +135,40 @@ export async function bandlab_get_user_playlists(): Promise<CompactPlaylistsResu
     };
 }
 
+export async function audiomack_get_user_playlists(): Promise<CompactPlaylistsResult> {
+    return { playlists: [] };
+}
+
+export async function deezer_get_user_playlists(): Promise<CompactPlaylistsResult> {
+    const cookie_jar = Prefs.get_pref('deezer_cookie_jar');
+    const result = await Origin.Deezer.get_user_playlists({ cookie_jar, fetch_opts });
+    if ("error" in result) return { playlists: [], error: result.error };
+    return {
+        playlists: result.data.map(playlist => ({
+            title: { name: playlist.title, uri: create_uri("deezer", String(playlist.id)) },
+            artist: [{ name: playlist.creator.name, uri: null }],
+            artwork_thumbnails: create_thumbnails(playlist.picture_xl || playlist.picture_big),
+            date: playlist.creation_date as ISOString
+        }))
+    };
+}
+
+export async function pandora_get_user_playlists(): Promise<CompactPlaylistsResult> {
+    const cookie_jar = Prefs.get_pref('pandora_cookie_jar');
+    const result = await Origin.Pandora.get_home({ cookie_jar });
+    if ("error" in result) return { playlists: [], error: result.error };
+    return {
+        playlists: result.recipes.map(recipe => ({
+            title: { name: recipe.title, uri: create_uri("pandora", recipe.pandoraId) },
+            artist: [{ name: "Pandora", uri: null }]
+        }))
+    };
+}
+
+export async function tidal_get_user_playlists(): Promise<CompactPlaylistsResult> {
+    return { playlists: [] };
+}
+
 export async function illusi_get_user_playlists(): Promise<CompactPlaylistsResult> {
     const { data: { session } } = await supabase().auth.getSession();
     if (!session) return { playlists: [] };

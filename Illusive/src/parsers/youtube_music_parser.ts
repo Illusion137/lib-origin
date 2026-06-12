@@ -5,12 +5,34 @@ import { find_album_year, parse_subtitle_text } from '@origin/youtube_music/pars
 import type { ArtistCarouselContent, ArtistTopTrack } from '@origin/youtube_music/types/ArtistResults_0';
 import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
 import type { MusicCardShelfRenderer, MusicResponsiveListItemRenderer2, SearchMusicResponsiveListItemRenderer } from '@origin/youtube_music/types/SearchResults_0';
-import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack } from '@origin/youtube_music/types/types';
+import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack, WatchNextQueueTrack } from '@origin/youtube_music/types/types';
+import type { RelatedSection } from '@origin/youtube_music/parser';
 import { best_thumbnail, create_uri, is_duration_string, youtube_music_split_artists, youtube_views_number } from '@illusive/illusive_utils';
-import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, NamedUUID, Runs, Track } from '@illusive/types';
-import { reinterpret_cast } from '../../../common/cast';
+import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, MusicServiceRelatedSection, NamedUUID, Runs, Track } from '@illusive/types';
+import { reinterpret_cast } from '@common/cast';
+import { parse_track_title_artist } from '@illusive/parsers/title_parser';
+import { Prefs } from '@illusive/prefs';
+import * as Origin from '@origin/index';
+import { generror } from '@common/utils/error_util';
 
 const responsive_item_types = ["Song", "Video", "Single", "Album", "Playlist", "EP", "Profile"];
+
+export async function get_ytm_ctx() {
+    const cookie_jar = Prefs.get_pref("youtube_music_cookie_jar");
+    const opts = { cookie_jar };
+    const ytcfg_result = await Origin.YouTubeMusic.fetch_initial_data(opts);
+    if (!ytcfg_result.ok || ytcfg_result.ytcfg === undefined) return generror("YouTube Music: failed to fetch ytcfg", "LOW");
+    return { opts, ytcfg: ytcfg_result.ytcfg };
+}
+export function watch_next_payload(video_id: string): Origin.YouTubeMusic.WatchNextPayload {
+    return {
+        playlistId: `RDAMVM${video_id}`,
+        videoId: video_id,
+        isAudioOnly: true,
+        enablePersistentPlaylistPanel: true,
+        tunerSettingValue: "AUTOMIX_SETTING_NORMAL",
+    };
+}
 
 function includes_plays_text(ptext: string){
     if(ptext === undefined) return false;
@@ -53,7 +75,7 @@ export function parse_youtube_music_albums(albums: YouTubeMusicAlbum[], type: Co
 }
 
 export function parse_youtube_music_track(track: YouTubeMusicTrack): Track{
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(track.title),
         title: track.title,
         artists: track.artists.map(parse_youtube_music_compact_line_artist),
@@ -63,7 +85,7 @@ export function parse_youtube_music_track(track: YouTubeMusicTrack): Track{
         youtube_id: track.video_id,
         explicit: track.badges.includes("MUSIC_EXPLICIT_BADGE") ? "EXPLICIT" : "NONE",
         plays: track.plays ?? 0
-    }
+    })
 }
 
 export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack, artists: Runs, album: Runs, browse_id: string, artwork_url: string|undefined): Track {
@@ -71,7 +93,7 @@ export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack
         flex_column => flex_column.musicResponsiveListItemFlexColumnRenderer.text.runs
     ).find(run => includes_plays_text(parse_runs(run)));
     const plays_text = parse_runs(plays_run);
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(track.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs),
         artists: youtube_music_split_artists(artists),
@@ -82,7 +104,7 @@ export function parse_youtube_music_album_track(track: YouTubeMusicPlaylistTrack
         youtube_id: track.playlistItemData.videoId,
         youtubemusic_id: track.playlistItemData.playlistSetVideoId,
         plays: youtube_views_number(plays_text)
-    }
+    })
 }
 
 export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTrack): Track|undefined {
@@ -95,7 +117,7 @@ export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTr
         throw new Error("No YouTube Music Split Artists");
     if(includes_plays_text(parse_runs(album_runs)))
         throw new Error("YouTube Music Album is plays");
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs),
         artists: youtube_music_split_artists(artist_column.musicResponsiveListItemFlexColumnRenderer.text.runs as Runs),
@@ -105,7 +127,7 @@ export function parse_youtube_music_playlist_track(track: YouTubeMusicPlaylistTr
         youtube_id: track.playlistItemData.videoId,
         artwork_url: best_thumbnail(track?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails)?.url,
         youtubemusic_id: track.playlistItemData.playlistSetVideoId
-    }
+    })
 }
 
 export function parse_youtube_music_artist_tracks_track(track: YouTubeMusicPlaylistTrack): Track|undefined {
@@ -121,8 +143,8 @@ export function parse_youtube_music_artist_tracks_track(track: YouTubeMusicPlayl
     if(includes_plays_text(parse_runs(album_runs))) {
         throw new Error("No YouTube Music Album Parsed");
     }
-    
-    return {
+
+    return parse_track_title_artist({
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs),
         artists: youtube_music_split_artists(artist_column.musicResponsiveListItemFlexColumnRenderer.text.runs as Runs),
@@ -133,7 +155,7 @@ export function parse_youtube_music_artist_tracks_track(track: YouTubeMusicPlayl
         artwork_url: best_thumbnail(track?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails)?.url,
         youtubemusic_id: track.playlistItemData.playlistSetVideoId,
         plays: youtube_views_number(plays_text)
-    }
+    })
 }
 
 export function parse_youtube_music_search_artist(playlist: SearchMusicResponsiveListItemRenderer, is_artist: boolean): CompactArtist{
@@ -155,7 +177,7 @@ export function parse_youtube_music_search_playlist(playlist: SearchMusicRespons
     const artists = end_artist_index === -1 ? [] : info_runs.slice(start_artist_index, end_artist_index).filter(item => item.text.trim() !== "&" && item.text.trim() !== ",");
     const title_runs = title_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
 
-    const album_endpoint = playlist.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.playlistId ?? playlist.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl?.replace('"/playlist?list=', '') ?? title_runs[0].navigationEndpoint?.browseEndpoint?.browseId.replace('"/playlist?list=', '');
+    const album_endpoint = playlist.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.playlistId ?? playlist.navigationEndpoint.browseEndpoint?.browseId ?? playlist.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl?.replace('"/playlist?list=', '') ?? title_runs[0].navigationEndpoint?.browseEndpoint?.browseId.replace('"/playlist?list=', '');
 
     return {
         title: {name: parse_runs(title_runs), uri: album_endpoint === undefined ? null : create_uri("youtubemusic", album_endpoint)},
@@ -172,7 +194,7 @@ export function parse_youtube_music_search_top_result_contents_track(track: Sear
     const info_runs = info_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
     const duration = info_runs[info_runs.length - 1];
     const album = maybe_album?.[0].navigationEndpoint ? maybe_album[0] : undefined;
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs),
         artists: artists.map(artist => ({name: artist.text, uri: artist.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtubemusic", artist.navigationEndpoint?.browseEndpoint?.browseId)})),
@@ -182,7 +204,7 @@ export function parse_youtube_music_search_top_result_contents_track(track: Sear
         youtube_id: track.playlistItemData.videoId,
         artwork_url: best_thumbnail(track?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails)?.url,
         plays: youtube_views_number(parse_runs(plays_column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs))
-    };
+    });
 }
 
 function parse_youtube_music_search_top_result_artist(card: MusicCardShelfRenderer): CompactArtist{
@@ -204,6 +226,12 @@ function parse_youtube_music_search_top_result_album(card: MusicCardShelfRendere
         artwork_thumbnails: card.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails
     }
 }
+function card_explicit_badge(card: MusicCardShelfRenderer): Track['explicit'] {
+    if (card.subtitleBadges?.[0]?.musicInlineBadgeRenderer?.icon?.iconType === "MUSIC_EXPLICIT_BADGE") return "EXPLICIT";
+    if (card.contents?.[0]?.musicResponsiveListItemRenderer?.badges?.[0]?.musicInlineBadgeRenderer?.icon?.iconType === "MUSIC_EXPLICIT_BADGE") return "EXPLICIT";
+    return "NONE";
+}
+
 async function parse_youtube_music_search_top_result_track(card: MusicCardShelfRenderer, get_playlist: (id: string) => Promise<MusicServicePlaylist>): Promise<Track|undefined>{
     if(card.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId === undefined) return undefined;
     const title = parse_runs(card.title.runs);
@@ -214,17 +242,17 @@ async function parse_youtube_music_search_top_result_track(card: MusicCardShelfR
     const album_menu_item = card.menu.menuRenderer.items.find(item => item?.menuNavigationItemRenderer?.icon?.iconType === "ALBUM");
     const potential_endpoint: string|undefined = (album_menu_item?.menuNavigationItemRenderer?.navigationEndpoint as NavigationEndpoint)?.browseEndpoint?.browseId;
     const album_maybe = potential_endpoint !== undefined ? await get_playlist(potential_endpoint) : undefined;
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(title),
         title: title,
         album: album_maybe?.error === undefined ? {name: album_maybe?.title ?? "", uri: potential_endpoint === undefined ? null : create_uri("youtubemusic", potential_endpoint)} : undefined,
         artists: possible_artists.map(item => ({name: item.text, uri: item.navigationEndpoint === undefined ? null : create_uri("youtubemusic", item.navigationEndpoint.browseEndpoint!.browseId)})),
         duration: parse_time(duration),
-        explicit: card.subtitleBadges === undefined ? "NONE" : card.subtitleBadges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
+        explicit: card_explicit_badge(card),
         youtube_id: card.title.runs[0].navigationEndpoint.watchEndpoint.videoId,
         plays: youtube_views_number(plays),
         artwork_url: best_thumbnail(card.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url
-    }
+    })
 }
 function parse_youtube_music_search_top_result_track_2(card: MusicCardShelfRenderer): Track|undefined{
     if(card.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId === undefined) return undefined;
@@ -236,16 +264,16 @@ function parse_youtube_music_search_top_result_track_2(card: MusicCardShelfRende
     const album_menu_item = card.menu.menuRenderer.items.find(item => item?.menuNavigationItemRenderer?.icon?.iconType === "ALBUM");
     const potential_endpoint: string|undefined = (album_menu_item?.menuNavigationItemRenderer?.navigationEndpoint as NavigationEndpoint)?.browseEndpoint?.browseId;
     const album_maybe = potential_endpoint !== undefined ? {error: 'yes'} : undefined;
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(title),
         title: title,
         album: album_maybe?.error === undefined ? undefined : undefined,
         artists: possible_artists.map(item => ({name: item.text, uri: item.navigationEndpoint === undefined ? null : create_uri("youtubemusic", item.navigationEndpoint.browseEndpoint!.browseId)})),
         duration: parse_time(duration),
-        explicit: card.subtitleBadges === undefined ? "NONE" : card.subtitleBadges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
+        explicit: card_explicit_badge(card),
         youtube_id: card.title.runs[0].navigationEndpoint.watchEndpoint.videoId,
         plays: youtube_views_number(plays)
-    }
+    })
 }
 
 type LabledTrack = Track & {type: "TRACK"};
@@ -289,7 +317,7 @@ export function parse_youtube_music_artist_track(item: ArtistTopTrack): Track{
         flex_column => flex_column.musicResponsiveListItemFlexColumnRenderer.text.runs
     ).find(run => includes_plays_text(parse_runs(run)));
     const plays_text = parse_runs(plays_run);
-    return {
+    return parse_track_title_artist({
         uid: generate_new_uid(parse_runs(item.musicResponsiveListItemRenderer.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(item.musicResponsiveListItemRenderer.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs),
         artists: youtube_music_split_artists(item.musicResponsiveListItemRenderer.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs as Runs),
@@ -299,7 +327,7 @@ export function parse_youtube_music_artist_track(item: ArtistTopTrack): Track{
         explicit: item?.musicResponsiveListItemRenderer?.badges?.[0]?.musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
         youtube_id: item.musicResponsiveListItemRenderer.playlistItemData.videoId,
         plays: youtube_views_number(plays_text),
-    }
+    })
 }
 
 export function parse_youtube_music_artist_album(item: ArtistCarouselContent, artist_info: NamedUUID, type: CompactPlaylist['type']): CompactPlaylist{
@@ -326,4 +354,75 @@ export function parse_youtube_music_artist_similar_artist(item: ArtistCarouselCo
         profile_artwork_url: best_thumbnail(item.musicTwoRowItemRenderer.thumbnailRenderer.musicThumbnailRenderer.thumbnail.thumbnails)?.url,
         is_official_artist_channel: true
     }
+}
+
+export function parse_youtube_music_queue_track(track: WatchNextQueueTrack): Track {
+    return parse_track_title_artist({
+        uid: generate_new_uid(track.title),
+        title: track.title,
+        artists: track.artists.map(parse_youtube_music_compact_line_artist),
+        album: track.album ? parse_youtube_music_compact_line_artist(track.album) : undefined,
+        artwork_url: best_thumbnail(track.thumbnails)?.url,
+        duration: parse_time(track.duration),
+        youtube_id: track.video_id || undefined,
+        youtubemusic_id: track.playlist_set_video_id || undefined,
+    });
+}
+
+function as_record(value: unknown): Record<string, any> | undefined {
+    if (typeof value !== 'object' || value === null) return undefined;
+    return value as Record<string, any>;
+}
+
+export function parse_youtube_music_related_two_row_item(item: unknown): CompactPlaylist | undefined {
+    const i = as_record(item);
+    if (!i) return undefined;
+    const browse_id: string | undefined = i.navigationEndpoint?.browseEndpoint?.browseId;
+    const title: string = parse_runs(i.title?.runs ?? []);
+    if (!title) return undefined;
+    const thumbnails = i.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    const artists: NamedUUID[] = (i.subtitle?.runs ?? [] as any[])
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        .filter((r: any) => r.navigationEndpoint?.browseEndpoint?.browseId)
+        .map((r: any) => ({ name: r.text as string, uri: create_uri("youtubemusic", r.navigationEndpoint.browseEndpoint.browseId as string) }));
+    return {
+        title: { name: title, uri: browse_id ? create_uri("youtubemusic", browse_id) : null },
+        artist: artists,
+        artwork_thumbnails: thumbnails,
+        artwork_url: best_thumbnail(thumbnails)?.url,
+        type: "ALBUM"
+    };
+}
+
+export function parse_youtube_music_related_responsive_item(item: unknown): Track | undefined {
+    const i = as_record(item);
+    if (!i) return undefined;
+    const video_id: string | undefined =
+        i.playlistItemData?.videoId ??
+        i.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId;
+    if (!video_id) return undefined;
+    const title: string = parse_runs(i.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? []);
+    if (!title) return undefined;
+    const artist_runs: Runs = i.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [];
+    const thumbnails = i.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    return parse_track_title_artist({
+        uid: generate_new_uid(title),
+        title,
+        artists: youtube_music_split_artists(artist_runs),
+        duration: NaN,
+        youtube_id: video_id,
+        artwork_url: best_thumbnail(thumbnails)?.url,
+    });
+}
+
+export function parse_youtube_music_related_sections(sections: RelatedSection[]): MusicServiceRelatedSection[] {
+    return sections.map(section => ({
+        title: section.title,
+        tracks: section.type === "shelf"
+            ? section.items.map(parse_youtube_music_related_responsive_item).filter((x): x is Track => x !== undefined)
+            : [],
+        playlists: section.type === "carousel"
+            ? section.items.map(parse_youtube_music_related_two_row_item).filter((x): x is CompactPlaylist => x !== undefined)
+            : [],
+    }));
 }
