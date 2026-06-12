@@ -4,7 +4,7 @@ import type { ChannelResultsWContinuation } from "@origin/youtube/types/ChannelR
 import type { HomeResultsWContinuation } from "@origin/youtube/types/HomeResultsWContinuation";
 import type { LibraryResultsW } from "@origin/youtube/types/LibraryResultsW";
 import type { MixResults_0 } from "@origin/youtube/types/MixResults_0";
-import type { PlaylistResultsW, PlaylistVideoRenderer } from "@origin/youtube/types/PlaylistResultsW";
+import type { PlaylistResultsW } from "@origin/youtube/types/PlaylistResultsW";
 import type { PlaylistResultsWContinuation } from "@origin/youtube/types/PlaylistResultsWContinuation";
 import type { SearchResultsM } from "@origin/youtube/types/SearchResultsM";
 import type { SearchResultsW } from "@origin/youtube/types/SearchResultsW";
@@ -43,12 +43,14 @@ export function parse_library_contents(initial_data: InitialData) {
 }
 export function parse_playlist_contents(initial_data: InitialData) {
     const contents = initial_data as PlaylistResultsW;
-    const playlist_contents = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
-    const continuation_item = playlist_contents.find(item => item.continuationItemRenderer !== undefined);
+    contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer;
+    const playlist_contents = contents.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+    const continuation_item = playlist_contents.find(item => item.continuationItemViewModel !== undefined);
     return {
-        tracks: { playlist_video_renderer: playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer) as PlaylistVideoRenderer[] },
+        tracks: { lockup_view_model: playlist_contents.filter(item => item.lockupViewModel !== undefined).map(item => item.lockupViewModel!) },
         playlist_data: contents.header?.pageHeaderRenderer?.content !== undefined ? { playlist_header_content_renderer: contents.header?.pageHeaderRenderer?.content.pageHeaderViewModel } : { playlist_header_renderer: contents.header.playlistHeaderRenderer},
-        continuation: continuation_item?.continuationItemRenderer ?? null
+
+        continuation: continuation_item?.continuationItemViewModel ?? null
     }
 }
 export function parse_playlist_continuation_contents(initial_data: InitialData) {
@@ -56,7 +58,7 @@ export function parse_playlist_continuation_contents(initial_data: InitialData) 
     const playlist_contents = contents.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems;
     const continuation_item = playlist_contents.find(item => item.continuationItemRenderer !== undefined);
     return {
-        tracks: { playlist_video_renderer: playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer) as PlaylistVideoRenderer[]},
+        tracks: { playlist_video_renderer: playlist_contents.filter(item => item.playlistVideoRenderer !== undefined).map(item => item.playlistVideoRenderer!)},
         continuation: continuation_item?.continuationItemRenderer ?? null
     }
 }
