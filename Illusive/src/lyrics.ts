@@ -47,10 +47,10 @@ export namespace Lyrics {
             return { plain: best_result.plainLyrics, synced: typeof best_result.syncedLyrics !== "string" ? undefined : best_result.syncedLyrics };
         }
         else {
-            const lrclib_result = await Origin.LRCLib.get_cached({
+            const lrclib_result = await Origin.LRCLib.get({
                 track_name: track.title, 
-                artist_name: track.artists?.[0]?.name ?? "", 
-                album_name: track.album?.name ?? "", 
+                artist_name: remove_topic(track.artists?.[0]?.name) ?? "", 
+                album_name: track.album?.name ?? "",
                 duration: track.duration
             });
             if("error" in lrclib_result) return lrclib_result;

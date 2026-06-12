@@ -72,7 +72,9 @@ export namespace AudiobookDownloads {
 	}
 
 	async function read_registry(): Promise<PersistedDownload[]> {
-		const raw = await SQLfs.read_file(registry_path());
+		const path = registry_path();
+		if (!(await SQLfs.info(path)).exists) return [];
+		const raw = await SQLfs.read_file(path);
 		if (typeof raw !== "string") return [];
 		try {
 			const parsed = JSON.parse(raw) as unknown;

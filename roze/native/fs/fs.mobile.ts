@@ -18,7 +18,7 @@ export const mobile_fs: FileSystem = {
 		try {
 			return await expo_fs.readAsStringAsync(path, opts);
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path, opts });
+			return generror_catch(error, "Failed to read file as string", "LOW", { path, opts });
 		}
 	},
 	read_directory: async (path: string) => {
