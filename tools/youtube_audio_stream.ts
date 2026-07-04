@@ -9,10 +9,6 @@ const app = express();
 app.use(express.json());
 const port = 3001;
 
-// SABR is a session-based, sequential streaming protocol - it has no concept of byte-range
-// seeking. To support HTTP Range requests (and therefore seeking) from the web, each track is
-// streamed once into a growing in-memory buffer shared across requests; a request for a range
-// that hasn't downloaded yet just waits for the ongoing SABR download to reach it.
 interface TrackBuffer {
     chunks: Buffer[];
     downloaded_length: number;
