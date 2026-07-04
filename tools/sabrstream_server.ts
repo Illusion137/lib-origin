@@ -5,7 +5,7 @@ const port = 3000;
 
 app.get('/stream/:id', async (req, res) => {
     const video_id = req.params.id;
-    const sabr_data = await YouTubeDL.resolve_sabr_url(video_id);
+    const sabr_data = await YouTubeDL.resolve_sabr_info(video_id);
     res.json(sabr_data);
 });
 

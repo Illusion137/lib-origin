@@ -98,7 +98,7 @@ export const node_potoken: PoTokenGenerator = {
         const integrity_token_data = await integrity_token_response.json() as unknown[];
 
         if (typeof integrity_token_data[0] !== 'string') {
-            return generror('Could not get integrity token', "CRITICAL");
+            return generror('Could not get integrity token', "CRITICAL", {integrity_token_data});
         }
 
         const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);

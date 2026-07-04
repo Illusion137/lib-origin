@@ -29,7 +29,7 @@ async function main() {
 	await load_native_fs();
 	await load_native_potoken();
 
-	const result = await YouTubeDL.resolve_sabr_url(VIDEO_ID);
+	const result = await YouTubeDL.resolve_sabr_info(VIDEO_ID);
 	if ('error' in result) {
 		process.stderr.write(`sabr-fetch-params error: ${String(result.error)}\n`);
 		process.exit(1);

@@ -3,7 +3,7 @@ import {
     generror_catch
 } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { Constants, Log, Platform, YT, YTNodes, type IPlayerResponse, type Types } from 'youtubei.js';
+import Innertube, { Constants, Log, Platform, YT, YTNodes, type ClientType, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { ResponseError } from '@common/types';
 import {
@@ -28,13 +28,14 @@ export namespace YouTubeDL {
     export interface Chapter { title: string, start_time: number };
     let innertube_client: Innertube;
 
-    export async function get_innertube_client(): Promise<Innertube> {
+    export async function get_innertube_client(client_type?: ClientType): Promise<Innertube> {
         Log.setLevel(Log.Level.NONE);
         if (innertube_client) return innertube_client;
         await load_native_fs();
         await load_native_potoken();
         await load_native_jseval();
         innertube_client = await Innertube.create({
+            client_type: client_type,
             cache: new RCache(true, await fs().temp_directory())
         });
         return innertube_client;
@@ -127,13 +128,13 @@ export namespace YouTubeDL {
      * The po_token is supplied directly to SabrStream (placeholder on init, real on SPS=2).
      * This matches the reference implementation in googlevideo/examples/downloader.
      */
-    export async function resolve_sabr_url(video_id: string): Promise<SabrTrackParams | ResponseError> {
+    export async function resolve_sabr_info(video_id: string): Promise<SabrTrackParams | ResponseError> {
         const MAX_RETRIES = 2;
         let last_error: unknown;
         for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
             try {
-                return await resolve_sabr_url_attempt(video_id);
+                return await resolve_sabr_info_attempt(video_id);
             } catch (error) {
                 if (attempt < MAX_RETRIES && error instanceof TypeError && error.message.includes("Network request failed")) {
                     last_error = error;
@@ -145,7 +146,7 @@ export namespace YouTubeDL {
         return generror_catch(last_error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
     }
 
-    async function resolve_sabr_url_attempt(video_id: string): Promise<SabrTrackParams | ResponseError> {
+    async function resolve_sabr_info_attempt(video_id: string): Promise<SabrTrackParams | ResponseError> {
         video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
         const client = await get_innertube_client();
 

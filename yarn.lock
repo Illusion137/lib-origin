@@ -4259,10 +4259,10 @@ bcrypt-pbkdf@^1.0.0:
   dependencies:
     tweetnacl "^0.14.3"
 
-better-sqlite3@^9.6.0:
-  version "9.6.0"
-  resolved "https://registry.yarnpkg.com/better-sqlite3/-/better-sqlite3-9.6.0.tgz#b01e58ba7c48abcdc0383b8301206ee2ab81d271"
-  integrity sha512-yR5HATnqeYNVnkaUTf4bOP2dJSnyhP4puJN/QPRyx4YkBEEUxib422n2XzPqDEHjQQqazoYoADdAm5vE15+dAQ==
+better-sqlite3@^12.11.1:
+  version "12.11.1"
+  resolved "https://registry.yarnpkg.com/better-sqlite3/-/better-sqlite3-12.11.1.tgz#067846efabf7671957fc8a9e8df3be39c6cc0b84"
+  integrity sha512-dq9AtApgg5PGFtBzPFSBl3HZQjHok5gaQCM6zh2Yk0aSmDCs1CbnVI8/HgASQkNKsWFpseIO9beg5xxpYhbIfA==
   dependencies:
     bindings "^1.5.0"
     prebuild-install "^7.1.1"
@@ -9430,7 +9430,7 @@ react-native-permissions@^5.4.4:
 
 "react-native-ptp@https://github.com/Illusion137/react-native-ptp":
   version "0.1.0"
-  resolved "https://github.com/Illusion137/react-native-ptp#7e9ee78ddd8cc59a4c147e775d786ecf4ec63309"
+  resolved "https://github.com/Illusion137/react-native-ptp#f355fc7e1a5d9e1c70e1224e1b1335ee68c4b8ce"
 
 react-native-quick-base64@^3.0.0:
   version "3.0.0"

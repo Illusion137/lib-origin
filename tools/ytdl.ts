@@ -22,7 +22,7 @@ async function ytdl_main__() {
 
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
-        async () => await YouTubeDL.resolve_sabr_url(url)
+        async () => await YouTubeDL.resolve_sabr_info(url)
     );
     if ("error" in sabr_params) {
         console.error(red("FAILED TO RESOLVE SABR URL"), sabr_params.error);
