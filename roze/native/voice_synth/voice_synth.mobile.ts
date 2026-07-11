@@ -1,6 +1,6 @@
-import { MrLecture } from 'react-native-mr-lecture';
+import { Shumil } from 'react-native-shumil';
 import { VoiceSynthConstants } from "@native/voice_synth/voice_synth_constants";
-import type { VoiceExportBatchTexts, VoiceOptions, VoiceSynth } from "@native/voice_synth/voice_synth.base";
+import type { VoiceBank, VoiceExportBatchTexts, VoiceOptions, VoiceSynth } from "@native/voice_synth/voice_synth.base";
 
 let active_engine: 'avs' | 'piper' = 'avs';
 
@@ -9,16 +9,17 @@ export const mobile_voice_synth: VoiceSynth = {
 		if (engine === 'avs' || engine === 'piper') active_engine = engine;
 	},
 	get_voices: async () => {
-		return (await MrLecture.getVoices(active_engine)).map(voice => ({
+		const voices = await Shumil.getVoices(active_engine);
+		return voices.map(voice => ({
 			id: voice.id,
 			name: voice.name,
 			language: voice.language,
 			quality: voice.quality,
-			installed: true,
-		}));
+			installed: true
+		})) as VoiceBank[];
 	},
 	speak: async (text: string, opts: VoiceOptions) => {
-		await MrLecture.speak(text, active_engine, {
+		await Shumil.speak(text, active_engine, {
 			voiceId: opts.voice_bank?.id,
 			rate: opts.rate ?? VoiceSynthConstants.default_node_speach_rate,
 		});
@@ -37,7 +38,7 @@ export const mobile_voice_synth: VoiceSynth = {
 		const run_worker = async (): Promise<void> => {
 			for (let i = cursor++; i < texts.length; i = cursor++) {
 				const t = texts[i];
-				await MrLecture.exportBatch([{ text: t.text, outputPath: t.export_path }], active_engine, native_opts);
+				await Shumil.exportBatch([{ text: t.text, outputPath: t.export_path }], active_engine, native_opts);
 				opts.on_data?.(t.export_path, t.export_path);
 			}
 		};
