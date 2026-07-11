@@ -8,6 +8,7 @@ import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Constants } from './constants';
 import { create_uri } from './illusive_utils';
 import { document_picker } from '@native/document_picker/document_picker';
+import { Audiobooks } from './audiobooks';
 
 export async function upload_sqlite_db() {
     return await document_picker().pick_file();
@@ -111,6 +112,31 @@ export async function upload_music_files() {
         }
 
         await Promise.all(all_promise_tracks);
+    } catch (error) {
+        if (typeof error === "object" && error !== null && "error" in error) return;
+        alert_error({ error: error as Error });
+    }
+}
+
+export async function upload_audiobook_files() {
+    try {
+        const audiobook_files = await document_picker().pick_multiple_files(document_picker().get_types([
+            ".pdf",
+            ".epub",
+            ".txt",
+            ".docx"
+        ]));
+        if ("error" in audiobook_files) {
+            if (!audiobook_files.error.message.includes("canceled")) alert_error(audiobook_files);
+            return;
+        }
+
+        for (const audiobook_file of audiobook_files) {
+            try {
+                if ("error" in audiobook_file) throw audiobook_file.error;
+                await Audiobooks.import_audiobook(audiobook_file.uri);
+            } catch (error) { alert_error({ error: error as Error }); }
+        }
     } catch (error) {
         if (typeof error === "object" && error !== null && "error" in error) return;
         alert_error({ error: error as Error });
