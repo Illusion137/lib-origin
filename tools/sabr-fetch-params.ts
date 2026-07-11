@@ -23,7 +23,7 @@ import { load_native_fs } from '@native/fs/fs';
 import { load_native_potoken } from '@native/potoken/potoken';
 import { YouTubeDL } from '@origin/youtube_dl/index';
 
-const VIDEO_ID = process.argv[2] ?? 'jNQXAC9IVRw';
+const VIDEO_ID = process.argv[2] ?? 'wf4kRfGzflo';
 
 async function main() {
 	await load_native_fs();
