@@ -160,6 +160,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			error.cause = err.cause;
 			return generror_catch(error, "rozfetch failed", "LOW", { input, init: { ...init, headers: "{VARIOUS HEADERS}" } });
 		}
+		if ((e as Error).message.includes("Network request failed")) return generror_catch(e, "rozfetch failed", "INFO", { input, init });
 		return generror_catch(e, "rozfetch failed", "MEDIUM", { input, init });
 	}
 }
