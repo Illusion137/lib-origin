@@ -126,6 +126,13 @@ async function update_rozfetch_cache<T>(init: RoZFetchRequestInit, response: RoZ
 	}
 }
 
+// fix headers for react-native
+function sanitize_headers(headers: HeadersInit | undefined): HeadersInit | undefined {
+	if (headers === undefined || (typeof Headers !== "undefined" && headers instanceof Headers)) return headers;
+	if (Array.isArray(headers)) return headers.filter(header => header?.[0] !== undefined && header?.[0] !== null && header?.[1] !== undefined && header?.[1] !== null);
+	return Object.fromEntries(Object.entries(headers).filter(([, value]) => value !== undefined && value !== null));
+}
+
 export const ABORT_MESSAGE = "[ABORTED_ROZFETCH]";
 export default async function rozfetch<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
 	try {
@@ -140,7 +147,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			const sf = scrapefetch();
 			if (sf) transport = sf as typeof fetch;
 		}
-		const response = (await transport(input, { ...init, signal: init?.abort_ms ? AbortSignal.timeout(init.abort_ms) : undefined })) as RoZFetchResponse<T>;
+		const response = (await transport(input, { ...init, headers: sanitize_headers(init?.headers), signal: init?.abort_ms ? AbortSignal.timeout(init.abort_ms) : undefined })) as RoZFetchResponse<T>;
 		response.json = (async () => reinterpret_cast<PromiseResult<T>>(response.clone().json().catch(json_catch))) as RozFetchJSON<T>;
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
