@@ -8,11 +8,12 @@ import { Constants } from "@illusicord/constants";
 import { Constants as IllusiveConstants } from "@illusive/constants";
 import { Utils } from "@illusicord/player/utils";
 import type { Player } from "@illusicord/player/player";
-import { catch_ignore } from "@common/utils/error_util";
+import { catch_ignore, catch_log } from "@common/utils/error_util";
 import path from "path-browserify";
 import { SabrStream } from 'googlevideo/sabr-stream';
 import { EnabledTrackTypes } from 'googlevideo/utils';
 import { Readable } from 'stream';
+import { YouTubeDL } from "@origin/youtube_dl";
 
 export class Queue<T = unknown> {
     player: Player;
@@ -176,22 +177,26 @@ export class Queue<T = unknown> {
                     serverAbrStreamingUrl: download_url.sabrServerUrl,
                     videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig,
                     formats: download_url.sabrFormats,
-                    poToken: download_url.placeholder_po_token ?? download_url.poToken,
+                    poToken: download_url.placeholder_po_token,
                     clientInfo: download_url.clientInfo,
                 });
 
+                YouTubeDL.fetch_potoken(download_url.content_binding!).then(result => {
+                    if("error" in result) throw result.error;
+                    sabr.setPoToken(result.po_token);
+                }).catch(catch_log);
+
                 let real_token_applied = false;
                 sabr.on('streamProtectionStatusUpdate', async (status: any) => {
+                    // console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
                     if (status.status === 2) {
                         if (!real_token_applied) {
                             real_token_applied = true;
-                            if (download_url.poToken) sabr.setPoToken(download_url.poToken);
-                        } else if (download_url.on_refresh_po_token) {
                             try {
-                                const refreshed = await download_url.on_refresh_po_token("expired");
+                                const refreshed = await YouTubeDL.fetch_potoken(download_url.content_binding!);
                                 sabr.setPoToken(refreshed);
                             } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-                        }
+                        } 
                     }
                 });
 

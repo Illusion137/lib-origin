@@ -27,6 +27,8 @@ import { breadcrumb } from '@common/sentry_error_handler';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
 import { VibesSampler } from './vibes_sampler';
+import { YouTubeDL } from '@origin/youtube_dl';
+import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
@@ -34,6 +36,31 @@ import { VibesSampler } from './vibes_sampler';
 const placeholder_mp3 = require('./assets/placeholder.mp3');
 
 export let trackplayer_has_been_setup = false;
+
+// Tracks the content_binding of SABR tracks so a refreshed poToken can be minted for
+// whichever one is currently active in TrackPlayer.
+const sabr_content_binding_by_uid = new Map<string, string>();
+// uid of whichever track is currently active, so a fetch that resolves after the user
+// has already skipped away doesn't feed a stale track's token into the new active track.
+let current_active_track_uid: string | undefined;
+const sabr_po_token_refresh_in_flight = new Set<string>();
+
+async function refresh_active_sabr_po_token(uid: string, content_binding: string) {
+    if (sabr_po_token_refresh_in_flight.has(uid)) return;
+    sabr_po_token_refresh_in_flight.add(uid);
+    try {
+        const result = await YouTubeDL.fetch_potoken(content_binding);
+        if ("error" in result) throw result.error;
+        // The active track may have changed while this fetch was in flight; only apply
+        // the token if it's still the one that's actually playing.
+        if (current_active_track_uid !== uid) return;
+        await TrackPlayer.updatePlaybackPoToken(result.po_token);
+    } catch (error) {
+        catch_log(error as Error);
+    } finally {
+        sabr_po_token_refresh_in_flight.delete(uid);
+    }
+}
 
 export async function setup_track_player(): Promise<boolean> {
     GLOBALS.global_var.past_playing_tracks = GLOBALS.global_var.playing_tracks.length === 0 ?
@@ -120,6 +147,7 @@ async function delete_track_from_player_queue_impl(track_data: Track | undefined
     if (global_index !== -1) {
         const absolute_index = current_track_index + global_index;
         GLOBALS.global_var.playing_tracks.splice(absolute_index, 1);
+        sabr_content_binding_by_uid.delete(track_data.uid);
         // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current
         const tp_queue = await TrackPlayer.getQueue();
         const tp_index = tp_queue.slice(current_track_index).findIndex(track => track.title === track_data.title);
@@ -154,7 +182,6 @@ async function delete_track_from_player_queue_impl(track_data: Track | undefined
 //     return result.uri;
 // }
 
-
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     if (track === undefined) return 'skip';
     const url_data = await Illusive.get_download_url(SQLfs.document_directory(""), track, "18");
@@ -186,6 +213,9 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
             : 'asset',
         has_thumbnail_uri: !is_empty(track.thumbnail_uri),
     });
+    if (url_data.isSabr && url_data.content_binding) {
+        sabr_content_binding_by_uid.set(track.uid, url_data.content_binding);
+    }
     return {
         url: url_data.url,
         title: track.title,
@@ -202,7 +232,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
             sabrServerUrl: url_data.sabrServerUrl,
             sabrUstreamerConfig: url_data.sabrUstreamerConfig,
             sabrFormats: (url_data.sabrFormats ?? []) as unknown as Record<string, unknown>[],
-            poToken: url_data.poToken,
+            poToken: url_data.placeholder_po_token,
         }),
     };
 }
@@ -335,6 +365,14 @@ export async function playback_service() {
         breadcrumb('track-player', 'PlaybackError', { data: data as unknown as Record<string, unknown> });
         await track_player_on_error(reinterpret_cast<{ error: string }>(data)).catch(catch_log);
     });
+    TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (data: { outputPath?: string, reason: SabrTokenCallbackReason }) => {
+        // outputPath present means this refresh is for a background SABR download, not active playback
+        if (data.outputPath !== undefined) return;
+        if (current_active_track_uid === undefined) return;
+        const content_binding = sabr_content_binding_by_uid.get(current_active_track_uid);
+        if (content_binding === undefined) return;
+        await refresh_active_sabr_po_token(current_active_track_uid, content_binding);
+    });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
             if (data.index === undefined) return;
@@ -349,6 +387,10 @@ export async function playback_service() {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
             // playing_tracks is emptied while the audiobook player owns TrackPlayer; bail so we don't crash or inject music tracks
             if (illusi_track === undefined) return;
+            current_active_track_uid = illusi_track.uid;
+            // The active track started with a placeholder poToken; swap in the real one the instant it's minted.
+            const active_sabr_content_binding = sabr_content_binding_by_uid.get(illusi_track.uid);
+            if (active_sabr_content_binding) refresh_active_sabr_po_token(illusi_track.uid, active_sabr_content_binding).catch(catch_log);
             if (illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
 

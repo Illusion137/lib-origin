@@ -1,11 +1,12 @@
 import {
+    catch_log,
     generror,
     generror_catch
 } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
 import Innertube, { Constants, Log, Platform, YT, YTNodes, type ClientType, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
-import type { ResponseError } from '@common/types';
+import type { PromiseResult, ResponseError } from '@common/types';
 import {
     fs,
     load_native_fs
@@ -14,8 +15,9 @@ import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { jseval, load_native_jseval } from '@native/jseval/jseval';
-import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
 import { RCache } from './rcache';
+import BG from 'bgutils-js';
+import type { PoTokenResult } from '@native/potoken/potoken.base';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -80,6 +82,7 @@ export namespace YouTubeDL {
     }
 
     export interface SabrTrackParams {
+	    content_binding: string;
         /** The SABR server URL — used as the track url and passed to the native SABR engine. */
         url: string;
         /** Flag consumed by the native player to activate SABR mode. */
@@ -87,14 +90,27 @@ export namespace YouTubeDL {
         sabrServerUrl: string;
         sabrUstreamerConfig: string;
         sabrFormats: SabrFormat[];
-        poToken: string;
         placeholder_po_token: string;
         clientInfo?: SabrClientInfo;
         cookie?: string;
         duration?: number;
         preferOpus?: boolean;
-        on_refresh_po_token: (reason: SabrTokenCallbackReason) => Promise<string>;
         on_reload_player_response: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
+    }
+
+    type PoTokenStatusResultSent = ["sent", PromiseResult<PoTokenResult>];
+    type PoTokenStatusResultRecieved = ["recieved", PoTokenResult|ResponseError];
+    type PoTokenContentBindingStatusMap = Record<string, PoTokenStatusResultSent|PoTokenStatusResultRecieved>;
+    const content_binding_status_map: PoTokenContentBindingStatusMap = {};
+    export async function fetch_potoken(content_binding: string): PromiseResult<PoTokenResult> {
+        if(content_binding_status_map?.[content_binding]?.[0] === 'recieved') return content_binding_status_map[content_binding][1];
+        if(content_binding_status_map?.[content_binding]?.[0] === 'sent') return await content_binding_status_map[content_binding][1];
+        const sent_token = potoken().generate_potoken(innertube_client, content_binding);
+        content_binding_status_map[content_binding] = [
+            "sent",
+            sent_token
+        ];
+        return await sent_token;
     }
 
     export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
@@ -120,14 +136,10 @@ export namespace YouTubeDL {
         return await watch_endpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
     }
 
-    /**
-     * Resolves a YouTube video into SABR (server-adaptive bitrate) stream parameters.
-     * The returned params are passed directly to TrackPlayer.load()
-     *
-     * Unlike resolve_url, this does NOT include serviceIntegrityDimensions in the player request.
-     * The po_token is supplied directly to SabrStream (placeholder on init, real on SPS=2).
-     * This matches the reference implementation in googlevideo/examples/downloader.
-     */
+    function generate_placeholder_potoken(content_binding: string){
+        return BG.PoToken.generateColdStartToken(content_binding);
+    }
+
     export async function resolve_sabr_info(video_id: string): Promise<SabrTrackParams | ResponseError> {
         const MAX_RETRIES = 2;
         let last_error: unknown;
@@ -149,9 +161,7 @@ export namespace YouTubeDL {
     async function resolve_sabr_info_attempt(video_id: string): Promise<SabrTrackParams | ResponseError> {
         video_id = urlid(video_id, "youtube.com/", "playlist?list=", "watch?v=", /&.+/);
         const client = await get_innertube_client();
-
-        const content_pot_result = await potoken().generate_potoken(client, video_id);
-        if ("error" in content_pot_result) return content_pot_result;
+        fetch_potoken(video_id).catch(catch_log);
 
         const player_response = await make_player_request(client, video_id);
         const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
@@ -174,21 +184,16 @@ export namespace YouTubeDL {
         };
 
         return {
+            content_binding: video_id,
             url: sabr_server_url,
             isSabr: true,
             sabrServerUrl: sabr_server_url,
             sabrUstreamerConfig: video_playback_ustreamer_config,
             sabrFormats: all_formats,
-            poToken: content_pot_result.po_token,
-            placeholder_po_token: content_pot_result.placeholder_po_token,
+            placeholder_po_token: generate_placeholder_potoken(video_id),
             clientInfo: client_info,
             cookie: client.session.cookie,
             duration: player_response.video_details?.duration ?? 0,
-            on_refresh_po_token: async (_reason) => {
-                const potoken_result = await potoken().generate_potoken(client, video_id);
-                if ('error' in potoken_result) throw potoken_result.error;
-                return potoken_result.po_token;
-            },
             on_reload_player_response: async (reload_ctx: any) => {
                 const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId: video_id } });
                 const watch_response = await watch_endpoint.call(client.actions, {

@@ -30,17 +30,16 @@ export async function youtube_download_from_id(video_id: string, quality: string
         const sabr_result = await Origin.YouTubeDL.resolve_sabr_info(video_id);
         if ("error" in sabr_result) return youtube_download_from_id_retry(sabr_result, retry_track);
         return {
+            content_binding: sabr_result.content_binding,
             url: sabr_result.url,
             duration: sabr_result.duration,
             isSabr: sabr_result.isSabr,
             sabrServerUrl: sabr_result.sabrServerUrl,
             sabrUstreamerConfig: sabr_result.sabrUstreamerConfig,
             sabrFormats: sabr_result.sabrFormats,
-            poToken: sabr_result.poToken,
             placeholder_po_token: sabr_result.placeholder_po_token,
             clientInfo: sabr_result.clientInfo,
             cookie: sabr_result.cookie,
-            on_refresh_po_token: sabr_result.on_refresh_po_token,
             on_reload_player_response: sabr_result.on_reload_player_response,
         };
     } catch (error) { return generror_catch(error, "Couldn't Download YouTube Video", "MEDIUM", { video_id, quality }); }

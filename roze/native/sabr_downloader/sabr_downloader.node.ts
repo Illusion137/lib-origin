@@ -3,10 +3,12 @@ import { SabrStream } from "googlevideo/sabr-stream";
 import { EnabledTrackTypes } from "googlevideo/utils";
 import type { ReloadPlaybackContext } from "googlevideo/protos";
 import type { SabrDownloader, SabrDownloadParams } from "./sabr_downloader.base";
+import { YouTubeDL } from "@origin/youtube_dl";
+import { catch_log } from "@common/utils/error_util";
 
 export const node_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params: SabrDownloadParams, output_path: string, on_progress?: (progress: number) => void) => {
-		const { sabrServerUrl, sabrUstreamerConfig, sabrFormats, poToken, placeholder_po_token, clientInfo, cookie } = params;
+		const { sabrServerUrl, sabrUstreamerConfig, sabrFormats, placeholder_po_token, clientInfo, cookie } = params;
 
 		const sabr_fetch: typeof fetch = async (input, init) => {
 			const extra_headers: Record<string, string> = {
@@ -28,7 +30,7 @@ export const node_sabr_downloader: SabrDownloader = {
 		};
 
 		// Start with placeholder token; real token is applied on first SPS=2 event.
-		const initial_token = placeholder_po_token ?? poToken;
+		const initial_token = placeholder_po_token;
 
 		const sabr_stream = new SabrStream({
 			serverAbrStreamingUrl: sabrServerUrl,
@@ -38,6 +40,10 @@ export const node_sabr_downloader: SabrDownloader = {
 			clientInfo: clientInfo,
 			fetch: sabr_fetch,
 		});
+		YouTubeDL.fetch_potoken(params.content_binding).then(result => {
+			if("error" in result) throw result.error;
+			sabr_stream.setPoToken(result.po_token);
+		}).catch(catch_log);
 
 		let real_token_applied = false;
 		sabr_stream.on('streamProtectionStatusUpdate', async (status: any) => {
@@ -45,13 +51,11 @@ export const node_sabr_downloader: SabrDownloader = {
 			if (status.status === 2) {
 				if (!real_token_applied) {
 					real_token_applied = true;
-					if (poToken) sabr_stream.setPoToken(poToken);
-				} else if (params.on_refresh_po_token) {
 					try {
-						const refreshed = await params.on_refresh_po_token("expired");
+						const refreshed = await YouTubeDL.fetch_potoken(params.content_binding);
 						sabr_stream.setPoToken(refreshed);
 					} catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-				}
+				} 
 			}
 		});
 

@@ -104,16 +104,8 @@ export const node_potoken: PoTokenGenerator = {
         const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
         const po_token = await web_po_minter.mintAsWebsafeString(content_binding);
 
-        // generatePlaceholder throws if content_binding > 118 UTF-8 bytes (visitor_data can exceed this).
-        // placeholder_po_token is only needed for SABR init (content binding = video_id, always short).
-        let placeholder_po_token = '';
-        try {
-            placeholder_po_token = BG.PoToken.generateColdStartToken(content_binding);
-        } catch { /* identifier too long — placeholder not needed for this binding */ }
-
         return {
             po_token,
-            placeholder_po_token,
             identifier: content_binding,
             visitor_data,
         };

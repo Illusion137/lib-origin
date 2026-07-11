@@ -35,10 +35,16 @@ async function main() {
 		process.exit(1);
 	}
 
+	const potoken = await YouTubeDL.fetch_potoken(VIDEO_ID);
+	if ('error' in potoken) {
+		process.stderr.write(`sabr-fetch-params error: ${String(potoken.error)}\n`);
+		process.exit(1);
+	}
+
 	const output = {
 		sabrServerUrl: result.sabrServerUrl,
 		sabrUstreamerConfig: result.sabrUstreamerConfig,
-		poToken: result.poToken,
+		poToken: potoken.po_token,
 		duration: result.duration,
 		clientName: result.clientInfo?.clientName,
 		clientVersion: result.clientInfo?.clientVersion,
