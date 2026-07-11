@@ -12,13 +12,73 @@ import {
     tracks_table,
 } from '../schema';
 import { and, eq, like } from 'drizzle-orm';
+import { sqlite } from '@native/sqlite/sqlite';
 import type { LocalTableName } from './types';
+
+const batch_key_columns: Partial<Record<LocalTableName, string>> = {
+    tracks: 'uid',
+    playlists: 'uuid',
+    artists: 'uri',
+    backpack: 'uid',
+    recently_played_tracks: 'uid',
+};
 
 export class ChangeTracker {
     private static on_change_callback?: () => void;
 
     static set_on_change(callback: () => void) {
         ChangeTracker.on_change_callback = callback;
+    }
+
+    // Batched variant of log_change: one UPDATE per chunk instead of one per row.
+    // Timestamps are strictly increasing across the batch — the sync push loop
+    // advances its watermark per row and would skip rows sharing a modified_at
+    // if a push failed mid-batch.
+    static async log_changes(
+        table_name: LocalTableName,
+        operation: 'insert' | 'update' | 'delete',
+        record_ids: (string | number)[],
+    ) {
+        if (record_ids.length === 0) return;
+        const now = Date.now();
+        const CHUNK_SIZE = 200;
+        const raw_connection = sqlite().wrap_client(db.$client);
+        const ids = record_ids.map(String);
+        const key_column = batch_key_columns[table_name];
+        if (table_name === 'playlists_tracks') {
+            const composite_ids = ids.filter(id => id.indexOf(':') > 0);
+            for (let i = 0; i < composite_ids.length; i += CHUNK_SIZE) {
+                const chunk = composite_ids.slice(i, i + CHUNK_SIZE);
+                const values_sql = chunk.map(() => "(?, ?, ?)").join(", ");
+                const params = chunk.flatMap((id, index) => {
+                    const colon = id.indexOf(':');
+                    return [id.substring(0, colon), id.substring(colon + 1), now + i + index];
+                });
+                // SQLite names VALUES columns column1..columnN — it has no alias-list syntax
+                await raw_connection.execute_statement(
+                    `UPDATE playlists_tracks SET modified_at = v.column3 FROM (VALUES ${values_sql}) AS v WHERE playlists_tracks.uuid = v.column1 AND playlists_tracks.track_uid = v.column2`,
+                    params
+                );
+            }
+        }
+        else if (key_column !== undefined) {
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                const chunk = ids.slice(i, i + CHUNK_SIZE);
+                const values_sql = chunk.map(() => "(?, ?)").join(", ");
+                const params = chunk.flatMap((id, index) => [id, now + i + index]);
+                await raw_connection.execute_statement(
+                    `UPDATE ${table_name} SET modified_at = v.column2 FROM (VALUES ${values_sql}) AS v WHERE ${table_name}.${key_column} = v.column1`,
+                    params
+                );
+            }
+        }
+        else {
+            // No batchable key (new_releases, track_plays) — fall back to the per-row path.
+            for (const id of ids) await ChangeTracker.log_change(table_name, operation, id, undefined);
+            return;
+        }
+        db.$client.flushPendingReactiveQueries();
+        ChangeTracker.on_change_callback?.();
     }
 
     static async log_change(

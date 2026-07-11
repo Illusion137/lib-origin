@@ -11,6 +11,7 @@ import m0006 from './0006_illegal_harry_osborn.sql';
 import m0007 from './0007_rapid_loa.sql';
 import m0008 from './0008_glorious_dirty_row.sql';
 import m0009 from './0009_audiobook_sort_index.sql';
+import m0010 from './0010_perf_indexes.sql';
 
   export default {
     journal,
@@ -24,6 +25,7 @@ m0005,
 m0006,
 m0007,
 m0008,
-m0009
+m0009,
+m0010
     }
   }

@@ -24,6 +24,7 @@ import { Prefs } from '@illusive/prefs';
 import type { Database } from '../database.types';
 import { catch_log } from '@common/utils/error_util';
 import { SQLGlobal } from '../../sql/sql_global';
+import { SQLPlaylists } from '../../sql/sql_playlists';
 
 // ---------------------------------------------------------------------------
 // Push dependency order: tracks must precede playlists_tracks (FK constraint).
@@ -1070,6 +1071,9 @@ export class SyncEngine {
 
         // If there's a pending local delete, never let remote "restore" win.
         if (pending_track_changes.deletes.has(uid)) return;
+        // A pending local upsert wins until it's pushed — this pass merged
+        // remote-preferred fields over unpushed local edits unconditionally.
+        if (pending_track_changes.upserts.has(uid)) return;
 
         const existing = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, uid)).get();
@@ -1110,6 +1114,10 @@ export class SyncEngine {
 
         // Remote restore / update.
         if (has_pending_delete) return;
+        // A pending local upsert wins until it's pushed — the field-level merge
+        // prefers non-empty remote values and would overwrite unpushed local edits
+        // (title/artists/album/etc., not just meta). Same rule as the playlists pulls.
+        if (has_pending_upsert && existing) return;
 
         if (existing) {
             const merged = this.remote_merge_utrack(existing, row);
@@ -1121,11 +1129,6 @@ export class SyncEngine {
             merged.synced_lyrics_uri = existing.synced_lyrics_uri;
 
             merged.deleted = false;
-
-            // If there's a pending local upsert, local meta takes priority.
-            if (has_pending_upsert) {
-                merged.meta = existing.meta;
-            }
 
             // plays is NEVER synced from remote — always keep local value.
             merged.plays = existing.plays;
@@ -1295,6 +1298,8 @@ export class SyncEngine {
             offset += data.length;
         }
         db.$client.flushPendingReactiveQueries();
+        // Remote pulls bypass ChangeTracker — drop resolved playlist caches directly.
+        SQLPlaylists.invalidate_playlist_tracks_cache();
         await this.save_pull_watermark('playlists', max_modified_at);
     }
 
@@ -1375,6 +1380,7 @@ export class SyncEngine {
             }
         }
         db.$client.flushPendingReactiveQueries();
+        SQLPlaylists.invalidate_playlist_tracks_cache();
         await this.save_pull_watermark('playlists_tracks', max_modified_at);
     }
 

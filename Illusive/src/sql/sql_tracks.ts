@@ -1,11 +1,14 @@
 import { reinterpret_cast } from "@common/cast";
-import type { ResponseError } from "@common/types";
+import { TimedCacheValue, type ResponseError } from "@common/types";
+import { Constants } from "@illusive/constants";
 import { catch_ignore, catch_log, generror_catch } from "@common/utils/error_util";
 import { error_undefined, extract_file_extension, is_empty } from "@common/utils/util";
-import { tracks_table } from "@illusive/db/schema";
+import { tracks_table, type SQLTrack } from "@illusive/db/schema";
 import { GLOBALS } from "@illusive/globals";
 import { Illusive } from "@illusive/illusive";
-import { all_track_ids, generate_unique_track_tints, track_exists, track_primary_key } from "@illusive/illusive_utils";
+import { all_track_ids, track_exists, track_primary_key } from "@illusive/illusive_utils";
+import { force_json_parse, force_json_parse_array } from "@common/utils/parse_util";
+import { sqlite } from "@native/sqlite/sqlite";
 import { clean_album_title } from "@illusive/parsers/apple_music_parser";
 import { Prefs } from "@illusive/prefs";
 import type { ISOString, NamedUUID, OnErrorCallback, Promises, Track, TrackMetaData } from "@illusive/types";
@@ -34,23 +37,51 @@ export namespace SQLTracks {
         }
         if (update) await update_track(t.uid, t);
     }
+    const fixerupper_maps_cache = new TimedCacheValue<{ applemusic: Map<string, Track[]>, youtube: Map<string, Track[]> }>(Constants.cached_ids_duration_milliseconds);
     export async function check_fixerupper_track(track: Track) {
         if (!Prefs.get_pref('quick_fixer_upper')) return;
+        const maps = fixerupper_maps_cache.update(() => {
+            const applemusic = new Map<string, Track[]>();
+            const youtube = new Map<string, Track[]>();
+            for (const t of GLOBALS.global_var.sql_tracks) {
+                if (!is_empty(t.applemusic_id)) applemusic.set(t.applemusic_id!, [...(applemusic.get(t.applemusic_id!) ?? []), t]);
+                if (!is_empty(t.youtube_id)) youtube.set(t.youtube_id!, [...(youtube.get(t.youtube_id!) ?? []), t]);
+            }
+            return { applemusic, youtube };
+        });
+        const candidates = new Set<Track>();
+        if (!is_empty(track.applemusic_id)) for (const t of maps.applemusic.get(track.applemusic_id!) ?? []) candidates.add(t);
+        if (!is_empty(track.youtube_id)) for (const t of maps.youtube.get(track.youtube_id!) ?? []) candidates.add(t);
         const promises: Promises = [];
-        for (const t of GLOBALS.global_var.sql_tracks) {
+        for (const t of candidates) {
             if (track.uid === t.uid) continue;
-            if (!is_empty(track.applemusic_id) && !is_empty(t.applemusic_id) && track.applemusic_id === t.applemusic_id) {
-                promises.push(fixup(track, t));
-            }
-            if (!is_empty(track.youtube_id) && !is_empty(t.youtube_id) && track.youtube_id === t.youtube_id) {
-                promises.push(fixup(track, t));
-            }
+            promises.push(fixup(track, t));
         }
         return await Promise.all(promises);
     }
 
+    const globals_track_key_map_cache = new TimedCacheValue<Map<string, Track>>(Constants.cached_ids_duration_milliseconds);
+    const globals_track_map_keys: (keyof Track)[] = ["youtube_id", "soundcloud_id", "spotify_id", "applemusic_id", "youtubemusic_id", "amazonmusic_id", "imported_id", "illusi_id"];
+    function track_key_map_key(key: keyof Track, value: Track[keyof Track]): string | undefined {
+        if (typeof value !== "string" && typeof value !== "number") return undefined;
+        return `${key}:${value}`;
+    }
     function find_track_in_globals_with_key(track: Track, primary_key: keyof Track) {
-        return GLOBALS.global_var.sql_tracks.find(t => !is_empty(t[primary_key]) && t[primary_key] === track[primary_key]);
+        if (is_empty(track[primary_key])) return undefined;
+        const lookup_key = track_key_map_key(primary_key, track[primary_key]);
+        if (lookup_key === undefined) return undefined;
+        const key_map = globals_track_key_map_cache.update(() => {
+            const map = new Map<string, Track>();
+            for (const t of GLOBALS.global_var.sql_tracks) {
+                for (const key of globals_track_map_keys) {
+                    if (is_empty(t[key])) continue;
+                    const map_key = track_key_map_key(key, t[key]);
+                    if (map_key !== undefined && !map.has(map_key)) map.set(map_key, t);
+                }
+            }
+            return map;
+        });
+        return key_map.get(lookup_key);
     }
 
     export function add_playback_saved_data_to_track(track: Track) {
@@ -151,13 +182,10 @@ export namespace SQLTracks {
         await update_track_meta_data(track_uid, { ...track.meta!, downloaded_date: new Date().toISOString() as ISOString });
     }
     export async function mark_all_tracks_undownloaded() {
-        await Promise.all(GLOBALS.global_var.sql_tracks.map(async (track) => {
-            if (is_empty(track.media_uri)) return;
-            await SQLfs.delete_item(SQLfs.media_directory(track.media_uri!));
-            track.media_uri = "";
-            await ChangeTracker.log_change('tracks', 'update', track.uid, { media_uri: "" });
-        }));
+        const downloaded_tracks = GLOBALS.global_var.sql_tracks.filter(track => !is_empty(track.media_uri));
+        await Promise.all(downloaded_tracks.map(async (track) => SQLfs.delete_item(SQLfs.media_directory(track.media_uri!))));
         await db.update(tracks_table).set({ media_uri: "" });
+        await ChangeTracker.log_changes('tracks', 'update', downloaded_tracks.map(track => track.uid));
         SQLGlobal.update_global_track_all_property('media_uri', '');
     }
     export async function mark_track_undownloaded(track_uid: Track['uid'], media_uri: string) {
@@ -208,12 +236,48 @@ export namespace SQLTracks {
         const count = await db.$count(tracks_table, and(eq(tracks_table.deleted, false), eq(tracks_table.uid, track.uid)));
         return count !== 0;
     }
-    export async function fetch_track_data() {
-        const tracks = await db.select().from(tracks_table).where(eq(tracks_table.deleted, false));
-        GLOBALS.global_var.sql_tracks = sql_tracks_to_tracks(tracks);
-        if (Prefs.get_pref('album_track_tinting')) {
-            generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table);
+    interface RawTrackRow extends Omit<SQLTrack, 'artists' | 'tags' | 'album' | 'meta' | 'unreleased' | 'deleted'> {
+        artists: string;
+        tags: string;
+        album: string;
+        meta: string;
+        unreleased: number;
+        deleted: number;
+    }
+    function raw_sql_track_to_track(row: RawTrackRow, document_directory: string): Track | ResponseError {
+        try {
+            const meta = force_json_parse<TrackMetaData>(row.meta ?? "{}");
+            const track = reinterpret_cast<Track>({
+                ...row,
+                artists: force_json_parse_array<NamedUUID[]>(row.artists ?? "[]").filter(artist => !bad_artist_names.includes(artist.name.trim())),
+                tags: force_json_parse_array<string[]>(row.tags ?? "[]"),
+                album: force_json_parse<NamedUUID>(row.album ?? "{}"),
+                unreleased: row.unreleased !== 0,
+                deleted: row.deleted !== 0,
+                meta: {
+                    ...meta,
+                    plays: meta.plays ?? 0,
+                    added_date: meta.added_date ?? reinterpret_cast<ISOString>(new Date(0).toISOString()),
+                    last_played_date: meta.last_played_date ?? reinterpret_cast<ISOString>(new Date(0).toISOString())
+                },
+                downloading_data: { playlist_saved: true, progress: 0, saved: true }
+            });
+            delete track.id;
+            track.playback = { artwork: Illusive.get_track_artwork(document_directory, track), added: false, successful: false };
+            return track;
+        } catch (error) {
+            return generror_catch(error, "Failed to Parse RawSQLTrack", "CRITICAL", { uid: row.uid });
         }
+    }
+    export async function fetch_track_data() {
+        const raw_rows = await sqlite().wrap_client(db.$client).execute_async("SELECT * FROM tracks WHERE deleted = 0");
+        const document_directory = SQLfs.document_directory("");
+        const tracks: Track[] = [];
+        for (const row of raw_rows) {
+            const track = raw_sql_track_to_track(reinterpret_cast<RawTrackRow>(row), document_directory);
+            if (!("error" in track)) tracks.push(track);
+        }
+        GLOBALS.global_var.sql_tracks = tracks;
     }
     export async function get_tracks() {
         const tracks = await db.select().from(tracks_table).where(eq(tracks_table.deleted, false));
@@ -233,37 +297,54 @@ export namespace SQLTracks {
         return sql_track_to_track(track);
     }
 
-    export async function insert_all_tracks(tracks: Track[]) {
-        const promise_tracks: Promise<boolean>[] = [];
-        for (const track of tracks)
-            promise_tracks.push(insert_track(track, false));
-        const inserted = await Promise.all(promise_tracks);
-        if (inserted.some(Boolean)) SQLGlobal.notify_global_tracks_updated();
-    }
-
-    export async function insert_track(track: Track, notify = true): Promise<boolean> {
-        if (track_exists(track, GLOBALS.global_var.sql_tracks)) return false;
+    function build_new_track(track: Track): Track {
         const new_track_meta = {
             ...reinterpret_cast<TrackMetaData>(track.meta),
             added_date: reinterpret_cast<ISOString>(new Date().toISOString()),
             last_played_date: reinterpret_cast<ISOString>(new Date(0).toISOString()),
             plays: 0
         };
-        const new_track = {
+        return {
             ...track,
             duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration,
             plays: isNaN(track.plays as number) ? 0 : (track.plays ?? 0),
             meta: new_track_meta
         };
+    }
+    function run_new_track_side_effects(track: Track) {
+        if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
+        if (Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
+        if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
+    }
+    export async function insert_all_tracks(tracks: Track[]) {
+        const insert_chunk_size = 50;
+        const new_tracks = tracks.filter(track => !track_exists(track, GLOBALS.global_var.sql_tracks)).map(build_new_track);
+        if (new_tracks.length === 0) return;
+        await db.transaction(async (tx) => {
+            for (let i = 0; i < new_tracks.length; i += insert_chunk_size)
+                await tx.insert(tracks_table).values(new_tracks.slice(i, i + insert_chunk_size));
+        });
+        await ChangeTracker.log_changes('tracks', 'insert', new_tracks.map(track => track.uid));
+        const parsed_tracks: Track[] = [];
+        for (const new_track of new_tracks) {
+            const parsed_track = sql_track_to_track(new_track);
+            if ("error" in parsed_track) continue;
+            parsed_tracks.push(parsed_track);
+            run_new_track_side_effects(new_track);
+        }
+        SQLGlobal.add_global_track_items(parsed_tracks);
+    }
+
+    export async function insert_track(track: Track, notify = true): Promise<boolean> {
+        if (track_exists(track, GLOBALS.global_var.sql_tracks)) return false;
+        const new_track = build_new_track(track);
         await db.insert(tracks_table).values(new_track);
         await ChangeTracker.log_change('tracks', 'insert', track.uid, new_track);
 
         const parsed_track = sql_track_to_track(new_track)
         if ("error" in parsed_track) return false;
         SQLGlobal.add_global_track_item(parsed_track, notify);
-        if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
-        if (Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
-        if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
+        run_new_track_side_effects(track);
         return true;
     }
     export async function update_track(track_uid: Track['uid'], new_track: Track) {
@@ -271,13 +352,14 @@ export namespace SQLTracks {
             ...new_track,
             duration: isNaN(new_track.duration) || new_track.duration <= 0 ? 0 : new_track.duration,
             plays: isNaN(new_track.plays as number) ? 0 : (new_track.plays ?? 0),
+            sync_error: null,
         };
         await db.update(tracks_table).set(sanitized_track).where(eq(tracks_table.uid, track_uid));
         await ChangeTracker.log_change('tracks', 'update', track_uid, new_track);
         SQLGlobal.update_global_track_item(track_uid, new_track);
     }
     export async function update_track_meta_data(track_uid: Track['uid'], new_meta: TrackMetaData) {
-        await db.update(tracks_table).set({ meta: new_meta }).where(eq(tracks_table.uid, track_uid));
+        await db.update(tracks_table).set({ meta: new_meta, sync_error: null }).where(eq(tracks_table.uid, track_uid));
         await ChangeTracker.log_change('tracks', 'update', track_uid, { meta: new_meta });
         SQLGlobal.update_global_track_property(track_uid, 'meta', new_meta);
     }

@@ -37,9 +37,25 @@ export async function delete_database() {
 	console.warn(db_delete_path, "DATABASE HAS BEEN REMOVED");
 }
 
+// WAL + NORMAL drops the per-write fsync cost; the rest size the page cache,
+// keep temp b-trees in memory, and mmap reads for large library scans.
+const database_pragmas = [
+	"PRAGMA journal_mode = WAL;",
+	"PRAGMA synchronous = NORMAL;",
+	"PRAGMA cache_size = -16000;",
+	"PRAGMA temp_store = MEMORY;",
+	"PRAGMA mmap_size = 134217728;"
+];
+
 export function load_database() {
 	try {
 		db = sqlite().open_database(db_path, get_database_location()[get_native_platform()]);
+		const raw_connection = sqlite().wrap_client(db.$client);
+		// better-sqlite3 rejects .all() on set-pragmas that return no rows, so node goes through .run()
+		for (const pragma of database_pragmas) {
+			if (get_native_platform() === "REACT_NATIVE") raw_connection.execute_sync(pragma);
+			else void raw_connection.execute_statement(pragma);
+		}
 		return {};
 	}
 	catch (e) {
@@ -50,4 +66,10 @@ export function load_database() {
 
 export function is_database_connected() {
 	return db !== undefined;
+}
+
+// Test-only: inject a preconstructed connection (e.g. in-memory better-sqlite3)
+// so sql modules can run under vitest without the native bootstrap.
+export function use_database(instance: DrizzleDB) {
+	db = instance;
 }

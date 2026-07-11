@@ -2,12 +2,16 @@ import { reinterpret_cast } from "@common/cast";
 import { TimedCache, type ResponseError } from "@common/types";
 import { Constants } from "@illusive/constants";
 import type { Prefs } from "@illusive/prefs";
+import { track_store } from "@illusive/stores/track_store";
 import type { BottomAlertType, CompactPlaylist, Downloading, DownloadTrackResult, HexColor, LyricsDownloadingResult, MusicServiceArtist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from "@illusive/types";
 
 const downloading: Downloading[] = [];
 
 const global_var = {
-    sql_tracks: [] as Track[],
+    // Backed by track_store so reads stay reactive; do not mutate the returned array
+    // in place — go through SQLGlobal/track_store actions.
+    get sql_tracks() { return track_store.getState().tracks; },
+    set sql_tracks(tracks: Track[]) { track_store.getState().set_tracks(tracks); },
     is_playing: false,
     playing_tracks: [] as Track[],
     playing_track_index: 0,
@@ -26,7 +30,6 @@ const global_var = {
     serialized_playlist_cache: new TimedCache<string, SerializedCompactPlaylistData>(5 * 1000),
     artist_cache: new TimedCache<string, { artist_data: MusicServiceArtist }>(Constants.playlist_cache_duration_seconds * 1000),
     set_theme: (_: Prefs.Theme) => { return },
-    selected_playlists_uuids: new Set<string>(),
     bottom_alert: (text: string, type: BottomAlertType, _?: string | ResponseError) => { text; type; },
     tint_table: new Map<Track['uid'], HexColor>()
 };

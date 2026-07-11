@@ -6,7 +6,13 @@ function error_message(error: ResponseError) {
     return error.error.stack ?? error.error.message;
 }
 
+let console_sink_enabled = false;
+export function set_breadcrumb_console_sink(enabled: boolean) {
+    console_sink_enabled = enabled;
+}
+
 export function breadcrumb(category: string, message: string, data?: Record<string, unknown>) {
+    if (console_sink_enabled) console.log(`[${category}] ${message}`, data ?? "");
     Sentry.addBreadcrumb({ category, message, data, level: "info" });
 }
 
