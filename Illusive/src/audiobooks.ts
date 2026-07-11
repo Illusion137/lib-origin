@@ -19,7 +19,7 @@ import { reinterpret_cast } from "@common/cast";
 import type { CookieJar } from "@common/utils/cookie_util";
 import type { PromiseResult } from "@common/types";
 
-export type AudiobookTTSEngine = 'avs' | 'piper';
+export type AudiobookTTSEngine = 'avs' | 'kokoro' | 'piper';
 
 export interface AudiobookImportOpts {
 	tts_engine?: AudiobookTTSEngine;
@@ -222,11 +222,16 @@ export namespace Audiobooks {
 		chapter_index: number,
 		opts: AudiobookTTSOpts,
 		callbacks: AudiobookChapterGenCallbacks = {},
+		// Full-book generation passes the already-loaded book so each chapter doesn't
+		// re-read + re-parse the whole roz JSON (multi-MB when images are inlined).
+		// The shared roz object accumulates each chapter's result, and the per-chapter
+		// save below still persists progress after every chapter.
+		preloaded?: Audiobook,
 	): PromiseResult<RozChapterContents> {
 		try {
-			const meta = await SQLAudiobook.get_audiobook_by_uuid(uuid);
+			const meta = preloaded?.meta ?? await SQLAudiobook.get_audiobook_by_uuid(uuid);
 			if (!meta) return generror(`Audiobook ${uuid} not found`, "MEDIUM", { uuid });
-			const roz_result = await load_roz(meta);
+			const roz_result = preloaded?.roz ?? await load_roz(meta);
 			if ("error" in roz_result) return roz_result;
 			const roz = roz_result;
 			const chapter = roz.chapters[chapter_index];
@@ -273,17 +278,15 @@ export namespace Audiobooks {
 		callbacks: AudiobookFullGenCallbacks = {},
 	): PromiseResult<Roz> {
 		try {
-			const meta = await SQLAudiobook.get_audiobook_by_uuid(uuid);
-			if (!meta) return generror(`Audiobook ${uuid} not found`, "MEDIUM", { uuid });
-			const total = meta.chapter_count;
+			const book = await get_audiobook(uuid);
+			if ("error" in book) return book;
+			const total = book.meta.chapter_count;
 			for (let i = 0; i < total; i++) {
 				callbacks.on_chapter_start?.(i, total);
-				const result = await generate_chapter_audio(uuid, i, opts, callbacks);
+				const result = await generate_chapter_audio(uuid, i, opts, callbacks, book);
 				if ("error" in result) return result;
 			}
-			const final = await get_audiobook(uuid);
-			if ("error" in final) return final;
-			return final.roz;
+			return book.roz;
 		} catch (e) {
 			return generror_catch(e, "Failed to generate full audiobook audio", "CRITICAL", { uuid });
 		}
