@@ -19,7 +19,7 @@ const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/y
 interface PoToken {po_token: string, placeholder_po_token: string};
 
 // TODO fix this whole thing up; use custom downloader instead of main downloader
-async function download(video_id: string, po_token: PoToken){
+async function download(video_id: string, _po_token: PoToken){
     await load_native_potoken();
     await load_native_sabr_downloader();
 
