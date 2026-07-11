@@ -24,7 +24,7 @@ async function download(video_id: string, po_token: PoToken){
 
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
-        async () => await YouTubeDL.resolve_sabr_url(video_id)
+        async () => await YouTubeDL.resolve_sabr_info(video_id)
     );
     if ("error" in sabr_params) {
         console.error(red("FAILED TO RESOLVE SABR URL"), sabr_params.error);
