@@ -106,7 +106,16 @@ export async function insert_track_into_player_queue(track_data: Track, plus_ind
     await on_modify_track_player_queue();
 }
 
-export async function delete_track_from_player_queue(track_data: Track, current_track_index: number) {
+let delete_track_chain: Promise<void> = Promise.resolve();
+
+export async function delete_track_from_player_queue(track_data: Track, current_track_index: number): Promise<void> {
+    const run = delete_track_chain.then(async () => delete_track_from_player_queue_impl(track_data, current_track_index));
+    delete_track_chain = run.catch(catch_log);
+    return run;
+}
+
+async function delete_track_from_player_queue_impl(track_data: Track | undefined, current_track_index: number) {
+    if (track_data === undefined) return;
     const global_index = GLOBALS.global_var.playing_tracks.slice(current_track_index).findIndex(track => track.uid === track_data.uid);
     if (global_index !== -1) {
         const absolute_index = current_track_index + global_index;
@@ -114,7 +123,9 @@ export async function delete_track_from_player_queue(track_data: Track, current_
         // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current
         const tp_queue = await TrackPlayer.getQueue();
         const tp_index = tp_queue.slice(current_track_index).findIndex(track => track.title === track_data.title);
-        if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]);
+        // The queue can still shrink between getQueue() and remove() (e.g. TrackPlayer.reset()
+        // from another screen); an out-of-bounds rejection only means the track is already gone
+        if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]).catch(catch_log);
     }
     await on_modify_track_player_queue();
 }
@@ -291,28 +302,38 @@ export async function track_player_next() {
     } catch (error) { alert_trackplayer_error({ error: error as Error }); }
 }
 
+let handling_playback_error = false;
+
 export async function track_player_on_error(data: { error: string }) {
     const error_msg = `TP: ${data.error}`;
     GLOBALS.global_var.bottom_alert(error_msg, "WARN");
-    for (let i = 0; i < Constants.trackplayer_max_retries; i++) {
-        try {
-            await TrackPlayer.retry();
-        } catch (_) {
-            continue;
+    if (handling_playback_error) return;
+    handling_playback_error = true;
+    try {
+        for (let i = 0; i < Constants.trackplayer_max_retries; i++) {
+            try {
+                await TrackPlayer.retry();
+            } catch (_) {
+                continue;
+            }
+            break;
         }
-        break;
+        const index = await TrackPlayer.getActiveTrackIndex();
+        if (index === null || index === undefined) return;
+        const illusi_track = GLOBALS.global_var.playing_tracks[index];
+        // playing_tracks can be emptied (audiobook mode) or shifted by a concurrent delete
+        if (illusi_track === undefined) return;
+        await delete_track_from_player_queue(illusi_track, index);
+    } finally {
+        handling_playback_error = false;
     }
-    const index = await TrackPlayer.getActiveTrackIndex();
-    if (index === undefined) return;
-    const illusi_track = GLOBALS.global_var.playing_tracks[index];
-    await delete_track_from_player_queue(illusi_track, index);
 }
 
 export async function playback_service() {
     TrackPlayer.addEventListener(Event.RemoteDuck, async (_) => { return });
     TrackPlayer.addEventListener(Event.PlaybackError, async (data) => {
         breadcrumb('track-player', 'PlaybackError', { data: data as unknown as Record<string, unknown> });
-        await track_player_on_error(reinterpret_cast<{ error: string }>(data));
+        await track_player_on_error(reinterpret_cast<{ error: string }>(data)).catch(catch_log);
     });
     TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (data) => {
         try {
