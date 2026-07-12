@@ -219,7 +219,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         Prefs.pref_set_theme(set_theme);
         SQLfs.recreate_directories().catch(catch_log);
         phase("dir");
-        warmup_client().catch(catch_log);
+        setTimeout(async() => warmup_client().catch(catch_log), 2500);
         phase("warmup");
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
         phase("shuffle_bias");
@@ -277,6 +277,6 @@ export async function on_app_load(version: string, play_tracks: typeof GLOBALS.g
         if (maybe_initial_shortcut?.userInfo && default_playlist_names.includes((maybe_initial_shortcut.userInfo as { uuid: string }).uuid)) {
             await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
         }
-        await load_native_modules();
+        setTimeout(async() => load_native_modules().catch(catch_log), 2500);
     });
 }
