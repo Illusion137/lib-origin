@@ -53,7 +53,7 @@ export namespace RozeYouTube {
         const upload_response = await youtube_client.studio.upload(media_buffer, {
             title: path.basename(opts.media_path),
             description: opts.chapter_timestamps,
-            privacy: "UNLISTED",
+            privacy: "UNLISTED"
         });
         if (!upload_response.success) return generror("Uploading audiobook not successful", "CRITICAL", opts);
         return { "status": "GOOD" } as const;
