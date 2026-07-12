@@ -18,7 +18,8 @@ const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/y
 
 interface PoToken {po_token: string, placeholder_po_token: string};
 
-async function download(video_id: string, po_token: PoToken){
+// TODO fix this whole thing up; use custom downloader instead of main downloader
+async function download(video_id: string, _po_token: PoToken){
     await load_native_potoken();
     await load_native_sabr_downloader();
 
@@ -47,7 +48,6 @@ async function download(video_id: string, po_token: PoToken){
     }
     console.log(green(`SABR URL: ${sabr_params.sabrServerUrl.substring(0, 80)}...`));
     console.log(green(`Ustreamer config length: ${sabr_params.sabrUstreamerConfig.length}`));
-    console.log(green(`PoToken length: ${sabr_params.poToken.length}`));
     console.log(green(`ClientInfo: clientName=${sabr_params.clientInfo?.clientName} version=${sabr_params.clientInfo?.clientVersion}`));
     console.log(green(`Cookie present: ${!!sabr_params.cookie}`))
 
@@ -56,10 +56,10 @@ async function download(video_id: string, po_token: PoToken){
 
     await sabr_downloader().download_sabr(
         {
+            content_binding: video_id,
             sabrServerUrl: sabr_params.sabrServerUrl,
             sabrUstreamerConfig: sabr_params.sabrUstreamerConfig,
             sabrFormats,
-            poToken: po_token.po_token,
             clientInfo: sabr_params.clientInfo,
             cookie: sabr_params.cookie,
         },

@@ -45,7 +45,6 @@ async function ytdl_main__() {
     }
     console.log(green(`SABR URL: ${sabr_params.sabrServerUrl.substring(0, 80)}...`));
     console.log(green(`Ustreamer config length: ${sabr_params.sabrUstreamerConfig.length}`));
-    console.log(green(`PoToken length: ${sabr_params.poToken.length}`));
     console.log(green(`ClientInfo: clientName=${sabr_params.clientInfo?.clientName} version=${sabr_params.clientInfo?.clientVersion}`));
     console.log(green(`Cookie present: ${!!sabr_params.cookie}`))
 
@@ -55,10 +54,10 @@ async function ytdl_main__() {
 
     await sabr_downloader().download_sabr(
         {
+            content_binding: sabr_params.content_binding,
             sabrServerUrl: sabr_params.sabrServerUrl,
             sabrUstreamerConfig: sabr_params.sabrUstreamerConfig,
             sabrFormats,
-            poToken: sabr_params.poToken,
             clientInfo: sabr_params.clientInfo,
             cookie: sabr_params.cookie,
         },

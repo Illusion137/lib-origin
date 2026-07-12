@@ -47,22 +47,26 @@ function get_or_start_track(video_id: string): TrackBuffer {
                 serverAbrStreamingUrl: sabr_info.sabrServerUrl,
                 videoPlaybackUstreamerConfig: sabr_info.sabrUstreamerConfig,
                 formats: sabr_info.sabrFormats,
-                poToken: sabr_info.placeholder_po_token ?? sabr_info.poToken,
+                poToken: sabr_info.placeholder_po_token,
                 clientInfo: sabr_info.clientInfo,
             });
 
+            YouTubeDL.fetch_potoken(sabr_info.content_binding).then(result => {
+                if("error" in result) throw result.error;
+                sabr_stream.setPoToken(result.po_token);
+            }).catch(catch_log);
+
             let real_token_applied = false;
             sabr_stream.on('streamProtectionStatusUpdate', async (status: any) => {
+                // console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
                 if (status.status === 2) {
                     if (!real_token_applied) {
                         real_token_applied = true;
-                        if (sabr_info.poToken) sabr_stream.setPoToken(sabr_info.poToken);
-                    } else if (sabr_info.on_refresh_po_token) {
                         try {
-                            const refreshed = await sabr_info.on_refresh_po_token("expired");
+                            const refreshed = await YouTubeDL.fetch_potoken(sabr_info.content_binding);
                             sabr_stream.setPoToken(refreshed);
                         } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-                    }
+                    } 
                 }
             });
 

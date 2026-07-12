@@ -1,4 +1,4 @@
-import type { PromiseResult, ResponseError } from "@common/types";
+import type { FileExtension, PromiseResult, ResponseError } from "@common/types";
 
 export interface DocumentPickerSelectedFile {
     uri: string;
@@ -19,4 +19,5 @@ export interface DocumentPicker {
     pick_file: () => PromiseResult<DocumentPickerSelectedFile>;
     pick_multiple_files: (types?: string[]) => PromiseResult<(DocumentPickerSelectedFile|ResponseError)[]>;
     pick_directory: () => PromiseResult<DocumentPickerSelectedDirectory>;
+    get_types: (extensions: FileExtension[]) => string[];
 }

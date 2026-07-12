@@ -63,9 +63,8 @@ export async function concact_audio_files(file_paths: string[], extension: FileE
         return await ffmpeg_result.retcode;
 	});
 	if (clean_temp_files === "CLEAN_FILES") {
-		for (const file_path of file_paths) {
-			await fs().remove(file_path);
-		}
+		// One bridge round-trip per segment file adds up for long chapters — remove in parallel.
+		await Promise.all(file_paths.map(async file_path => fs().remove(file_path)));
 	}
 	return {retcode, out_file_path};
 }

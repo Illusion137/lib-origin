@@ -4,7 +4,7 @@ import { Constants } from '@illusive/constants';
 import { db } from '@illusive/db/database';
 import { new_releases_table } from '@illusive/db/schema';
 import { Prefs } from "@illusive/prefs";
-import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, Promises, SQLCompactPlaylist, TimestampedCompactPlaylist,Track } from "@illusive/types";
+import type { CompactPlaylist, IllusiveThumbnail, NamedUUID, SQLCompactPlaylist, TimestampedCompactPlaylist,Track } from "@illusive/types";
 import { sort_compact_playlist_by_most_played_artists } from '@illusive/illusive_utils';
 import { SQLTracks } from './sql_tracks';
 import { reinterpret_cast } from '@common/cast';
@@ -126,18 +126,14 @@ export namespace SQLNewReleases {
     }
     export async function insert_all_into_new_releases(new_releases: (CompactPlaylist & {id?: number})[]){
         new_releases = sort_compact_playlist_by_most_played_artists(new_releases, GLOBALS.global_var.sql_tracks).reverse();
-        const promises: Promises = [];
-        for(const new_release of new_releases){
-            const { id, ...release_data } = new_release; id;
-            const selected = await db.select({title: new_releases_table.title})
-                .from(new_releases_table)
-                .where(eq(new_releases_table.title, release_data.title))
-                .limit(1);
-            if(selected.length > 0) continue;
-            const promise = db.insert(new_releases_table).values(release_data).onConflictDoNothing();
-            promises.push(promise);
-        }
-        await Promise.all(promises);
+        if(new_releases.length === 0) return;
+        const insert_chunk_size = 50;
+        const rows = new_releases.map(new_release => { const { id, ...release_data } = new_release; id; return release_data; });
+        await db.transaction(async(tx) => {
+            for(let i = 0; i < rows.length; i += insert_chunk_size){
+                await tx.insert(new_releases_table).values(rows.slice(i, i + insert_chunk_size)).onConflictDoNothing();
+            }
+        });
     }
     
     export async function refresh_new_releases(new_releases: CompactPlaylist[]){

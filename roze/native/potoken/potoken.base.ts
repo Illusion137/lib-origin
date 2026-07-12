@@ -3,7 +3,6 @@ import type Innertube from "youtubei.js";
 
 export interface PoTokenResult {
 	po_token: string;
-	placeholder_po_token: string;
 	visitor_data: string;
 	identifier: string;
 };

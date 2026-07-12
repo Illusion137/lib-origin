@@ -10,7 +10,10 @@ export namespace SQLArtists {
     export const default_profile_picture_url = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
     export const artists_artwork_memo: Record<SQLArtist['uri'], SQLArtist['artwork_url']|number|undefined> = {};
     export const artists_memo: Record<SQLArtist['uri'], SQLArtist> = {};
-    
+
+    let resolve_artists_memo_ready: () => void;
+    export const artists_memo_ready = new Promise<void>(resolve => { resolve_artists_memo_ready = resolve; });
+
     export async function get_all_sql_artists(): Promise<SQLArtist[]>{
         artists_artwork_memo[create_uri("illusi", Constants.import_uri_id)] = Constants.sudo_profile_picture_index;
         artists_artwork_memo[create_uri("illusi", Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
@@ -20,6 +23,7 @@ export namespace SQLArtists {
             artists_artwork_memo[artist.uri] = artist.artwork_url;
             artists_memo[artist.uri] = artist;
         }
+        resolve_artists_memo_ready();
         return artists;
     }
 

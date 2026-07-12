@@ -119,7 +119,7 @@ const track_plays_config = {
     modified_at: int().notNull().$defaultFn(() => Date.now())
 } as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
 
-export const tracks_table                   = sqliteTable("tracks", tracks_config, (table) => ([index("tracks_uuid_idx").on(table.uid)]));
+export const tracks_table                   = sqliteTable("tracks", tracks_config, (table) => ([index("tracks_uuid_idx").on(table.uid), index("tracks_modified_at_idx").on(table.modified_at)]));
 export type SQLTrack = typeof tracks_table.$inferSelect;
 export const tracks_deleted_table           = sqliteTable("tracks_deleted", tracks_config);
 export const recently_played_tracks_table   = sqliteTable("recently_played_tracks", tracks_config, (table) => ([index("recently_played_tracks_uuid_idx").on(table.uid)]));
@@ -128,7 +128,7 @@ export const backpack_deleted_table         = sqliteTable("backpack_deleted", tr
 export const playlists_table                = sqliteTable("playlists", playlists_config, (table) => ([index("playlists_uuid_idx").on(table.uuid)]));
 export type SQLPlaylist = typeof playlists_table.$inferSelect;
 export const playlists_deleted_table        = sqliteTable("playlists_deleted", playlists_config);
-export const playlists_tracks_table         = sqliteTable("playlists_tracks", playlists_tracks_config);
+export const playlists_tracks_table         = sqliteTable("playlists_tracks", playlists_tracks_config, (table) => ([index("playlists_tracks_uuid_track_uid_idx").on(table.uuid, table.track_uid), index("playlists_tracks_track_uid_idx").on(table.track_uid), index("playlists_tracks_modified_at_idx").on(table.modified_at)]));
 export type SQLPlaylistTrack = typeof playlists_tracks_table.$inferSelect;
 export const playlists_tracks_deleted_table = sqliteTable("playlists_tracks_deleted", playlists_tracks_config);
 export const new_releases_table             = sqliteTable("new_releases", new_releases_config);
@@ -136,7 +136,7 @@ export type SQLNewRelease = typeof new_releases_table.$inferSelect;
 export const artists_table                  = sqliteTable("artists", artists_config);
 export type SQLArtist = Omit<typeof artists_table.$inferSelect, "id">;
 export type SQLArtistInsert = Omit<typeof artists_table.$inferInsert, "id">;
-export const track_plays_table              = sqliteTable("track_plays", track_plays_config);
+export const track_plays_table              = sqliteTable("track_plays", track_plays_config, (table) => ([index("track_plays_track_uid_created_at_idx").on(table.track_uid, table.created_at)]));
 export type SQLTrackPlays = Omit<typeof track_plays_table.$inferSelect, "id">;
 
 const sync_metadata_config = {

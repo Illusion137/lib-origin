@@ -37,7 +37,7 @@
             "@common/*": ["./common/*"],
             "@admin/*": ["./admin/*"],
             "@sample/*": ["./sample/*"],
-            "react-native-mr-lecture": ["./node_modules/react-native-mr-lecture/src/index.ts"],
+            "react-native-shumil": ["./node_modules/react-native-shumil/src/index.ts"],
             "googlevideo/sabr-stream": ["./node_modules/googlevideo/dist/src/exports/sabr-stream.js"],
             "googlevideo/utils": ["./node_modules/googlevideo/dist/src/exports/utils.js"],
             "googlevideo/protos": ["./node_modules/googlevideo/dist/src/exports/protos.js"],
