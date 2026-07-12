@@ -32,9 +32,6 @@ import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downl
 // import * as ImageManipulator from 'expo-image-manipulator';
 // import { Image } from 'react-native';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const placeholder_mp3 = require('./assets/placeholder.mp3');
-
 export let trackplayer_has_been_setup = false;
 
 // Tracks the content_binding of SABR tracks so a refreshed poToken can be minted for
@@ -148,9 +145,13 @@ async function delete_track_from_player_queue_impl(track_data: Track | undefined
         const absolute_index = current_track_index + global_index;
         GLOBALS.global_var.playing_tracks.splice(absolute_index, 1);
         sabr_content_binding_by_uid.delete(track_data.uid);
-        // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current
+        // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current.
+        // Prefer the uid (carried on every track dict now); fall back to title for entries added before uid existed.
         const tp_queue = await TrackPlayer.getQueue();
-        const tp_index = tp_queue.slice(current_track_index).findIndex(track => track.title === track_data.title);
+        const tp_index = tp_queue.slice(current_track_index).findIndex(track => {
+            const t = reinterpret_cast<{ uid?: string, title?: string }>(track);
+            return t.uid !== undefined ? t.uid === track_data.uid : t.title === track_data.title;
+        });
         // The queue can still shrink between getQueue() and remove() (e.g. TrackPlayer.reset()
         // from another screen); an out-of-bounds rejection only means the track is already gone
         if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]).catch(catch_log);
@@ -217,6 +218,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
         sabr_content_binding_by_uid.set(track.uid, url_data.content_binding);
     }
     return {
+        uid: track.uid,
         url: url_data.url,
         title: track.title,
         artist: artist_string(track),
@@ -235,6 +237,85 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
             poToken: url_data.placeholder_po_token,
         }),
     };
+}
+
+// -------- Metadata-first ("pending") track loading --------
+// Tracks are pushed to the native queue immediately with metadata only, so skips land
+// instantly; the playback url is fetched in the background and filled in via
+// TrackPlayer.updateTrackUrl. While a pending track is active the native player waits
+// in the loading state and starts the moment the url arrives.
+
+// How long a url fetch may take before the pending track is dropped from the queue,
+// so a hung fetch can't wedge playback on a loading spinner forever.
+const URL_RESOLVE_TIMEOUT_MS = 30_000;
+
+function pending_track_player_track(track: Track): AddTrack {
+    const artwork = resolved_artwork(track.playback!.artwork);
+    const artwork_payload = typeof artwork === "number" ? artwork : artwork.uri;
+    return {
+        uid: track.uid,
+        title: track.title,
+        artist: artist_string(track),
+        album: track.album?.name,
+        duration: track.duration,
+        artwork: artwork_payload,
+    };
+}
+
+// Index in the native queue of the still-url-less entry for this uid. Matching on
+// "no url yet" keeps duplicate queue entries of the same track from resolving into
+// the same native slot.
+async function native_queue_index_of_pending(uid: string): Promise<number> {
+    const tp_queue = await TrackPlayer.getQueue();
+    return tp_queue.findIndex(tp_track => {
+        const t = reinterpret_cast<{ uid?: string, url?: string }>(tp_track);
+        return t.uid === uid && t.url === undefined;
+    });
+}
+
+const url_resolution_in_flight = new Map<string, Promise<void>>();
+
+async function resolve_pending_track_url(track: Track): Promise<void> {
+    const existing = url_resolution_in_flight.get(track.uid);
+    if (existing) return existing;
+    const run = resolve_pending_track_url_impl(track)
+        .finally(() => { url_resolution_in_flight.delete(track.uid); });
+    url_resolution_in_flight.set(track.uid, run);
+    return run;
+}
+
+async function resolve_pending_track_url_impl(track: Track): Promise<void> {
+    let timeout_handle: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<'timeout'>(resolve => {
+        timeout_handle = setTimeout(() => resolve('timeout'), URL_RESOLVE_TIMEOUT_MS);
+    });
+    const fetch_promise = illusive_track_to_track_player_track(track);
+    // The timeout may win the race; don't leave the losing fetch as an unhandled rejection
+    fetch_promise.catch(catch_log);
+    const react_native_track = await Promise.race([fetch_promise, timeout])
+        .finally(() => clearTimeout(timeout_handle));
+    breadcrumb('track-player', 'resolve_pending_track_url', {
+        title: track.title,
+        result: typeof react_native_track === 'string' ? react_native_track : 'ok',
+    });
+    const native_index = await native_queue_index_of_pending(track.uid);
+    // No url-less native entry means the track was deleted while fetching, or was never
+    // actually pending (already has a url) — either way there is nothing to fill in or drop.
+    if (native_index === -1) return;
+    if (react_native_track === 'skip' || react_native_track === 'timeout') {
+        if (react_native_track === 'timeout')
+            GLOBALS.global_var.bottom_alert(`Timed out fetching playback url for "${track.title}"`, "WARN");
+        // Drop the track so the queue keeps moving; if it was active, the native
+        // player advances to the next entry on its own.
+        const global_index = GLOBALS.global_var.playing_tracks.findIndex(t => t.uid === track.uid);
+        if (global_index !== -1) GLOBALS.global_var.playing_tracks.splice(global_index, 1);
+        sabr_content_binding_by_uid.delete(track.uid);
+        await TrackPlayer.remove([native_index]).catch(catch_log);
+        await on_modify_track_player_queue();
+        return;
+    }
+    track.playback!.successful = true;
+    await TrackPlayer.updateTrackUrl(native_index, react_native_track);
 }
 
 let updated_metadata_mutex = false;
@@ -283,53 +364,58 @@ export async function track_player_previous() {
     } catch (error) { alert_trackplayer_error({ error: error as Error }); }
 }
 
+// Native adds that are still crossing the bridge, so a skip issued mid-add can wait
+// for the entry to exist instead of getting dropped.
+const native_add_in_flight = new Map<string, Promise<void>>();
+
 export async function check_push_next_track(queue_index: number) {
-    // const prev_track_index = queue_index - 1;
-    // const prev_illusi_track = GLOBALS.global_var.playing_tracks[prev_track_index];
     const next_track_index = queue_index + 1;
     const next_illusi_track = GLOBALS.global_var.playing_tracks[next_track_index];
+    if (!next_illusi_track || next_illusi_track.playback!.added || next_illusi_track.playback!.successful) return;
+    next_illusi_track.playback!.added = true;
 
-    if (next_illusi_track && !next_illusi_track.playback!.added && !next_illusi_track.playback!.successful) {
-        GLOBALS.global_var.playing_tracks[next_track_index].playback!.added = true;
-
-        const react_native_track = await illusive_track_to_track_player_track(next_illusi_track);
-        if (react_native_track === null) {
-            await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, next_track_index);
-        } else if (react_native_track === 'skip') {
-            GLOBALS.global_var.playing_tracks.splice(next_track_index, 1);
-            // re-check immediately so the track now shifted into next_track_index gets loaded
-            await check_push_next_track(queue_index);
-        } else {
-            next_illusi_track.playback!.successful = true;
-            try {
-                await TrackPlayer.add(react_native_track, next_track_index);
-            } catch (error) {
-                next_illusi_track.playback!.successful = false;
-                GLOBALS.global_var.bottom_alert("Failed to add track to queue", "WARN", { error: error as Error });
-            }
+    // Push the track natively right away with metadata only — no waiting on the url
+    // fetch — so navigating to it is instant. The url resolves in the background.
+    const add_operation = (async () => {
+        try {
+            await TrackPlayer.add(pending_track_player_track(next_illusi_track), next_track_index);
+        } catch (error) {
+            next_illusi_track.playback!.added = false;
+            GLOBALS.global_var.bottom_alert("Failed to add track to queue", "WARN", { error: error as Error });
+            throw error;
         }
+    })();
+    native_add_in_flight.set(next_illusi_track.uid, add_operation);
+    try {
+        await add_operation;
+    } catch (_) {
+        return;
+    } finally {
+        native_add_in_flight.delete(next_illusi_track.uid);
     }
-    // if (prev_illusi_track && prev_illusi_track.playback!.added === false && prev_illusi_track.playback!.successful === false) {
-    //     prev_illusi_track.playback!.added = true;
-
-    //     const react_native_track = await illusive_track_to_track_player_track(prev_illusi_track);
-    //     if (react_native_track === null) {
-    //         await TrackPlayer.add({ url: placeholder_mp3, title: 'NULL', artist: 'Sudo' }, prev_track_index);
-    //     } 
-    //     else if (react_native_track === 'skip') {
-    //         // GLOBALS.global_var.playing_tracks.splice(prev_track_index, 1);
-    //     }
-    //      else {
-    //         prev_illusi_track.playback!.successful = true;
-    //         await TrackPlayer.add(react_native_track, prev_track_index);
-    //     }
-    // }
+    resolve_pending_track_url(next_illusi_track).catch(catch_log);
 }
 
-export async function track_player_next() {
-    try {
-        await TrackPlayer.skipToNext();
-    } catch (error) { alert_trackplayer_error({ error: error as Error }); }
+// Skips are serialized so mashing "next" queues each press instead of losing the ones
+// that arrive before the next native track exists.
+let skip_chain: Promise<void> = Promise.resolve();
+
+export async function track_player_next(): Promise<void> {
+    const run = skip_chain.then(async () => {
+        try {
+            const track_index = await TrackPlayer.getActiveTrackIndex() ?? 0;
+            const next_illusi_track = GLOBALS.global_var.playing_tracks[track_index + 1];
+            if (next_illusi_track !== undefined) {
+                // Make sure the next track exists natively (fast, metadata-only add) before skipping
+                await check_push_next_track(track_index);
+                const inflight_add = native_add_in_flight.get(next_illusi_track.uid);
+                if (inflight_add) await inflight_add.catch(() => { });
+            }
+            await TrackPlayer.skipToNext();
+        } catch (error) { alert_trackplayer_error({ error: error as Error }); }
+    });
+    skip_chain = run.catch(() => { });
+    return run;
 }
 
 let handling_playback_error = false;
@@ -394,16 +480,11 @@ export async function playback_service() {
             if (illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
 
-            if (data.index !== 0 && illusi_track.playback!.added && !illusi_track.playback!.successful) {
-                await TrackPlayer.pause();
-                const new_react_native_track = await illusive_track_to_track_player_track(illusi_track);
-                if (new_react_native_track === null || new_react_native_track === 'skip') {
-                    await track_player_next();
-                } else {
-                    GLOBALS.global_var.playing_tracks[data.index].playback!.successful = true;
-                    // await TrackPlayer.updateMetadataForTrack(data.index, new_react_native_track);
-                }
-                await TrackPlayer.play();
+            if (illusi_track.playback!.added && !illusi_track.playback!.successful) {
+                // The url is still resolving: the native player holds in the loading state
+                // and starts the instant updateTrackUrl lands. Just make sure a resolution
+                // is actually in flight (e.g. after an earlier add failure reset the flags).
+                resolve_pending_track_url(illusi_track).catch(catch_log);
             }
 
             await SQLRecentlyPlayed.insert_recently_played_track(GLOBALS.global_var.playing_tracks[data.index]);
