@@ -190,14 +190,19 @@ export function parse_youtube_music_search_playlist(playlist: SearchMusicRespons
 
 export function parse_youtube_music_search_top_result_contents_track(track: SearchMusicResponsiveListItemRenderer): Track{
     const [title_column, info_column, plays_column] = track.flexColumns;
-    const [_, artists, maybe_album] = parse_subtitle_text(track.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs);
     const info_runs = info_column.musicResponsiveListItemFlexColumnRenderer.text.runs;
     const duration = info_runs[info_runs.length - 1];
-    const album = maybe_album?.[0].navigationEndpoint ? maybe_album[0] : undefined;
+    const [artists_segment, album_segment] = parse_subtitle_text(info_runs)
+        .filter(segment => segment.length > 0)
+        .filter(segment => {
+            const text = parse_runs(segment);
+            return !responsive_item_types.includes(text) && !includes_plays_text(text) && !is_duration_string(text);
+        });
+    const album = album_segment?.[0]?.navigationEndpoint ? album_segment[0] : undefined;
     return parse_track_title_artist({
         uid: generate_new_uid(parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs)),
         title: parse_runs(title_column.musicResponsiveListItemFlexColumnRenderer.text.runs),
-        artists: artists.map(artist => ({name: artist.text, uri: artist.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtubemusic", artist.navigationEndpoint?.browseEndpoint?.browseId)})),
+        artists: (artists_segment ?? []).map(artist => ({name: artist.text, uri: artist.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtubemusic", artist.navigationEndpoint?.browseEndpoint?.browseId)})),
         album: {name: album?.text ?? "", uri: album?.navigationEndpoint?.browseEndpoint?.browseId === undefined ? null : create_uri("youtubemusic", album?.navigationEndpoint?.browseEndpoint?.browseId)},
         duration: is_duration_string(duration.text) ? parse_time(duration.text) : NaN,
         explicit: track.badges !== undefined && track.badges.length >= 1 && track.badges[0].musicInlineBadgeRenderer.icon.iconType === "MUSIC_EXPLICIT_BADGE" ? "EXPLICIT" : "NONE",
