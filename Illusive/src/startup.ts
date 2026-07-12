@@ -214,17 +214,23 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
                 load_native_miscnative().then(async(m) => m.keep_mobile_awake())
             ]).catch(catch_log);
         })().catch(catch_log);
+        phase("sync_engine");
 
         Prefs.pref_set_theme(set_theme);
         SQLfs.recreate_directories().catch(catch_log);
+        phase("dir");
         warmup_client().catch(catch_log);
+        phase("warmup");
         if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
+        phase("shuffle_bias");
         run_startup_links(Prefs.get_pref('linker_links')).catch(catch_log);
+        phase("links");
 
         const total_ms = Date.now() - startup_t0;
         const phase_summary = Object.fromEntries(phase_timings.map(([name, ms], i) => [name, `${i > 0 ? ms - phase_timings[i - 1][1] : ms}ms`]));
         breadcrumb("startup", "illusi_startup: complete", { total_ms, ...phase_summary });
 
+        if(Prefs.get_pref('dev_mode')) GLOBALS.global_var.bottom_alert("Phase Summary", "INFO", JSON.stringify(phase_summary))
         if (total_ms > 2800) {
             Sentry.captureMessage("Slow app startup", {
                 level: "warning",
@@ -260,8 +266,9 @@ export const get_shortcut_subscription = (play_tracks: typeof GLOBALS.global_var
         await run_shortcut(play_tracks, shortcut.userInfo, shortcut.activityType);
 });
 
-export async function on_app_load(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: SetState, update_bottom_alert: typeof GLOBALS.global_var.bottom_alert) {
+export async function on_app_load(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: SetState, update_bottom_alert: typeof GLOBALS.global_var.bottom_alert, set_is_loading: SetState) {
     await illusi_startup(version, play_tracks, set_theme, update_bottom_alert, async () => {
+        set_is_loading(false);
         const maybe_initial_shortcut = reinterpret_cast<InitialShortcut>(await getInitialShortcut());
         const default_playlist_names = default_playlists.map((playlist) => playlist.name);
         if (maybe_initial_shortcut?.userInfo && !default_playlist_names.includes(maybe_initial_shortcut.userInfo.uuid)) {
