@@ -3,6 +3,7 @@ import { BG, buildURL, GOOG_API_KEY, USER_AGENT, type WebPoSignalOutput } from '
 import type { Innertube } from 'youtubei.js';
 import { JSDOM } from 'jsdom';
 import { generror } from "@common/utils/error_util";
+import type { PromiseResult, ResponseError } from "@common/types";
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
@@ -38,76 +39,92 @@ function setup_botguard_environment(): void {
     });
 }
 
+let global_minter: BG.WebPoMinter;
+async function create_minter(innertube: Innertube): PromiseResult<BG.WebPoMinter>{
+    if(global_minter !== undefined) return global_minter;
+    
+    setup_botguard_environment();
+    const challenge_response = await innertube.getAttestationChallenge('ENGAGEMENT_TYPE_UNBOUND');
+
+    if (!challenge_response.bg_challenge) {
+        return generror('Could not get BotGuard challenge', "CRITICAL");
+    }
+
+    let interpreter_url: string =
+        challenge_response.bg_challenge.interpreter_url.private_do_not_access_or_else_trusted_resource_url_wrapped_value ?? '';
+
+    if (!interpreter_url) {
+        return generror('Could not get interpreter URL from BotGuard challenge', "CRITICAL");
+    }
+
+    if (interpreter_url.startsWith('//')) interpreter_url = `https:${interpreter_url}`;
+
+    const bg_script_response = await fetch(interpreter_url);
+    const interpreter_javascript = await bg_script_response.text();
+
+    if (!interpreter_javascript) {
+        return generror('Could not load VM', "CRITICAL");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function(interpreter_javascript)();
+
+    const botguard = await BG.BotGuardClient.create({
+        program: challenge_response.bg_challenge.program,
+        globalName: challenge_response.bg_challenge.global_name,
+        globalObj: globalThis,
+    });
+
+    const web_po_signal_output: WebPoSignalOutput = [];
+    const botguard_response = await botguard.snapshot({ webPoSignalOutput: web_po_signal_output });
+
+    const integrity_token_response = await fetch(buildURL('GenerateIT', true), {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json+protobuf',
+            'x-goog-api-key': GOOG_API_KEY,
+            'x-user-agent': 'grpc-web-javascript/0.1',
+            'user-agent': USER_AGENT,
+        },
+        body: JSON.stringify([REQUEST_KEY, botguard_response]),
+    });
+
+    const integrity_token_data = await integrity_token_response.json() as unknown[];
+
+    if (typeof integrity_token_data[0] !== 'string') {
+        return generror('Could not get integrity token', "CRITICAL", {integrity_token_data});
+    }
+
+    const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
+    global_minter = web_po_minter;
+    return web_po_minter;
+}
+
+type MinterStatusResultSent = ["sent", PromiseResult<BG.WebPoMinter>];
+type MinterStatusResultRecieved = ["recieved", BG.WebPoMinter|ResponseError];
+let minter_status: MinterStatusResultSent|MinterStatusResultRecieved|undefined = undefined;
+export async function fetch_minter(innertube: Innertube): PromiseResult<BG.WebPoMinter> {
+    if(minter_status?.[0] === 'recieved') return minter_status[1];
+    if(minter_status?.[0] === 'sent') {
+        const recieved = await minter_status[1]
+        minter_status = ["recieved", recieved];
+        return recieved;
+    }
+    const sent_minter = create_minter(innertube);
+    minter_status = ["sent", sent_minter];
+    return await sent_minter;
+}
+
 export const node_potoken: PoTokenGenerator = {
-    generate_potoken: async (innertube: Innertube, content_binding?: string) => {
-        setup_botguard_environment();
-
+    generate_potoken: async (innertube: Innertube, content_binding: string) => {
         content_binding ??= "";
-        const visitor_data = innertube.session.context.client.visitorData ?? content_binding;
-
-        if (!visitor_data) {
-            return generror('No identifier provided and no visitorData on the Innertube session.', "CRITICAL", { identifier: content_binding });
-        }
-
-        const challenge_response = await innertube.getAttestationChallenge('ENGAGEMENT_TYPE_UNBOUND');
-
-        if (!challenge_response.bg_challenge) {
-            return generror('Could not get BotGuard challenge', "CRITICAL");
-        }
-
-        let interpreter_url: string =
-            challenge_response.bg_challenge.interpreter_url.private_do_not_access_or_else_trusted_resource_url_wrapped_value ?? '';
-        console.log(interpreter_url);
-
-        if (!interpreter_url) {
-            return generror('Could not get interpreter URL from BotGuard challenge', "CRITICAL");
-        }
-
-        if (interpreter_url.startsWith('//')) interpreter_url = `https:${interpreter_url}`;
-
-        const bg_script_response = await fetch(interpreter_url);
-        const interpreter_javascript = await bg_script_response.text();
-
-        if (!interpreter_javascript) {
-            return generror('Could not load VM', "CRITICAL");
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-implied-eval
-        new Function(interpreter_javascript)();
-
-        const botguard = await BG.BotGuardClient.create({
-            program: challenge_response.bg_challenge.program,
-            globalName: challenge_response.bg_challenge.global_name,
-            globalObj: globalThis,
-        });
-
-        const web_po_signal_output: WebPoSignalOutput = [];
-        const botguard_response = await botguard.snapshot({ webPoSignalOutput: web_po_signal_output });
-
-        const integrity_token_response = await fetch(buildURL('GenerateIT', true), {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json+protobuf',
-                'x-goog-api-key': GOOG_API_KEY,
-                'x-user-agent': 'grpc-web-javascript/0.1',
-                'user-agent': USER_AGENT,
-            },
-            body: JSON.stringify([REQUEST_KEY, botguard_response]),
-        });
-
-        const integrity_token_data = await integrity_token_response.json() as unknown[];
-
-        if (typeof integrity_token_data[0] !== 'string') {
-            return generror('Could not get integrity token', "CRITICAL", {integrity_token_data});
-        }
-
-        const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
+        const web_po_minter = await fetch_minter(innertube);
+        if("error" in web_po_minter) return web_po_minter;
         const po_token = await web_po_minter.mintAsWebsafeString(content_binding);
 
         return {
             po_token,
-            identifier: content_binding,
-            visitor_data,
+            identifier: content_binding
         };
     }
 };

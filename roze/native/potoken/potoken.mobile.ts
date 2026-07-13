@@ -30,7 +30,6 @@ export const mobile_potoken: PoTokenGenerator = {
 						return {
 							po_token: results.poToken,
 							identifier: content_binding,
-							visitor_data: content_binding
 						};
 					}
 				}
