@@ -309,10 +309,15 @@ export async function parse_youtube_music_search_top_result(card: MusicCardShelf
         card!.subtitle.runs[0].text === "Playlist" ? undefined :
         {...await parse_youtube_music_search_top_result_track(card!, get_playlist) ?? ({} as any), type: "TRACK"};
     if(top_result === undefined || Object.keys(top_result).length <= 1) return undefined;
-    const side_contents: Track[] = card!.contents === undefined ? [] : 
+    const side_contents: Track[] = card!.contents === undefined ? [] :
         card!.contents
             .filter(item => item?.musicResponsiveListItemRenderer?.playlistItemData?.videoId !== undefined)
             .map(item => parse_youtube_music_search_top_result_contents_track(item.musicResponsiveListItemRenderer));
+    if(top_result.type === "ARTIST"){
+        for(const track of side_contents){
+            if(track.artists.length === 0) track.artists = [top_result.name];
+        }
+    }
     return {top_result, side_contents};
 }
 
