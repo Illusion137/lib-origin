@@ -53,7 +53,19 @@ export namespace Lyrics {
                 album_name: track.album?.name ?? "",
                 duration: track.duration
             });
-            if("error" in lrclib_result) return lrclib_result;
+            if("error" in lrclib_result) {
+                if(clean_track_info(track.title) !== track.title) {
+                    const cleaned_title_lrclib_result = await Origin.LRCLib.get({
+                        track_name: clean_track_info(track.title), 
+                        artist_name: remove_topic(track.artists?.[0]?.name) ?? "", 
+                        album_name: track.album?.name ?? "",
+                        duration: track.duration
+                    });
+                    if("error" in cleaned_title_lrclib_result) return cleaned_title_lrclib_result;
+                    return { plain: cleaned_title_lrclib_result.plainLyrics, synced: typeof cleaned_title_lrclib_result.syncedLyrics !== "string" ? undefined : cleaned_title_lrclib_result.syncedLyrics };
+                }
+                return lrclib_result;
+            }
             return { plain: lrclib_result.plainLyrics, synced: typeof lrclib_result.syncedLyrics !== "string" ? undefined : lrclib_result.syncedLyrics };
         }
     }

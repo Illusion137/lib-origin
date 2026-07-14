@@ -35,6 +35,7 @@ import { run_startup_links } from './linker';
 import { load_native_mmkv } from '@native/mmkv/mmkv';
 import { load_native_sqlite } from '@native/sqlite/sqlite';
 import { breadcrumb } from '@common/sentry_error_handler';
+import { timeline_mark, timeline_span, timeline_span_sync } from '@common/perf_timeline';
 import * as Sentry from "@sentry/react-native";
 
 export let sync_engine_instance: SyncEngine | null = null;
@@ -168,7 +169,12 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
                     GLOBALS.global_var.bottom_alert("Failed to purge temp cache on update", "WARN", tmp_dir_file_list);
                 }
                 else {
-                    await Promise.all(tmp_dir_file_list.map(async file => fs().remove(bpath.join(tmp_dir, file))));
+                    await Promise.all(tmp_dir_file_list.map(async file => {
+                        const file_path = bpath.join(tmp_dir, file);
+                        const info = await fs().get_info(file_path);
+                        if (info.is_directory) return;
+                        await fs().remove(file_path);
+                    }));
                 }
             })().catch(catch_log);
         }
@@ -178,40 +184,43 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         Sentry.setContext("library", { track_count: GLOBALS.global_var.sql_tracks.length });
 
         (async () => {
-            const SESSION_TIMEOUT_MS = 4000;
-            const session_result = await Promise.race([
-                supabase().auth.getSession().catch(() => null),
-                new Promise<null>(resolve => setTimeout(() => resolve(null), SESSION_TIMEOUT_MS))
-            ]);
-            const session = session_result?.data?.session ?? null;
-            if (session_result === null) {
-                breadcrumb("startup", "supabase.getSession timed out — no internet?", { timeout_ms: SESSION_TIMEOUT_MS });
-            }
-            if (session) {
-                // Do not block app startup on long-running initial sync.
-                void start_sync_engine().catch(catch_log);
-            } else {
-                stop_sync_engine();
-            }
-            reset_auth_sync_subscription();
-            const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
-                if (event === 'SIGNED_IN') {
-                    void start_sync_engine().catch(catch_log);
+            if(!Prefs.get_pref('disable_supabase'))
+            {
+                const SESSION_TIMEOUT_MS = 4000;
+                const session_result = await timeline_span("supabase.getSession", async () => Promise.race([
+                    supabase().auth.getSession().catch(() => null),
+                    new Promise<null>(resolve => setTimeout(() => resolve(null), SESSION_TIMEOUT_MS))
+                ]));
+                const session = session_result?.data?.session ?? null;
+                if (session_result === null) {
+                    breadcrumb("startup", "supabase.getSession timed out — no internet?", { timeout_ms: SESSION_TIMEOUT_MS });
                 }
-                if (event === 'SIGNED_OUT') {
+                if (session) {
+                    // Do not block app startup on long-running initial sync.
+                    void timeline_span("sync_engine.start", async () => start_sync_engine()).catch(catch_log);
+                } else {
                     stop_sync_engine();
                 }
-            });
-            auth_state_subscription = subscription;
+                reset_auth_sync_subscription();
+                const { data: { subscription } } = supabase().auth.onAuthStateChange((event) => {
+                    if (event === 'SIGNED_IN') {
+                        void start_sync_engine().catch(catch_log);
+                    }
+                    if (event === 'SIGNED_OUT') {
+                        stop_sync_engine();
+                    }
+                });
+                auth_state_subscription = subscription;
+            }
             if (Prefs.get_pref('album_track_tinting')) {
-                generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table);
+                timeline_span_sync("track_tints", () => generate_unique_track_tints(GLOBALS.global_var.sql_tracks, GLOBALS.global_var.tint_table));
                 SQLGlobal.notify_global_tracks_updated();
             }
-            await SQLArtists.get_all_sql_artists();
+            await timeline_span("sql_artists", async () => SQLArtists.get_all_sql_artists());
             await Promise.all([
-                SQLRecentlyPlayed.cleanup_recently_played(),
-                SQLPlaylists.all_playlists_data("PROMISE"),
-                load_native_miscnative().then(async(m) => m.keep_mobile_awake())
+                timeline_span("cleanup_recently_played", async () => SQLRecentlyPlayed.cleanup_recently_played()),
+                timeline_span("all_playlists_data", async () => SQLPlaylists.all_playlists_data("PROMISE")),
+                timeline_span("keep_mobile_awake", async () => load_native_miscnative().then(async(m) => m.keep_mobile_awake()))
             ]).catch(catch_log);
         })().catch(catch_log);
         phase("sync_engine");
@@ -219,11 +228,11 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         Prefs.pref_set_theme(set_theme);
         SQLfs.recreate_directories().catch(catch_log);
         phase("dir");
-        setTimeout(async() => warmup_client().catch(catch_log), 2500);
+        setTimeout(async() => timeline_span("warmup_client", warmup_client).catch(catch_log), 2500);
         phase("warmup");
-        if (Prefs.get_pref('use_track_shuffle_bias')) FutsalShuffle.build_cache();
+        if (Prefs.get_pref('use_track_shuffle_bias')) timeline_span_sync("shuffle_bias_cache", () => FutsalShuffle.build_cache());
         phase("shuffle_bias");
-        run_startup_links(Prefs.get_pref('linker_links')).catch(catch_log);
+        timeline_span("startup_links", async () => run_startup_links(Prefs.get_pref('linker_links'))).catch(catch_log);
         phase("links");
 
         const total_ms = Date.now() - startup_t0;
@@ -268,6 +277,7 @@ export const get_shortcut_subscription = (play_tracks: typeof GLOBALS.global_var
 
 export async function on_app_load(version: string, play_tracks: typeof GLOBALS.global_var.play_tracks, set_theme: SetState, update_bottom_alert: typeof GLOBALS.global_var.bottom_alert, set_is_loading: SetState) {
     await illusi_startup(version, play_tracks, set_theme, update_bottom_alert, async () => {
+        timeline_mark("is_loading_false");
         set_is_loading(false);
         const maybe_initial_shortcut = reinterpret_cast<InitialShortcut>(await getInitialShortcut());
         const default_playlist_names = default_playlists.map((playlist) => playlist.name);
@@ -277,6 +287,6 @@ export async function on_app_load(version: string, play_tracks: typeof GLOBALS.g
         if (maybe_initial_shortcut?.userInfo && default_playlist_names.includes((maybe_initial_shortcut.userInfo as { uuid: string }).uuid)) {
             await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
         }
-        setTimeout(async() => load_native_modules().catch(catch_log), 2500);
+        setTimeout(async() => timeline_span("load_native_modules", async () => load_native_modules()).catch(catch_log), 2500);
     });
 }

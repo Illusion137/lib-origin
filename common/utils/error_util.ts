@@ -3,6 +3,16 @@ import { status_codes_descriptions } from "@common/status_codes";
 import type { CookieJar } from "@common/utils/cookie_util";
 import { get_native_platform } from "@native/native_mode";
 
+export namespace Logger {
+    let enabled = get_native_platform() === "NODE";
+    export function enable(){ enabled = true; }
+    export function disable(){ enabled = false; }
+    export function is_enabled() { return enabled; }
+    export function should_log(err: ResponseError) {
+        return !err.error.message.includes("rozfetch failed | response NOT ok | 200");
+    }
+}
+
 export function args_prettystring(args: object, indent = 2) {
     let str = '{\n';
     const keys = Object.keys(args);
@@ -61,6 +71,7 @@ export const SEVERITY_HANDLER_MAP: Record<ErrorSeverity, (error: ResponseError) 
 };
 
 function handle_error(error: ResponseError, severity: ErrorSeverity): ResponseError {
+    if(Logger.is_enabled() && Logger.should_log(error)) console.warn(error);
     SEVERITY_HANDLER_MAP[severity](error);
     return error;
 }

@@ -860,7 +860,6 @@ export class SyncEngine {
 
     private async pull_tracks(last_sync_iso: string, user_uid: string) {
         const pending_track_changes = await this.get_pending_change_sets('tracks');
-        const owned_uids = await this.get_owned_track_uids_all(user_uid);
 
         let max_modified_at = 0;
         const observe = (iso: unknown) => {
@@ -868,7 +867,11 @@ export class SyncEngine {
             if (v > max_modified_at) max_modified_at = v;
         };
 
-        // PASS A: utracks changes (delete/restore + user meta fields).
+        // utracks changes (delete/restore + user meta fields), joined with the
+        // global tracks row. Global-metadata enrichment by any user bumps every
+        // owner's utracks.modified_at (see migration
+        // 20260713000000_propagate_tracks_enrichment_to_utracks), so this single
+        // user-scoped pull also carries cross-user catalog edits.
         let offset = 0;
         while (true) {
             const { data: utrack_rows, error: u_err } = await this.supabase
@@ -908,40 +911,6 @@ export class SyncEngine {
             offset += utrack_rows.length;
         }
 
-        // PASS B: global metadata edits (tracks.modified_at) for owned tracks.
-        if (owned_uids.length > 0) {
-            const uid_chunks = chunk_array(owned_uids, IN_CLAUSE_CHUNK_SIZE);
-            for (const uid_chunk of uid_chunks) {
-                offset = 0;
-                while (true) {
-                    const { data: global_rows, error: t_err } = await this.supabase
-                        .from('tracks')
-                        .select('*')
-                        .gte('modified_at', last_sync_iso)
-                        .in('uid', uid_chunk)
-                        .order('modified_at', { ascending: true })
-                        .order('uid', { ascending: true })
-                        .range(offset, offset + PULL_PAGE_SIZE - 1);
-
-                    if (t_err) throw t_err;
-                    if (!global_rows || global_rows.length === 0) break;
-
-                    for (const track_row of global_rows) {
-                        observe(track_row.modified_at);
-                        try {
-                            await this.apply_global_track(track_row, pending_track_changes);
-                        } catch (err) {
-                            console.warn('[SyncEngine] pull_tracks apply_global_track failed:', err);
-                        }
-                    }
-
-                    db.$client.flushPendingReactiveQueries();
-                    if (global_rows.length < PULL_PAGE_SIZE) break;
-                    offset += global_rows.length;
-                }
-            }
-        }
-
         // Global-track listeners are flushed once per pull by
         // flush_pull_dirty_global_tracks() in pull_table_changes' finally,
         // which also covers error exits.
@@ -958,30 +927,6 @@ export class SyncEngine {
         if (this.pull_dirty_global_tracks === 0) return;
         this.pull_dirty_global_tracks = 0;
         SQLGlobal.notify_global_tracks_updated();
-    }
-
-    /**
-     * Fetch all remote track UIDs owned by this user, with proper keyset pagination
-     * to handle large libraries (> 1000 tracks).
-     */
-    private async get_owned_track_uids_all(user_uid: string): Promise<string[]> {
-        const result: string[] = [];
-        let last_id = 0;
-        while (true) {
-            const { data, error } = await this.supabase
-                .from('utracks')
-                .select('id,track_uid')
-                .eq('user_uid', user_uid)
-                .gt('id', last_id)
-                .order('id', { ascending: true })
-                .limit(PULL_PAGE_SIZE);
-            this.assert_supabase_ok('get_owned_track_uids_all', error);
-            if (!data || data.length === 0) break;
-            for (const r of data) result.push(r.track_uid);
-            if (data.length < PULL_PAGE_SIZE) break;
-            last_id = data[data.length - 1].id;
-        }
-        return result;
     }
 
     /**
@@ -1062,29 +1007,6 @@ export class SyncEngine {
         return { upserts, deletes };
     }
 
-    private async apply_global_track(
-        row: Database['public']['Tables']['tracks']['Row'],
-        pending_track_changes: { upserts: Set<string>; deletes: Set<string> },
-    ) {
-        const uid = row.uid;
-        if (!uid) return;
-
-        // If there's a pending local delete, never let remote "restore" win.
-        if (pending_track_changes.deletes.has(uid)) return;
-        // A pending local upsert wins until it's pushed — this pass merged
-        // remote-preferred fields over unpushed local edits unconditionally.
-        if (pending_track_changes.upserts.has(uid)) return;
-
-        const existing = await db.select().from(tracks_table)
-            .where(eq(tracks_table.uid, uid)).get();
-        if (!existing) return;
-
-        const merged = this.remote_merge_global(existing, row);
-        await db.update(tracks_table).set(merged).where(eq(tracks_table.uid, uid));
-        SQLGlobal.update_global_track_item(uid, { ...existing, ...merged } as LocalTrack, false);
-        this.pull_dirty_global_tracks++;
-    }
-
     private async apply_track(
         row: RemoteTrackWithUserData,
         pending_track_changes: { upserts: Set<string>; deletes: Set<string> }
@@ -1153,7 +1075,7 @@ export class SyncEngine {
 
     /**
      * Merge a global tracks row (no plays/meta) into an existing local track.
-     * Used by apply_global_track (PASS B).
+     * Used as the base merge by remote_merge_utrack.
      */
     private remote_merge_global(
         existing: LocalTrack,

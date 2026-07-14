@@ -114,23 +114,20 @@ export const mobile_voice_synth: VoiceSynth = {
 		});
 	},
 	speak_export: async (texts: VoiceExportBatchTexts, opts: VoiceOptions) => {
-		const native_opts = {
+		if (texts.length === 0) return;
+		// One batched native call for the whole chapter. Each engine picks its own
+		// optimal parallelism (AVS: 4 synthesizers; piper/kokoro: cores / ONNX
+		// threads-per-job) — a fixed JS-side worker pool used to override that and,
+		// worse, ran 4 ONNX generates each configured with all cores at once.
+		// Per-segment progress still flows live through onJobComplete.
+		// The intersection type keeps this compiling against react-native-shumil
+		// versions whose ExportOptions predates onJobComplete; drop it once the
+		// dependency is bumped everywhere.
+		const native_opts: Parameters<typeof Shumil.exportBatch>[2] & { onJobComplete?: (outputPath: string) => void } = {
 			voiceId: opts.voice_bank?.id,
 			rate: opts.rate ?? VoiceSynthConstants.default_node_speach_rate,
+			onJobComplete: (output_path: string) => { opts.on_data?.(output_path, output_path); },
 		};
-		// A single batched exportBatch resolves only once, so callers get no per-segment
-		// progress. Export one segment per native call across a small worker pool — the
-		// engines cap their own concurrency, so throughput is unchanged — and report each
-		// finished segment via on_data so chapter progress can advance live.
-		const POOL = 4;
-		let cursor = 0;
-		const run_worker = async (): Promise<void> => {
-			for (let i = cursor++; i < texts.length; i = cursor++) {
-				const t = texts[i];
-				await Shumil.exportBatch([{ text: t.text, outputPath: t.export_path }], active_engine, native_opts);
-				opts.on_data?.(t.export_path, t.export_path);
-			}
-		};
-		await Promise.all(Array.from({ length: Math.min(POOL, texts.length || 1) }, run_worker));
+		await Shumil.exportBatch(texts.map(t => ({ text: t.text, outputPath: t.export_path })), active_engine, native_opts);
 	},
 }

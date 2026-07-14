@@ -4,6 +4,7 @@ import TrackPlayer, {
     Capability,
     Event,
     RepeatMode,
+    State,
     TrackType
 }
     from 'react-native-track-player';
@@ -419,6 +420,29 @@ export async function track_player_next(): Promise<void> {
 }
 
 let handling_playback_error = false;
+// Consecutive PlaybackError count for the track currently failing, so a track that
+// keeps erroring after recovery attempts is eventually dropped instead of retried forever.
+let playback_error_uid: string | undefined;
+let playback_error_count = 0;
+
+const PLAYBACK_RECOVERY_TIMEOUT_MS = 8_000;
+const PLAYBACK_RECOVERY_POLL_MS = 500;
+
+// retry()/updateTrackUrl only kick the native reload off; poll the playback state to
+// see whether it actually recovered before deciding to drop the track.
+async function wait_for_playback_recovery(): Promise<boolean> {
+    const deadline = Date.now() + PLAYBACK_RECOVERY_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+        const { state } = await TrackPlayer.getPlaybackState();
+        if (state === State.Error || state === State.None || state === State.Stopped) return false;
+        if (state === State.Playing || state === State.Ready || state === State.Paused
+            || state === State.Buffering || state === State.Ended) return true;
+        // State.Loading — the reload is still in flight; keep polling.
+        await new Promise(resolve => setTimeout(resolve, PLAYBACK_RECOVERY_POLL_MS));
+    }
+    // Still stuck loading past the deadline — treat as unrecovered.
+    return false;
+}
 
 export async function track_player_on_error(data: { error: string }) {
     const error_msg = `TP: ${data.error}`;
@@ -426,19 +450,40 @@ export async function track_player_on_error(data: { error: string }) {
     if (handling_playback_error) return;
     handling_playback_error = true;
     try {
-        for (let i = 0; i < Constants.trackplayer_max_retries; i++) {
-            try {
-                await TrackPlayer.retry();
-            } catch (_) {
-                continue;
-            }
-            break;
-        }
         const index = await TrackPlayer.getActiveTrackIndex();
         if (index === null || index === undefined) return;
         const illusi_track = GLOBALS.global_var.playing_tracks[index];
         // playing_tracks can be emptied (audiobook mode) or shifted by a concurrent delete
         if (illusi_track === undefined) return;
+
+        if (playback_error_uid !== illusi_track.uid) {
+            playback_error_uid = illusi_track.uid;
+            playback_error_count = 0;
+        }
+        playback_error_count++;
+
+        if (playback_error_count <= Constants.trackplayer_max_retries) {
+            // A SABR stream usually dies because its po token went stale (e.g. a seek
+            // rebuilt the native pipeline); mint a fresh one before retrying so the
+            // reload doesn't reuse the token that just failed.
+            const content_binding = sabr_content_binding_by_uid.get(illusi_track.uid);
+            if (content_binding !== undefined && current_active_track_uid === illusi_track.uid) {
+                await refresh_active_sabr_po_token(illusi_track.uid, content_binding);
+            }
+            try {
+                await TrackPlayer.retry();
+                if (await wait_for_playback_recovery()) return;
+            } catch (_) { }
+            // A reload with a fresh token didn't take — the stream url itself has likely
+            // expired (or the server demanded a player-response reload). Re-resolve the
+            // source completely and reload once more before giving up on the track.
+            const react_native_track = await illusive_track_to_track_player_track(illusi_track)
+                .catch((error: Error) => { catch_log(error); return 'skip' as const; });
+            if (react_native_track !== 'skip') {
+                await TrackPlayer.updateTrackUrl(index, react_native_track);
+                if (await wait_for_playback_recovery()) return;
+            }
+        }
         await delete_track_from_player_queue(illusi_track, index);
     } finally {
         handling_playback_error = false;
