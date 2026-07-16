@@ -2,7 +2,6 @@ import nodejs from "nodejs-mobile-react-native";
 import type { PoTokenGenerator } from "@native/potoken/potoken.base";
 import { generror } from "@common/utils/error_util";
 import { force_json_parse } from "@common/utils/parse_util";
-import BG from "bgutils-js";
 
 let results: { poToken?: string; identifier?: string; error?: string } = {};
 nodejs?.channel?.addListener?.("potoken", (msg) => {
@@ -31,8 +30,6 @@ export const mobile_potoken: PoTokenGenerator = {
 						return {
 							po_token: results.poToken,
 							identifier: content_binding,
-							placeholder_po_token: BG.PoToken.generateColdStartToken(content_binding),
-							visitor_data: content_binding
 						};
 					}
 				}

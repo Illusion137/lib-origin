@@ -1,9 +1,10 @@
 import { generror, generror_catch } from "@common/utils/error_util";
 import { extract_file_extension } from "@common/utils/util";
 import type { DocumentPicker } from "@native/document_picker/document_picker.base";
-import { pick, pickDirectory, saveDocuments, type DocumentPickerResponse } from '@react-native-documents/picker';
+import { isKnownType, pick, pickDirectory, saveDocuments, type DocumentPickerResponse } from '@react-native-documents/picker';
 import { Alert } from "react-native";
 import * as ImagePicker from 'expo-image-picker';
+import type { FileExtension } from "@common/types";
 
 function pick_result_to_selected_file(pick_result: DocumentPickerResponse) {
     if (pick_result.error !== null) return generror(pick_result.error, "MEDIUM", { pick_result });
@@ -47,14 +48,14 @@ export const mobile_document_picker: DocumentPicker = {
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 1,
-                
+
             });
-            if(result.canceled) return null;
-            
+            if (result.canceled) return null;
+
             const img = result.assets?.[0];
-            if (!img) return generror("Asset is empty", "MEDIUM", {result});
+            if (!img) return generror("Asset is empty", "MEDIUM", { result });
             const file_name = img.fileName ?? "";
-            if(!file_name) return generror("file_name is empty", "MEDIUM", {result});
+            if (!file_name) return generror("file_name is empty", "MEDIUM", { result });
             const file_extension = extract_file_extension(file_name, "none");
             return {
                 name: file_name.replace(file_extension, ''),
@@ -110,5 +111,11 @@ export const mobile_document_picker: DocumentPicker = {
         catch (e) {
             return generror_catch(e, "Failed to pick_directory", "INFO", {});
         }
+    },
+    get_types: (extensions: FileExtension[]) => {
+        return extensions
+            .map(ext => isKnownType({ value: ext.slice(1), kind: "extension" }))
+            .filter(known_type => known_type.isKnown && known_type.UTType !== null)
+            .map(known_type => known_type.UTType) as string[];
     }
 };

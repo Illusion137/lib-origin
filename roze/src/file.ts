@@ -16,7 +16,8 @@ import sharp, { type Channels } from '@lib/sharp';
 import { reinterpret_cast } from '@common/cast';
 import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from './utils';
 import mammoth from "@lib/mammoth";
-import { image_size } from '@native/image_size/image_size';
+import { image_size, load_native_image_size } from '@native/image_size/image_size';
+import { load_native_zip } from '@native/zip/zip';
 
 const Buffer = BufferRN.Buffer;
 
@@ -40,6 +41,8 @@ export namespace FileParser {
     }
 
     async function transform_url_to_path(file_path_or_url: string, file_extension: FileExtension, opts: ParseFileOpts): PromiseResult<string> {
+        await load_native_zip();
+        await load_native_image_size();
         if (!is_url(file_path_or_url)) return file_path_or_url;
         const file_name = opts.file_name_no_ext ? opts.file_name_no_ext + file_extension : await gen_temp_file_name(file_extension);
         const to_download_path = opts.download_to_directory ?

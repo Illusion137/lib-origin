@@ -430,12 +430,12 @@ export interface DownloadFromIdResult {
         songs?: YTDescriptionSong[]
     };
     // SABR streaming params (YouTube server-adaptive bitrate)
+    content_binding?: string;
     isSabr?: true;
     duration?: number;
     sabrServerUrl?: string;
     sabrUstreamerConfig?: string;
     sabrFormats?: YouTubeDL.SabrFormat[];
-    poToken?: string;
     placeholder_po_token?: string;
     clientInfo?: YouTubeDL.SabrClientInfo;
     cookie?: string;

@@ -23,22 +23,28 @@ import { load_native_fs } from '@native/fs/fs';
 import { load_native_potoken } from '@native/potoken/potoken';
 import { YouTubeDL } from '@origin/youtube_dl/index';
 
-const VIDEO_ID = process.argv[2] ?? 'jNQXAC9IVRw';
+const VIDEO_ID = process.argv[2] ?? 'wf4kRfGzflo';
 
 async function main() {
 	await load_native_fs();
 	await load_native_potoken();
 
-	const result = await YouTubeDL.resolve_sabr_url(VIDEO_ID);
+	const result = await YouTubeDL.resolve_sabr_info(VIDEO_ID);
 	if ('error' in result) {
 		process.stderr.write(`sabr-fetch-params error: ${String(result.error)}\n`);
+		process.exit(1);
+	}
+
+	const potoken = await YouTubeDL.fetch_potoken(VIDEO_ID);
+	if ('error' in potoken) {
+		process.stderr.write(`sabr-fetch-params error: ${String(potoken.error)}\n`);
 		process.exit(1);
 	}
 
 	const output = {
 		sabrServerUrl: result.sabrServerUrl,
 		sabrUstreamerConfig: result.sabrUstreamerConfig,
-		poToken: result.poToken,
+		poToken: potoken.po_token,
 		duration: result.duration,
 		clientName: result.clientInfo?.clientName,
 		clientVersion: result.clientInfo?.clientVersion,

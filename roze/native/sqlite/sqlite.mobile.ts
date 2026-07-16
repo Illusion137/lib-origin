@@ -8,7 +8,7 @@ function wrap_op_sqlite_client(client: any): RawSQLiteConnection {
 		execute_sync: (sql, params = []) =>
 			(client.executeSync(sql, params) as { rows: any[] }).rows,
 		execute_async: async (sql, params = []) =>
-			(await client.executeWithHostObjects(sql, params) as { rows: any[] }).rows,
+			(await client.execute(sql, params) as { rows: any[] }).rows,
 		execute_statement: async (sql, params) => {
 			if (params !== undefined) await client.execute(sql, params);
 			else await client.execute(sql);

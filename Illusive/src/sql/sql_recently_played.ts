@@ -5,6 +5,7 @@ import { GLOBALS } from "@illusive/globals";
 import { Prefs } from "@illusive/prefs";
 import type { Track } from "@illusive/types";
 import { desc, eq } from "drizzle-orm";
+import { sqlite } from "@native/sqlite/sqlite";
 import { SQLTracks } from "./sql_tracks";
 
 export namespace SQLRecentlyPlayed {
@@ -40,11 +41,9 @@ export namespace SQLRecentlyPlayed {
     }
     export async function cleanup_recently_played() {
         const recently_played_max_size = Prefs.get_pref('recently_played_max_size');
-        const to_delete_recently_played_data = (await recently_played_tracks());
-        if(to_delete_recently_played_data.length <= recently_played_max_size) return;
-        const sliced_to_delete_recently_played_data = to_delete_recently_played_data.slice(recently_played_max_size);
-        await Promise.all(
-            sliced_to_delete_recently_played_data.map(async track => delete_recently_played_track(track))
+        await sqlite().wrap_client(db.$client).execute_statement(
+            "DELETE FROM recently_played_tracks WHERE id NOT IN (SELECT id FROM recently_played_tracks ORDER BY id DESC LIMIT ?)",
+            [recently_played_max_size]
         );
     }
 }

@@ -24,6 +24,11 @@ import { JNovel } from "@roze/jnovel";
 import { Constants } from "@roze/constants";
 import { WitchcultTranslations } from "@roze/witchcult_translations";
 import devnull from 'dev-null';
+import { load_native_zip } from "@native/zip/zip";
+import { load_native_pdf_reader } from "@native/pdf_reader/pdf_reader";
+import { load_native_raw_to_png } from "@native/raw_to_png/raw_to_png";
+import { load_native_docx_converter } from "@native/docx_converter/docx_converter";
+import { load_native_image_size } from "@native/image_size/image_size";
 
 
 const help_contents: string = green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}
@@ -407,6 +412,11 @@ async function __roze_cli_main__() {
 	await load_native_ffmpeg();
 	await load_native_get_audio_duration();
 	await load_native_voice_synth();
+	await load_native_zip();
+	await load_native_pdf_reader();
+	await load_native_raw_to_png();
+	await load_native_docx_converter();
+	await load_native_image_size();
 
 	const opts: string[][] = args_to_opts(process.argv);
 	const voice_list = await voice_synth().get_voices();

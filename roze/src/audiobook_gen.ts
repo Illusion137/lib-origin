@@ -21,6 +21,7 @@ export namespace AudiobookGen {
         on_chapter_content_skip?: (roz_chapter: RozChapterContents) => any;
         on_chapter_content_export?: (roz_chapter: RozChapterContents) => any;
         on_chapter_content_duration_check?: (roz_chapter: RozChapterContents, content_temp_file_path: string | undefined) => any;
+        on_chapter_encode_progress?: (roz_chapter: RozChapterContents, progress: number) => any;
         on_chapter_finish?: (roz_chapter: RozChapterContents, chapter_audio_file_path: string | undefined) => any;
     }
     interface RozToAudiobookCallbacks extends RozChapterToAudiobookCallbacks {
@@ -88,8 +89,22 @@ export namespace AudiobookGen {
             }
         });
 
-        for (const [_, roz_content, __, content_temp_file_path] of preped_content) {
-            const content_duration = await get_audio_duration().get_audio_duration(content_temp_file_path);
+        // Each duration probe is a full ffprobe session with fixed spawn/log overhead,
+        // so probing the chapter's segments one-by-one added seconds of dead time after
+        // synthesis. Probe through a small worker pool instead (same idiom as
+        // speak_export), then walk the results in order so callback order is unchanged.
+        const PROBE_POOL = 4;
+        const durations = new Array<number>(preped_content.length);
+        let probe_cursor = 0;
+        const probe_worker = async (): Promise<void> => {
+            for (let i = probe_cursor++; i < preped_content.length; i = probe_cursor++) {
+                durations[i] = await get_audio_duration().get_audio_duration(preped_content[i][3]);
+            }
+        };
+        await Promise.all(Array.from({ length: Math.min(PROBE_POOL, preped_content.length) }, probe_worker));
+
+        for (const [index, [_, roz_content, __, content_temp_file_path]] of preped_content.entries()) {
+            const content_duration = durations[index];
             if (content_duration > 0) content_file_path_list.push(content_temp_file_path);
             else return generror("Missing content in audiobook generation", "CRITICAL", { roz_content, content_temp_file_path });
             roz_content.duration = content_duration;
@@ -97,7 +112,16 @@ export namespace AudiobookGen {
             callbacks.on_chapter_content_duration_check?.(roz_chapter, content_temp_file_path);
         }
 
-        const concat_audio_result = content_file_path_list.length === 0 ? undefined : await concact_audio_files(content_file_path_list, opts.size_mode ? ".aac" : Constants.TTS_DEFAULT_FILE_EXTENSION, "POTENTIAL_RE_ENCODE", clean_temp_files);
+        const concat_audio_result = content_file_path_list.length === 0 ? undefined : await concact_audio_files(
+            content_file_path_list,
+            opts.size_mode ? ".aac" : Constants.TTS_DEFAULT_FILE_EXTENSION,
+            "POTENTIAL_RE_ENCODE",
+            clean_temp_files,
+            stats => {
+                if (total_duration <= 0) return;
+                callbacks.on_chapter_encode_progress?.(roz_chapter, Math.min(1, Math.max(0, stats.time_seconds / total_duration)));
+            }
+        );
         callbacks.on_chapter_finish?.(roz_chapter, concat_audio_result?.out_file_path);
 
         return {

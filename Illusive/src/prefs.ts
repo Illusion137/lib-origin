@@ -183,6 +183,7 @@ export namespace Prefs {
         use_cookies_on_download: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
         use_cookies_on_artist: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
+        disable_supabase: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
         dev_mode: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
 
         audiobook_player_display_mode: { default_value: 'cover_only', current_value: 'cover_only', type: "STRING", visible: true, section: "Audiobooks", description: "What the audiobook player shows while listening: cover art, inline book images, or scrolling reader" } as BasePref<'cover_only' | 'book_images' | 'reader_follow_along', OtherPrefTypes>,

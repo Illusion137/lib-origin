@@ -69,6 +69,7 @@ export namespace Genius {
         try {
             const all_strings: string[][] = [];
             const initial_children: Children[] = preloaded_state.songPage.lyricsData.body.children as unknown as Children[];
+            if(initial_children === undefined) return generror("Genius preloaded state is empty; likely no lyrics for this track", "INFO")
             function recursive_parse(child: Children | string, collected: string[]): string[] {
                 if (typeof child === "string") return collected.concat([child]);
                 if (typeof child === "object" && "children" in child) {

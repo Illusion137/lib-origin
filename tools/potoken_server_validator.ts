@@ -5,31 +5,34 @@ import cli_progress from 'cli-progress';
 import path from 'path';
 import { YouTubeDL } from "@origin/youtube_dl/index";
 import { load_native_sabr_downloader, sabr_downloader } from "@native/sabr_downloader/sabr_downloader";
-import { gen_uuid } from "@common/utils/util";
+import { gen_uuid, milliseconds_of } from "@common/utils/util";
 import { load_native_potoken } from '@native/potoken/potoken';
+import express from 'express';
+import { wait } from '@common/utils/timed_util';
+const app = express();
+app.use(express.json());
+const port = 3000;
 
 const is_win = process.platform === "win32";
 const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/ytdl_out/";
-const url = process.argv[2];
 
-async function ytdl_main__() {
-    if (url === undefined) {
-        console.error(red("NO URL SPECIFIED"));
-        return;
-    }
+interface PoToken {po_token: string, placeholder_po_token: string};
+
+// TODO fix this whole thing up; use custom downloader instead of main downloader
+async function download(video_id: string, _po_token: PoToken){
     await load_native_potoken();
     await load_native_sabr_downloader();
 
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
-        async () => await YouTubeDL.resolve_sabr_info(url)
+        async () => await YouTubeDL.resolve_sabr_info(video_id)
     );
     if ("error" in sabr_params) {
         console.error(red("FAILED TO RESOLVE SABR URL"), sabr_params.error);
         return;
     }
 
-    const title = url.replace(/[^a-zA-Z0-9]/g, '_');
+    const title = video_id.replace(/[^a-zA-Z0-9]/g, '_');
     const output_path = path.join(output_folder, `${gen_uuid()}_${title}.m4a`);
 
     const sabrFormats = sabr_params.sabrFormats;
@@ -48,13 +51,12 @@ async function ytdl_main__() {
     console.log(green(`ClientInfo: clientName=${sabr_params.clientInfo?.clientName} version=${sabr_params.clientInfo?.clientVersion}`));
     console.log(green(`Cookie present: ${!!sabr_params.cookie}`))
 
-    const duration_ms = sabr_params.sabrFormats?.[0]?.approxDurationMs ?? 0;
     const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_classic);
     progress_bar.start(100, 0);
 
     await sabr_downloader().download_sabr(
         {
-            content_binding: sabr_params.content_binding,
+            content_binding: video_id,
             sabrServerUrl: sabr_params.sabrServerUrl,
             sabrUstreamerConfig: sabr_params.sabrUstreamerConfig,
             sabrFormats,
@@ -68,10 +70,30 @@ async function ytdl_main__() {
     progress_bar.update(100);
     progress_bar.stop();
     console.log(green(`Saved to: ${output_path}`));
-    void duration_ms;
+    return 0;
 }
 
-TimeLog.log_fn_async(
-    green("FINISHED DOWNLOADING MEDIA"),
-    async () => await ytdl_main__().catch(console.error)
-).catch(console.error);
+app.get('/validate_potoken/:id', async (req, res) => {
+    const video_id = req.params.id;
+    const po_token = req.body as PoToken;
+    console.log(req.body);
+    console.log(video_id);
+    if(req.body === undefined || !("po_token" in req.body)){
+        res.status(400).send("BAD");
+        return;
+    }
+
+    const race = await Promise.race([
+        download(video_id, po_token),
+        wait(milliseconds_of({seconds: 20}))
+    ])
+    if(race === 0) {
+        res.status(200).send("GOOD");
+        return;
+    }
+    res.status(401).send("FAILED");
+});
+
+app.listen(port, () => {
+    console.log(`PoTokenServerValidator app listening on port ${port}`);
+});

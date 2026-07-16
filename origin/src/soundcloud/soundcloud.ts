@@ -102,7 +102,7 @@ export namespace SoundCloud {
         }
     }
     function post_api_headers(opts: Opts) {
-        if (opts.cookie_jar === undefined) opts.cookie_jar === new CookieJar([]);
+        if (opts.cookie_jar === undefined) opts.cookie_jar = new CookieJar([]);
         const oauth_cookie = opts.cookie_jar?.getCookie('oauth_token');
         const datadome_cookie = opts.cookie_jar?.getCookie('datadome');
         return {
