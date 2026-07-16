@@ -154,6 +154,7 @@ export namespace Prefs {
         track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS" } as BasePref<Bias, OtherPrefTypes>,
         carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: "STRING" } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
         p2p_name: { default_value: `sumi!-${gen_small_id()}`, current_value: `sumi!-${gen_small_id()}`, type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        recent_rejected_ota_update: { default_value: '', current_value: '', type: "STRING" } as BasePref<string, OtherPrefTypes>,
         
         default_playlist_max_size: { default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
         recently_played_max_size: { default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
