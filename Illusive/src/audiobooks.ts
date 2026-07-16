@@ -35,6 +35,7 @@ export interface AudiobookTTSOpts {
 export interface AudiobookChapterGenCallbacks {
 	on_content_skip?: (chapter: RozChapterContents) => void;
 	on_content_export?: (chapter: RozChapterContents) => void;
+	on_encode_progress?: (chapter: RozChapterContents, progress: number) => void;
 	on_chapter_finish?: (chapter: RozChapterContents) => void;
 }
 
@@ -241,10 +242,11 @@ export namespace Audiobooks {
 			const gen_callbacks: Parameters<typeof AudiobookGen.roz_chapter_to_audiobook>[2] = {
 				on_chapter_content_skip: callbacks.on_content_skip,
 				on_chapter_content_export: callbacks.on_content_export,
+				on_chapter_encode_progress: callbacks.on_encode_progress,
 				on_chapter_finish: (ch) => callbacks.on_chapter_finish?.(ch),
 			};
 
-			const result = await AudiobookGen.roz_chapter_to_audiobook(chapter, {}, gen_callbacks, voice_opts);
+			const result = await AudiobookGen.roz_chapter_to_audiobook(chapter, { size_mode: true }, gen_callbacks, voice_opts);
 			if ("error" in result) return result;
 
 			if (result.chapter.audio_path) {

@@ -21,6 +21,7 @@ export namespace AudiobookGen {
         on_chapter_content_skip?: (roz_chapter: RozChapterContents) => any;
         on_chapter_content_export?: (roz_chapter: RozChapterContents) => any;
         on_chapter_content_duration_check?: (roz_chapter: RozChapterContents, content_temp_file_path: string | undefined) => any;
+        on_chapter_encode_progress?: (roz_chapter: RozChapterContents, progress: number) => any;
         on_chapter_finish?: (roz_chapter: RozChapterContents, chapter_audio_file_path: string | undefined) => any;
     }
     interface RozToAudiobookCallbacks extends RozChapterToAudiobookCallbacks {
@@ -111,7 +112,16 @@ export namespace AudiobookGen {
             callbacks.on_chapter_content_duration_check?.(roz_chapter, content_temp_file_path);
         }
 
-        const concat_audio_result = content_file_path_list.length === 0 ? undefined : await concact_audio_files(content_file_path_list, opts.size_mode ? ".aac" : Constants.TTS_DEFAULT_FILE_EXTENSION, "POTENTIAL_RE_ENCODE", clean_temp_files);
+        const concat_audio_result = content_file_path_list.length === 0 ? undefined : await concact_audio_files(
+            content_file_path_list,
+            opts.size_mode ? ".aac" : Constants.TTS_DEFAULT_FILE_EXTENSION,
+            "POTENTIAL_RE_ENCODE",
+            clean_temp_files,
+            stats => {
+                if (total_duration <= 0) return;
+                callbacks.on_chapter_encode_progress?.(roz_chapter, Math.min(1, Math.max(0, stats.time_seconds / total_duration)));
+            }
+        );
         callbacks.on_chapter_finish?.(roz_chapter, concat_audio_result?.out_file_path);
 
         return {
