@@ -84,26 +84,32 @@ export namespace SQLTracks {
         return key_map.get(lookup_key);
     }
 
-    export function add_playback_saved_data_to_track(track: Track) {
-        track.playback = {
-            artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track),
-            added: false,
-            successful: false
-        }
+    export function add_playback_saved_data_to_track(track: Track): Track {
         const saved = track_exists(track, GLOBALS.global_var.sql_tracks);
-        track.downloading_data = { saved: saved, progress: 0, playlist_saved: false };
+        let new_track: Track = {
+            ...track,
+            playback: {
+                artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track),
+                added: false,
+                successful: false
+            },
+            downloading_data: { saved: saved, progress: 0, playlist_saved: false }
+        };
         if (saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri) && is_empty(track.thumbnail_uri)) {
             const primary_key = track_primary_key(track);
             const found_track = find_track_in_globals_with_key(track, primary_key);
-            if (found_track) track.uid = found_track.uid;
-            track.media_uri = found_track?.media_uri;
-            track.thumbnail_uri = found_track?.thumbnail_uri;
-            track.lyrics_uri = found_track?.lyrics_uri;
-            track.synced_lyrics_uri = found_track?.synced_lyrics_uri;
-            track.meta = found_track?.meta;
+            new_track = {
+                ...new_track,
+                uid: found_track ? found_track.uid : new_track.uid,
+                media_uri: found_track?.media_uri,
+                thumbnail_uri: found_track?.thumbnail_uri,
+                lyrics_uri: found_track?.lyrics_uri,
+                synced_lyrics_uri: found_track?.synced_lyrics_uri,
+                meta: found_track?.meta
+            };
         }
-        check_fixerupper_track(track).catch(catch_ignore);
-        return track;
+        check_fixerupper_track(new_track).catch(catch_ignore);
+        return new_track;
     }
 
     export function add_playback_saved_data_to_tracks(tracks: Track[]) {

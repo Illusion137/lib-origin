@@ -1,5 +1,4 @@
 import { seeded_rand } from "@common/seeding";
-import { TimedCacheValue } from "@common/types";
 import { remove, remove_topic } from "@common/utils/clean_util";
 import { groupby, is_empty, milliseconds_of, seeded_random_of, urlid } from "@common/utils/util";
 import { Constants } from "@illusive/constants";
@@ -580,11 +579,15 @@ export function track_primary_key(track: Track): keyof Track {
 export function all_track_ids(track: Track){
     return [track.illusi_id!, track.youtube_id!, track.spotify_id!, track.amazonmusic_id!, track.applemusic_id!, String(track.soundcloud_id ?? ""), track.imported_id!].filter(item => !is_empty(item));
 }
-const cached_ids_set = new TimedCacheValue<Set<string>>(Constants.cached_ids_duration_milliseconds);
+let cached_ids_set_tracks: Track[] | undefined;
+let cached_ids_set_value: Set<string> | undefined;
 export function track_exists(track: Track, global_tracks: Track[]) {
-    const evil_set = cached_ids_set.update(() => new Set<string>(global_tracks.map(all_track_ids).flat()));
+    if (cached_ids_set_tracks !== global_tracks || cached_ids_set_value === undefined) {
+        cached_ids_set_value = new Set<string>(global_tracks.map(all_track_ids).flat());
+        cached_ids_set_tracks = global_tracks;
+    }
     for(const id of all_track_ids(track)){
-        if(evil_set.has(id)) return true;
+        if(cached_ids_set_value.has(id)) return true;
     }
     return false;
 }
