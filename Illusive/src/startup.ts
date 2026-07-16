@@ -150,12 +150,12 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
         GLOBALS.global_var.set_theme = set_theme;
         GLOBALS.global_var.bottom_alert = bottom_alert;
 
-        // const database_version_before_update = Prefs.get_pref('database_version');
-        // await timeline_span("fix_to_new_update", async () => SQLUpdate.fix_to_new_update());
+        const database_version_before_update = Prefs.get_pref('database_version');
+        await timeline_span("fix_to_new_update", async () => SQLUpdate.fix_to_new_update());
 
-        // on_finish_essentials();
+        on_finish_essentials();
 
-        // if (Prefs.get_pref('database_version') !== database_version_before_update) await timeline_span("refetch_track_data", async () => SQLTracks.fetch_track_data());
+        if (Prefs.get_pref('database_version') !== database_version_before_update) await timeline_span("refetch_track_data", async () => SQLTracks.fetch_track_data());
 
         // if (version === Prefs.get_pref('latest_version')) {
         //     timeline_mark("past_queue size", { tracks: Prefs.get_pref('past_queue').tracks.length });
@@ -285,15 +285,15 @@ export async function on_app_load(version: string, play_tracks: typeof GLOBALS.g
     await illusi_startup(version, play_tracks, set_theme, update_bottom_alert, async () => {
         timeline_mark("is_loading_false");
         set_is_loading(false);
-        // const maybe_initial_shortcut = reinterpret_cast<InitialShortcut>(await timeline_span("getInitialShortcut", async () => getInitialShortcut()));
-        // const default_playlist_names = default_playlists.map((playlist) => playlist.name);
-        // if (maybe_initial_shortcut?.userInfo && !default_playlist_names.includes(maybe_initial_shortcut.userInfo.uuid)) {
-        //     await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
-        // }
-        // if (maybe_initial_shortcut?.userInfo && default_playlist_names.includes((maybe_initial_shortcut.userInfo as { uuid: string }).uuid)) {
-        //     await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
-        // }
-        // timeline_span("load_native_modules", async () => load_native_modules()).catch(catch_log);
+        const maybe_initial_shortcut = reinterpret_cast<InitialShortcut>(await timeline_span("getInitialShortcut", async () => getInitialShortcut()));
+        const default_playlist_names = default_playlists.map((playlist) => playlist.name);
+        if (maybe_initial_shortcut?.userInfo && !default_playlist_names.includes(maybe_initial_shortcut.userInfo.uuid)) {
+            await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
+        }
+        if (maybe_initial_shortcut?.userInfo && default_playlist_names.includes((maybe_initial_shortcut.userInfo as { uuid: string }).uuid)) {
+            await run_shortcut(play_tracks, maybe_initial_shortcut.userInfo, maybe_initial_shortcut.activityType);
+        }
+        timeline_span("load_native_modules", async () => load_native_modules()).catch(catch_log);
     });
     timeline_mark("on_app_load resolved");
 }
