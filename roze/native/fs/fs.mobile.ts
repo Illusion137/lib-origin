@@ -2,7 +2,7 @@ import { generror, generror_catch } from "@common/utils/error_util";
 import { gen_uuid } from "@common/utils/util";
 import type { DownloadSavable, FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import * as expo_fs from "expo-file-system/legacy";
-import { Directory, File, Paths } from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import path_lib from "path";
 
 function join_uri(base: string, ...paths: string[]): string {
@@ -36,10 +36,11 @@ export const mobile_fs: FileSystem = {
 			}
 			const is_directory = path_info.isDirectory ?? false;
 			let file_modified_ms = 0;
-			try {
-				const meta = is_directory ? new Directory(path).info() : new File(path).info();
-				file_modified_ms = meta.modificationTime ?? 0;
-			} catch {}
+			if (!is_directory) {
+				try {
+					file_modified_ms = new File(path).info().modificationTime ?? 0;
+				} catch {}
+			}
 			return { exists: true, file_modified_ms, is_directory, uri: path };
 		} catch (_) {
 			return { exists: false, file_modified_ms: 0, is_directory: false, uri: path };

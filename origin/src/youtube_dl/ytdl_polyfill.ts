@@ -3,6 +3,15 @@ import 'web-streams-polyfill';
 import 'text-encoding-polyfill';
 import 'react-native-url-polyfill/auto';
 import { decode, encode } from 'base-64';
+import BufferRN from "buffer/";
+const Buffer = BufferRN.Buffer;
+
+// isomorphic-git (used by the OTA git-mode updater) checks the global `Buffer`
+// directly (`typeof Buffer === 'undefined'`) rather than requiring the module,
+// so it throws "Missing Buffer dependency" without this on Hermes/RN.
+if (!global.Buffer) {
+	(global as any).Buffer = Buffer;
+}
 
 if (!global.btoa) {
 	global.btoa = encode;

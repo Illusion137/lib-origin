@@ -19,6 +19,8 @@ export namespace SQLArtists {
         artists_artwork_memo[create_uri("illusi", Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
 
         const artists: SQLArtist[] = await db.select().from(artists_table).where(eq(artists_table.deleted, false));
+        // If the outer sql_artists span is long but this mark lands early, the
+        // select was fast and the wall time was JS-thread starvation elsewhere.
         for(const artist of artists){
             artists_artwork_memo[artist.uri] = artist.artwork_url;
             artists_memo[artist.uri] = artist;

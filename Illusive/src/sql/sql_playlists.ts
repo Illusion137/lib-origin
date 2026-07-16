@@ -191,7 +191,8 @@ export namespace SQLPlaylists {
         const default_playlist = default_playlists.find(playlist => playlist.name === playlist_uuid);
         if(default_playlist !== undefined) {
             if(!csession.resolved_playlists.has(playlist_uuid)) csession.resolved_playlists.set(playlist_uuid, default_playlist.track_function());
-            return (await csession.resolved_playlists.get(playlist_uuid)!).slice();
+            const default_resolved = await csession.resolved_playlists.get(playlist_uuid)!;
+            return default_resolved.slice();
         }
         if(skip_inheritance) return await hydrated_playlist_tracks(playlist_uuid);
         if(csession.resolved_playlists.has(playlist_uuid)) return (await csession.resolved_playlists.get(playlist_uuid)!).slice();
