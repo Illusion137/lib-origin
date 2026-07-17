@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 // ─── Enums / Union Types ───────────────────────────────────────────────────
 
+import type { Track, Playlist as PlaylistFull } from "./Search";
+
 type MonetizationModel = "AD_SUPPORTED" | "BLACKBOX" | "NOT_APPLICABLE";
 type Policy = "MONETIZE" | "ALLOW";
 type PlaylistType = "PLAYLIST" | "ARTIST_STATION";
@@ -127,10 +129,91 @@ export interface SystemPlaylist {
     user: ArtistUser;
 }
 
+// ─── Feed Items (stream) ──────────────────────────────────────────────────
+
+interface Reposted {
+    target_urn: string;
+    user_urn: string;
+    caption: string | null;
+}
+
+interface PromotedTracking {
+    add_to_set_click?: string[];
+    sponsor_click?: string[];
+    sound_finish?: string[];
+    share_click?: string[];
+    sound_skip?: string[];
+    repost_click?: string[];
+    impression?: string[];
+    profile_click?: string[];
+    purchase_click?: string[];
+    follow_click?: string[];
+    ad_click?: string[];
+    like_click?: string[];
+    sound_click?: string[];
+    sound_play?: string[];
+    [event: string]: string[] | undefined;
+}
+
+interface Promoted {
+    ad_urn: string;
+    sc_a_id: string;
+    tracking: PromotedTracking;
+}
+
+/** A newly posted track appearing in the stream */
+export interface FeedTrack {
+    created_at: string;
+    type: "track";
+    user: ArtistUser;
+    uuid: string;
+    caption: string | null;
+    track: Track;
+}
+
+/** A track reposted by a followed user, appearing in the stream */
+export interface FeedTrackRepost {
+    created_at: string;
+    type: "track-repost";
+    user: ArtistUser;
+    uuid: string;
+    caption: string | null;
+    reposted: Reposted;
+    track: Track;
+}
+
+/** A promoted (ad) track injected into the stream */
+export interface FeedTrackPromoted {
+    created_at: string;
+    type: "track-promoted";
+    user: null;
+    uuid: string;
+    caption: string | null;
+    promoted: Promoted;
+    track: Track;
+}
+
+/** A playlist/album posted by a followed user, appearing in the stream */
+export interface FeedPlaylist {
+    created_at: string;
+    type: "playlist";
+    user: ArtistUser;
+    uuid: string;
+    caption: string | null;
+    playlist: PlaylistFull;
+}
+
 // ─── Selection Item ───────────────────────────────────────────────────────
 
-/** Items within a selection can be playlists, system playlists, or users */
-export type SelectionItem = Playlist | SystemPlaylist | BaseUser;
+/** Items within a selection can be playlists, system playlists, users, or feed tracks */
+export type SelectionItem =
+    | Playlist
+    | SystemPlaylist
+    | BaseUser
+    | FeedTrack
+    | FeedTrackRepost
+    | FeedTrackPromoted
+    | FeedPlaylist;
 
 // ─── Selection ────────────────────────────────────────────────────────────
 

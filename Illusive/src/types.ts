@@ -314,7 +314,7 @@ export interface PlaylistsTracks {
 }
 
 export type CompactPlaylistType = "PLAYLIST" | "SAVED" | "ALBUM"
-export type CompactPlaylistAlbumType = "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG";
+export type CompactPlaylistAlbumType = "ALBUM" | "SINGLE" | "EP" | "SINGLE/EP" | "SONG" | "PLAYLIST";
 export interface Basic_CompactPlaylist<T, U, V, W> {
     title: T
     artist: U

@@ -130,7 +130,6 @@ export namespace SoundCloud {
             if ("error" in hydration) return hydration;
             opts.scripts = hydration.scripts_urls;
         }
-
         for (const asset_script of asset_scripts(opts.scripts)) {
             const response = await rozfetch(asset_script, api_method_options({ ...opts, fetch_opts: { ...opts.fetch_opts, cache_opts: undefined } }));
             if ("error" in response) return response;
@@ -162,7 +161,7 @@ export namespace SoundCloud {
         return { hydration, scripts_urls: scripts };
     }
     export function asset_scripts(scripts: string[]) {
-        return scripts.filter(script => script.includes("assets"));
+        return scripts.filter(script => script.includes("assets")).reverse(); // reverse since it seems to be the final script?
     }
     export function get_locale_params(opts: Opts) {
         return {

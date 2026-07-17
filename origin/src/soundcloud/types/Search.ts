@@ -173,7 +173,7 @@ export interface Playlist {
     title: string
     uri: string
     user_id: number
-    set_type: string
+    set_type: "ep"|"album"|"single"
     is_album: boolean
     published_at: string
     display_date: string
