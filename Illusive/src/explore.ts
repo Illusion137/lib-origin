@@ -126,7 +126,7 @@ export namespace Explore {
 		const REC_SOUNDCLOUD_CACHE_KEY = "REC_SOUNDCLOUD_PLAYLISTS_CACHE_KEY";
 		const REC_SOUNDCLOUD_CACHE_EXPIRES_MS = milliseconds_of({days: 1});
 		const cache_hit = await FSCache.check_cache<SelectionItem[]>(REC_SOUNDCLOUD_CACHE_KEY, REC_SOUNDCLOUD_CACHE_EXPIRES_MS, {});
-		if(cache_hit) return cache_hit.filter(item => item.kind === "system-playlist")
+		if(cache_hit) return cache_hit.filter(item => "kind" in item && item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		if (!Illusive.music_service.get('SoundCloud')?.has_credentials()) return [];
 		const recommended_playlists_urn = "soundcloud:selections:personalized-tracks";
@@ -136,7 +136,7 @@ export namespace Explore {
 		const recommended_playlists_section = mixed_selection.data.collection.find(item => item.urn.startsWith(recommended_playlists_urn))?.items.collection;
 		if (!recommended_playlists_section) return [];
 		await FSCache.insert_cache(REC_SOUNDCLOUD_CACHE_KEY, recommended_playlists_section, {});
-		const playlists = recommended_playlists_section.filter(item => item.kind === "system-playlist")
+		const playlists = recommended_playlists_section.filter(item => "kind" in item && item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		return playlists;
 	}
