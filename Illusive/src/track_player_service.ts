@@ -146,16 +146,20 @@ async function delete_track_from_player_queue_impl(track_data: Track | undefined
         const absolute_index = current_track_index + global_index;
         GLOBALS.global_var.playing_tracks.splice(absolute_index, 1);
         sabr_content_binding_by_uid.delete(track_data.uid);
-        // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current.
-        // Prefer the uid (carried on every track dict now); fall back to title for entries added before uid existed.
-        const tp_queue = await TrackPlayer.getQueue();
-        const tp_index = tp_queue.slice(current_track_index).findIndex(track => {
-            const t = reinterpret_cast<{ uid?: string, title?: string }>(track);
-            return t.uid !== undefined ? t.uid === track_data.uid : t.title === track_data.title;
+        // Serialized against adds/url-fills so the index found here isn't invalidated by
+        // a concurrent add() landing on the native side before remove() runs.
+        await run_native_queue_mutation(async () => {
+            // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current.
+            // Prefer the uid (carried on every track dict now); fall back to title for entries added before uid existed.
+            const tp_queue = await TrackPlayer.getQueue();
+            const tp_index = tp_queue.slice(current_track_index).findIndex(track => {
+                const t = reinterpret_cast<{ uid?: string, title?: string }>(track);
+                return t.uid !== undefined ? t.uid === track_data.uid : t.title === track_data.title;
+            });
+            // The queue can still shrink between getQueue() and remove() (e.g. TrackPlayer.reset()
+            // from another screen); an out-of-bounds rejection only means the track is already gone
+            if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]).catch(catch_log);
         });
-        // The queue can still shrink between getQueue() and remove() (e.g. TrackPlayer.reset()
-        // from another screen); an out-of-bounds rejection only means the track is already gone
-        if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]).catch(catch_log);
     }
     await on_modify_track_player_queue();
 }
@@ -263,6 +267,23 @@ function pending_track_player_track(track: Track): AddTrack {
     };
 }
 
+// Every structural mutation of the native queue (pushing a pending track, filling in
+// its url, removing a track) is routed through this chain. The native queue is addressed
+// by integer index, so an index read from getQueue() is only valid until the next add()/
+// remove() lands on the native side. Without serialization a background url fetch could
+// resolve, read a track's slot index, and then have a concurrent add() shift everything
+// before its updateTrackUrl() runs — filling the wrong slot and leaving the intended
+// track a url-less pending entry that nothing ever resolves (playback wedges on it).
+// The slow url fetch itself stays OUTSIDE this lock; only the quick index-find + native
+// mutation run inside, so the queue is never blocked on the network.
+let native_queue_mutation_chain: Promise<void> = Promise.resolve();
+async function run_native_queue_mutation<T>(op: () => Promise<T>): Promise<T> {
+    const run = native_queue_mutation_chain.then(op);
+    // Swallow errors for the chain's sake only; the returned promise still rejects for the caller.
+    native_queue_mutation_chain = run.then(() => undefined, () => undefined);
+    return run;
+}
+
 // Index in the native queue of the still-url-less entry for this uid. Matching on
 // "no url yet" keeps duplicate queue entries of the same track from resolving into
 // the same native slot.
@@ -299,24 +320,33 @@ async function resolve_pending_track_url_impl(track: Track): Promise<void> {
         title: track.title,
         result: typeof react_native_track === 'string' ? react_native_track : 'ok',
     });
-    const native_index = await native_queue_index_of_pending(track.uid);
-    // No url-less native entry means the track was deleted while fetching, or was never
-    // actually pending (already has a url) — either way there is nothing to fill in or drop.
-    if (native_index === -1) return;
-    if (react_native_track === 'skip' || react_native_track === 'timeout') {
-        if (react_native_track === 'timeout')
-            GLOBALS.global_var.bottom_alert(`Timed out fetching playback url for "${track.title}"`, "WARN");
-        // Drop the track so the queue keeps moving; if it was active, the native
-        // player advances to the next entry on its own.
-        const global_index = GLOBALS.global_var.playing_tracks.findIndex(t => t.uid === track.uid);
-        if (global_index !== -1) GLOBALS.global_var.playing_tracks.splice(global_index, 1);
-        sabr_content_binding_by_uid.delete(track.uid);
-        await TrackPlayer.remove([native_index]).catch(catch_log);
-        await on_modify_track_player_queue();
-        return;
-    }
-    track.playback!.successful = true;
-    await TrackPlayer.updateTrackUrl(native_index, react_native_track);
+    // The index-find and the native mutation that consumes it must be atomic w.r.t. other
+    // adds/removes, so run them together under the mutation lock (the fetch above already
+    // ran outside it). Otherwise a concurrent add() could shift the queue between the
+    // find and updateTrackUrl, filling the wrong slot.
+    const dropped = await run_native_queue_mutation(async (): Promise<boolean> => {
+        const native_index = await native_queue_index_of_pending(track.uid);
+        // No url-less native entry means the track was deleted while fetching, or was never
+        // actually pending (already has a url) — either way there is nothing to fill in or drop.
+        if (native_index === -1) return false;
+        if (react_native_track === 'skip' || react_native_track === 'timeout') {
+            if (react_native_track === 'timeout')
+                GLOBALS.global_var.bottom_alert(`Timed out fetching playback url for "${track.title}"`, "WARN");
+            // Drop the track so the queue keeps moving; if it was active, the native
+            // player advances to the next entry on its own.
+            const global_index = GLOBALS.global_var.playing_tracks.findIndex(t => t.uid === track.uid);
+            if (global_index !== -1) GLOBALS.global_var.playing_tracks.splice(global_index, 1);
+            sabr_content_binding_by_uid.delete(track.uid);
+            await TrackPlayer.remove([native_index]).catch(catch_log);
+            return true;
+        }
+        track.playback!.successful = true;
+        await TrackPlayer.updateTrackUrl(native_index, react_native_track);
+        return false;
+    });
+    // on_modify_track_player_queue re-enters the mutation lock (it may push the next
+    // pending track), so it has to run after the critical section, not inside it.
+    if (dropped) await on_modify_track_player_queue();
 }
 
 let updated_metadata_mutex = false;
@@ -377,7 +407,7 @@ export async function check_push_next_track(queue_index: number) {
 
     // Push the track natively right away with metadata only — no waiting on the url
     // fetch — so navigating to it is instant. The url resolves in the background.
-    const add_operation = (async () => {
+    const add_operation = run_native_queue_mutation(async () => {
         try {
             await TrackPlayer.add(pending_track_player_track(next_illusi_track), next_track_index);
         } catch (error) {
@@ -385,7 +415,7 @@ export async function check_push_next_track(queue_index: number) {
             GLOBALS.global_var.bottom_alert("Failed to add track to queue", "WARN", { error: error as Error });
             throw error;
         }
-    })();
+    });
     native_add_in_flight.set(next_illusi_track.uid, add_operation);
     try {
         await add_operation;
