@@ -90,6 +90,9 @@ export function hours_of(time: MillOfTime): number {
 export function days_of(time: MillOfTime): number {
     return hours_of(time) / 24;
 }
+export function weeks_of(time: MillOfTime): number {
+    return days_of(time) / 7;
+}
 export function empty_join(vals: any[], join_with: string) {
     return vals.filter(val => !is_empty(val)).join(join_with);
 }
