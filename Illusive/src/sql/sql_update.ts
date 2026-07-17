@@ -275,5 +275,10 @@ export namespace SQLUpdate {
             }
             return true;
         });
+        await update_to("22.0.0", async() => {
+            const playlists = await db.select({ uuid: playlists_table.uuid }).from(playlists_table);
+            await ChangeTracker.log_changes('playlists', 'update', playlists.map(playlist => playlist.uuid));
+            return true;
+        });
     }
 }

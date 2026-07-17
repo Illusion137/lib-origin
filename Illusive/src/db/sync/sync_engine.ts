@@ -25,6 +25,7 @@ import type { Database } from '../database.types';
 import { catch_log } from '@common/utils/error_util';
 import { SQLGlobal } from '../../sql/sql_global';
 import { SQLPlaylists } from '../../sql/sql_playlists';
+import { PlaylistArtwork } from './playlist_artwork';
 
 // ---------------------------------------------------------------------------
 // Push dependency order: tracks must precede playlists_tracks (FK constraint).
@@ -437,6 +438,10 @@ export class SyncEngine {
         const all_playlists = await db.select().from(playlists_table);
         for (let i = 0; i < all_playlists.length; i += PUSH_BATCH_SIZE) {
             const batch = all_playlists.slice(i, i + PUSH_BATCH_SIZE);
+            // Best effort during resync — a failed artwork upload just resyncs
+            // the row with its current (null) artwork_path; the dirty-row push
+            // path retries the upload later.
+            for (const p of batch) await this.ensure_playlist_artwork_uploaded(p);
             const { error } = await this.supabase.from('playlists')
                 .upsert(
                     batch.map(p => ({ ...this.playlist_to_insert(p, user_uid), deleted: p.deleted })),
@@ -649,8 +654,39 @@ export class SyncEngine {
         }
     }
 
+    /**
+     * Lazily upload the playlist's custom artwork before the row is pushed.
+     * artwork_path === null with a non-empty thumbnail_uri means "not uploaded
+     * yet" (freshly-set custom artwork, or a pre-22.0.0 playlist). On success
+     * both artwork_path and thumbnail_uri converge on the content-hash webp
+     * WITHOUT bumping modified_at, so the row doesn't re-dirty itself.
+     */
+    private async ensure_playlist_artwork_uploaded(playlist: LocalPlaylist): Promise<'ok' | 'retry'> {
+        if (playlist.deleted) return 'ok';
+        if (playlist.artwork_path != null) return 'ok';
+        if (!playlist.thumbnail_uri) return 'ok';
+
+        const uploaded = await PlaylistArtwork.upload_playlist_artwork(playlist.thumbnail_uri);
+        if ('error' in uploaded) {
+            console.warn(`[SyncEngine] playlist artwork upload failed ${playlist.uuid}:`, uploaded.error);
+            return 'retry';
+        }
+        await db.update(playlists_table)
+            .set({ artwork_path: uploaded.artwork_path, thumbnail_uri: uploaded.artwork_path })
+            .where(eq(playlists_table.id, playlist.id));
+        playlist.artwork_path = uploaded.artwork_path;
+        playlist.thumbnail_uri = uploaded.artwork_path;
+        return 'ok';
+    }
+
     private async upload_playlist_row(playlist: LocalPlaylist, user_uid: string): Promise<{ outcome: PushResult; reason?: string }> {
         try {
+            // Push the row only once its artwork made it to storage — otherwise
+            // other devices would pull a stale/null artwork_path and clear their
+            // local artwork under last-write-wins.
+            const artwork_outcome = await this.ensure_playlist_artwork_uploaded(playlist);
+            if (artwork_outcome === 'retry') return { outcome: 'retry' };
+
             const row: RemotePlaylistInsert = {
                 ...this.playlist_to_insert(playlist, user_uid),
                 deleted: playlist.deleted,
@@ -1207,7 +1243,7 @@ export class SyncEngine {
 
                 const existing = await db.select().from(playlists_table)
                     .where(eq(playlists_table.uuid, row.uuid)).get();
-                const local = this.remote_playlist_to_local(row, existing?.thumbnail_uri ?? '');
+                const local = await this.remote_playlist_to_local(row, existing);
 
                 if (existing) {
                     await db.update(playlists_table).set(local).where(eq(playlists_table.uuid, row.uuid));
@@ -1380,6 +1416,7 @@ export class SyncEngine {
             inherited_playlists: p.inherited_playlists,
             inherited_searchs: p.inherited_searchs,
             linked_playlists: p.linked_playlists,
+            artwork_path: p.artwork_path,
             deleted: false,
             created_at: safe_to_iso(p.created_at),
             modified_at: safe_to_iso(p.modified_at),
@@ -1466,10 +1503,40 @@ export class SyncEngine {
         };
     }
 
-    private remote_playlist_to_local(
+    /**
+     * Artwork is last-write-wins keyed on artwork_path (a content hash, so
+     * equality means identical bytes):
+     *   - unchanged  → keep the local thumbnail as-is.
+     *   - changed    → download the new webp into the custom-thumbnail dir
+     *                  (skipped when the hash-named file already exists);
+     *                  on download failure keep the previous artwork so the
+     *                  playlist never loses its visible thumbnail.
+     *   - now null   → remote removed the artwork; clear the local one.
+     */
+    private async remote_playlist_artwork_fields(
+        remote_artwork_path: string | null,
+        existing: LocalPlaylist | undefined,
+    ): Promise<Pick<LocalPlaylist, 'thumbnail_uri' | 'artwork_path'>> {
+        const existing_fields = {
+            thumbnail_uri: existing?.thumbnail_uri ?? '',
+            artwork_path: existing?.artwork_path ?? null,
+        };
+        if (remote_artwork_path === existing_fields.artwork_path) return existing_fields;
+        if (remote_artwork_path === null) return { thumbnail_uri: '', artwork_path: null };
+
+        const downloaded = await PlaylistArtwork.download_playlist_artwork(remote_artwork_path);
+        if ('error' in downloaded) {
+            console.warn(`[SyncEngine] playlist artwork download failed ${remote_artwork_path}:`, downloaded.error);
+            return existing_fields;
+        }
+        return { thumbnail_uri: downloaded.thumbnail_uri, artwork_path: remote_artwork_path };
+    }
+
+    private async remote_playlist_to_local(
         row: Database['public']['Tables']['playlists']['Row'],
-        existing_thumbnail_uri: string,
-    ): Omit<LocalPlaylist, 'id'> {
+        existing: LocalPlaylist | undefined,
+    ): Promise<Omit<LocalPlaylist, 'id'>> {
+        const artwork_fields = await this.remote_playlist_artwork_fields(row.artwork_path, existing);
         return {
             uuid: row.uuid,
             title: row.title,
@@ -1482,7 +1549,8 @@ export class SyncEngine {
             inherited_playlists: row.inherited_playlists,
             inherited_searchs: row.inherited_searchs,
             linked_playlists: row.linked_playlists,
-            thumbnail_uri: existing_thumbnail_uri,
+            thumbnail_uri: artwork_fields.thumbnail_uri,
+            artwork_path: artwork_fields.artwork_path,
             deleted: false,
             date: row.created_at,
             created_at: safe_to_epoch(row.created_at),

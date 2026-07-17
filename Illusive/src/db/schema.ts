@@ -61,6 +61,7 @@ const playlists_config = {
     pinned: int({mode: 'boolean'}).notNull().default(false),
     archived: int({mode: 'boolean'}).notNull().default(false),
     thumbnail_uri: text().notNull().default(""),
+    artwork_path: text(),
     sort: text().notNull().$type<SortType>().default("OLDEST"),
     public: int({mode: 'boolean'}).notNull().default(false),
     public_uuid: text().notNull().$defaultFn(gen_uuid),

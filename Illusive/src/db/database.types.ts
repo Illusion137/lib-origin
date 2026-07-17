@@ -65,6 +65,7 @@ export interface Database {
       playlists: {
         Row: {
           archived: boolean
+          artwork_path: string | null
           created_at: string
           deleted: boolean
           description: string
@@ -83,6 +84,7 @@ export interface Database {
         }
         Insert: {
           archived?: boolean
+          artwork_path?: string | null
           created_at?: string
           deleted?: boolean
           description?: string
@@ -101,6 +103,7 @@ export interface Database {
         }
         Update: {
           archived?: boolean
+          artwork_path?: string | null
           created_at?: string
           deleted?: boolean
           description?: string

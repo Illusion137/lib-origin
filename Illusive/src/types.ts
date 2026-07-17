@@ -277,6 +277,7 @@ interface Basic_Playlist<T, U, V, X> {
     pinned?: boolean
     archived?: boolean
     thumbnail_uri?: string
+    artwork_path?: string | null
     sort?: SortType
     public?: boolean
     public_uuid?: string

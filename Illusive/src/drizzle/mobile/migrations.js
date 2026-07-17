@@ -12,6 +12,7 @@ import m0007 from './0007_rapid_loa.sql';
 import m0008 from './0008_glorious_dirty_row.sql';
 import m0009 from './0009_audiobook_sort_index.sql';
 import m0010 from './0010_perf_indexes.sql';
+import m0011 from './0011_playlist_artwork_path.sql';
 
   export default {
     journal,
@@ -26,6 +27,7 @@ m0006,
 m0007,
 m0008,
 m0009,
-m0010
+m0010,
+m0011
     }
   }

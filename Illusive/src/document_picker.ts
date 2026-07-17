@@ -25,6 +25,7 @@ export async function upload_playlist_thumbnail(playlist: Playlist, callback: (p
         const file_name = img.name + img.extension;
         await SQLfs.copy_to_custom_thumbnail_directory(img.uri, file_name);
         playlist.thumbnail_uri = file_name;
+        playlist.artwork_path = null;
         await SQLPlaylists.update_playlist(playlist.uuid, playlist);
         if (callback !== undefined) await callback(playlist);
     } catch (error) {
@@ -44,6 +45,7 @@ export async function upload_playlist_thumbnail_document(playlist: Playlist, cal
         const file_name = img.name + img.extension;
         await SQLfs.copy_to_custom_thumbnail_directory(img.uri, file_name);
         playlist.thumbnail_uri = file_name;
+        playlist.artwork_path = null;
         await SQLPlaylists.update_playlist(playlist.uuid, playlist);
         if (callback !== undefined) await callback(playlist);
     } catch (error) {

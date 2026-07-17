@@ -165,6 +165,11 @@ export namespace Explore {
 			console.warn(generror("Failed to get Illusi public playlists", "MEDIUM", {result}));
 			return [];
 		}
-		return result.map(playlist => ({ title: { name: playlist.title, uri: create_uri("illusi", playlist.uuid) }, artist: [{ name: "Sumi!", uri: null }], artwork_index: 0 }));
+		return result.map(playlist => ({
+			title: { name: playlist.title, uri: create_uri("illusi", playlist.uuid) },
+			artist: [{ name: "Sumi!", uri: null }],
+			artwork_url: playlist.artwork_path ? Origin.Illusi.artwork_public_url(playlist.artwork_path) : undefined,
+			artwork_index: 0
+		}));
 	}
 }

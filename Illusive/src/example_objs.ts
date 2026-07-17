@@ -53,6 +53,7 @@ export namespace ExampleObj {
         pinned: false,
         archived: false,
         thumbnail_uri: "",
+        artwork_path: null,
         sort: "NEWEST",
         public: false,
         public_uuid: "",
