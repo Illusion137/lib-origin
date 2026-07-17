@@ -24,6 +24,8 @@ export namespace FutsalShuffle {
         icache.plays_from_artist.clear();
         icache.plays_in_past_month.clear();
 
+        
+
         GLOBALS.global_var.sql_tracks.forEach(track => {
             if (track.album?.uri)
                 icache.plays_from_albums.set(track.album.uri, (icache.plays_from_albums.get(track.album.uri) ?? 0) + (track.meta?.plays ?? 0));
@@ -67,8 +69,8 @@ export namespace FutsalShuffle {
 
     function get_raw_bias_factors(track: Track): RawBiasFactors {
         return {
-            too_long_duration: track.duration > too_long_duration ? Math.log2(track.duration - too_long_duration) : 0,
-            too_short_duration: track.duration < too_short_duration ? Math.log2(too_short_duration - track.duration) : 0,
+            too_long_duration: track.duration > too_long_duration ? Math.log2(Math.max(track.duration - too_long_duration, 1)) : 0,
+            too_short_duration: track.duration < too_short_duration ? Math.log2(Math.max(too_short_duration - track.duration, 1)) : 0,
             explicit: track.explicit !== "EXPLICIT" ? 0 : boolean_weight,
             no_explicit: track.explicit === "EXPLICIT" ? 0 : boolean_weight,
             has_lyrics_dl: is_empty(track.lyrics_uri) ? 0 : boolean_weight,
