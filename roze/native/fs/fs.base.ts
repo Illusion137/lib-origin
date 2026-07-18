@@ -34,7 +34,8 @@ export interface ResumableDownload {
 export interface FileSystem {
 	temp_directory: (...paths: string[]) => Promise<string>;
 	document_directory: (...paths: string[]) => Promise<string>;
-	read_as_string: (path: string, opts: EncodingOpts) => Promise<string | ResponseError>;
+	read_as_string: (path: string, opts: EncodingOpts) => PromiseResult<string>;
+	read_as_buffer: (path: string) => PromiseResult<ArrayBuffer >;
 	read_directory: (path: string) => Promise<string[] | ResponseError>;
 	get_info: (path: string) => Promise<FileInfo>;
 	write_file_as_string: (path: string, contents: string, opts: EncodingOpts) => PromiseResult<undefined>;

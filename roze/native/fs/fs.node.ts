@@ -19,6 +19,13 @@ export const node_fs: FileSystem = {
 			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path, opts });
 		}
 	},
+	read_as_buffer: async (path: string) => {
+		try {
+			return (await fs.readFile(path)).buffer;
+		} catch (error) {
+			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
+		}
+	},
 	read_directory: async (path: string) => {
 		try {
 			return await fs.readdir(path);
