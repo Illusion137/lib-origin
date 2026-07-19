@@ -64,7 +64,8 @@ function get_or_start_track(video_id: string): TrackBuffer {
                         real_token_applied = true;
                         try {
                             const refreshed = await YouTubeDL.fetch_potoken(sabr_info.content_binding);
-                            sabr_stream.setPoToken(refreshed);
+                            if ("error" in refreshed) throw refreshed.error;
+                            sabr_stream.setPoToken(refreshed.po_token);
                         } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
                     } 
                 }
@@ -81,7 +82,7 @@ function get_or_start_track(video_id: string): TrackBuffer {
                 } catch (e) { console.error('[SABR] Failed to reload player response:', e); }
             });
 
-            sabr_stream.on('abort', (e: any) => console.error('[SABR] error:', e));
+            sabr_stream.on('abort', () => console.error('[SABR] aborted'));
 
             const { audioStream: audio_stream, selectedFormats: selected_formats } = await sabr_stream.start({
                 enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,

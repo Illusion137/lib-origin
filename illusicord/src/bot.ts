@@ -13,6 +13,7 @@ const player = new Player(client, {
     deafenOnJoin: true,
     leaveOnStop: true,
     leaveOnEmpty: true, // This options are optional.
+    useCookies: false
 });
 client.player = player;
 

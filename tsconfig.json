@@ -38,9 +38,9 @@
             "@admin/*": ["./admin/*"],
             "@sample/*": ["./sample/*"],
             "react-native-shumil": ["./node_modules/react-native-shumil/src/index.ts"],
-            "googlevideo/sabr-stream": ["./node_modules/googlevideo/dist/src/exports/sabr-stream.js"],
-            "googlevideo/utils": ["./node_modules/googlevideo/dist/src/exports/utils.js"],
-            "googlevideo/protos": ["./node_modules/googlevideo/dist/src/exports/protos.js"],
+            "googlevideo/sabr-stream": ["./node_modules/googlevideo/dist/src/exports/sabr-stream"],
+            "googlevideo/utils": ["./node_modules/googlevideo/dist/src/exports/utils"],
+            "googlevideo/protos": ["./node_modules/googlevideo/dist/src/exports/protos"],
         }
     },
     "ts-node": {

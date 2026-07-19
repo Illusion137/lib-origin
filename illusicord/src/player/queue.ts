@@ -15,6 +15,9 @@ import { EnabledTrackTypes } from 'googlevideo/utils';
 import { Readable } from 'stream';
 import { YouTubeDL } from "@origin/youtube_dl";
 
+interface PreparedStream { stream_input: Readable | string; input_type: StreamType };
+type DownloadUrlResult = Awaited<ReturnType<typeof Illusive.get_download_url>>;
+
 export class Queue<T = unknown> {
     player: Player;
     guild: Guild;
@@ -25,6 +28,8 @@ export class Queue<T = unknown> {
     options: PlayerOptions;
     repeat_mode: RepeatMode;
     destroyed: boolean;
+    // Keyed by track object identity so entries drop out once a track leaves the queue.
+    private readonly preloaded_tracks: WeakMap<DiscordTrack, Promise<PreparedStream | null>>;
 
     constructor(player: Player, guild: Guild, options: PlayerOptions) {
         this.tracks = [];
@@ -32,6 +37,7 @@ export class Queue<T = unknown> {
         this.options = Constants.DEFAULT_PLAYER_OPTIONS;
         this.repeat_mode = RepeatMode.DISABLED;
         this.destroyed = false;
+        this.preloaded_tracks = new WeakMap();
         this.player = player;
         this.guild = guild;
         this.options = { ...Constants.DEFAULT_PLAYER_OPTIONS, ...options };
@@ -92,6 +98,7 @@ export class Queue<T = unknown> {
             this.is_playing = true;
             if (resource?.metadata?.discord_playback_data.is_first && resource?.metadata?.discord_playback_data.seek_time === 0)
                 this.player.emit('songFirst', this, this.now_playing);
+            this.preload_track(this.tracks[1]);
         })
         .on('end', async (_) => {
             if (this.destroyed) {
@@ -147,13 +154,17 @@ export class Queue<T = unknown> {
             this.player.emit('songAdd', this, play_track);
             return play_track;
         }
-        else if (!opts?.immediate) {                                   
+        else if (!opts?.immediate) {
             play_track.discord_playback_data.is_first = true;
             if (opts.index && opts?.index >= 0 && ++opts.index <= queue_size)
                 this.tracks.splice(opts.index, 0, play_track);
             else
                 this.tracks.push(play_track);
             this.player.emit('songAdd', this, play_track);
+            // If this track just became "up next" on an already-playing queue, the
+            // 'start' event won't fire again to trigger preloading, so kick it off here.
+            if (this.is_playing && this.tracks.length === 2)
+                this.preload_track(this.tracks[1]);
         }
         else if (opts.seek)
             this.tracks[0].discord_playback_data.seek_time = opts.seek;
@@ -162,75 +173,29 @@ export class Queue<T = unknown> {
             opts.seek = play_track.discord_playback_data.seek_time;
 
         if(opts?.immediate === true || queue_size === 0){
-            if(!play_track) return; 
-            const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string, undefined, true);
-            if("error" in download_url){
-                console.error(download_url);
-            }
-            const origin_dir = process.env.LORIGIN ?? "/lib-origin";
+            if(!play_track) return;
 
-            let stream_input: Readable | string;
-            let input_type: StreamType;
-
-            if (!("error" in download_url) && download_url.isSabr) {
-                const sabr = new SabrStream({
-                    serverAbrStreamingUrl: download_url.sabrServerUrl,
-                    videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig,
-                    formats: download_url.sabrFormats,
-                    poToken: download_url.placeholder_po_token,
-                    clientInfo: download_url.clientInfo,
-                });
-
-                YouTubeDL.fetch_potoken(download_url.content_binding!).then(result => {
-                    if("error" in result) throw result.error;
-                    sabr.setPoToken(result.po_token);
-                }).catch(catch_log);
-
-                let real_token_applied = false;
-                sabr.on('streamProtectionStatusUpdate', async (status: any) => {
-                    // console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
-                    if (status.status === 2) {
-                        if (!real_token_applied) {
-                            real_token_applied = true;
-                            try {
-                                const refreshed = await YouTubeDL.fetch_potoken(download_url.content_binding!);
-                                sabr.setPoToken(refreshed);
-                            } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-                        } 
-                    }
-                });
-
-                sabr.on('reloadPlayerResponse', async (ctx: any) => {
-                    if (!download_url.on_reload_player_response) return;
-                    try {
-                        const updated = await download_url.on_reload_player_response(ctx);
-                        if (updated) {
-                            sabr.setStreamingURL(updated.sabrServerUrl);
-                            sabr.setUstreamerConfig(updated.sabrUstreamerConfig);
-                        }
-                    } catch (e) { console.error('[SABR] Failed to reload player response:', e); }
-                });
-
-                sabr.on('error', (e: any) => console.error('[SABR] error:', e));
-
-                const { audioStream } = await sabr.start({
-                    enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
-                    preferOpus: true,
-                });
-
-                stream_input = Readable.fromWeb(audioStream as any);
-                input_type = StreamType.WebmOpus;
-            } else if ("error" in download_url) {
-                stream_input = path.join(origin_dir, "/illusicord/media/5-seconds-of-silence.mp3");
-                input_type = StreamType.Arbitrary;
-            } else {
-                stream_input = download_url.url.replace(IllusiveConstants.media_archive_path, '');
-                input_type = StreamType.Arbitrary;
+            let prepared: PreparedStream | null = null;
+            // A seek re-fetches from a specific offset, so a from-the-start preload can't be reused.
+            if (!opts.seek) {
+                const preload = this.preloaded_tracks.get(play_track);
+                if (preload) {
+                    this.preloaded_tracks.delete(play_track);
+                    prepared = await preload;
+                }
             }
 
-            const resource = this.connection.create_audio_stream(stream_input, {
+            if (!prepared) {
+                const download_url = await Illusive.get_download_url("", play_track, (this.options.yt_quality ?? "18") as string, undefined, true);
+                if ("error" in download_url) {
+                    console.error(download_url);
+                }
+                prepared = await this.prepare_stream(download_url);
+            }
+
+            const resource = this.connection.create_audio_stream(prepared.stream_input, {
                 metadata: play_track,
-                inputType: input_type,
+                inputType: prepared.input_type,
             });
             this.connection
                 .play_audio_stream(resource)
@@ -239,6 +204,90 @@ export class Queue<T = unknown> {
             return play_track;
         }
         return play_track;
+    }
+
+    private async prepare_stream(download_url: DownloadUrlResult): Promise<PreparedStream> {
+        const origin_dir = process.env.LORIGIN ?? "/lib-origin";
+
+        if (!("error" in download_url) && download_url.isSabr) {
+            const sabr = new SabrStream({
+                serverAbrStreamingUrl: download_url.sabrServerUrl,
+                videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig,
+                formats: download_url.sabrFormats,
+                poToken: download_url.placeholder_po_token,
+                clientInfo: download_url.clientInfo,
+            });
+
+            YouTubeDL.fetch_potoken(download_url.content_binding!).then(result => {
+                if ("error" in result) throw result.error;
+                sabr.setPoToken(result.po_token);
+            }).catch(catch_log);
+
+            let real_token_applied = false;
+            sabr.on('streamProtectionStatusUpdate', async (status: any) => {
+                // console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
+                if (status.status === 2) {
+                    if (!real_token_applied) {
+                        real_token_applied = true;
+                        try {
+                            const refreshed = await YouTubeDL.fetch_potoken(download_url.content_binding!);
+                            if ("error" in refreshed) throw refreshed.error;
+                            sabr.setPoToken(refreshed.po_token);
+                        } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
+                    }
+                }
+            });
+
+            sabr.on('reloadPlayerResponse', async (ctx: any) => {
+                console.log('reloading?', ctx);
+                if (!download_url.on_reload_player_response) return;
+                try {
+                    const updated = await download_url.on_reload_player_response(ctx);
+                    if (updated) {
+                        sabr.setStreamingURL(updated.sabrServerUrl);
+                        sabr.setUstreamerConfig(updated.sabrUstreamerConfig);
+                    }
+                } catch (e) { console.error('[SABR] Failed to reload player response:', e); }
+            });
+
+            sabr.on('abort', () => console.error('[SABR] aborted'));
+
+            const { audioStream } = await sabr.start({
+                enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
+                preferOpus: true,
+            });
+
+            return { stream_input: Readable.fromWeb(audioStream as any), input_type: StreamType.WebmOpus };
+        } else if ("error" in download_url) {
+            return {
+                stream_input: path.join(origin_dir, "/illusicord/media/5-seconds-of-silence.mp3"),
+                input_type: StreamType.Arbitrary,
+            };
+        } else {
+            return {
+                stream_input: download_url.url.replace(IllusiveConstants.media_archive_path, ''),
+                input_type: StreamType.Arbitrary,
+            };
+        }
+    }
+
+    /**
+     * Warms up the next track ahead of time if it's a YouTube (SABR) source, since
+     * `sabr.start()` has a multi-second delay before audio is actually available.
+     */
+    private preload_track(track?: DiscordTrack) {
+        if (!track || this.destroyed || !track.youtube_id || this.preloaded_tracks.has(track))
+            return;
+        const promise = (async (): Promise<PreparedStream | null> => {
+            const download_url = await Illusive.get_download_url("", track, (this.options.yt_quality ?? "18") as string, undefined, true);
+            if ("error" in download_url || !download_url.isSabr)
+                return null;
+            return await this.prepare_stream(download_url);
+        })().catch((err) => {
+            console.error('[Preload] failed to preload track:', err);
+            return null;
+        });
+        this.preloaded_tracks.set(track, promise);
     }
 
     async seek(time: number) {
@@ -264,8 +313,11 @@ export class Queue<T = unknown> {
             throw new DMPError(DMPErrors.QUEUE_DESTROYED);
         if (!this.connection)
             throw new DMPError(DMPErrors.NO_VOICE_CONNECTION);
-        this.tracks.splice(index, 1);
-        const skipped_song = this.tracks[0];
+        // The connection's 'end' handler (fired by connection.stop()) already
+        // shifts the current track off the queue and advances to the next one.
+        // Splicing here too used to remove two tracks per skip, which emptied
+        // the queue (and fired queueEnd) after a single skip.
+        const skipped_song = this.tracks[index + 1];
         this.connection.stop();
         return skipped_song;
     }

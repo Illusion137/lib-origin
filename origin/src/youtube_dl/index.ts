@@ -29,8 +29,13 @@ Platform.shim.eval = async (data: Types.BuildScriptResult, _: Record<string, Typ
 export namespace YouTubeDL {
     export interface Chapter { title: string, start_time: number };
     let innertube_client: Innertube;
+    let preloaded_cookies: string | undefined;
 
-    export async function get_innertube_client(client_type?: ClientType): Promise<Innertube> {
+    export function preload_cookies(cookie?: string){
+        preloaded_cookies = cookie ?? process ? process?.env?.YOUTUBE_COOKIE_JAR : undefined;
+    }
+
+    export async function get_innertube_client(client_type?: ClientType, cookie?: string): Promise<Innertube> {
         Log.setLevel(Log.Level.NONE);
         if (innertube_client) return innertube_client;
         await load_native_fs();
@@ -38,7 +43,8 @@ export namespace YouTubeDL {
         await load_native_jseval();
         innertube_client = await Innertube.create({
             client_type: client_type,
-            cache: new RCache(true, await fs().temp_directory())
+            cache: new RCache(true, await fs().temp_directory()),
+            cookie: preloaded_cookies ?? cookie
         });
         return innertube_client;
     }

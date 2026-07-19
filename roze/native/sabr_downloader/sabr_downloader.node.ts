@@ -53,7 +53,8 @@ export const node_sabr_downloader: SabrDownloader = {
 					real_token_applied = true;
 					try {
 						const refreshed = await YouTubeDL.fetch_potoken(params.content_binding);
-						sabr_stream.setPoToken(refreshed);
+						if ("error" in refreshed) throw refreshed.error;
+						sabr_stream.setPoToken(refreshed.po_token);
 					} catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
 				} 
 			}
@@ -70,7 +71,7 @@ export const node_sabr_downloader: SabrDownloader = {
 			} catch (e) { console.error('[SABR] Failed to reload player response:', e); }
 		});
 
-		sabr_stream.on('error', (e: any) => console.log('[SABR] error:', e));
+		sabr_stream.on('abort', () => console.log('[SABR] aborted'));
 		// try logging ALL events if SabrStream extends EventEmitter:
 
 		const { audioStream, selectedFormats } = await sabr_stream.start({

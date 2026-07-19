@@ -5,6 +5,7 @@ import EventEmitter from "events";
 import { Queue } from "@illusicord/player/queue";
 import { DMPError, DMPErrors } from "@illusicord/player/dmp_error";
 import { Constants } from "@illusicord/constants";
+import { YouTubeDL } from "@origin/youtube_dl";
 
 export class Player<OptionsData = any> extends EventEmitter {
     client: Client;
@@ -21,6 +22,7 @@ export class Player<OptionsData = any> extends EventEmitter {
         this.client.on('voiceStateUpdate', (old_state, new_state) => {
             this.voice_update(old_state, new_state);
         });
+        if(this.options.useCookies) YouTubeDL.preload_cookies();
     }
 
     create_queue<D extends OptionsData>(guild_id: Snowflake, options: PlayerOptions&{data?: D} = this.options): Queue<D> {
