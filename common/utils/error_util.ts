@@ -22,7 +22,7 @@ export function args_prettystring(args: object, indent = 2) {
     str += '}'
     return str;
 }
-function is_error_instance(e: unknown) {
+function is_error_instance(e: unknown): e is Error {
     return e instanceof Error;
 }
 export function is_timeout_error(e: unknown) {

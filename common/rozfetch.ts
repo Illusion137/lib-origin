@@ -50,7 +50,7 @@ const cache_file_extension = ".che";
 const rozfetch_cache = new ItemTimedCache<string, ResponseError | RoZFetchResponse<unknown>>();
 
 export function rozfetch_cache_key(input: string, init?: RoZFetchRequestInit): string {
-	if (init?.cache_opts?.cache_on ?? "url" === "url") {
+	if ((init?.cache_opts?.cache_on ?? "url") === "url") {
 		return MD5(input).toString();
 	}
 	else return MD5(input + JSON.stringify(init)).toString();
