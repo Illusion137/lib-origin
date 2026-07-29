@@ -101,7 +101,7 @@ export const node_sabr_downloader: SabrDownloader = {
 					}
 					write_stream.write(value, (err) => {
 						if (err) {
-							reader.cancel();
+							reader.cancel().catch(catch_log);
 							write_stream.destroy(err);
 							reject(err);
 							return;

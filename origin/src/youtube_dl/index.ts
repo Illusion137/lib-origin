@@ -194,7 +194,7 @@ export namespace YouTubeDL {
         if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "LOW", { video_id, player_response });
 
         const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+             
             .map((f: any) => buildSabrFormat(f));
 
         const ctx = client.session.context.client;

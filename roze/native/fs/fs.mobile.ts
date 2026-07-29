@@ -24,7 +24,8 @@ export const mobile_fs: FileSystem = {
 	read_as_buffer: async (path: string) => {
 		try {
 			const base64 = await expo_fs.readAsStringAsync(path, {encoding: "base64"});
-			const uint8_array = Uint8Array.fromBase64(base64);
+			// TODO only very temporary fix
+			const uint8_array = (Uint8Array as any).fromBase64(base64);
 			return uint8_array.buffer as ArrayBuffer;
 		} catch (error) {
 			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
