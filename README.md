@@ -5,7 +5,15 @@
 
 Lib-Origin a internal general purpose TypeScript utility library and a web-scaping, data-extracting library. There are several utilities for bridging the native gap between Node.js and React Native through _Roze_. Illusive is built as both a library for extracting music data, but also as a backend to my React Native music app _Illusi_. _Roze_, more than just the native bridge, also is a backend to a audiobook generation app, similarly named [Roze](https://github.com/Illusion137/Roze).
 
-# Library Installation
+# Installation for testing, and tool usage
+```bash
+# dev branch prefered
+git clone https://github.com/Illusion137/lib-origin/tree/dev
+cd lib-origin
+yarn
+```
+
+# Library Installation (If you want to use this as a library)
 
 Note that this library is not on NPM, thus you'll have to likely make a script to pull the library manually. This is assuming you have set a path variable for _lib-origin_ with the variable `$LORIGIN`
 
