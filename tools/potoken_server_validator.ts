@@ -18,11 +18,11 @@ const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/y
 
 interface PoToken {po_token: string, placeholder_po_token: string};
 
-// TODO fix this whole thing up; use custom downloader instead of main downloader
-async function download(video_id: string, _po_token: PoToken){
+async function download(video_id: string, po_token: PoToken){
     await load_native_potoken();
     await load_native_sabr_downloader();
 
+    YouTubeDL.inject_potoken(video_id, po_token.po_token);
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
         async () => await YouTubeDL.resolve_sabr_info(video_id)
@@ -31,6 +31,7 @@ async function download(video_id: string, _po_token: PoToken){
         console.error(red("FAILED TO RESOLVE SABR URL"), sabr_params.error);
         return;
     }
+    sabr_params.placeholder_po_token = po_token.placeholder_po_token;
 
     const title = video_id.replace(/[^a-zA-Z0-9]/g, '_');
     const output_path = path.join(output_folder, `${gen_uuid()}_${title}.m4a`);
@@ -62,6 +63,7 @@ async function download(video_id: string, _po_token: PoToken){
             sabrFormats,
             clientInfo: sabr_params.clientInfo,
             cookie: sabr_params.cookie,
+            placeholder_po_token: sabr_params.placeholder_po_token
         },
         output_path,
         (progress) => progress_bar.update(Math.floor(progress * 100))
