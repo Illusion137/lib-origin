@@ -3,10 +3,8 @@ import fs_sync from "fs";
 import os from "os";
 import path_lib from "path";
 import { gen_uuid } from "@common/utils/util";
-import { Readable } from "stream";
 import type { FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import type { ReadableStream } from "stream/web";
-import { finished } from "stream/promises";
 import { generror_catch } from "@common/utils/error_util";
 
 export const node_fs: FileSystem = {
@@ -97,10 +95,17 @@ export const node_fs: FileSystem = {
 				throw new Error(`Failed to download file: ${response.statusText}`);
 			}
 
-			const body = Readable.fromWeb(response.body as ReadableStream);
+			// Read via the web-stream reader instead of Readable.fromWeb — in an
+			// Electron renderer fetch returns Blink's ReadableStream, which node's
+			// fromWeb rejects with ERR_INVALID_ARG_TYPE.
+			const reader = (response.body as ReadableStream<Uint8Array>).getReader();
 			const file_stream = fs_sync.createWriteStream(to_path);
-
-			await finished(body.pipe(file_stream));
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				if (!file_stream.write(value)) await new Promise((resolve) => file_stream.once("drain", resolve));
+			}
+			await new Promise<void>((resolve, reject) => file_stream.end(() => resolve()).once("error", reject));
 			return to_path;
 		} catch (error) {
 			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });

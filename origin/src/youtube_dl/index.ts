@@ -123,6 +123,13 @@ export namespace YouTubeDL {
         return await sent_token;
     }
 
+    export function inject_potoken(content_binding: string, po_token: string) {
+        content_binding_status_map[content_binding] = ["recieved", {
+            identifier: content_binding,
+            po_token
+        }];
+    }
+
     export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
         const watch_endpoint = new YTNodes.NavigationEndpoint({ watchEndpoint: { videoId } });
 
@@ -144,6 +151,12 @@ export namespace YouTubeDL {
         }
 
         return await watch_endpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
+    }
+
+    export async function get_streaming_data(video_id: string) {
+        const client = await get_innertube_client();
+        const player = await make_player_request(client, video_id);
+        return { streaming_data: player.streaming_data, placeholder_token: generate_placeholder_potoken(video_id) };
     }
 
     function generate_placeholder_potoken(content_binding: string){
