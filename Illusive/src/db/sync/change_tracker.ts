@@ -77,7 +77,7 @@ export class ChangeTracker {
             for (const id of ids) await ChangeTracker.log_change(table_name, operation, id, undefined);
             return;
         }
-        db.$client.flushPendingReactiveQueries();
+        db.$client.flushPendingReactiveQueries?.();
         ChangeTracker.on_change_callback?.();
     }
 
@@ -160,7 +160,7 @@ export class ChangeTracker {
                 break;
             }
         }
-        db.$client.flushPendingReactiveQueries();
+        db.$client.flushPendingReactiveQueries?.();
         ChangeTracker.on_change_callback?.();
     }
 }

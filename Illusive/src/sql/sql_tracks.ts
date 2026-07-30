@@ -9,6 +9,7 @@ import { Illusive } from "@illusive/illusive";
 import { all_track_ids, track_exists, track_primary_key } from "@illusive/illusive_utils";
 import { force_json_parse, force_json_parse_array } from "@common/utils/parse_util";
 import { sqlite } from "@native/sqlite/sqlite";
+import { get_native_platform } from "@native/native_mode";
 import { clean_album_title } from "@illusive/parsers/apple_music_parser";
 import { Prefs } from "@illusive/prefs";
 import type { ISOString, NamedUUID, OnErrorCallback, Promises, Track, TrackMetaData } from "@illusive/types";
@@ -276,7 +277,8 @@ export namespace SQLTracks {
         }
     }
     export async function fetch_track_data() {
-        const raw_rows = await sqlite().wrap_client(db.$client).execute_async("SELECT * FROM tracks WHERE deleted = 0");
+        const imported_filter = get_native_platform() === "NODE" ? " AND imported_id = ''" : "";
+        const raw_rows = await sqlite().wrap_client(db.$client).execute_async(`SELECT * FROM tracks WHERE deleted = 0${imported_filter} ORDER BY json_extract(meta, '$.added_date') ASC, id ASC`);
         const document_directory = SQLfs.document_directory("");
         const tracks: Track[] = [];
         for (const row of raw_rows) {
@@ -416,7 +418,6 @@ export namespace SQLTracks {
             }
         }
         await db.update(tracks_table).set({ thumbnail_uri }).where(eq(tracks_table.uid, track.uid));
-        await ChangeTracker.log_change('tracks', 'update', track.uid, { thumbnail_uri });
         SQLGlobal.update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
         SQLGlobal.update_global_track_property(track.uid, 'playback', { ...track.playback!, artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track) });
         return track.uid + ext;
@@ -429,10 +430,6 @@ export namespace SQLTracks {
         for (const file of files)
             promises.push(SQLfs.delete_item(SQLfs.thumbnail_directory(file)))
 
-        const tracks_to_update = await db.select({ uid: tracks_table.uid }).from(tracks_table).where(and(eq(tracks_table.deleted, false), eq(tracks_table.thumbnail_uri, "")));
-        for (const track of tracks_to_update) {
-            await ChangeTracker.log_change('tracks', 'update', track.uid, { thumbnail_uri: "" });
-        }
         await db.update(tracks_table).set({ thumbnail_uri: "" });
         await Promise.all(promises);
         SQLGlobal.update_global_track_all_property('thumbnail_uri', '');
