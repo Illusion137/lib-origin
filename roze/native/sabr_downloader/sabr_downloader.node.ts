@@ -1,6 +1,6 @@
 import { createWriteStream } from "fs";
 import { SabrStream } from "googlevideo/sabr-stream";
-import { EnabledTrackTypes, Logger } from "googlevideo/utils";
+import { EnabledTrackTypes } from "googlevideo/utils";
 import type { ReloadPlaybackContext } from "googlevideo/protos";
 import type { SabrDownloader, SabrDownloadParams } from "./sabr_downloader.base";
 import { YouTubeDL } from "@origin/youtube_dl";
@@ -9,8 +9,7 @@ import { catch_log } from "@common/utils/error_util";
 export const node_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params: SabrDownloadParams, output_path: string, on_progress?: (progress: number) => void) => {
 		const { sabrServerUrl, sabrUstreamerConfig, sabrFormats, placeholder_po_token, clientInfo, cookie } = params;
-		// TODO maybe remove this a tad bit later??
-		Logger.getInstance().setLogLevels(99);
+		// Logger.getInstance().setLogLevels(99);
 
 		const sabr_fetch: typeof fetch = async (input, init) => {
 			const extra_headers: Record<string, string> = {
