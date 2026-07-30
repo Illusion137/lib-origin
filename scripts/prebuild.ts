@@ -3,6 +3,7 @@ import { reinterpret_cast } from "@common/cast";
 import { log_error, log_info } from "@common/log";
 import { TimeLog } from "@common/time_log";
 import { Cookie, CookieJar } from "@common/utils/cookie_util";
+import { Prefs } from "@illusive/prefs";
 import { fs, load_native_fs } from "@native/fs/fs";
 import { spawn } from "child_process";
 import { getCookies, getProfiles } from 'chrome-cookie-decrypt';
@@ -114,6 +115,55 @@ import { reinterpret_cast } from "@common/cast";
     await fs().write_file_as_string("Illusive/src/gen/illusi_playlists_links.ts", text, {});
 }
 
+async function generate_illusive_prefs_themes_css(){
+    log_info("Generating Prefs themes CSS (Tailwind color tokens)...");
+
+    const to_kebab = (key: string) => key
+        .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+        .replace(/_/g, "-")
+        .toLowerCase();
+
+    const color_keys = Object.keys(Prefs.dark_theme.colors) as (keyof Prefs.Theme["colors"])[];
+
+    const theme_tokens = color_keys
+        .map(key => `\t--color-${to_kebab(key)}: var(--${key});`)
+        .join("\n");
+
+    const theme_block = (selector: string, theme: Prefs.Theme) => {
+        const vars = color_keys.map(key => {
+            const value = key === "primary" ? theme.colors.default_primary_color : theme.colors[key];
+            return `\t--${key}: ${value};`;
+        }).join("\n");
+        return `${selector} {\n\tcolor-scheme: ${theme.dark ? "dark" : "light"};\n${vars}\n}`;
+    };
+
+    const default_theme_key = Prefs.prefs.theme.default_value;
+    const blocks = Prefs.all_themes().map(theme_key => {
+        const theme = Prefs.get_theme(theme_key);
+        const selector = theme_key === default_theme_key
+            ? `:root,\n[data-theme="${theme_key}"]`
+            : `[data-theme="${theme_key}"]`;
+        return theme_block(selector, theme);
+    });
+
+    const css = `/*
+ * AUTO-GENERATED DO NOT EDIT.
+ * Regenerate with: yarn build:gen
+ *
+ * Switch themes by setting the <html data-theme="<key>"> attribute.
+ */
+
+@theme inline {
+${theme_tokens}
+}
+
+${blocks.join("\n\n")}
+`;
+
+    await fs().write_file_as_string("Illusive/src/gen/css/themes.css", css, {});
+    log_info("Wrote Illusive/src/gen/css/themes.css");
+}
+
 async function run_tests() {
     log_info("Running Tests...");
     const test_exit_code = await spawn_code("yarn", ["test"]);
@@ -128,9 +178,10 @@ async function prebuild_main() {
         await update_env();
         await genv();
         await generate_illusi_playlists_links();
-        await update_spotify_secrets();
-
-        // await run_tests();
+        await generate_illusive_prefs_themes_css();
+        
+        update_spotify_secrets;
+        run_tests;
     }
     catch (e) {
         log_error(reinterpret_cast<Error>(e).message);
