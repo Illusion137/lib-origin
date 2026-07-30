@@ -9,7 +9,7 @@ import {
     sync_metadata_table,
     tracks_table,
 } from '../schema';
-import { and, asc, eq, gt, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import type {
     LocalPlaylist,
     LocalPlaylistTrack,
@@ -313,6 +313,36 @@ export class SyncEngine {
     // destroy_generation is used to cancel inflight initialize() calls after destroy().
     private destroy_generation = 0;
 
+    // ---------------------------------------------------------------------
+    // Pull-echo suppression. Rows applied from remote carry fresh modified_at
+    // values that look locally dirty to the push watermark, so without this
+    // every pulled row gets upserted straight back to the server it just came
+    // from. Remember exactly what the pull wrote — a dirty row whose
+    // modified_at still matches was last touched by the pull and is skipped;
+    // any real local edit bumps modified_at and breaks the match. In-memory
+    // only: after a restart the next push re-upserts at most one backlog of
+    // pull-applied rows (idempotent) and converges.
+    // ---------------------------------------------------------------------
+    private readonly pull_applied_upserts: Record<SyncableLocalTableName, Map<string, number>> = {
+        tracks: new Map(), playlists: new Map(), playlists_tracks: new Map(),
+    };
+    private readonly pull_applied_deletes: Record<SyncableLocalTableName, Set<string>> = {
+        tracks: new Set(), playlists: new Set(), playlists_tracks: new Set(),
+    };
+
+    private record_pull_upsert(table_name: SyncableLocalTableName, record_id: string, modified_at: number) {
+        this.pull_applied_upserts[table_name].set(record_id, modified_at);
+    }
+    private record_pull_delete(table_name: SyncableLocalTableName, record_id: string) {
+        this.pull_applied_deletes[table_name].add(record_id);
+    }
+    private is_pull_echo(table_name: SyncableLocalTableName, record_id: string, modified_at: number): boolean {
+        return this.pull_applied_upserts[table_name].get(record_id) === modified_at;
+    }
+    private is_pull_echo_delete(table_name: string, record_id: string): boolean {
+        return this.pull_applied_deletes[table_name as SyncableLocalTableName]?.has(record_id) ?? false;
+    }
+
     async sync() {
         if (this.is_syncing || this.is_destroyed) return;
         this.last_sync_started_at = Date.now();
@@ -365,6 +395,28 @@ export class SyncEngine {
                     set: { last_sync_at: now, last_pushed_at: now, last_modified_at: now },
                 });
         }
+    }
+
+    /**
+     * Advance push watermarks past everything currently local, without touching
+     * pull watermarks. For after an initial full pull into an empty database:
+     * the pulled rows carry server modified_at timestamps newer than the push
+     * watermark, so without this the whole library gets re-pushed to the place
+     * it just came from. Capped at client-now so rows stamped by a server clock
+     * running ahead stay dirty (harmless idempotent re-push) rather than local
+     * edits made in the skew window being skipped.
+     */
+    async mark_all_tables_pushed() {
+        const now = Date.now();
+        const newest_tracks = await db.select({ modified_at: tracks_table.modified_at })
+            .from(tracks_table).orderBy(desc(tracks_table.modified_at)).limit(1).get();
+        const newest_playlists = await db.select({ modified_at: playlists_table.modified_at })
+            .from(playlists_table).orderBy(desc(playlists_table.modified_at)).limit(1).get();
+        const newest_playlists_tracks = await db.select({ modified_at: playlists_tracks_table.modified_at })
+            .from(playlists_tracks_table).orderBy(desc(playlists_tracks_table.modified_at)).limit(1).get();
+        await this.save_push_watermark('tracks', Math.min(newest_tracks?.modified_at ?? 0, now));
+        await this.save_push_watermark('playlists', Math.min(newest_playlists?.modified_at ?? 0, now));
+        await this.save_push_watermark('playlists_tracks', Math.min(newest_playlists_tracks?.modified_at ?? 0, now));
     }
 
     async get_sync_diagnostics() {
@@ -520,32 +572,95 @@ export class SyncEngine {
     }
 
     private async push_dirty_tracks(user_uid: string) {
-        const last_pushed_at = await this.get_push_watermark('tracks');
-        const dirty = await db.select().from(tracks_table)
-            .where(and(
-                gt(tracks_table.modified_at, last_pushed_at),
-                isNull(tracks_table.sync_error),
-            ))
-            .orderBy(asc(tracks_table.modified_at))
-            .limit(PUSH_BATCH_SIZE);
+        let watermark = await this.get_push_watermark('tracks');
+        // Drain in batches until nothing dirty remains, so a large backlog
+        // clears in one sync cycle instead of one PUSH_BATCH_SIZE per cycle.
+        while (!this.is_destroyed) {
+            const dirty = await db.select().from(tracks_table)
+                .where(and(
+                    gt(tracks_table.modified_at, watermark),
+                    isNull(tracks_table.sync_error),
+                ))
+                .orderBy(asc(tracks_table.modified_at))
+                .limit(PUSH_BATCH_SIZE);
+            if (dirty.length === 0) break;
 
-        let watermark = last_pushed_at;
-        for (const track of dirty) {
-            if (this.is_destroyed) break;
-            const result = await this.upload_track_row(track, user_uid);
-            if (result.outcome === 'synced') {
-                watermark = track.modified_at;
-            } else if (result.outcome === 'dropped') {
-                await db.update(tracks_table)
-                    .set({ sync_error: result.reason ?? 'unknown' })
-                    .where(eq(tracks_table.id, track.id));
-                watermark = track.modified_at;
-            } else {
-                // Retryable — stop here so we don't skip past this row.
-                break;
+            // Rows whose modified_at is exactly what the pull stamped are
+            // echoes — remote already has them. Advancing the watermark past
+            // them is safe: any later local edit re-dirties with a newer stamp.
+            const to_push = dirty.filter(track => !this.is_pull_echo('tracks', track.uid, track.modified_at));
+            if (to_push.length === 0) {
+                watermark = dirty[dirty.length - 1].modified_at;
+                await this.save_push_watermark('tracks', watermark);
+                if (dirty.length < PUSH_BATCH_SIZE) break;
+                continue;
             }
+
+            // Fast path: 2 requests for the whole batch. PostgREST batch
+            // failures are atomic, so on error fall back to per-row uploads to
+            // keep the dropped/retry classification.
+            const batch_ok = await this.upload_track_rows_batch(to_push, user_uid);
+            if (batch_ok) {
+                watermark = dirty[dirty.length - 1].modified_at;
+                await this.save_push_watermark('tracks', watermark);
+                if (dirty.length < PUSH_BATCH_SIZE) break;
+                continue;
+            }
+
+            let hit_retryable = false;
+            for (const track of dirty) {
+                if (this.is_destroyed) break;
+                if (this.is_pull_echo('tracks', track.uid, track.modified_at)) {
+                    watermark = track.modified_at;
+                    continue;
+                }
+                const result = await this.upload_track_row(track, user_uid);
+                if (result.outcome === 'synced') {
+                    watermark = track.modified_at;
+                } else if (result.outcome === 'dropped') {
+                    await db.update(tracks_table)
+                        .set({ sync_error: result.reason ?? 'unknown' })
+                        .where(eq(tracks_table.id, track.id));
+                    watermark = track.modified_at;
+                } else {
+                    // Retryable — stop here so we don't skip past this row.
+                    hit_retryable = true;
+                    break;
+                }
+            }
+            await this.save_push_watermark('tracks', watermark);
+            if (hit_retryable || dirty.length < PUSH_BATCH_SIZE) break;
         }
-        await this.save_push_watermark('tracks', watermark);
+    }
+
+    private async upload_track_rows_batch(tracks: LocalTrack[], user_uid: string): Promise<boolean> {
+        try {
+            // "Greatest duration wins" holds without pre-fetching remote
+            // durations: every pull merge takes max(local, remote), and a
+            // remote-side raise bumps utracks.modified_at so the next
+            // watermark pull re-raises us. Pushing the local value can only
+            // lower remote within that one-cycle window, and converges.
+            const global_inserts = tracks.map(track => {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+                const local_duration = Math.round(Number(track.duration ?? 0));
+                return this.track_to_global_insert({ ...track, duration: isFinite(local_duration) ? local_duration : 0 } as LocalTrack);
+            });
+            const { error: te } = await this.supabase.from('tracks')
+                .upsert(global_inserts, { onConflict: 'uid' });
+            if (te) throw te;
+
+            const utrack_inserts = tracks.map(track => ({
+                ...this.track_to_utrack_insert(track, user_uid),
+                deleted: track.deleted,
+            }));
+            const { error: ue } = await this.supabase.from('utracks')
+                .upsert(utrack_inserts, { onConflict: 'user_uid,track_uid' });
+            if (ue) throw ue;
+            return true;
+        } catch (err) {
+            console.warn('[SyncEngine] batch track push failed, falling back to per-row:', (err as {message?: string})?.message ?? err, (err as {code?: string})?.code ?? '', (err as {details?: string})?.details ?? '');
+            return false;
+        }
     }
 
     private async push_dirty_playlists(user_uid: string) {
@@ -561,6 +676,10 @@ export class SyncEngine {
         let watermark = last_pushed_at;
         for (const playlist of dirty) {
             if (this.is_destroyed) break;
+            if (this.is_pull_echo('playlists', playlist.uuid, playlist.modified_at)) {
+                watermark = playlist.modified_at;
+                continue;
+            }
             const result = await this.upload_playlist_row(playlist, user_uid);
             if (result.outcome === 'synced') {
                 watermark = playlist.modified_at;
@@ -577,31 +696,80 @@ export class SyncEngine {
     }
 
     private async push_dirty_playlists_tracks(user_uid: string) {
-        const last_pushed_at = await this.get_push_watermark('playlists_tracks');
-        const dirty = await db.select().from(playlists_tracks_table)
-            .where(and(
-                gt(playlists_tracks_table.modified_at, last_pushed_at),
-                isNull(playlists_tracks_table.sync_error),
-            ))
-            .orderBy(asc(playlists_tracks_table.modified_at))
-            .limit(PUSH_BATCH_SIZE);
+        let watermark = await this.get_push_watermark('playlists_tracks');
+        while (!this.is_destroyed) {
+            const dirty = await db.select().from(playlists_tracks_table)
+                .where(and(
+                    gt(playlists_tracks_table.modified_at, watermark),
+                    isNull(playlists_tracks_table.sync_error),
+                ))
+                .orderBy(asc(playlists_tracks_table.modified_at))
+                .limit(PUSH_BATCH_SIZE);
+            if (dirty.length === 0) break;
 
-        let watermark = last_pushed_at;
-        for (const pt of dirty) {
-            if (this.is_destroyed) break;
-            const result = await this.upload_playlist_track_row(pt, user_uid);
-            if (result.outcome === 'synced') {
-                watermark = pt.modified_at;
-            } else if (result.outcome === 'dropped') {
-                await db.update(playlists_tracks_table)
-                    .set({ sync_error: result.reason ?? 'unknown' })
-                    .where(eq(playlists_tracks_table.id, pt.id));
-                watermark = pt.modified_at;
-            } else {
-                break;
+            const to_push = dirty.filter(pt => !this.is_pull_echo('playlists_tracks', `${pt.uuid}:${pt.track_uid}`, pt.modified_at));
+            if (to_push.length === 0) {
+                watermark = dirty[dirty.length - 1].modified_at;
+                await this.save_push_watermark('playlists_tracks', watermark);
+                if (dirty.length < PUSH_BATCH_SIZE) break;
+                continue;
             }
+
+            const batch_ok = await this.upload_playlist_track_rows_batch(to_push);
+            if (batch_ok) {
+                watermark = dirty[dirty.length - 1].modified_at;
+                await this.save_push_watermark('playlists_tracks', watermark);
+                if (dirty.length < PUSH_BATCH_SIZE) break;
+                continue;
+            }
+
+            // Per-row fallback keeps the FK-repair path (upload missing track,
+            // retry) and dropped/retry classification.
+            let hit_retryable = false;
+            for (const pt of dirty) {
+                if (this.is_destroyed) break;
+                if (this.is_pull_echo('playlists_tracks', `${pt.uuid}:${pt.track_uid}`, pt.modified_at)) {
+                    watermark = pt.modified_at;
+                    continue;
+                }
+                const result = await this.upload_playlist_track_row(pt, user_uid);
+                if (result.outcome === 'synced') {
+                    watermark = pt.modified_at;
+                } else if (result.outcome === 'dropped') {
+                    await db.update(playlists_tracks_table)
+                        .set({ sync_error: result.reason ?? 'unknown' })
+                        .where(eq(playlists_tracks_table.id, pt.id));
+                    watermark = pt.modified_at;
+                } else {
+                    hit_retryable = true;
+                    break;
+                }
+            }
+            await this.save_push_watermark('playlists_tracks', watermark);
+            if (hit_retryable || dirty.length < PUSH_BATCH_SIZE) break;
         }
-        await this.save_push_watermark('playlists_tracks', watermark);
+    }
+
+    private async upload_playlist_track_rows_batch(pts: LocalPlaylistTrack[]): Promise<boolean> {
+        try {
+            // The local table has no unique (uuid, track_uid) constraint but the
+            // remote upsert conflict target does — keep the last occurrence
+            // (highest modified_at, since the batch is ordered ascending).
+            const by_key = new Map<string, RemotePlaylistTrackInsert>();
+            for (const pt of pts) {
+                by_key.set(`${pt.uuid}:${pt.track_uid}`, {
+                    ...this.playlist_track_to_insert(pt),
+                    deleted: pt.deleted,
+                });
+            }
+            const { error } = await this.supabase.from('playlists_tracks')
+                .upsert([...by_key.values()], { onConflict: 'uuid,track_uid' });
+            if (error) throw error;
+            return true;
+        } catch (err) {
+            console.warn('[SyncEngine] batch playlists_tracks push failed, falling back to per-row:', (err as {message?: string})?.message ?? err, (err as {code?: string})?.code ?? '', (err as {details?: string})?.details ?? '');
+            return false;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -611,31 +779,14 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     private async upload_track_row(track: LocalTrack, user_uid: string): Promise<{ outcome: PushResult; reason?: string }> {
         try {
-            // Enforce "greatest duration wins" at the remote source of truth.
-            let remote_duration = 0;
-            try {
-                const { data: remote_row, error: remote_error } = await this.supabase
-                    .from('tracks')
-                    .select('duration')
-                    .eq('uid', track.uid)
-                    .limit(1)
-                    .maybeSingle();
-                if (remote_error) throw remote_error;
-                remote_duration = typeof remote_row?.duration === 'number' ? remote_row.duration : 0;
-            } catch (e) {
-                console.warn(`[SyncEngine] upload_track_row remote duration fetch failed ${track.uid}:`, e);
-            }
-
+            // Duration reconciliation happens on pull (merge takes the max);
+            // see upload_track_rows_batch for why no remote pre-fetch is needed.
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
             const local_duration = Math.round(Number(track.duration ?? 0));
-            const best_duration = Math.max(
-                isFinite(local_duration) ? local_duration : 0,
-                isFinite(remote_duration) ? remote_duration : 0,
-            );
 
             const global_insert = this.track_to_global_insert({
                 ...track,
-                duration: best_duration,
+                duration: isFinite(local_duration) ? local_duration : 0,
             } as LocalTrack);
 
             const { error: te } = await this.supabase.from('tracks')
@@ -762,6 +913,13 @@ export class SyncEngine {
         const synced_ids: number[] = [];
         for (const ts of tombstones) {
             if (this.is_destroyed) break;
+            // Hard deletes applied by the pull fire the same DELETE triggers
+            // as user deletes — drop those tombstones without echoing the
+            // delete back to the server that ordered it.
+            if (this.is_pull_echo_delete(ts.table_name, ts.record_id)) {
+                synced_ids.push(ts.id);
+                continue;
+            }
             const result = await this.upload_tombstone(ts, user_uid);
             if (result.outcome === 'synced') {
                 synced_ids.push(ts.id);
@@ -821,6 +979,7 @@ export class SyncEngine {
     // -------------------------------------------------------------------------
     // Error helpers
     // -------------------------------------------------------------------------
+    // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private assert_supabase_ok(context: string, error: unknown) {
         if (!error) return;
         const message = typeof error === 'object' && error !== null && 'message' in error
@@ -895,6 +1054,16 @@ export class SyncEngine {
     }
 
     private async pull_tracks(last_sync_iso: string, user_uid: string) {
+        // Probe with a HEAD count first — the common cycle has nothing new,
+        // and this keeps it to one bodyless request instead of a joined query.
+        const { count: changed_count, error: count_error } = await this.supabase
+            .from('utracks')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_uid', user_uid)
+            .gte('modified_at', last_sync_iso);
+        if (count_error) throw count_error;
+        if (!changed_count) return;
+
         const pending_track_changes = await this.get_pending_change_sets('tracks');
 
         let max_modified_at = 0;
@@ -942,7 +1111,7 @@ export class SyncEngine {
                 }
             }
 
-            db.$client.flushPendingReactiveQueries();
+            db.$client.flushPendingReactiveQueries?.();
             if (utrack_rows.length < PULL_PAGE_SIZE) break;
             offset += utrack_rows.length;
         }
@@ -1058,12 +1227,14 @@ export class SyncEngine {
             if (has_pending_upsert) return;
 
             if (existing) {
+                const applied_modified_at = Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at));
                 await db.update(tracks_table)
                     .set({
                         deleted: true,
-                        modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at)),
+                        modified_at: applied_modified_at,
                     })
                     .where(eq(tracks_table.uid, row.uid));
+                this.record_pull_upsert('tracks', row.uid, applied_modified_at);
                 SQLGlobal.delete_global_track_item(row.uid, false);
                 this.pull_dirty_global_tracks++;
             }
@@ -1093,6 +1264,7 @@ export class SyncEngine {
 
             await db.update(tracks_table).set(merged)
                 .where(eq(tracks_table.uid, row.uid));
+            this.record_pull_upsert('tracks', row.uid, merged.modified_at as number);
             SQLGlobal.update_global_track_item(row.uid, { ...existing, ...merged } as LocalTrack, false);
             this.pull_dirty_global_tracks++;
             return;
@@ -1101,6 +1273,7 @@ export class SyncEngine {
         // Insert new track received from remote.
         const local = this.remote_track_to_local(row);
         await db.insert(tracks_table).values(local);
+        this.record_pull_upsert('tracks', row.uid, local.modified_at);
         SQLGlobal.add_global_track_item(local as LocalTrack, false);
         this.pull_dirty_global_tracks++;
     }
@@ -1205,6 +1378,14 @@ export class SyncEngine {
     }
 
     private async pull_playlists(last_sync_iso: string, user_uid: string) {
+        const { count: changed_count, error: count_error } = await this.supabase
+            .from('playlists')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_uid', user_uid)
+            .gte('modified_at', last_sync_iso);
+        if (count_error) throw count_error;
+        if (!changed_count) return;
+
         const pending_changes = await this.get_pending_change_sets('playlists');
         let max_modified_at = 0;
 
@@ -1235,6 +1416,7 @@ export class SyncEngine {
                         continue;
                     }
                     await db.delete(playlists_table).where(eq(playlists_table.uuid, row.uuid));
+                    this.record_pull_delete('playlists', row.uuid);
                     continue;
                 }
                 if (has_pending_upsert || has_pending_delete) {
@@ -1250,33 +1432,41 @@ export class SyncEngine {
                 } else {
                     await db.insert(playlists_table).values(local);
                 }
+                this.record_pull_upsert('playlists', row.uuid, local.modified_at);
             }
 
             if (data.length < PULL_PAGE_SIZE) break;
             offset += data.length;
         }
-        db.$client.flushPendingReactiveQueries();
+        db.$client.flushPendingReactiveQueries?.();
         // Remote pulls bypass ChangeTracker — drop resolved playlist caches directly.
         SQLPlaylists.invalidate_playlist_tracks_cache();
         await this.save_pull_watermark('playlists', max_modified_at);
     }
 
-    private async pull_playlists_tracks(last_sync_iso: string, user_uid: string) {
-        const pending_changes = await this.get_pending_change_sets('playlists_tracks');
-        let max_modified_at = 0;
-
-        const { data: user_playlists, error: user_playlist_error } = await this.supabase
-            .from('playlists')
-            .select('uuid')
-            .eq('user_uid', user_uid)
-            .eq('deleted', false);
-        this.assert_supabase_ok('pull_playlists_tracks user playlists fetch', user_playlist_error);
-
-        const playlist_uuids = (user_playlists ?? []).map(p => p.uuid);
+    private async pull_playlists_tracks(last_sync_iso: string, _user_uid: string) {
+        // Playlists pull first in the same cycle, so the local table already
+        // reflects the remote playlist set — no need for a remote listing.
+        const local_playlists = await db.select({ uuid: playlists_table.uuid })
+            .from(playlists_table)
+            .where(eq(playlists_table.deleted, false));
+        const playlist_uuids = local_playlists.map(p => p.uuid);
         if (playlist_uuids.length === 0) return;
+
+        let pending_changes: { upserts: Set<string>; deletes: Set<string> } | null = null;
+        let max_modified_at = 0;
 
         const uuid_chunks = chunk_array(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
         for (const uuid_chunk of uuid_chunks) {
+            const { count: changed_count, error: count_error } = await this.supabase
+                .from('playlists_tracks')
+                .select('*', { count: 'exact', head: true })
+                .in('uuid', uuid_chunk)
+                .gte('modified_at', last_sync_iso);
+            if (count_error) throw count_error;
+            if (!changed_count) continue;
+            const pending = (pending_changes ??= await this.get_pending_change_sets('playlists_tracks'));
+
             let offset = 0;
             while (true) {
                 const { data, error } = await this.supabase
@@ -1295,8 +1485,8 @@ export class SyncEngine {
                     const row_mod = safe_to_epoch_merge(row.modified_at);
                     if (row_mod > max_modified_at) max_modified_at = row_mod;
                     const record_id = `${row.uuid}:${row.track_uid}`;
-                    const has_pending_upsert = pending_changes.upserts.has(record_id);
-                    const has_pending_delete = pending_changes.deletes.has(record_id);
+                    const has_pending_upsert = pending.upserts.has(record_id);
+                    const has_pending_delete = pending.deletes.has(record_id);
                     const existing = await db.select().from(playlists_tracks_table)
                         .where(and(
                             eq(playlists_tracks_table.uuid, row.uuid),
@@ -1314,6 +1504,7 @@ export class SyncEngine {
                                     eq(playlists_tracks_table.uuid, row.uuid),
                                     eq(playlists_tracks_table.track_uid, row.track_uid)
                                 ));
+                            this.record_pull_delete('playlists_tracks', record_id);
                         }
                         continue;
                     }
@@ -1331,13 +1522,14 @@ export class SyncEngine {
                     } else {
                         await db.insert(playlists_tracks_table).values(local);
                     }
+                    this.record_pull_upsert('playlists_tracks', record_id, local.modified_at);
                 }
 
                 if (data.length < PULL_PAGE_SIZE) break;
                 offset += data.length;
             }
         }
-        db.$client.flushPendingReactiveQueries();
+        db.$client.flushPendingReactiveQueries?.();
         SQLPlaylists.invalidate_playlist_tracks_cache();
         await this.save_pull_watermark('playlists_tracks', max_modified_at);
     }
