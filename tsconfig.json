@@ -44,6 +44,6 @@
         }
     },
     "ts-node": {
-        "require": ["tsconfig-paths/register"]
+        "require": ["tsconfig-paths/register", "./mock-op-sqlite.cjs"]
     }
 }
