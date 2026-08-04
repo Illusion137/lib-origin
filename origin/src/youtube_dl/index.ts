@@ -16,8 +16,8 @@ import { urlid } from '@common/utils/util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { jseval, load_native_jseval } from '@native/jseval/jseval';
 import { RCache } from './rcache';
-import BG from 'bgutils-js';
 import type { PoTokenResult } from '@native/potoken/potoken.base';
+import { createColdStartToken } from 'bgutils-js/webpo';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -160,7 +160,7 @@ export namespace YouTubeDL {
     }
 
     function generate_placeholder_potoken(content_binding: string){
-        return BG.PoToken.generateColdStartToken(content_binding);
+        return createColdStartToken(content_binding) as string;
     }
 
     export async function resolve_sabr_info(video_id: string): Promise<SabrTrackParams | ResponseError> {

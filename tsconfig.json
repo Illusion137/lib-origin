@@ -41,6 +41,10 @@
             "googlevideo/sabr-stream": ["./node_modules/googlevideo/dist/src/exports/sabr-stream"],
             "googlevideo/utils": ["./node_modules/googlevideo/dist/src/exports/utils"],
             "googlevideo/protos": ["./node_modules/googlevideo/dist/src/exports/protos"],
+            "bgutils-js/botguard": ["./node_modules/bgutils-js/dist/exports/botguard"],
+            "bgutils-js/webpo": ["./node_modules/bgutils-js/dist/exports/webpo"],
+            "bgutils-js/utils": ["./node_modules/bgutils-js/dist/exports/utils"],
+            "bgutils-js/shared-types": ["./node_modules/bgutils-js/dist/exports/types"],
         }
     },
     "ts-node": {
