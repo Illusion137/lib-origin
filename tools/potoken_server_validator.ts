@@ -48,6 +48,7 @@ async function download(video_id: string, po_token: PoToken){
         console.log(red(`First format sample: ${JSON.stringify(sabrFormats[0])}`));
     }
     console.log(green(`SABR URL: ${sabr_params.sabrServerUrl.substring(0, 80)}...`));
+    console.log(green(`FEXP: ${new URL(sabr_params.sabrServerUrl).searchParams.get("fexp")}`));
     console.log(green(`Ustreamer config length: ${sabr_params.sabrUstreamerConfig.length}`));
     console.log(green(`ClientInfo: clientName=${sabr_params.clientInfo?.clientName} version=${sabr_params.clientInfo?.clientVersion}`));
     console.log(green(`Cookie present: ${!!sabr_params.cookie}`))

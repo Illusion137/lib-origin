@@ -19,7 +19,7 @@ function setup_botguard_environment(page_html: string): ResponseError|null {
     const dom = new JSDOM(
         '<!DOCTYPE html><html lang="en"><head><title></title></head><body></body></html>',
         {
-            url: 'https://www.youtube.com/',
+            url: 'https://www.youtube.com',
             referrer: 'https://www.youtube.com/',
             userAgent: USER_AGENT,
         },
@@ -38,16 +38,15 @@ function setup_botguard_environment(page_html: string): ResponseError|null {
     dom.window.yt = { config_: ytcfg };
 
     Object.assign(globalThis, {
+        yt: dom.window.yt,
         window: dom.window,
         document: dom.window.document,
         location: dom.window.location,
-        origin: dom.window.origin,
+        origin: dom.window.origin
     });
 
-    if (!Reflect.has(globalThis, 'navigator')) {
-        Object.defineProperty(globalThis, 'navigator', {
-            value: dom.window.navigator,
-        });
+    if (!('navigator' in globalThis)) {
+        Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator });
     }
 
     // jsdom doesn't implement canvas; stub getContext so BotGuard's VM doesn't throw.
@@ -131,13 +130,22 @@ async function create_minter(): PromiseResult<WebPoMinter>{
         body: JSON.stringify([REQUEST_KEY, botguard_response]),
     });
 
-    const integrity_token_data = await integrity_token_response.json() as unknown[];
+    const integrity_token_json = await integrity_token_response.json() as [string, number, number, string];
 
-    if (typeof integrity_token_data[0] !== 'string') {
-        return generror('Could not get integrity token', "CRITICAL", {integrity_token_data});
+    if (typeof integrity_token_json[0] !== 'string') {
+        return generror('Could not get integrity token', "CRITICAL", {integrityTokenJson: integrity_token_json});
     }
 
-    const web_po_minter = await WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
+    const [integrityToken, estimatedTtlSecs, mintRefreshThreshold, websafeFallbackToken] = integrity_token_json;
+
+    const token_integrity_data = {
+        integrityToken,
+        estimatedTtlSecs,
+        mintRefreshThreshold,
+        websafeFallbackToken
+    };
+
+    const web_po_minter = await WebPoMinter.create(token_integrity_data, web_po_signal_output);
     global_minter = web_po_minter;
     return web_po_minter;
 }

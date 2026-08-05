@@ -105,14 +105,15 @@ export namespace YouTubeDL {
     }
 
     type PoTokenStatusResultSent = ["sent", PromiseResult<PoTokenResult>];
-    type PoTokenStatusResultRecieved = ["recieved", PoTokenResult|ResponseError];
+    type PoTokenStatusResultRecieved = ["recieved", PoTokenResult];
     type PoTokenContentBindingStatusMap = Record<string, PoTokenStatusResultSent|PoTokenStatusResultRecieved>;
     const content_binding_status_map: PoTokenContentBindingStatusMap = {};
     export async function fetch_potoken(content_binding: string): PromiseResult<PoTokenResult> {
         if(content_binding_status_map?.[content_binding]?.[0] === 'recieved') return content_binding_status_map[content_binding][1];
         if(content_binding_status_map?.[content_binding]?.[0] === 'sent') {
-            const recieved = await content_binding_status_map[content_binding][1]
-            content_binding_status_map[content_binding] = ["recieved", recieved];
+            const recieved = await content_binding_status_map[content_binding][1];
+            if ("error" in recieved) delete content_binding_status_map[content_binding];
+            else content_binding_status_map[content_binding] = ["recieved", recieved];
             return recieved;
         };
         const sent_token = potoken().generate_potoken(innertube_client, content_binding);
@@ -120,7 +121,10 @@ export namespace YouTubeDL {
             "sent",
             sent_token
         ];
-        return await sent_token;
+        const result = await sent_token;
+        if ("error" in result) delete content_binding_status_map[content_binding];
+        else content_binding_status_map[content_binding] = ["recieved", result];
+        return result;
     }
 
     export function inject_potoken(content_binding: string, po_token: string) {
