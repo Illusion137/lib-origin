@@ -1,35 +1,52 @@
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { PoTokenGenerator } from "@native/potoken/potoken.base";
-import { BG, buildURL, GOOG_API_KEY, USER_AGENT, type WebPoSignalOutput } from 'bgutils-js';
-import type { Innertube } from 'youtubei.js';
+import { BotGuardClient } from 'bgutils-js/botguard';
+import type { WebPoSignalOutput } from 'bgutils-js/shared-types';
+import { buildURL, parseLooseJSON, getHeaders, USER_AGENT } from 'bgutils-js/utils';
+import { WebPoMinter } from 'bgutils-js/webpo';
+import type { Innertube, IRawResponse } from 'youtubei.js';
 import { JSDOM } from 'jsdom';
-import { generror } from "@common/utils/error_util";
+import { generror, generror_catch } from "@common/utils/error_util";
 import type { PromiseResult, ResponseError } from "@common/types";
+import rozfetch from "@common/rozfetch";
+import { try_json_parse } from "@common/utils/parse_util";
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
-function setup_botguard_environment(): void {
-    if (typeof globalThis.document !== 'undefined') return;
+function setup_botguard_environment(page_html: string): ResponseError|null {
+    if (typeof globalThis.document !== 'undefined') return null;
 
     const dom = new JSDOM(
         '<!DOCTYPE html><html lang="en"><head><title></title></head><body></body></html>',
         {
-            url: 'https://www.youtube.com/',
+            url: 'https://www.youtube.com',
             referrer: 'https://www.youtube.com/',
             userAgent: USER_AGENT,
         },
     );
 
+    // TODO migrate to extract_regex_from_string
+    const ytcfg_regex = /ytcfg\.set\(({.+?})\);/s;
+    const yt_config = ytcfg_regex.exec(page_html)?.[1];
+    if (!yt_config) {
+        return generror("Could not find ytcfg in page HTML", "CRITICAL", { yt_config });
+    }
+    /* Needed because of EVENT_ID */
+    const ytcfg = try_json_parse<object>(yt_config);
+    if("error" in ytcfg) return ytcfg;
+
+    dom.window.yt = { config_: ytcfg };
+
     Object.assign(globalThis, {
+        yt: dom.window.yt,
         window: dom.window,
         document: dom.window.document,
         location: dom.window.location,
-        origin: dom.window.origin,
+        origin: dom.window.origin
     });
 
-    if (!Reflect.has(globalThis, 'navigator')) {
-        Object.defineProperty(globalThis, 'navigator', {
-            value: dom.window.navigator,
-        });
+    if (!('navigator' in globalThis)) {
+        Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator });
     }
 
     // jsdom doesn't implement canvas; stub getContext so BotGuard's VM doesn't throw.
@@ -37,21 +54,50 @@ function setup_botguard_environment(): void {
         value: () => null,
         writable: true,
     });
+    return null;
 }
 
-let global_minter: BG.WebPoMinter;
-async function create_minter(innertube: Innertube): PromiseResult<BG.WebPoMinter>{
+let global_minter: WebPoMinter;
+async function create_minter(): PromiseResult<WebPoMinter>{
     if(global_minter !== undefined) return global_minter;
-    
-    setup_botguard_environment();
-    const challenge_response = await innertube.getAttestationChallenge('ENGAGEMENT_TYPE_UNBOUND');
 
-    if (!challenge_response.bg_challenge) {
+    const page_response = await rozfetch('https://www.youtube.com', {
+        headers: {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.7",
+            "user-agent": USER_AGENT,
+        }
+    });
+    if("error" in page_response) return page_response;
+
+    const page_html = await page_response.text();
+    
+    const setup_result = setup_botguard_environment(page_html);
+    if(setup_result !== null) return setup_result;
+
+    const initial_attestation_data_regex = /window\.ytAtN\(\s*({[\s\S]*?})\s*\)/;
+    // TODO extract with safe function?
+    const initial_attestation_data_str = initial_attestation_data_regex.exec(page_html)?.[1];
+
+    if (!initial_attestation_data_str) {
+        return generror("Could not find challenge in page HTML", "CRITICAL", {page_html});
+    }
+
+    let initial_attestation_data_json;
+    try {
+        initial_attestation_data_json = parseLooseJSON(initial_attestation_data_str);
+    }
+    catch(e) {
+        return generror_catch(e, "failed to parse initial_attestation_data_json", "CRITICAL", { initial_attestation_data_str });
+    }
+    const challenge_response = initial_attestation_data_json.R as IRawResponse;
+
+    if (!challenge_response.bgChallenge) {
         return generror('Could not get BotGuard challenge', "CRITICAL");
     }
 
     let interpreter_url: string =
-        challenge_response.bg_challenge.interpreter_url.private_do_not_access_or_else_trusted_resource_url_wrapped_value ?? '';
+        challenge_response.bgChallenge.interpreterUrl.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue ?? '';
 
     if (!interpreter_url) {
         return generror('Could not get interpreter URL from BotGuard challenge', "CRITICAL");
@@ -69,10 +115,10 @@ async function create_minter(innertube: Innertube): PromiseResult<BG.WebPoMinter
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     new Function(interpreter_javascript)();
 
-    const botguard = await BG.BotGuardClient.create({
-        program: challenge_response.bg_challenge.program,
-        globalName: challenge_response.bg_challenge.global_name,
-        globalObj: globalThis,
+    const botguard = await BotGuardClient.create({
+        program: challenge_response.bgChallenge.program,
+        globalName: challenge_response.bgChallenge.globalName,
+        globalObject: globalThis,
     });
 
     const web_po_signal_output: WebPoSignalOutput = [];
@@ -80,46 +126,50 @@ async function create_minter(innertube: Innertube): PromiseResult<BG.WebPoMinter
 
     const integrity_token_response = await fetch(buildURL('GenerateIT', true), {
         method: 'POST',
-        headers: {
-            'content-type': 'application/json+protobuf',
-            'x-goog-api-key': GOOG_API_KEY,
-            'x-user-agent': 'grpc-web-javascript/0.1',
-            'user-agent': USER_AGENT,
-        },
+        headers: getHeaders(),
         body: JSON.stringify([REQUEST_KEY, botguard_response]),
     });
 
-    const integrity_token_data = await integrity_token_response.json() as unknown[];
+    const integrity_token_json = await integrity_token_response.json() as [string, number, number, string];
 
-    if (typeof integrity_token_data[0] !== 'string') {
-        return generror('Could not get integrity token', "CRITICAL", {integrity_token_data});
+    if (typeof integrity_token_json[0] !== 'string') {
+        return generror('Could not get integrity token', "CRITICAL", {integrityTokenJson: integrity_token_json});
     }
 
-    const web_po_minter = await BG.WebPoMinter.create({ integrityToken: integrity_token_data[0] }, web_po_signal_output);
+    const [integrityToken, estimatedTtlSecs, mintRefreshThreshold, websafeFallbackToken] = integrity_token_json;
+
+    const token_integrity_data = {
+        integrityToken,
+        estimatedTtlSecs,
+        mintRefreshThreshold,
+        websafeFallbackToken
+    };
+
+    const web_po_minter = await WebPoMinter.create(token_integrity_data, web_po_signal_output);
     global_minter = web_po_minter;
     return web_po_minter;
 }
 
-type MinterStatusResultSent = ["sent", PromiseResult<BG.WebPoMinter>];
-type MinterStatusResultRecieved = ["recieved", BG.WebPoMinter|ResponseError];
+type MinterStatusResultSent = ["sent", PromiseResult<WebPoMinter>];
+type MinterStatusResultRecieved = ["recieved", WebPoMinter|ResponseError];
 let minter_status: MinterStatusResultSent|MinterStatusResultRecieved|undefined = undefined;
-export async function fetch_minter(innertube: Innertube): PromiseResult<BG.WebPoMinter> {
+export async function fetch_minter(): PromiseResult<WebPoMinter> {
     if(minter_status?.[0] === 'recieved') return minter_status[1];
     if(minter_status?.[0] === 'sent') {
         const recieved = await minter_status[1]
         minter_status = ["recieved", recieved];
         return recieved;
     }
-    const sent_minter = create_minter(innertube);
+    const sent_minter = create_minter();
     minter_status = ["sent", sent_minter];
     return await sent_minter;
 }
 
 export const node_potoken: PoTokenGenerator = {
-    generate_potoken: async (innertube: Innertube, content_binding: string) => {
+    generate_potoken: async (_innertube: Innertube, content_binding: string) => {
         content_binding ??= "";
-        const web_po_minter = await fetch_minter(innertube);
-        if("error" in web_po_minter) return web_po_minter;
+        const web_po_minter = await fetch_minter();
+        if("error" in web_po_minter) return web_po_minter as ResponseError;
         const po_token = await web_po_minter.mintAsWebsafeString(content_binding);
 
         return {

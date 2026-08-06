@@ -18,8 +18,8 @@ export const mobile_potoken: PoTokenGenerator = {
 				return generror("RN node is not available.", "CRITICAL");
 			}
 			const context = innertube.session.context;
-			nodejs.channel.post(PO_TOKEN_CHANNEL, JSON.stringify({ content_binding, context }));
-			const MAX_TIMEOUT = 1000;
+			nodejs.channel.post("potoken", JSON.stringify({ content_binding, context }));
+			const MAX_TIMEOUT = 1500;
 			let timeoutCounter = 0;
 			while (timeoutCounter < MAX_TIMEOUT) {
 				timeoutCounter += 1;

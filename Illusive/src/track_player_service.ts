@@ -30,16 +30,10 @@ import { reinterpret_cast } from '@common/cast';
 import { VibesSampler } from './vibes_sampler';
 import { YouTubeDL } from '@origin/youtube_dl';
 import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
-// import * as ImageManipulator from 'expo-image-manipulator';
-// import { Image } from 'react-native';
 
 export let trackplayer_has_been_setup = false;
 
-// Tracks the content_binding of SABR tracks so a refreshed poToken can be minted for
-// whichever one is currently active in TrackPlayer.
 const sabr_content_binding_by_uid = new Map<string, string>();
-// uid of whichever track is currently active, so a fetch that resolves after the user
-// has already skipped away doesn't feed a stale track's token into the new active track.
 let current_active_track_uid: string | undefined;
 const sabr_po_token_refresh_in_flight = new Set<string>();
 
@@ -49,8 +43,6 @@ async function refresh_active_sabr_po_token(uid: string, content_binding: string
     try {
         const result = await YouTubeDL.fetch_potoken(content_binding);
         if ("error" in result) throw result.error;
-        // The active track may have changed while this fetch was in flight; only apply
-        // the token if it's still the one that's actually playing.
         if (current_active_track_uid !== uid) return;
         await TrackPlayer.updatePlaybackPoToken(result.po_token);
     } catch (error) {
@@ -146,47 +138,17 @@ async function delete_track_from_player_queue_impl(track_data: Track | undefined
         const absolute_index = current_track_index + global_index;
         GLOBALS.global_var.playing_tracks.splice(absolute_index, 1);
         sabr_content_binding_by_uid.delete(track_data.uid);
-        // Serialized against adds/url-fills so the index found here isn't invalidated by
-        // a concurrent add() landing on the native side before remove() runs.
         await run_native_queue_mutation(async () => {
-            // TP queue is lazily loaded so indices may differ from playing_tracks — match by position relative to current.
-            // Prefer the uid (carried on every track dict now); fall back to title for entries added before uid existed.
             const tp_queue = await TrackPlayer.getQueue();
             const tp_index = tp_queue.slice(current_track_index).findIndex(track => {
                 const t = reinterpret_cast<{ uid?: string, title?: string }>(track);
                 return t.uid !== undefined ? t.uid === track_data.uid : t.title === track_data.title;
             });
-            // The queue can still shrink between getQueue() and remove() (e.g. TrackPlayer.reset()
-            // from another screen); an out-of-bounds rejection only means the track is already gone
             if (tp_index !== -1) await TrackPlayer.remove([current_track_index + tp_index]).catch(catch_log);
         });
     }
     await on_modify_track_player_queue();
 }
-
-// async function get_square_artwork(uri: string) {
-//     const { width, height } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-//         Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), reject);
-//     });
-
-//     const size = Math.min(width, height);
-//     const crop = {
-//         originX: (width - size) / 2,
-//         originY: (height - size) / 2,
-//         width: size,
-//         height: size,
-//     };
-
-//     const result = await ImageManipulator.ImageManipulator.manipulate(uri, 
-//         // [
-//             // { crop },
-//             // { resize: { width: 512, height: 512 } }, // recommended size for lockscreen
-//         // ]
-//     );
-//     result.crop().
-
-//     return result.uri;
-// }
 
 export async function illusive_track_to_track_player_track(track: Track): Promise<AddTrack | 'skip'> {
     if (track === undefined) return 'skip';
@@ -202,7 +164,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     }
     const nt_response = await handle_new_track_data(track, url_data);
     if (!("error" in nt_response)) track = nt_response;
-    // Note: TrackPlayer will auto removed failed files, don't bother with checking if file exist
     const artwork = resolved_artwork(track.playback!.artwork);
     VibesSampler.predict_track_save_result(track).catch(catch_log);
     const artwork_payload = typeof artwork === "number" ? artwork : artwork.uri;
@@ -244,14 +205,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     };
 }
 
-// -------- Metadata-first ("pending") track loading --------
-// Tracks are pushed to the native queue immediately with metadata only, so skips land
-// instantly; the playback url is fetched in the background and filled in via
-// TrackPlayer.updateTrackUrl. While a pending track is active the native player waits
-// in the loading state and starts the moment the url arrives.
-
-// How long a url fetch may take before the pending track is dropped from the queue,
-// so a hung fetch can't wedge playback on a loading spinner forever.
 const URL_RESOLVE_TIMEOUT_MS = 30_000;
 
 function pending_track_player_track(track: Track): AddTrack {
@@ -267,26 +220,13 @@ function pending_track_player_track(track: Track): AddTrack {
     };
 }
 
-// Every structural mutation of the native queue (pushing a pending track, filling in
-// its url, removing a track) is routed through this chain. The native queue is addressed
-// by integer index, so an index read from getQueue() is only valid until the next add()/
-// remove() lands on the native side. Without serialization a background url fetch could
-// resolve, read a track's slot index, and then have a concurrent add() shift everything
-// before its updateTrackUrl() runs — filling the wrong slot and leaving the intended
-// track a url-less pending entry that nothing ever resolves (playback wedges on it).
-// The slow url fetch itself stays OUTSIDE this lock; only the quick index-find + native
-// mutation run inside, so the queue is never blocked on the network.
 let native_queue_mutation_chain: Promise<void> = Promise.resolve();
 async function run_native_queue_mutation<T>(op: () => Promise<T>): Promise<T> {
     const run = native_queue_mutation_chain.then(op);
-    // Swallow errors for the chain's sake only; the returned promise still rejects for the caller.
     native_queue_mutation_chain = run.then(() => undefined, () => undefined);
     return run;
 }
 
-// Index in the native queue of the still-url-less entry for this uid. Matching on
-// "no url yet" keeps duplicate queue entries of the same track from resolving into
-// the same native slot.
 async function native_queue_index_of_pending(uid: string): Promise<number> {
     const tp_queue = await TrackPlayer.getQueue();
     return tp_queue.findIndex(tp_track => {
@@ -312,7 +252,6 @@ async function resolve_pending_track_url_impl(track: Track): Promise<void> {
         timeout_handle = setTimeout(() => resolve('timeout'), URL_RESOLVE_TIMEOUT_MS);
     });
     const fetch_promise = illusive_track_to_track_player_track(track);
-    // The timeout may win the race; don't leave the losing fetch as an unhandled rejection
     fetch_promise.catch(catch_log);
     const react_native_track = await Promise.race([fetch_promise, timeout])
         .finally(() => clearTimeout(timeout_handle));
@@ -320,20 +259,12 @@ async function resolve_pending_track_url_impl(track: Track): Promise<void> {
         title: track.title,
         result: typeof react_native_track === 'string' ? react_native_track : 'ok',
     });
-    // The index-find and the native mutation that consumes it must be atomic w.r.t. other
-    // adds/removes, so run them together under the mutation lock (the fetch above already
-    // ran outside it). Otherwise a concurrent add() could shift the queue between the
-    // find and updateTrackUrl, filling the wrong slot.
     const dropped = await run_native_queue_mutation(async (): Promise<boolean> => {
         const native_index = await native_queue_index_of_pending(track.uid);
-        // No url-less native entry means the track was deleted while fetching, or was never
-        // actually pending (already has a url) — either way there is nothing to fill in or drop.
         if (native_index === -1) return false;
         if (react_native_track === 'skip' || react_native_track === 'timeout') {
             if (react_native_track === 'timeout')
                 GLOBALS.global_var.bottom_alert(`Timed out fetching playback url for "${track.title}"`, "WARN");
-            // Drop the track so the queue keeps moving; if it was active, the native
-            // player advances to the next entry on its own.
             const global_index = GLOBALS.global_var.playing_tracks.findIndex(t => t.uid === track.uid);
             if (global_index !== -1) GLOBALS.global_var.playing_tracks.splice(global_index, 1);
             sabr_content_binding_by_uid.delete(track.uid);
@@ -344,8 +275,6 @@ async function resolve_pending_track_url_impl(track: Track): Promise<void> {
         await TrackPlayer.updateTrackUrl(native_index, react_native_track);
         return false;
     });
-    // on_modify_track_player_queue re-enters the mutation lock (it may push the next
-    // pending track), so it has to run after the critical section, not inside it.
     if (dropped) await on_modify_track_player_queue();
 }
 
@@ -395,8 +324,6 @@ export async function track_player_previous() {
     } catch (error) { alert_trackplayer_error({ error: error as Error }); }
 }
 
-// Native adds that are still crossing the bridge, so a skip issued mid-add can wait
-// for the entry to exist instead of getting dropped.
 const native_add_in_flight = new Map<string, Promise<void>>();
 
 export async function check_push_next_track(queue_index: number) {
@@ -405,8 +332,6 @@ export async function check_push_next_track(queue_index: number) {
     if (!next_illusi_track || next_illusi_track.playback!.added || next_illusi_track.playback!.successful) return;
     next_illusi_track.playback!.added = true;
 
-    // Push the track natively right away with metadata only — no waiting on the url
-    // fetch — so navigating to it is instant. The url resolves in the background.
     const add_operation = run_native_queue_mutation(async () => {
         try {
             await TrackPlayer.add(pending_track_player_track(next_illusi_track), next_track_index);
@@ -427,8 +352,6 @@ export async function check_push_next_track(queue_index: number) {
     resolve_pending_track_url(next_illusi_track).catch(catch_log);
 }
 
-// Skips are serialized so mashing "next" queues each press instead of losing the ones
-// that arrive before the next native track exists.
 let skip_chain: Promise<void> = Promise.resolve();
 
 export async function track_player_next(): Promise<void> {
@@ -437,7 +360,6 @@ export async function track_player_next(): Promise<void> {
             const track_index = await TrackPlayer.getActiveTrackIndex() ?? 0;
             const next_illusi_track = GLOBALS.global_var.playing_tracks[track_index + 1];
             if (next_illusi_track !== undefined) {
-                // Make sure the next track exists natively (fast, metadata-only add) before skipping
                 await check_push_next_track(track_index);
                 const inflight_add = native_add_in_flight.get(next_illusi_track.uid);
                 if (inflight_add) await inflight_add.catch(() => { });
@@ -450,16 +372,12 @@ export async function track_player_next(): Promise<void> {
 }
 
 let handling_playback_error = false;
-// Consecutive PlaybackError count for the track currently failing, so a track that
-// keeps erroring after recovery attempts is eventually dropped instead of retried forever.
 let playback_error_uid: string | undefined;
 let playback_error_count = 0;
 
 const PLAYBACK_RECOVERY_TIMEOUT_MS = 8_000;
 const PLAYBACK_RECOVERY_POLL_MS = 500;
 
-// retry()/updateTrackUrl only kick the native reload off; poll the playback state to
-// see whether it actually recovered before deciding to drop the track.
 async function wait_for_playback_recovery(): Promise<boolean> {
     const deadline = Date.now() + PLAYBACK_RECOVERY_TIMEOUT_MS;
     while (Date.now() < deadline) {
@@ -467,10 +385,8 @@ async function wait_for_playback_recovery(): Promise<boolean> {
         if (state === State.Error || state === State.None || state === State.Stopped) return false;
         if (state === State.Playing || state === State.Ready || state === State.Paused
             || state === State.Buffering || state === State.Ended) return true;
-        // State.Loading — the reload is still in flight; keep polling.
         await new Promise(resolve => setTimeout(resolve, PLAYBACK_RECOVERY_POLL_MS));
     }
-    // Still stuck loading past the deadline — treat as unrecovered.
     return false;
 }
 
@@ -483,7 +399,6 @@ export async function track_player_on_error(data: { error: string }) {
         const index = await TrackPlayer.getActiveTrackIndex();
         if (index === null || index === undefined) return;
         const illusi_track = GLOBALS.global_var.playing_tracks[index];
-        // playing_tracks can be emptied (audiobook mode) or shifted by a concurrent delete
         if (illusi_track === undefined) return;
 
         if (playback_error_uid !== illusi_track.uid) {
@@ -493,9 +408,6 @@ export async function track_player_on_error(data: { error: string }) {
         playback_error_count++;
 
         if (playback_error_count <= Constants.trackplayer_max_retries) {
-            // A SABR stream usually dies because its po token went stale (e.g. a seek
-            // rebuilt the native pipeline); mint a fresh one before retrying so the
-            // reload doesn't reuse the token that just failed.
             const content_binding = sabr_content_binding_by_uid.get(illusi_track.uid);
             if (content_binding !== undefined && current_active_track_uid === illusi_track.uid) {
                 await refresh_active_sabr_po_token(illusi_track.uid, content_binding);
@@ -504,9 +416,6 @@ export async function track_player_on_error(data: { error: string }) {
                 await TrackPlayer.retry();
                 if (await wait_for_playback_recovery()) return;
             } catch (_) { }
-            // A reload with a fresh token didn't take — the stream url itself has likely
-            // expired (or the server demanded a player-response reload). Re-resolve the
-            // source completely and reload once more before giving up on the track.
             const react_native_track = await illusive_track_to_track_player_track(illusi_track)
                 .catch((error: Error) => { catch_log(error); return 'skip' as const; });
             if (react_native_track !== 'skip') {
@@ -527,7 +436,6 @@ export async function playback_service() {
         await track_player_on_error(reinterpret_cast<{ error: string }>(data)).catch(catch_log);
     });
     TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (data: { outputPath?: string, reason: SabrTokenCallbackReason }) => {
-        // outputPath present means this refresh is for a background SABR download, not active playback
         if (data.outputPath !== undefined) return;
         if (current_active_track_uid === undefined) return;
         const content_binding = sabr_content_binding_by_uid.get(current_active_track_uid);
@@ -546,19 +454,14 @@ export async function playback_service() {
             });
             updated_metadata_mutex = false;
             const illusi_track = GLOBALS.global_var.playing_tracks[data.index];
-            // playing_tracks is emptied while the audiobook player owns TrackPlayer; bail so we don't crash or inject music tracks
             if (illusi_track === undefined) return;
             current_active_track_uid = illusi_track.uid;
-            // The active track started with a placeholder poToken; swap in the real one the instant it's minted.
             const active_sabr_content_binding = sabr_content_binding_by_uid.get(illusi_track.uid);
             if (active_sabr_content_binding) refresh_active_sabr_po_token(illusi_track.uid, active_sabr_content_binding).catch(catch_log);
             if (illusi_track.meta?.begdur !== undefined) { await TrackPlayer.seekTo(illusi_track.meta.begdur); };
             GLOBALS.global_var.playing_queue = [];
 
             if (illusi_track.playback!.added && !illusi_track.playback!.successful) {
-                // The url is still resolving: the native player holds in the loading state
-                // and starts the instant updateTrackUrl lands. Just make sure a resolution
-                // is actually in flight (e.g. after an earlier add failure reset the flags).
                 resolve_pending_track_url(illusi_track).catch(catch_log);
             }
 
@@ -570,7 +473,6 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async (data) => {
         try {
             const illusi_track = GLOBALS.global_var.playing_tracks[data.track];
-            // no-op while the audiobook player owns TrackPlayer (music queue cleared)
             if (illusi_track === undefined) return;
 
             if (is_in_reset_mutex_threshold(illusi_track, data.position)) {
