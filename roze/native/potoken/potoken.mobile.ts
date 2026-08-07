@@ -3,8 +3,10 @@ import type { PoTokenGenerator } from "@native/potoken/potoken.base";
 import { generror } from "@common/utils/error_util";
 import { force_json_parse } from "@common/utils/parse_util";
 
+const PO_TOKEN_CHANNEL = "potoken";
+
 let results: { poToken?: string; identifier?: string; error?: string } = {};
-nodejs?.channel?.addListener?.("potoken", (msg) => {
+nodejs?.channel?.addListener?.(PO_TOKEN_CHANNEL, (msg) => {
 	results = force_json_parse(msg);
 });
 

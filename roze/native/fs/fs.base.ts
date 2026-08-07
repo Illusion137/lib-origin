@@ -11,6 +11,7 @@ export interface FileInfo {
 	exists: boolean;
 	is_directory: boolean;
 	file_modified_ms: number;
+	size: number;
 	uri: string;
 }
 export interface DownloadSavable {
@@ -36,6 +37,7 @@ export interface FileSystem {
 	document_directory: (...paths: string[]) => Promise<string>;
 	read_as_string: (path: string, opts: EncodingOpts) => PromiseResult<string>;
 	read_as_buffer: (path: string) => PromiseResult<ArrayBuffer >;
+	read_as_buffer_range: (path: string, position: number, length: number) => PromiseResult<Uint8Array>;
 	read_directory: (path: string) => Promise<string[] | ResponseError>;
 	get_info: (path: string) => Promise<FileInfo>;
 	write_file_as_string: (path: string, contents: string, opts: EncodingOpts) => PromiseResult<undefined>;

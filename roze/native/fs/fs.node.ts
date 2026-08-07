@@ -24,6 +24,19 @@ export const node_fs: FileSystem = {
 			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
 		}
 	},
+	read_as_buffer_range: async (path: string, position: number, length: number) => {
+		let handle: fs.FileHandle | undefined = undefined;
+		try {
+			handle = await fs.open(path, "r");
+			const buffer = Buffer.allocUnsafe(length);
+			const { bytesRead } = await handle.read(buffer, 0, length, position);
+			return new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead);
+		} catch (error) {
+			return generror_catch(error, "Failed to read file range", "MEDIUM", { path, position, length });
+		} finally {
+			await handle?.close();
+		}
+	},
 	read_directory: async (path: string) => {
 		try {
 			return await fs.readdir(path);
@@ -38,6 +51,7 @@ export const node_fs: FileSystem = {
 				exists: true,
 				file_modified_ms: stats.mtime.getTime(),
 				is_directory: stats.isDirectory(),
+				size: stats.isDirectory() ? 0 : stats.size,
 				uri: path
 			};
 		} catch (_) {
@@ -45,6 +59,7 @@ export const node_fs: FileSystem = {
 				exists: false,
 				file_modified_ms: 0,
 				is_directory: false,
+				size: 0,
 				uri: path
 			};
 		}
