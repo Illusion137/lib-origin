@@ -164,7 +164,7 @@ export namespace YouTubeDL {
     }
 
     function generate_placeholder_potoken(content_binding: string){
-        return createColdStartToken(content_binding) as string;
+        return createColdStartToken(content_binding);
     }
 
     export async function resolve_sabr_info(video_id: string): Promise<SabrTrackParams | ResponseError> {
