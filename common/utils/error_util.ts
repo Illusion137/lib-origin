@@ -71,7 +71,7 @@ export const SEVERITY_HANDLER_MAP: Record<ErrorSeverity, (error: ResponseError) 
 };
 
 function handle_error(error: ResponseError, severity: ErrorSeverity): ResponseError {
-    if(Logger.is_enabled() && Logger.should_log(error)) console.warn(error);
+    if(Logger.is_enabled() && Logger.should_log(error) && severity !== "INFO") console.warn(error);
     SEVERITY_HANDLER_MAP[severity](error);
     return error;
 }

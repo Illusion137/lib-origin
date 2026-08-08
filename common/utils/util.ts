@@ -37,7 +37,7 @@ export function extract_strings_from_pattern(str: string, pattern: RegExp) {
     return [...body_groups].slice(1);
 }
 export function extract_string_undef(str: string, pattern: RegExp) {
-    return error_undefined(extract_string_from_pattern(str, pattern, "LOW"));
+    return error_undefined(extract_string_from_pattern(str, pattern, "INFO"));
 }
 export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const matched = str.matchAll(pattern);
