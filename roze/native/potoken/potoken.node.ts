@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { PoTokenGenerator } from "@native/potoken/potoken.base";
 import { BotGuardClient } from 'bgutils-js/botguard';
 import type { WebPoSignalOutput } from 'bgutils-js/shared-types';
@@ -13,6 +12,7 @@ import { try_json_parse } from "@common/utils/parse_util";
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
+// TODO make this compatible with studio_attestation
 function setup_botguard_environment(page_html: string): ResponseError|null {
     if (typeof globalThis.document !== 'undefined') return null;
 
@@ -169,7 +169,7 @@ export const node_potoken: PoTokenGenerator = {
     generate_potoken: async (_innertube: Innertube, content_binding: string) => {
         content_binding ??= "";
         const web_po_minter = await fetch_minter();
-        if("error" in web_po_minter) return web_po_minter as ResponseError;
+        if("error" in web_po_minter) return web_po_minter;
         const po_token = await web_po_minter.mintAsWebsafeString(content_binding);
 
         return {
