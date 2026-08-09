@@ -107,6 +107,13 @@ export const mobile_fs: FileSystem = {
 			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
 		}
 	},
+	remove_dir: async (path: string) => {
+		try {
+			return await expo_fs.deleteAsync(path, { idempotent: true });
+		} catch (error) {
+			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+		}
+	},
 	download_to_file: async (uri: string, to_path?: string, headers?: Record<string, string>) => {
 		try {
 			if (!to_path) to_path = path_lib.join(expo_fs.cacheDirectory!, gen_uuid() + ".tmp");

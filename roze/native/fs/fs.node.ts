@@ -100,6 +100,13 @@ export const node_fs: FileSystem = {
 			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
 		}
 	},
+	remove_dir: async (path: string) => {
+		try {
+			return fs.rm(path, {recursive: true});
+		} catch (error) {
+			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+		}
+	},
 	download_to_file: async (uri: string, to_path?: string) => {
 		try {
 			if (!to_path) to_path = path_lib.join(os.tmpdir(), gen_uuid() + ".tmp");
