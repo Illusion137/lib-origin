@@ -6,7 +6,6 @@ import { generror, generror_catch } from "@common/utils/error_util";
 import type { PromiseResult, ResponseError } from "@common/types";
 
 // TODO this works? but is a shitshow so refactor it
-// TODO see if can hide dumb ol `Could not load img: "https://www.youtube.com/generate_204?exyGRQ"`
 // TODO make this compatible with po_token
 function setup_botguard_environment(): ResponseError | null {
 	if (typeof globalThis.document !== "undefined") return null;
@@ -20,7 +19,6 @@ function setup_botguard_environment(): ResponseError | null {
 		Object.defineProperty(globalThis, "navigator", { value: dom.window.navigator });
 	}
 
-	// jsdom doesn't implement canvas; stub getContext so BotGuard's VM doesn't throw.
 	Object.defineProperty(dom.window.HTMLCanvasElement.prototype, "getContext", { value: () => null, writable: true });
 	return null;
 }
