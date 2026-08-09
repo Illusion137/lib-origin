@@ -12,8 +12,9 @@
     "gen_bgutils_bundle": "ts-node -T ./scripts/gen_bgutils_bundle.ts",
     "check-types": "tsc --noEmit",
     "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
-    "postinstall": "patch-package && husky",
-    "prepare": "g++ -std=c++23 ./bin/origin.cpp -o ./bin/origin"
+    "postinstall": "patch-package && node scripts/fix_win_dpapi.js && husky",
+    "fix:win-dpapi": "node scripts/fix_win_dpapi.js",
+    "prepare": "node scripts/prepare_origin.js"
   },
   "cmake-js": {
     "runtime": "node",
@@ -39,6 +40,7 @@
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "node-gyp": "12.4.0",
     "rn-nodeify": "github:tradle/rn-nodeify",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
@@ -76,7 +78,7 @@
     "buffer": "^6.0.3",
     "canvas": "^3.2.1",
     "child_process": "^1.0.2",
-    "chrome-cookie-decrypt": "^0.0.10",
+    "chrome-cookies-secure": "3.0.2",
     "cli-progress": "^3.12.0",
     "cmake-js": "^7.3.1",
     "colors": "^1.4.0",
@@ -179,6 +181,7 @@
     "util": "^0.10.4",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^4.2.0",
+    "win-dpapi": "file:./vendor/win-dpapi",
     "youtubei.js": "17.0.1",
     "zustand": "^5.0.9"
   },
