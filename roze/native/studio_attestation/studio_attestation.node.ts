@@ -1,17 +1,18 @@
 import type { AttestationBinding, BotGuardChallenge, StudioAttestationGenerator } from "./studio_attestation.base";
 import { BotGuardClient } from "bgutils-js/botguard";
 import { USER_AGENT } from "bgutils-js/utils";
-import { JSDOM } from "jsdom";
+import { JSDOM, VirtualConsole } from "jsdom";
 import { generror, generror_catch } from "@common/utils/error_util";
 import type { PromiseResult, ResponseError } from "@common/types";
 
 // TODO this works? but is a shitshow so refactor it
 // TODO see if can hide dumb ol `Could not load img: "https://www.youtube.com/generate_204?exyGRQ"`
-// TODO make this compatible with studio_attestation
+// TODO make this compatible with po_token
 function setup_botguard_environment(): ResponseError | null {
 	if (typeof globalThis.document !== "undefined") return null;
 
-	const dom = new JSDOM('<!DOCTYPE html><html lang="en"><head><title></title></head><body></body></html>', { url: "https://www.youtube.com", referrer: "https://www.youtube.com/", userAgent: USER_AGENT, resources: "usable", runScripts: "dangerously" });
+	const virtual_console = new VirtualConsole();
+	const dom = new JSDOM('<!DOCTYPE html><html lang="en"><head><title></title></head><body></body></html>', { url: "https://www.youtube.com", referrer: "https://www.youtube.com/", userAgent: USER_AGENT, resources: "usable", runScripts: "dangerously", virtualConsole: virtual_console });
 
 	Object.assign(globalThis, { window: dom.window, document: dom.window.document, location: dom.window.location, origin: dom.window.origin });
 
