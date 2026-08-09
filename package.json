@@ -12,8 +12,8 @@
     "gen_bgutils_bundle": "ts-node -T ./scripts/gen_bgutils_bundle.ts",
     "check-types": "tsc --noEmit",
     "supabase": "npx supabase gen types typescript --project-id \"lttxwlwqdrgyqebehtcx\" --schema public",
-    "postinstall": "patch-package && node scripts/fix_win_dpapi.js && husky",
-    "fix:win-dpapi": "node scripts/fix_win_dpapi.js",
+    "postinstall": "patch-package && husky",
+    "fix:win-dpapi": "node node_modules/win-dpapi/scripts/fix_win_dpapi.js",
     "prepare": "node scripts/prepare_origin.js"
   },
   "cmake-js": {

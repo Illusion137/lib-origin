@@ -9,6 +9,7 @@ import { extract_strings_from_pattern, is_empty, seconds_of } from "@common/util
 import { reinterpret_cast } from '../../common/cast';
 import { fs } from "@native/fs/fs";
 import { SQLfs } from "./sql/sql_fs";
+import { Translate } from "@roze/translate";
 
 export namespace Lyrics {
     export interface LyricsResult {
@@ -176,5 +177,26 @@ export namespace Lyrics {
         });
 
         return results;
+    }
+
+    // Illusi in an natively English app; so we'll assume that English is primary language
+    // TODO maybe add better support with franc but it seems iffy right now so ignore for a bit
+    export function should_translate(lyrics: string) {
+        // only checking japanese right now
+        const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
+        return jp_regex.test(lyrics);
+    }
+
+    export async function translate_plain_lyrics(lyrics: string): PromiseResult<[string, string][]> {
+        const lyrics_lines = lyrics.split('\n');
+        const translation_result = await Translate.google_translate_html(lyrics_lines, {lang_from: "ja", lang_to: "en"});
+        if("error" in translation_result) return translation_result;
+        return lyrics_lines.map((line, i) => [line, translation_result[i]]);
+    }
+    export async function translate_synced_lyrics(lyrics: SyncedLyric[]): PromiseResult<[SyncedLyric, string][]> {
+        const lyrics_lines = lyrics.map(lyric => lyric.text);
+        const translation_result = await Translate.google_translate_html(lyrics_lines, {lang_from: "ja", lang_to: "en"});
+        if("error" in translation_result) return translation_result;
+        return lyrics.map((lyric, i) => [lyric, translation_result[i]])
     }
 }
