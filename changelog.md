@@ -1,19 +1,19 @@
-# Illusi 21.0.0
+# Illusi 21.0.0-22.0.0 ish
   - [ ] Illusi-CLI
-  - [ ] Illusi desktop based on React-Native
-  - [ ] Fixed YouTube Music Search album being put into playlists tab
+  - [ ] Illusi desktop based on React
+  - Fixed YouTube Music Search album being put into playlists tab
   - [ ] Fixed latest release SQLArtist integration
   - [ ] Fixed search SQLArtist integration
   - [ ] Fixed SQLArtist integration re-caching
   - [ ] Fixed YouTube (Music) artwork not being square for lock-screen
-  - [ ] FourTrackArtwork Album tinting
-  - [ ] Added Playlist-Converter
+  - FourTrackArtwork Album tinting
+  - Added Playlist-Converter
   - [ ] Added Extras-Help
   - [ ] Added Watch Artist
   - [ ] Added SQLTrackSkips
   - [ ] Added Trim-Silence
   - [ ] Added Audio Normalizer
-  - [ ] Added Synced Lyrics
+  - Added Synced Lyrics
   - [ ] Added Lyrics uploading
   - [ ] Added loading screens
   - [ ] Added custom secondary color to themes
@@ -21,14 +21,14 @@
   - [ ] Added ContextMenu to RowArtist and CompactArtistComponents
   - [ ] Slightly modify PlaylistBase by moving artist-data to center of artwork and searchbar
   - [ ] Refactored Extras-Settings UI
-  - [ ] Redesigned Explore UI
+  - Redesigned Explore UI
   - [ ] Redesigned Search Screen UI
-  - [ ] Redesigned Batch-Downloader UI
-  - [ ] Redesigned Backpack UI
-  - [ ] Redesigned Themes UI
-  - [ ] Redesigned Statistics UI
+  - Redesigned Batch-Downloader UI
+  - Redesigned Backpack UI
+  - Redesigned Themes UI
+  - Redesigned Statistics UI
   - [ ] Redesigned Changelog UI
-  - [ ] Redesigned CompactArtistComponent
+  - Redesigned CompactArtistComponent
 # Illusi 20.0.0
   - Patched up Keep-Delete (Beta)
   - Update Lyrics UI

@@ -1,7 +1,5 @@
 import { EPub } from './lib/epub';
 
-//TODO: Cache parsed data
-
 export = EPub;
 
 /*

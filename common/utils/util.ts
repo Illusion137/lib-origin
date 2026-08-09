@@ -198,6 +198,19 @@ export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string,
     }, {}) as Record<string, T[]>;
 };
 
+export function groupby_map<T, V>(items: T[], keyGetter: (t: T) => any, transform: (group: T[]) => V): Record<string, V> {
+    const groups = items.reduce((accumulator: Record<string, unknown[]>, item) => {
+        const key = keyGetter(item);
+        (accumulator[key] = accumulator[key] || []).push(item);
+        return accumulator;
+    }, {}) as Record<string, T[]>;
+    const mapped_groups: Record<string, V> = {};
+    for(const [key, value] of Object.entries(groups)) {
+        mapped_groups[key] = transform(value);
+    }
+    return mapped_groups;
+};
+
 export function version_split(version: string): [number, number, number] {
     return reinterpret_cast<[number, number, number]>(version.split('.').map(item => parseInt(item)));
 }
