@@ -5,12 +5,11 @@ const { join } = require("path");
 
 if (process.platform !== "win32") process.exit(0);
 
-const root = join(__dirname, "..");
-const pkg_dir = join(root, "node_modules", "win-dpapi");
+const pkg_dir = join(__dirname, "..");
 const binary_path = join(pkg_dir, "build", "Release", "node-dpapi.node");
+const root = join(pkg_dir, "..", "..");
 const node_gyp = join(root, "node_modules", "node-gyp", "bin", "node-gyp.js");
 
-if (!existsSync(pkg_dir)) process.exit(0);
 if (existsSync(binary_path)) {
 	try {
 		require(pkg_dir);

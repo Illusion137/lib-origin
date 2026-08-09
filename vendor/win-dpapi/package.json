@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node test.js",
-    "install": "node -e \"0\""
+    "install": "node scripts/fix_win_dpapi.js"
   },
   "repository": {
     "type": "git",
