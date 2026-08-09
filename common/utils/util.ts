@@ -279,3 +279,13 @@ export function join_uri(base: string, ...paths: string[]): string {
     const sep = base.endsWith('/') ? '' : '/';
     return base + sep + paths.join('/');
 }
+
+export function filter_by_set<T>(arr: T[], get: (item: T) => string|number): T[]{
+    const seen = new Set();
+    return arr.filter(item => {
+        const key = get(item);
+        if(seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}

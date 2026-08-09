@@ -1,0 +1,56 @@
+import type { PromiseResult } from "@common/types";
+import { Cookie } from "@common/utils/cookie_util";
+import { generror, generror_catch } from "@common/utils/error_util";
+import { spawn_code } from "@common/utils/node_utils";
+import { try_json_parse } from "@common/utils/parse_util";
+import { gen_uuid, groupby } from "@common/utils/util";
+import { fs, load_native_fs } from "@native/fs/fs";
+import path from "path-browserify";
+
+// TODO
+const EXE = "chromelevator_x64.exe";
+
+async function try_chromelevator(host_names: string[], profile = "Default"): PromiseResult<Record<string, Cookie[]>> {
+    try {
+        if(process.platform !== "win32") return generror("Platform must be win32", "INFO", {platform: process.platform});
+        await load_native_fs();
+        const output_path = path.join(await fs().temp_directory(), gen_uuid());
+        await spawn_code(EXE, [
+            "--output-path",
+            output_path,
+            "chrome"
+        ], "ignore");
+        const chrome_output_cookies_path = path.join(output_path, "Chrome", profile, "cookies.json");
+        if (!(await fs().get_info(chrome_output_cookies_path)).exists) return generror("No cookie path found", "INFO");
+
+        const cookies_string = await fs().read_as_string(chrome_output_cookies_path, {});
+        if(typeof cookies_string === "object") return cookies_string;
+        const cookies_json = try_json_parse<{host: string, name: string, path: string, is_secure: boolean, is_httponly: boolean, expires: number, value:string}[]>(cookies_string);
+        if("error" in cookies_json) return cookies_json;
+        const all_cookies = cookies_json.map(cookie => new Cookie({
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.host,
+            // Sum bout UNIX timestamps or something
+            expires: new Date(cookie.expires / 1000 - 11644473600000),
+            http_only: cookie.is_httponly,
+            secure: cookie.is_secure,
+            path: cookie.path
+        })).filter(cookie => host_names.includes(cookie.getData().domain ?? ""));
+        all_cookies.reverse();
+
+        if ((await fs().get_info(output_path)).is_directory) await fs().remove_dir(output_path);
+
+        return groupby(all_cookies, (c => c.getData().domain));
+    }
+    catch(e) {
+        return generror_catch(e, "try_chromelevator failed", "INFO");
+    }
+}
+
+export async function get_cookies(host_names: string[], profile = "Default"): PromiseResult<Record<string, Cookie[]>>{
+    const chromelevator_result = try_chromelevator(host_names, profile);
+    if(!("error" in chromelevator_result)) return chromelevator_result;
+    // TODO fill in the fallbacks
+    return chromelevator_result;
+}
