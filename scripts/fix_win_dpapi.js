@@ -1,6 +1,7 @@
-import { existsSync } from "fs";
-import { execFileSync } from "child_process";
-import { join } from "path";
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { existsSync } = require("fs");
+const { execFileSync } = require("child_process");
+const { join } = require("path");
 
 if (process.platform !== "win32") process.exit(0);
 
@@ -12,7 +13,6 @@ const node_gyp = join(root, "node_modules", "node-gyp", "bin", "node-gyp.js");
 if (!existsSync(pkg_dir)) process.exit(0);
 if (existsSync(binary_path)) {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		require(pkg_dir);
 		process.exit(0);
 	} catch {
