@@ -229,7 +229,8 @@
     "tls": false
   },
   "resolutions": {
-    "react-native-track-player": "github:Illusion137/RNTPvE#d81c04d442b1f54a74aed4ab86b0445c8ae00b49"
+    "react-native-track-player": "github:Illusion137/RNTPvE#d81c04d442b1f54a74aed4ab86b0445c8ae00b49",
+    "chrome-cookies-secure/win-dpapi": "file:./vendor/win-dpapi"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
