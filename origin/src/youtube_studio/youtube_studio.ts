@@ -393,6 +393,10 @@ export namespace YouTubeStudio {
     export async function get_channel_id(index?: number): PromiseResult<string> {
         try {
             const client = await get_innertube_client();
+            const channel_id_cache_key = {cookie: client.session.cookie, index};
+            const channel_id_cache_hit = await FSCache.check_cache<string>(channel_id_cache_key, milliseconds_of({minutes: 15}), {serial_type: "stringable"});
+            if(channel_id_cache_hit) return channel_id_cache_hit;
+
             const account_info = await client.account.getInfo(true);
             const account = account_info[index ?? 0];
             if (account === undefined) return generror("No accounts found", "LOW");
@@ -402,6 +406,7 @@ export namespace YouTubeStudio {
             const resolved = await client.resolveURL(resolve_url);
             const channel_id = resolved.payload.browseId as string;
             await FSCache.insert_cache(resolve_url, channel_id, {serial_type: "stringable"});
+            await FSCache.insert_cache(channel_id_cache_key, channel_id, {serial_type: "stringable"});
             return channel_id;
         } catch (error) { return generror_catch(error, "Failed to resolve the creator channel id", "CRITICAL"); }
     }
@@ -776,13 +781,13 @@ export namespace YouTubeStudio {
         }
     }
 
-    export async function upload_feedback_cycle(initial_tokens: (string|null)[], callback: (content: ContinuationsUploadFeedback) => any){
+    export async function upload_feedback_cycle(initial_tokens: (string|null)[], callback_continue: (content: ContinuationsUploadFeedback) => boolean){
         if(initial_tokens.some(token => token === null)) return;
         let feedback: ResponseError|UploadFeedbackResult = await upload_feedback(initial_tokens as string[], "CONTINUATION_TOKENS");
         if("error" in feedback) return;
         do {
             try {
-                callback(feedback.contents);
+                if(!callback_continue(feedback.contents)) break;
                 const delay = try_get_feedback_feedback_delay(feedback.contents);
                 if(delay === null) {
                     console.warn("upload feedback delay is null");

@@ -28,13 +28,13 @@ export interface CreatorVideo {
     channelId?: string;
     title?: string;
     description?: string;
-    privacy?: string;
-    status?: string;
-    draftStatus?: string;
+    privacy?: "VIDEO_PRIVACY_PUBLIC"|"VIDEO_PRIVACY_UNLISTED"|"VIDEO_PRIVACY_PRIVATE";
+    status?: "VIDEO_STATUS_PROCESSED";
+    draftStatus?: "DRAFT_STATUS_NONE";
     shareUrl?: string;
     watchUrl?: string;
     lengthSeconds?: string;
-    videoDurationMs?: string;
+    videoDurationMs?: number;
     timeCreatedSeconds?: string;
     timePublishedSeconds?: string;
     thumbnailDetails?: { thumbnails: { url: string, width: number, height: number }[] };
