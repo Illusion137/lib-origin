@@ -133,15 +133,22 @@ export namespace YouTubeStudio {
     interface GetCreatorVideosResponse { videos?: CreatorVideo[] }
     interface ListCreatorVideosResponse { videos?: CreatorVideo[], nextPageToken?: string, videosTotalSize?: {size: string, accuracy: "ACCURACY_EXACT", achievedTotalSizeAccuracy: "CREATOR_ACHIEVED_TOTAL_SIZE_ACCURACY_EXACT"} }
 
+    let force_refresh_client = false;
+    function eat_force_refresh_client(){
+        const temp = force_refresh_client;
+        force_refresh_client = false;
+        return temp;
+    }
     export function preload_cookies(cookie?: string){
         preloaded_cookies = cookie ?? process?.env?.YOUTUBE_COOKIE_JAR;
+        force_refresh_client = true;
     }
 
     export async function get_innertube_client(cookie?: string): Promise<Innertube> {
         // paradigm switch, but like this is just genuinely bad if you dont pass cookies
         if(preloaded_cookies === undefined && cookie === undefined) throw new Error("No cookies passed for YouTube Studio");
         Log.setLevel(Log.Level.NONE);
-        if (innertube_client) return innertube_client;
+        if (innertube_client && !eat_force_refresh_client()) return innertube_client;
         await load_native_fs();
         await load_native_studio_attestation();
         resolved_cookies = preloaded_cookies ?? cookie;
