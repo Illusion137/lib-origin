@@ -497,7 +497,7 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 
 			const upload_result = await YouTubeStudio.upload_video(video_path, {
 				title: roz.title,
-				visibility: "UNLISTED",
+				visibility: "PRIVATE",
 				description: youtube_chapters,
 				...(thumbnail_path ? { thumbnail: { path: thumbnail_path } } : {}),
 				...(srt_path ? { subtitles: { synced: true, data: { path: srt_path } } } : {})

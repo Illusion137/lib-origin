@@ -13,6 +13,7 @@ import type {
     PathOrBuffer,
     StudioFeature,
     StudioVisibility,
+    UpdateVideoDetails,
     UploadVideoDetails,
     UploadVideoSuccessfulResult
 } from './types';
@@ -477,7 +478,7 @@ export namespace YouTubeStudio {
         };
     }
 
-    interface ScottyStart { upload_url: string, resource_id: string }
+    interface ScottyStart { upload_url: string, resource_id?: string }
 
     async function scotty_start(start_url: string, file_name: string, total_bytes: number, start_payload: object): PromiseResult<ScottyStart> {
         if (total_bytes === 0) return generror("Refusing to upload an empty file to scotty", "MEDIUM", { file_name, start_url });
@@ -498,13 +499,13 @@ export namespace YouTubeStudio {
         const upload_url = start_response.headers.get("x-goog-upload-url");
         if (upload_url === null || upload_url === "") return generror("Scotty did not return an upload url", "CRITICAL", { file_name, start_url });
 
+        // the studiothumbnail endpoint never sends this header; its resource id only shows up in the finalize response body
         const resource_id = start_response.headers.get("x-goog-upload-header-scotty-resource-id");
-        if (resource_id === null || resource_id === "") return generror("Scotty did not return a resource id", "CRITICAL", { file_name, start_url });
 
-        return { upload_url, resource_id };
+        return { upload_url, resource_id: resource_id === null || resource_id === "" ? undefined : resource_id };
     }
 
-    async function scotty_upload_chunks(upload_url: string, file_name: string, source: ScottySource, on_progress?: (written_bytes: number, total_bytes: number) => void): PromiseResult<ResponseSuccess> {
+    async function scotty_upload_chunks(upload_url: string, file_name: string, source: ScottySource, on_progress?: (written_bytes: number, total_bytes: number) => void): PromiseResult<{ resource_id?: string }> {
         const total_bytes = source.byte_length;
         let offset = 0;
         while (offset < total_bytes) {
@@ -537,7 +538,7 @@ export namespace YouTubeStudio {
             if (result.status !== "STATUS_SUCCESS") {
                 return generror("Scotty did not finalize the upload", "CRITICAL", { file_name, status: result.status });
             }
-            return { success: true };
+            return { resource_id: result.scottyResourceId };
         }
         return generror("Scotty upload loop ended without finalizing", "CRITICAL", { file_name });
     }
@@ -547,7 +548,9 @@ export namespace YouTubeStudio {
         if ("error" in start) return start;
         const uploaded = await scotty_upload_chunks(start.upload_url, file_name, source, on_progress);
         if ("error" in uploaded) return uploaded;
-        return start.resource_id;
+        const resource_id = start.resource_id ?? uploaded.resource_id;
+        if (resource_id === undefined || resource_id === "") return generror("Scotty did not return a resource id", "CRITICAL", { file_name, start_url });
+        return resource_id;
     }
 
     export async function check_feature_rate_limit(feature: StudioFeature): PromiseResult<FeatureRateLimit> {
@@ -561,7 +564,7 @@ export namespace YouTubeStudio {
         };
     }
 
-    function build_metadata_update(details: Partial<UploadVideoDetails>, thumbnail_resource_id?: string): MetadataUpdatePayload {
+    function build_metadata_update(details: Partial<UpdateVideoDetails>, thumbnail_resource_id?: string): MetadataUpdatePayload {
         const payload: MetadataUpdatePayload = {};
 
         if (details.title !== undefined) payload.title = { newTitle: details.title, titleOperation: "MDE_TEXT_UPDATE_OPERATION_SET" };
@@ -637,7 +640,7 @@ export namespace YouTubeStudio {
         return !is_empty(value) && !isNaN(Number(value));
     }
 
-    function build_comment_options(details: Partial<UploadVideoDetails>): MetadataUpdatePayload | undefined {
+    function build_comment_options(details: Partial<UpdateVideoDetails>): MetadataUpdatePayload | undefined {
         // studio only sends the moderation and commenter fields while comments are actually on
         const enabled_state = details.allow_comments === undefined ? undefined : comment_enabled_states[details.allow_comments];
         const has_options = enabled_state !== undefined
@@ -674,6 +677,9 @@ export namespace YouTubeStudio {
     }
 
     async function upload_thumbnail_resource(video_id: string, thumbnail: PathOrBuffer): PromiseResult<string> {
+        // scotty auth rides on resolved_cookies, which only gets set as a side effect of get_innertube_client();
+        // without this, a cold client sends the thumbnail request with no cookie header and gets a 401
+        await get_innertube_client();
         const bytes = await read_path_or_buffer(thumbnail);
         if ("error" in bytes) return bytes;
         return await upload_to_scotty(UPLOAD_THUMBNAIL_URL, file_name_of(thumbnail, `${video_id}.jpg`), scotty_source_of_bytes(bytes), {});
@@ -701,7 +707,6 @@ export namespace YouTubeStudio {
         const content_update_time = created.translation?.captionsTranslations?.[0]?.contentUpdateTime;
         if (content_update_time === undefined) return generror("create_captions did not return a contentUpdateTime", "MEDIUM", { video_id, language });
 
-        // `synced` files already carry timings; unsynced transcripts get auto aligned server side
         const parsed = await studio_execute<ParseCaptionsResponse>('/globalization/parse_captions', {
             fileType: subtitles.synced ? "CAPTIONS_FILE_TYPE_TIMED_TEXT" : "CAPTIONS_FILE_TYPE_TRANSCRIPT",
             fileName: file_name,
@@ -725,7 +730,7 @@ export namespace YouTubeStudio {
         return { success: true };
     }
 
-    export async function update_video(video_id: string, details: Partial<UploadVideoDetails>): PromiseResult<ResponseSuccess> {
+    export async function update_video(video_id: string, details: Partial<UpdateVideoDetails>): PromiseResult<ResponseSuccess> {
         let thumbnail_resource_id: string | undefined = undefined;
         if (details.thumbnail !== undefined) {
             const resource_id = await upload_thumbnail_resource(video_id, details.thumbnail);

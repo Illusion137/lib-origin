@@ -83,15 +83,17 @@ export interface UploadVideoDetails {
     allow_comments?: "ON"|"OFF"|"PAUSE";
     comment_moderation?: "NONE"|"BASIC"|"STRICT"|"HOLD_ALL";
     who_can_comment?: "ANYONE"|"SUBSCRIBERS_AND_MEMBERS";
-    sort_comments_by: "TOP"|"NEWEST";
+    sort_comments_by?: "TOP"|"NEWEST";
     show_how_many_viewers_like_this_video?: boolean;
 
-    visibility?: "PUBLIC"|"UNLISTED"|"PRIVATE";
+    visibility?: StudioVisibility;
     subtitles?: {
         data: PathOrBuffer;
         synced: boolean;
     };
 };
+
+export type UpdateVideoDetails = Omit<UploadVideoDetails, "visibility">;
 
 export interface UploadVideoSuccessfulResult {
     video_link: string;
