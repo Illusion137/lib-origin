@@ -3,6 +3,7 @@ import { gen_uuid } from "@common/utils/util";
 import type { DownloadSavable, FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import * as expo_fs from "expo-file-system/legacy";
 import { File, Paths } from "expo-file-system";
+import { toByteArray } from 'react-native-quick-base64';
 import path_lib from "path";
 
 function join_uri(base: string, ...paths: string[]): string {
@@ -24,8 +25,7 @@ export const mobile_fs: FileSystem = {
 	read_as_buffer: async (path: string) => {
 		try {
 			const base64 = await expo_fs.readAsStringAsync(path, {encoding: "base64"});
-			// TODO only very temporary fix
-			const uint8_array = (Uint8Array as any).fromBase64(base64);
+			const uint8_array = toByteArray(base64);
 			return uint8_array.buffer as ArrayBuffer;
 		} catch (error) {
 			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
