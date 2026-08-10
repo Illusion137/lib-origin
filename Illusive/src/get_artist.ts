@@ -49,8 +49,8 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
 
     const artist_info: NamedUUID = { name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs), uri: create_uri("youtubemusic", artist_response.data.artist_id ?? id) };
 
-    const artist_albums_response_promise = YouTubeMusic.get_only_artist_albums({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, artist_response.icfg.ytcfg, artist_response.data.artist_id ?? id);
-    const artist_tracks_response_promise = YouTubeMusic.get_only_artist_tracks({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, artist_response);
+    const artist_albums_response_promise = YouTubeMusic.get_only_artist_albums({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response.icfg.ytcfg, artist_response.data.artist_id ?? id);
+    const artist_tracks_response_promise = YouTubeMusic.get_only_artist_tracks({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response);
 
     const [artist_albums_response, artist_tracks_response] = await Promise.all([artist_albums_response_promise, artist_tracks_response_promise]);
 
@@ -103,10 +103,7 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
 }
 
 export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
-    //TODO proxy: opts?.proxy
-    opts;
-
-    const artist_response = await AppleMusic.get_artist(id, { cookie_jar: get_cookie_jar('apple_music_cookie_jar') });
+    const artist_response = await AppleMusic.get_artist(id, { cookie_jar: get_cookie_jar('apple_music_cookie_jar'), fetch_opts: {proxy: opts?.proxy}});
     if ("error" in artist_response) return default_artist(artist_response);
 
     const artist_info: NamedUUID = { name: artist_response.data.pageMetrics.pageFields.pageDetails.content, uri: create_uri("applemusic", urlid(artist_response.data.canonicalURL)) };
@@ -196,8 +193,8 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
     };
 }
 
-export async function spotify_get_artist(id: string): Promise<MusicServiceArtist> {
-    const artist = await Spotify.get_artist({ cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), var: { uri: id, includePrerelease: false } });
+export async function spotify_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
+    const artist = await Spotify.get_artist({ cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), var: { uri: id, includePrerelease: false }, fetch_opts: {proxy: opts?.proxy} });
     if ("error" in artist) return default_artist(artist);
     const union_artist = artist.data.artistUnion;
     const artist_uri: NamedUUID = { name: union_artist.profile.name, uri: create_uri("spotify", id) };

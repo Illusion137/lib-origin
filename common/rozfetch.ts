@@ -4,6 +4,7 @@ import MD5 from "crypto-js/md5";
 
 import { fs, load_native_fs } from "@native/fs/fs";
 import { load_native_scrapefetch, scrapefetch } from "@native/scrapefetch/scrapefetch";
+import { load_native_proxyfetch, proxyfetch } from "@native/proxyfetch/proxyfetch";
 import { try_json_parse } from "@common/utils/parse_util";
 import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
 import pathlib from "path-browserify";
@@ -159,6 +160,11 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			await load_native_scrapefetch();
 			const sf = scrapefetch();
 			if (sf) transport = sf as typeof fetch;
+		}
+		else if (init?.proxy) {
+			await load_native_proxyfetch();
+			const pf = proxyfetch();
+			if (pf) transport = pf as typeof fetch;
 		}
 		const response = (await transport(input, { ...init, headers: sanitize_headers(init?.headers), signal: init?.abort_ms ? AbortSignal.timeout(init.abort_ms) : undefined })) as RoZFetchResponse<T>;
 		response.json = (async () => reinterpret_cast<PromiseResult<T>>(response.clone().json().catch(json_catch))) as RozFetchJSON<T>;
