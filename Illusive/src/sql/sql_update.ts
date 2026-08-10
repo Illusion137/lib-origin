@@ -209,7 +209,6 @@ export namespace SQLUpdate {
             const tracks = await db.select().from(tracks_table).where(
                 and(ne(tracks_table.youtube_id, ""), eq(tracks_table.artwork_url, ""), ne(tracks_table.thumbnail_uri, ""))
             );
-            // TODO maybe always do this???
             GLOBALS.global_var.bottom_alert(`Don't close out of app, must fix ${tracks.length} tracks`, "INFO");
             for (const track of tracks) {
                 const full_path = SQLfs.thumbnail_directory(track.thumbnail_uri);
