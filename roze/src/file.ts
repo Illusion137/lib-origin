@@ -14,7 +14,7 @@ import type { TextItem } from '@lib/pdfjs';
 import pdfjs_lib, { type PDFDocumentProxy } from "@lib/pdfjs";
 import sharp, { type Channels } from '@lib/sharp';
 import { reinterpret_cast } from '@common/cast';
-import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_contents, roz_contents_to_roz_chapters_contents } from './utils';
+import { base_64_image, filepath_to_bufer as filepath_to_bytes, html_to_roz_contents, normalize_heading_text, roz_contents_to_roz_chapters_contents } from './utils';
 import mammoth from "@lib/mammoth";
 import { image_size, load_native_image_size } from '@native/image_size/image_size';
 import { load_native_zip } from '@native/zip/zip';
@@ -25,6 +25,7 @@ export namespace FileParser {
     interface ParseFileOpts {
         download_to_directory?: string;
         file_name_no_ext?: string;
+        remove_copyright?: boolean;
     };
 
     function is_url(test_url: string): boolean {
@@ -34,6 +35,15 @@ export namespace FileParser {
         } catch (_) {
             return false;
         }
+    }
+
+    function strip_copyright(roz: Roz, remove_copyright = true): Roz {
+        if(!remove_copyright) return roz;
+        // just basic detection for a copyright chapter
+        const chars = (c: RozContent[]) => c.filter(x=>x.type==="PARAGRAPH").reduce((s,x)=>s+x.content.length, 0);
+        const copyright_chapter_index = roz.chapters.findIndex(chapter => chapter.chapter.title === "Copyright" && chapter.contents.length < 50 && chars(chapter.contents) < 5000);
+        if(copyright_chapter_index !== -1) roz.chapters.splice(copyright_chapter_index, 1);
+        return roz;
     }
 
     function strip_file_scheme(p: string): string {
@@ -80,6 +90,21 @@ export namespace FileParser {
         }
         return sections;
     }
+
+    const INTERNAL_LINK_RE = /<a\s+[^>]*href="\/links\/([^/"]+)\/[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+    function internal_link_titles(sections: Awaited<ReturnType<typeof parse_epub_flow>>): Map<string, string> {
+        const titles = new Map<string, string>();
+        for (const section of sections) {
+            for (const match of section.contents.matchAll(INTERNAL_LINK_RE)) {
+                const [, id, inner_html] = match;
+                if (titles.has(id)) continue;
+                const text = inner_html.replace(/<[^>]+>/g, '').trim();
+                if (!text) continue;
+                titles.set(id, normalize_heading_text(text));
+            }
+        }
+        return titles;
+    }
     async function parse_epub_sections_to_roz_content(epub: EPub, sections: Awaited<ReturnType<typeof parse_epub_flow>>) {
         const IMAGE_HEIGHT_MIN = 100;
         const IMAGE_WIDTH_MIN = 100;
@@ -88,6 +113,7 @@ export namespace FileParser {
         const IMAGE_RATIO_SQUARE_MIN = 0.95;
         const IMAGE_RATIO_SQUARE_MAX = 1.05;
 
+        const link_titles = internal_link_titles(sections);
         const roz_sections: RozChapterContents[] = [];
         for (const section of sections) {
             let roz_contents = html_to_roz_contents(section.contents);
@@ -110,24 +136,40 @@ export namespace FileParser {
                 filtered_contents.push(content);
             }
             roz_contents = filtered_contents;
-            if (section.chapter.title || section.chapter.id?.toLowerCase() === "cover" || section.chapter.id?.toLowerCase() === "titlepage") {
+
+            const first_heading_index = roz_contents.findIndex(c => c.type === "CHAPTER_TITLE" || c.type === "CHAPTER_SUBTITLE");
+            const heading_is_leading = first_heading_index !== -1 && !roz_contents.slice(0, first_heading_index).some(c => c.type === "PARAGRAPH");
+            let inline_title: string | undefined;
+            if (heading_is_leading) {
+                const heading_run = [first_heading_index];
+                while (
+                    heading_run[heading_run.length - 1] + 1 < roz_contents.length &&
+                    (roz_contents[heading_run[heading_run.length - 1] + 1].type === "CHAPTER_TITLE" || roz_contents[heading_run[heading_run.length - 1] + 1].type === "CHAPTER_SUBTITLE")
+                ) heading_run.push(heading_run[heading_run.length - 1] + 1);
+
+                const descriptive_index = [...heading_run].reverse().find(i => /[a-zA-Z]/.test(roz_contents[i].content));
+                inline_title = roz_contents[descriptive_index ?? heading_run[heading_run.length - 1]].content;
+            }
+            const toc_title = section.chapter.title?.trim();
+            const link_title = section.chapter.id ? link_titles.get(section.chapter.id) : undefined;
+            const section_title = (toc_title ? normalize_heading_text(toc_title) : undefined) || inline_title || link_title;
+
+            const is_cover = section.chapter.id?.toLowerCase() === "cover";
+            const is_titlepage = section.chapter.id?.toLowerCase() === "titlepage";
+            if (section_title || is_cover || is_titlepage) {
                 roz_sections.push({
-                    ...section,
                     chapter: {
-                        ...section.chapter,
                         uuid: gen_uuid(),
-                        title: section.chapter.title ?? ""
+                        title: section_title ?? (is_cover ? "Cover" : is_titlepage ? "Insert" : "")
                     },
                     contents: roz_contents
                 });
             }
             else if (roz_sections.length == 0) {
                 roz_sections.push({
-                    ...section,
                     chapter: {
-                        ...section.chapter,
-                        title: section.chapter.title ?? "",
-                        uuid: gen_uuid()
+                        uuid: gen_uuid(),
+                        title: ""
                     },
                     contents: roz_contents
                 });
@@ -145,7 +187,7 @@ export namespace FileParser {
             const epub = await EPub.createAsync(file_path_err);
             const sections = await parse_epub_flow(epub);
             const roz_sections = await parse_epub_sections_to_roz_content(epub, sections);
-            return {
+            return strip_copyright({
                 version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
@@ -158,7 +200,7 @@ export namespace FileParser {
                 series_name: null,
                 series_no: null,
                 chapters: roz_sections
-            }
+            }, opts.remove_copyright);
         }
         catch (e) {
             return generror_catch(e, "Failed to parse epub", "CRITICAL", { file_path_or_url, file_path_err, opts });
@@ -384,7 +426,7 @@ export namespace FileParser {
 
             const cover = contents.slice(0, opts.cover_look_slice ?? 3).find(content => content.type === "IMAGE");
 
-            return {
+            return strip_copyright({
                 version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
@@ -397,7 +439,7 @@ export namespace FileParser {
                 series_name: null,
                 series_no: null,
                 chapters: roz_pdf_contents_to_roz_chapter_contents(contents, text_height_counter)
-            };
+            }, opts.remove_copyright);
         }
         catch (e) {
             return generror_catch(e, "Failed to parse pdf", "CRITICAL", { file_path_or_url, file_path_err, opts });
@@ -412,7 +454,7 @@ export namespace FileParser {
             const docx_result = await mammoth.convertToHtml({ arrayBuffer: docx_document_bytes.buffer });
             if (docx_result.messages.some(msg => msg.type === "error")) return generror("Error in docx_result", "CRITICAL", { file_path_or_url, opts, messages: docx_result.messages });
             const html = docx_result.value;
-            return {
+            return strip_copyright({
                 version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
@@ -425,7 +467,7 @@ export namespace FileParser {
                 series_name: null,
                 series_no: null,
                 chapters: roz_contents_to_roz_chapters_contents(html_to_roz_contents(html))
-            }
+            }, opts.remove_copyright);
         }
         catch (e) {
             return generror_catch(e, "Failed to parse docx", "MEDIUM", { file_path_or_url, file_path_err, opts });
@@ -438,7 +480,7 @@ export namespace FileParser {
             const text_contents = await fs().read_as_string(file_path_or_url, {});
             if (typeof text_contents === "object") return text_contents;
             const line_normalized_text_contents = text_contents.replace(/\r\n/g, '\n');
-            return {
+            return strip_copyright({
                 version: 1,
                 uuid: gen_uuid(),
                 source_file: pathlib.resolve(strip_file_scheme(file_path_or_url)),
@@ -456,7 +498,7 @@ export namespace FileParser {
                         .split('\n')
                         .map(content => ({ content, type: 'PARAGRAPH', uuid: gen_uuid(), duration: 0 }))
                 }]
-            }
+            }, opts.remove_copyright);
         }
         catch (e) {
             return generror_catch(e, "Failed to parse txt", "CRITICAL", { file_path_or_url, file_path_err, opts });
