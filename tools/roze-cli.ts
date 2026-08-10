@@ -29,6 +29,9 @@ import { load_native_pdf_reader } from "@native/pdf_reader/pdf_reader";
 import { load_native_raw_to_png } from "@native/raw_to_png/raw_to_png";
 import { load_native_docx_converter } from "@native/docx_converter/docx_converter";
 import { load_native_image_size } from "@native/image_size/image_size";
+import { refetch_env } from "@common/set_env_cookies";
+import { YouTubeStudio } from "@origin/index";
+import { resize_image_factor } from "@common/image_utils";
 
 
 const help_contents: string = green(`${gray(`--Roze powered by ${italic("The Origin Project")}--`)}
@@ -62,6 +65,7 @@ ${magenta("roz")} ${cyan("<input>")} ${blue("-z")} ${cyan("<size-mode?>")}      
 ${magenta("roz")} ${cyan("<input>")} ${blue("-t")} ${cyan("<translate?>")}                                                      Translate the Input?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-n")} ${cyan("<debug-mode?>")}                                                     Debug Mode?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-o")} ${cyan("<output>")}                                                          Output data to file
+${magenta("roz")} ${cyan("<input>")} ${blue("-u")} ${cyan("<upload?>")}                                                         Upload audiobook to YouTube (enables audiovideobook, cover, srt, youtube-chapters)
 ${magenta("roz")} ${cyan("<input>")} ${blue("-q")} ${cyan("<no-progress-bar>")}                                                 No progress bar?
 ${magenta("roz")} ${cyan("<input>")} ${blue("-e")} ${cyan("<chrome_executable_path>")}                                          Sets the chrome executable path`);
 
@@ -101,6 +105,8 @@ const input_source_file_type_table: Record<string, RozSourceFileType> = {
 	folder: "FOLDER"
 } as const;
 
+const YOUTUBE_THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024;
+
 const file_extension_to_source_file_type_table: Record<string, RozSourceFileType> = {
 	".epub": "EPUB",
 	".docx": "DOCX",
@@ -130,6 +136,7 @@ const options = {
 	pdf_margin: [0, 48],
 	pdf_start: 0,
 	output_to: "",
+	upload: false,
 	no_progress_bar: false
 };
 
@@ -168,6 +175,41 @@ function log_input_error(error: string, help_key: keyof typeof HELP_TABLE) {
 function spinner_result(spinner: Ora, result: unknown) {
 	if (typeof result === "object" && result !== null && "error" in result) spinner.fail();
 	else spinner.succeed();
+}
+
+async function ensure_thumbnail_under_size(thumbnail_path: string, max_bytes: number): Promise<void> {
+	const SHRINK_FACTOR = 0.8;
+	const MAX_ATTEMPTS = 8;
+
+	let info = await fs().get_info(thumbnail_path);
+	for (let attempt = 0; info.size > max_bytes && attempt < MAX_ATTEMPTS; attempt++) {
+		log_info(`Thumbnail is ${(info.size / (1024 * 1024)).toFixed(2)}MB, exceeds the ${(max_bytes / (1024 * 1024)).toFixed(0)}MB YouTube limit — resizing (attempt ${attempt + 1})...`);
+
+		const original_buffer = await fs().read_as_buffer(thumbnail_path);
+		if ("error" in original_buffer) {
+			log_error("Failed to read thumbnail for resizing");
+			console.error(original_buffer);
+			return;
+		}
+
+		const resized = await resize_image_factor(Buffer.from(original_buffer), SHRINK_FACTOR);
+		if ("error" in resized) {
+			log_error("Failed to resize thumbnail");
+			console.error(resized);
+			return;
+		}
+
+		const write_result = await fs().write_file_as_string(thumbnail_path, resized.toString("base64"), { encoding: "base64" });
+		if (write_result && "error" in write_result) {
+			log_error("Failed to write resized thumbnail");
+			console.error(write_result);
+			return;
+		}
+
+		info = await fs().get_info(thumbnail_path);
+	}
+
+	if (info.size > max_bytes) log_error(`Thumbnail is still ${(info.size / (1024 * 1024)).toFixed(2)}MB after ${MAX_ATTEMPTS} resize attempts, uploading anyway`);
 }
 
 async function get_roz(source_file_type: RozSourceFileType, input_options: string[]): PromiseResult<Roz> {
@@ -303,9 +345,11 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 		run_translation_map_roz(roz, translation_map);
 	}
 
+	let thumbnail_path: string | undefined;
 	if (options.cover && roz.cover) {
 		const cover_path = await save_base64_image_to_file(roz.cover, undefined, "NO_REGISTER");
-		await fs().move(cover_path.path, options.output_to + extract_file_extension(cover_path.path), {});
+		thumbnail_path = options.output_to + extract_file_extension(cover_path.path);
+		await fs().move(cover_path.path, thumbnail_path, {});
 		log_info("Writing cover...");
 	}
 
@@ -404,6 +448,65 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 			if (options.srt && full_audio.srt_file_path) await fs().copy(full_audio.srt_file_path, options.output_to + '.srt', {});
 			if (options.youtube_chapters && full_audio.youtube_chapters_file_path) await fs().copy(full_audio.youtube_chapters_file_path, options.output_to + '.ytc', {});
 		}
+
+		if(options.upload) {
+			const video_path = options.output_to || audiobook_result.ffmpeg_gen_result.out_file_path;
+			const srt_path = full_audio.srt_file_path;
+			const youtube_chapters_path = full_audio.youtube_chapters_file_path;
+
+			if (!youtube_chapters_path) {
+				log_error("Missing YouTube chapters file, cannot build description");
+				process.exit(1);
+			}
+			const youtube_chapters = await fs().read_as_string(youtube_chapters_path, {encoding: "utf8"});
+			if(typeof youtube_chapters === "object") {
+				log_error("Unable to read YouTube chapters file");
+				console.error(youtube_chapters);
+				process.exit(1);
+			}
+
+			if (thumbnail_path) await ensure_thumbnail_under_size(thumbnail_path, YOUTUBE_THUMBNAIL_MAX_BYTES);
+			else log_info("No cover found, uploading without a thumbnail");
+
+			log_info("Will upload to YouTube...");
+			log_info("Fetching cookies...");
+			await refetch_env();
+
+			const upload_progress_bar = new cliprogress.SingleBar(
+				{
+					clearOnComplete: false,
+					stopOnComplete: true,
+					hideCursor: true,
+					stream: options.no_progress_bar ? devnull : undefined,
+					format: `${green(" {bar}")} | ${"YouTube Upload".padEnd(chapter_title_max_length)} | {percentage}% | ETA: {eta}s | Elapsed: {duration}s`
+				},
+				cliprogress.Presets.shades_grey
+			);
+			let upload_progress_started = false;
+			const scotty_upload_progress_callback = (written_bytes: number, total_bytes: number) => {
+				if (!upload_progress_started) {
+					upload_progress_bar.start(total_bytes, written_bytes);
+					upload_progress_started = true;
+				} else {
+					upload_progress_bar.update(written_bytes);
+				}
+				if (written_bytes >= total_bytes) upload_progress_bar.stop();
+			};
+
+			const upload_result = await YouTubeStudio.upload_video(video_path, {
+				description: youtube_chapters,
+				...(thumbnail_path ? { thumbnail: { path: thumbnail_path } } : {}),
+				...(srt_path ? { subtitles: { synced: true, data: { path: srt_path } } } : {})
+			}, scotty_upload_progress_callback);
+			upload_progress_bar.stop();
+
+			if ("error" in upload_result) {
+				log_error("Failed to upload video to YouTube");
+				console.error(upload_result);
+				process.exit(1);
+			}
+			log_info(`Uploaded: ${upload_result.video_link}`);
+		}
 	}
 }
 
@@ -433,6 +536,13 @@ async function __roze_cli_main__() {
 	if (opts.findIndex((opt) => opt[0] == "-y") != -1) options.youtube_chapters = true;
 	if (opts.findIndex((opt) => opt[0] == "-z") != -1) options.size_mode = true;
 	if (opts.findIndex((opt) => opt[0] == "-l") != -1) options.cover = true;
+	if (opts.findIndex((opt) => opt[0] == "-u") != -1) {
+		options.upload = true;
+		options.srt = true;
+		options.cover = true;
+		options.audiovideobook = true;
+		options.youtube_chapters = true;
+	}
 	if (opts.findIndex((opt) => opt[0] == "-n") != -1) options.debug = true;
 	if (opts.findIndex((opt) => opt[0] == "-q") != -1) options.no_progress_bar = true;
 	let hold_index = -1;

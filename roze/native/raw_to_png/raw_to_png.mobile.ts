@@ -153,5 +153,8 @@ function encode_png(data: Uint8Array, width: number, height: number, channels: n
 export const mobile_raw_to_png: RawToPng = {
     raw_to_png: async(data: Uint8Array, width: number, height: number, channels: number): Promise<Buffer> => {
         return encode_png(data, width, height, channels);
+    },
+    decode_to_raw: async() => {
+        throw new Error("raw_to_png.decode_to_raw is not implemented on REACT_NATIVE");
     }
 };
