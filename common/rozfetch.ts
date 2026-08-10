@@ -126,6 +126,19 @@ async function update_rozfetch_cache<T>(init: RoZFetchRequestInit, response: RoZ
 	}
 }
 
+function summarize_body(body: BodyInit | null | undefined): unknown {
+	if (body === undefined || body === null) return body;
+	if (typeof body === "string") return body.length > 500 ? `[string, length=${body.length}]` : body;
+	if (body instanceof Uint8Array) return `[Uint8Array, length=${body.byteLength}]`;
+	if (body instanceof ArrayBuffer) return `[ArrayBuffer, length=${body.byteLength}]`;
+	if (typeof Blob !== "undefined" && body instanceof Blob) return `[Blob, length=${body.size}]`;
+	return body;
+}
+function error_context_init(init: RoZFetchRequestInit | undefined): object | undefined {
+	if (init === undefined) return undefined;
+	return { ...init, body: summarize_body(init.body) };
+}
+
 // fix headers for react-native
 function sanitize_headers(headers: HeadersInit | undefined): HeadersInit | undefined {
 	if (headers === undefined || (typeof Headers !== "undefined" && headers instanceof Headers)) return headers;
@@ -152,7 +165,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
 
-		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, "INFO", {}, { input, init });
+		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, "INFO", {}, { input, init: error_context_init(init) });
 		await update_rozfetch_cache(init ?? {}, response, cache_key, err);
 
 		if (!response.ok && init?.ignore_fail_request !== true) return err;
@@ -165,9 +178,9 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			error.message = ABORT_MESSAGE + err.message;
 			error.stack = ABORT_MESSAGE + err.stack;
 			error.cause = err.cause;
-			return generror_catch(error, "rozfetch failed", "LOW", { input, init: { ...init, headers: "{VARIOUS HEADERS}" } });
+			return generror_catch(error, "rozfetch failed", "LOW", { input, init: { ...error_context_init(init), headers: "{VARIOUS HEADERS}" } });
 		}
-		if ((e as Error).message.includes("Network request failed")) return generror_catch(e, "rozfetch failed", "INFO", { input, init });
-		return generror_catch(e, "rozfetch failed", "MEDIUM", { input, init });
+		if ((e as Error).message.includes("Network request failed")) return generror_catch(e, "rozfetch failed", "INFO", { input, init: error_context_init(init) });
+		return generror_catch(e, "rozfetch failed", "MEDIUM", { input, init: error_context_init(init) });
 	}
 }

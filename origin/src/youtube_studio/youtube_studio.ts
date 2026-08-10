@@ -51,10 +51,10 @@ export namespace YouTubeStudio {
     const STUDIO_ORIGIN = "https://studio.youtube.com";
     const UPLOAD_VIDEO_URL = "https://upload.youtube.com/upload/studio";
     const UPLOAD_THUMBNAIL_URL = "https://upload.youtube.com/upload/studiothumbnail";
-    const UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
+    const UPLOAD_CHUNK_SIZE_BYTES = 100 * 1024 * 1024;
 
     const SESSION_TOKEN_CACHE_PAYLOAD = "SESSION_TOKEN_CACHE_PAYLOAD";
-    const SESSION_TOKEN_CACHE_DURATION_MS = milliseconds_of({days: 7});
+    const SESSION_TOKEN_CACHE_DURATION_MS = milliseconds_of({days: 1});
 
     const creator_video_category_ids = {
         FILM: 1, AUTOS: 2, MUSIC: 10, PETS: 15, SPORTS: 17, TRAVEL: 19, GADGETS: 20,
@@ -477,8 +477,9 @@ export namespace YouTubeStudio {
         };
     }
 
-    async function upload_to_scotty(start_url: string, file_name: string, source: ScottySource, start_payload: object, on_progress?: (written_bytes: number, total_bytes: number) => void): PromiseResult<string> {
-        const total_bytes = source.byte_length;
+    interface ScottyStart { upload_url: string, resource_id: string }
+
+    async function scotty_start(start_url: string, file_name: string, total_bytes: number, start_payload: object): PromiseResult<ScottyStart> {
         if (total_bytes === 0) return generror("Refusing to upload an empty file to scotty", "MEDIUM", { file_name, start_url });
 
         const start_response = await rozfetch(`${start_url}?authuser=0`, {
@@ -497,6 +498,14 @@ export namespace YouTubeStudio {
         const upload_url = start_response.headers.get("x-goog-upload-url");
         if (upload_url === null || upload_url === "") return generror("Scotty did not return an upload url", "CRITICAL", { file_name, start_url });
 
+        const resource_id = start_response.headers.get("x-goog-upload-header-scotty-resource-id");
+        if (resource_id === null || resource_id === "") return generror("Scotty did not return a resource id", "CRITICAL", { file_name, start_url });
+
+        return { upload_url, resource_id };
+    }
+
+    async function scotty_upload_chunks(upload_url: string, file_name: string, source: ScottySource, on_progress?: (written_bytes: number, total_bytes: number) => void): PromiseResult<ResponseSuccess> {
+        const total_bytes = source.byte_length;
         let offset = 0;
         while (offset < total_bytes) {
             // read the slice only once we're about to send it, so exactly one chunk is ever resident
@@ -518,16 +527,27 @@ export namespace YouTubeStudio {
 
             offset += chunk.byteLength;
             on_progress?.(offset, total_bytes);
-            if (!is_final) continue;
+            if (!is_final) {
+                await chunk_response.body?.cancel();
+                continue;
+            }
 
             const result = await chunk_response.json();
             if ("error" in result) return result;
-            if (result.status !== "STATUS_SUCCESS" || result.scottyResourceId === undefined) {
+            if (result.status !== "STATUS_SUCCESS") {
                 return generror("Scotty did not finalize the upload", "CRITICAL", { file_name, status: result.status });
             }
-            return result.scottyResourceId;
+            return { success: true };
         }
         return generror("Scotty upload loop ended without finalizing", "CRITICAL", { file_name });
+    }
+
+    async function upload_to_scotty(start_url: string, file_name: string, source: ScottySource, start_payload: object, on_progress?: (written_bytes: number, total_bytes: number) => void): PromiseResult<string> {
+        const start = await scotty_start(start_url, file_name, source.byte_length, start_payload);
+        if ("error" in start) return start;
+        const uploaded = await scotty_upload_chunks(start.upload_url, file_name, source, on_progress);
+        if ("error" in uploaded) return uploaded;
+        return start.resource_id;
     }
 
     export async function check_feature_rate_limit(feature: StudioFeature): PromiseResult<FeatureRateLimit> {
@@ -814,7 +834,8 @@ export namespace YouTubeStudio {
         }
     }
 
-    export async function upload_video(file_path: string, details: Partial<UploadVideoDetails> = {}, on_scotty_progress?: (written_bytes: number, total_bytes: number) => void): PromiseResult<UploadVideoSuccessfulResult> {
+    export async function upload_video(file_path: string, details: Partial<UploadVideoDetails> = {}, on_scotty_progress?: (written_bytes: number, total_bytes: number) => void,
+            on_initial_create_video?: (full_created: {created: CreateVideoResponse, feedback_token: string|null}) => any): PromiseResult<UploadVideoSuccessfulResult> {
         const channel_id = await get_channel_id();
         if (typeof channel_id === "object") return channel_id;
 
@@ -824,12 +845,14 @@ export namespace YouTubeStudio {
         const file_name = pathlib.basename(file_path);
 
         const frontend_upload_id = `innertube_studio:${gen_uuid().toUpperCase()}:0`;
-        const resource_id = await upload_to_scotty(UPLOAD_VIDEO_URL, file_name, source, { frontendUploadId: frontend_upload_id }, on_scotty_progress);
-        if (typeof resource_id === "object") return resource_id;
+        const start = await scotty_start(UPLOAD_VIDEO_URL, file_name, source.byte_length, { frontendUploadId: frontend_upload_id });
+        if ("error" in start) return start;
+
+        const chunks_uploaded = scotty_upload_chunks(start.upload_url, file_name, source, on_scotty_progress);
 
         const created = await studio_execute<CreateVideoResponse>('/upload/createvideo', {
             channelId: channel_id,
-            resourceId: { scottyResourceId: { id: resource_id } },
+            resourceId: { scottyResourceId: { id: start.resource_id } },
             frontendUploadId: frontend_upload_id,
             initialMetadata: {
                 title: { newTitle: details.title ?? file_name },
@@ -845,20 +868,23 @@ export namespace YouTubeStudio {
             contentLevelProtection: { enableRequiresContentLevelProtection: false },
             presumedShort: false
         }, channel_id, "context"); // createvideo reads its snapshot out of context.request
-        if ("error" in created) return created;
+        if ("error" in created) { await chunks_uploaded; return created; }
+
+        on_initial_create_video?.({created, feedback_token: try_get_upload_video_feedback_token(created)});
 
         const video_id = created.videoId;
         if (video_id === undefined || video_id === "") {
+            await chunks_uploaded;
             // a 200 with no videoId means youtube rejected the request in the body rather than the status, so surface what it actually said instead of just the missing field
-            const raw = reinterpret_cast<Record<string, unknown>>(created);
-            const { responseContext: _context, ...rest } = raw;
             return generror("createvideo did not return a videoId", "CRITICAL", {
                 file_name,
                 frontend_upload_id,
-                response_keys: Object.keys(raw).join(", "),
-                response: JSON.stringify(rest).slice(0, 600)
+                created: created
             });
         }
+
+        const uploaded = await chunks_uploaded;
+        if ("error" in uploaded) return uploaded;
 
         // title and tags already went up with createvideo
         const { title: _title, tags: _tags, visibility, ...remaining_details } = details;

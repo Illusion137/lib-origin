@@ -10,20 +10,20 @@ async function main__upload_youtube_video(){
     await TimeLog.log_fn_async("refreshing env for convenience", refetch_env);
     YouTubeStudio.preload_cookies();
 
-    const created = await YouTubeStudio.upload_video(file_path, {title: "Silly Test 2", description: "Rly", visibility: "PRIVATE"}, (written_bytes, total_bytes) => {
+    const created = await YouTubeStudio.upload_video(file_path, {title: "Silly Test 3", description: "Rly", visibility: "PRIVATE"}, (written_bytes, total_bytes) => {
         console.log("Progress: ", {written_bytes, total_bytes, progress: written_bytes / total_bytes});
+    }, async(full_created) => {
+        await YouTubeStudio.upload_feedback_cycle([full_created.feedback_token], (content) => {
+            if(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.transferProgressBar)
+                console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.transferProgressBar);
+            else if(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.uploadChecksRenderer)
+                console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.uploadChecksRenderer);
+            else console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]);
+            return true;
+        });
     });
     if("error" in created) throw created.error;
     console.log(created);
-
-    await YouTubeStudio.upload_feedback_cycle([created.feedback_token], (content) => {
-        if(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.transferProgressBar)
-            console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.transferProgressBar);
-        else if(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.uploadChecksRenderer)
-            console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.uploadChecksRenderer);
-        else console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]);
-        return true;
-    });
 }
 
 main__upload_youtube_video().catch(catch_log);

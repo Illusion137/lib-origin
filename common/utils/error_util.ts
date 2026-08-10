@@ -17,7 +17,10 @@ export function args_prettystring(args: object, indent = 2) {
     let str = '{\n';
     const keys = Object.keys(args);
     for (const key of keys) {
-        str += `${new Array(indent).fill(' ').join('')}${key}: ${JSON.stringify(args[key])}\n`;
+        let value;
+        try { value = JSON.stringify(args[key]); }
+        catch (e) { value = `[unserializable: ${e instanceof Error ? e.message : String(e)}]`; }
+        str += `${new Array(indent).fill(' ').join('')}${key}: ${value}\n`;
     }
     str += '}'
     return str;
