@@ -245,16 +245,19 @@ interface Basic_Track<T, U, V, X> {
 
 export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
+export type DownloadableMusicServiceTrackField = "youtube_id" | "soundcloud_permalink" | "bandlab_id" | "audiomack_id";
+export interface DownloadableMusicService {
+    download_from_id: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>;
+    id_field: DownloadableMusicServiceTrackField;
+}
+
 export interface SmallTrack {
     title: Track['title'],
     artists: string,
     duration: Track['duration'];
-    youtube_id: Track['youtube_id'];
-    soundcloud_permalink: Track['soundcloud_permalink'];
-    bandlab_id: Track['bandlab_id'];
-    audiomack_id: Track['audiomack_id'];
+    downloadable_ids: string[];
 }
-export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['youtube_id'], SmallTrack['soundcloud_permalink'], SmallTrack['bandlab_id'], Track['audiomack_id']];
+export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['downloadable_ids']];
 
 export type PlaylistInheritanceMode = "INCLUDE" | "EXCLUDE" | "MASK" | "INTERSECTION";
 export interface InheritedPlaylist {
@@ -482,7 +485,7 @@ export class MusicService {
     get_user_playlists?: () => Promise<CompactPlaylistsResult>
     get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>
     get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>
-    download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>
+    downloadable?: DownloadableMusicService
     get_track_mix?: (id: string) => Promise<TrackMix>
     get_related?: (id: string) => Promise<MusicServiceRelated>
     get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>
@@ -506,7 +509,7 @@ export class MusicService {
         get_user_playlists?: () => Promise<CompactPlaylistsResult>,
         get_playlist: (url: string, fetch_opts?: RoZFetchRequestInit) => Promise<MusicServicePlaylist>,
         get_playlist_continuation?: (continuation_data: any) => Promise<MusicServicePlaylistContinuation>,
-        download_from_id?: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>,
+        downloadable?: DownloadableMusicService,
         get_track_mix?: (id: string) => Promise<TrackMix>,
         get_related?: (id: string) => Promise<MusicServiceRelated>,
         get_artist?: (id: string, opts?: ArtistOpts) => Promise<MusicServiceArtist>,
@@ -540,7 +543,7 @@ export class MusicService {
         this.get_user_playlists = s.get_user_playlists;
         this.get_playlist = s.get_playlist;
         this.get_playlist_continuation = s.get_playlist_continuation
-        this.download_from_id = s.download_from_id;
+        this.downloadable = s.downloadable;
         this.get_track_mix = s.get_track_mix;
         this.get_related = s.get_related;
         this.get_artist = s.get_artist;
