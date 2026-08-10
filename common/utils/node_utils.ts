@@ -14,14 +14,17 @@ export const cookie_jar_env_urls = {
     "GOOGLE_TRANSLATE_COOKIE_JAR": ".google.com",
 } as const;
 
-// TODO maybe append if doesn't exist
 export async function modify_env(key: string, value: string) {
     const env_string = await fs().read_as_string('.env', {});
     if (typeof env_string !== 'string') throw new Error(".env file could not be read.");
     const variables = env_string.split('\n').filter(line => line.trim().length > 0);
     const index = variables.findIndex(line => line.startsWith(`${key}=`));
-    if (index === -1) return;
-    variables[index] = `${key}='${value}'`;
+    if (index === -1) {
+        variables.push(`${key}='${value}'`);
+    }
+    else {
+        variables[index] = `${key}='${value}'`;
+    }
     await fs().write_file_as_string('.env', variables.join('\n'), {});
 }
 
