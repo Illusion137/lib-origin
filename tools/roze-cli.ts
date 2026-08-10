@@ -222,12 +222,12 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 		case "TXT": {
 			const text_loading_text = `Loading Text-File at ${path.resolve(input_options[0])}`;
 			const spinner = ora({ text: text_loading_text, color: "yellow" }).start();
-			const text_result = await FileParser.parse_txt(input_options[0], generate_new_uid(input_options[0]), { download_to_directory: process.cwd() });
+			const text_result = await FileParser.parse_txt(input_options[0], generate_new_uid(input_options[0]), { download_to_directory: process.cwd(), remove_copyright: true });
 			spinner_result(spinner, text_result);
 			return text_result;
 		}
 		case "DOCX": {
-			return FileParser.parse_docx(input_options[0], { download_to_directory: process.cwd() });
+			return FileParser.parse_docx(input_options[0], { download_to_directory: process.cwd(), remove_copyright: true });
 		}
 		case "PDF": {
 			const pdf_loading_text = `Loading PDF at ${path.resolve(input_options[0])}`;
@@ -240,7 +240,8 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 				on_pdf_load_progress: async (progress) => {
 					if (progress.loaded / progress.total < 1) spinner.text = pdf_loading_text + green(` ${(progress.loaded / progress.total) * 100}%`);
 					else spinner.text = "Parsing PDF to Roz";
-				}
+				},
+				remove_copyright: true
 			});
 			spinner_result(spinner, pdf_result);
 			return pdf_result;
@@ -293,7 +294,7 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 			return JNovel.readers_to_roz(jnovel_contents);
 		}
 		case "EPUB": {
-			return await FileParser.parse_epub(input_options[0], { download_to_directory: process.cwd() });
+			return await FileParser.parse_epub(input_options[0], { download_to_directory: process.cwd(), remove_copyright: true });
 		}
 		case "WITCHCULT": {
 			const witchcult_progress_bar = new cliprogress.SingleBar({ stopOnComplete: true }, cliprogress.Presets.shades_classic);
@@ -303,7 +304,7 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 			});
 		}
 		case "FILEBASE": {
-			return FileParser.parse_roz(input_options[0], { download_to_directory: process.cwd() });
+			return FileParser.parse_roz(input_options[0], { download_to_directory: process.cwd(), remove_copyright: true });
 		}
 		case "FOLDER":
 		default:

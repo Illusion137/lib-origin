@@ -37,7 +37,7 @@ export namespace FileParser {
         }
     }
 
-    function strip_copyright(roz: Roz, remove_copyright = true): Roz {
+    function strip_copyright(roz: Roz, remove_copyright = false): Roz {
         if(!remove_copyright) return roz;
         // just basic detection for a copyright chapter
         const chars = (c: RozContent[]) => c.filter(x=>x.type==="PARAGRAPH").reduce((s,x)=>s+x.content.length, 0);
