@@ -55,7 +55,7 @@ export namespace YouTubeStudio {
     const UPLOAD_CHUNK_SIZE_BYTES = 100 * 1024 * 1024;
 
     const SESSION_TOKEN_CACHE_PAYLOAD = "SESSION_TOKEN_CACHE_PAYLOAD";
-    const SESSION_TOKEN_CACHE_DURATION_MS = milliseconds_of({days: 1});
+    const SESSION_TOKEN_CACHE_DURATION_MS = milliseconds_of({minutes: 15});
 
     const creator_video_category_ids = {
         FILM: 1, AUTOS: 2, MUSIC: 10, PETS: 15, SPORTS: 17, TRAVEL: 19, GADGETS: 20,
@@ -888,7 +888,9 @@ export namespace YouTubeStudio {
         if (video_id === undefined || video_id === "") {
             await chunks_uploaded;
             // a 200 with no videoId means youtube rejected the request in the body rather than the status, so surface what it actually said instead of just the missing field
-            return generror("createvideo did not return a videoId", "CRITICAL", {
+            return generror("createvideo did not return a videoId" + 
+                    created?.responseContext?.webResponseContextExtensionData?.challenge?.type === "CHALLENGE_PROMPT_TYPE_AUTHENTICATE" ? " (likely bad session token; clear yo damn cache?)" : " (no clue why)", 
+                "CRITICAL", {
                 file_name,
                 frontend_upload_id,
                 created: created

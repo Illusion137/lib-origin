@@ -33,6 +33,7 @@ export interface StateTags {
 
 export interface WebResponseContextExtensionData {
 	hasDecorated: boolean;
+	challenge?: {type?: "CHALLENGE_PROMPT_TYPE_AUTHENTICATE"}
 }
 
 export interface Contents {
