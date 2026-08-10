@@ -61,7 +61,12 @@ export interface UploadVideoDetails {
 
     paid_promotion?: boolean;
     ai_use?: boolean;
-    // TODO collaboration
+
+    collaboration_channels?: {
+        id: string;
+        analytics_setting: "VIDEO_COLLABORATOR_ANALYTICS_SETTING_NONE"|"VIDEO_COLLABORATOR_ANALYTICS_SETTING_BASIC"
+    }[];
+
     automatic_chapters?: boolean;
     featured_places?: boolean;
     automatic_concepts?: boolean;

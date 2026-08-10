@@ -591,6 +591,13 @@ export namespace YouTubeStudio {
                 newCreatorDisclosedHasAlteredContent: details.ai_use ? "MDE_HAS_ALTERED_CONTENT_YES" : "MDE_HAS_ALTERED_CONTENT_NO"
             };
         }
+
+        if(details.collaboration_channels) {
+            payload.collaboration = {
+                inviteCollaborators: details.collaboration_channels.map(channel => ({externalChannelId: channel.id, analyticsSetting: channel.analytics_setting})),
+            };
+        }
+
         // the studio models these three as opt outs, the details here read as opt ins
         if (details.automatic_chapters !== undefined) payload.autoChapter = { creatorOptOut: !details.automatic_chapters };
         if (details.featured_places !== undefined) payload.autoPlaces = { creatorOptOut: !details.featured_places };
