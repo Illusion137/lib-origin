@@ -98,8 +98,6 @@ export interface UploadVideoDetails {
     };
 };
 
-export type UpdateVideoDetails = Omit<UploadVideoDetails, "visibility">;
-
 export interface UploadVideoSuccessfulResult {
     video_link: string;
     file_name: string;

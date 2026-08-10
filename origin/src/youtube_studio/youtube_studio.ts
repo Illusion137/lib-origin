@@ -13,7 +13,6 @@ import type {
     PathOrBuffer,
     StudioFeature,
     StudioVisibility,
-    UpdateVideoDetails,
     UploadVideoDetails,
     UploadVideoSuccessfulResult
 } from './types';
@@ -571,7 +570,7 @@ export namespace YouTubeStudio {
         };
     }
 
-    function build_metadata_update(details: Partial<UpdateVideoDetails>, thumbnail_resource_id?: string): MetadataUpdatePayload {
+    function build_metadata_update(details: UploadVideoDetails, thumbnail_resource_id?: string): MetadataUpdatePayload {
         const payload: MetadataUpdatePayload = {};
 
         if (details.title !== undefined) payload.title = { newTitle: details.title, titleOperation: "MDE_TEXT_UPDATE_OPERATION_SET" };
@@ -634,6 +633,10 @@ export namespace YouTubeStudio {
             if (category_id !== undefined) payload.category = { newCategoryId: category_id };
         }
 
+        if(details.visibility) {
+            payload.privacyState = { newPrivacy: details.visibility };
+        }
+
         const comment_options = build_comment_options(details);
         if (comment_options !== undefined) payload.commentOptions = comment_options;
 
@@ -647,6 +650,7 @@ export namespace YouTubeStudio {
                 }
             };
         }
+
         return payload;
     }
 
@@ -654,7 +658,7 @@ export namespace YouTubeStudio {
         return !is_empty(value) && !isNaN(Number(value));
     }
 
-    function build_comment_options(details: Partial<UpdateVideoDetails>): MetadataUpdatePayload | undefined {
+    function build_comment_options(details: Partial<UploadVideoDetails>): MetadataUpdatePayload | undefined {
         // studio only sends the moderation and commenter fields while comments are actually on
         const enabled_state = details.allow_comments === undefined ? undefined : comment_enabled_states[details.allow_comments];
         const has_options = enabled_state !== undefined
@@ -744,7 +748,7 @@ export namespace YouTubeStudio {
         return { success: true };
     }
 
-    export async function update_video(video_id: string, details: Partial<UpdateVideoDetails>): PromiseResult<ResponseSuccess> {
+    export async function update_video(video_id: string, details: Partial<UploadVideoDetails>): PromiseResult<ResponseSuccess> {
         let thumbnail_resource_id: string | undefined = undefined;
         if (details.thumbnail !== undefined) {
             const resource_id = await upload_thumbnail_resource(video_id, details.thumbnail);
