@@ -1,5 +1,6 @@
 import { fs } from "@native/fs/fs";
 import { spawn, type StdioOptions } from "node:child_process";
+import { generror } from "./error_util";
 
 export const cookie_jar_env_urls = {
     "YOUTUBE_COOKIE_JAR": ".youtube.com",
@@ -15,8 +16,14 @@ export const cookie_jar_env_urls = {
 } as const;
 
 export async function modify_env(key: string, value: string) {
+    const env_exists = (await fs().get_info('.env')).exists;
+    if(!env_exists) {
+        console.error("No env to modify");
+        return null;
+    }
+
     const env_string = await fs().read_as_string('.env', {});
-    if (typeof env_string !== 'string') throw new Error(".env file could not be read.");
+    if (typeof env_string !== 'string') return generror(".env file could not be read.", "CRITICAL", {key, value});
     const variables = env_string.split('\n').filter(line => line.trim().length > 0);
     const index = variables.findIndex(line => line.startsWith(`${key}=`));
     if (index === -1) {
@@ -26,6 +33,7 @@ export async function modify_env(key: string, value: string) {
         variables[index] = `${key}='${value}'`;
     }
     await fs().write_file_as_string('.env', variables.join('\n'), {});
+    return null;
 }
 
 export async function spawn_code(cmd: string, args: string[], stdio?: StdioOptions) {

@@ -472,6 +472,7 @@ async function single_roz(input_type: RozSourceFileType, opt_in: string[]) {
 			log_info("Will upload to YouTube...");
 			log_info("Fetching cookies...");
 			await refetch_env();
+			YouTubeStudio.preload_cookies();
 
 			const upload_progress_bar = new cliprogress.SingleBar(
 				{
