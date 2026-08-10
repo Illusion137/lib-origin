@@ -54,8 +54,7 @@ export namespace YouTubeStudio {
     const UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
 
     const SESSION_TOKEN_CACHE_PAYLOAD = "SESSION_TOKEN_CACHE_PAYLOAD";
-    // TODO maybe 7 days
-    const SESSION_TOKEN_CACHE_DURATION_MS = milliseconds_of({days: 6});
+    const SESSION_TOKEN_CACHE_DURATION_MS = milliseconds_of({days: 7});
 
     const creator_video_category_ids = {
         FILM: 1, AUTOS: 2, MUSIC: 10, PETS: 15, SPORTS: 17, TRAVEL: 19, GADGETS: 20,
@@ -531,7 +530,6 @@ export namespace YouTubeStudio {
         return generror("Scotty upload loop ended without finalizing", "CRITICAL", { file_name });
     }
 
-    // TODO maybe implement this into the library fr
     export async function check_feature_rate_limit(feature: StudioFeature): PromiseResult<FeatureRateLimit> {
         const channel_id = await get_channel_id();
         if (typeof channel_id === "object") return channel_id;
