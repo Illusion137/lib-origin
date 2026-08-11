@@ -45,6 +45,7 @@ export namespace YouTubeStudio {
     let preloaded_cookies: string | undefined;
     let resolved_cookies: string | undefined;
     let cached_unbound: UnboundChallenge | undefined;
+    let cached_attestation: { challenge: string, response: AttestationResponseData } | undefined;
     let cached_session_token: string | undefined;
     let attestation_retry_after_ms = 0;
     const ATTESTATION_FAILURE_COOLDOWN_MS = milliseconds_of({ minutes: 5 });
@@ -302,12 +303,16 @@ export namespace YouTubeStudio {
         const unbound = await get_unbound_challenge(client);
         if ("error" in unbound) return unbound;
 
+        if (cached_attestation?.challenge === unbound.challenge) return cached_attestation.response;
+
         const web_response = await studio_attestation().generate_studio_attestation(unbound.bg_challenge, {
             c: unbound.challenge,
             e: 'ENGAGEMENT_TYPE_UNBOUND'
         });
         if (typeof web_response === "object") return web_response;
-        return { challenge: unbound.challenge, webResponse: web_response };
+        const attestation: AttestationResponseData = { challenge: unbound.challenge, webResponse: web_response };
+        cached_attestation = { challenge: unbound.challenge, response: attestation };
+        return attestation;
     }
 
     async function get_session_token(client: Innertube, channel_id: string, force_refresh = false): PromiseResult<string> {
