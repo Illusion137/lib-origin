@@ -272,7 +272,6 @@ export namespace SoundCloud {
             }
             else return client_id;
         }
-        // TODO investigate this
         const res: [string | undefined | ResponseError, string | undefined] = [opts.client_id ?? client_cache.client?.client_id, anonymous_hydration?.data];
         if (typeof res[0] === "object" && !is_empty(res)) return res[0];
         if (client_cache.enabled) {
@@ -283,6 +282,18 @@ export namespace SoundCloud {
         }
         return res;
     }
+
+    function search_facet_type(search_type: SearchType): string{
+        switch(search_type) {
+            case "EVERYTHING": return "model";
+            case "TRACKS": return "genre";
+            case "PEOPLE": return "place";
+            case "ALBUMS": return "genre";
+            case "PLAYLISTS": return "genre";
+            default: return "model";
+        }
+    }
+
     export async function search(search_type: "TRACKS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<Track>>
     export async function search(search_type: "PEOPLE", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<User>>
     export async function search(search_type: "ALBUMS" | "PLAYLISTS", opts: Opts & { "query": string, "depth"?: number, "limit"?: number, "offset"?: number }): PromiseResult<ClientSearchOf<Playlist>>
@@ -296,7 +307,7 @@ export namespace SoundCloud {
             ...get_locale_params(opts),
             q: opts.query,
             variant_ids: "",
-            facet: search_type === "EVERYTHING" ? "model" : "genre", // TODO: COULD ALSO BE "genre" 
+            facet: search_facet_type(search_type),
             user_id: hydration[1],
             limit: opts.limit ?? 20,
             offset: opts.offset ?? 0,
@@ -599,7 +610,6 @@ export namespace SoundCloud {
         }
     }
 
-    // TODO: Note this is suject to change, so instead extract it from the scripts, but this is a good point for investigating SC signatures
     export function generate_follow_signature_v1(user_id: string, client_id: string, followee_id: string){
         const FOLLOWS_SIGNATURE_SECRET = "5Dpr3ubBw8LFtbvQcd4Hx6hU";
         const FOLLOWS_SIGNATURE_VERSION = "1";
@@ -608,7 +618,6 @@ export namespace SoundCloud {
         const ua_part = ua_parts["Mozilla".length % ua_parts.length];
         const raw_signature = FOLLOWS_SIGNATURE_VERSION + FOLLOWS_SIGNATURE_SECRET + client_id + FOLLOWS_SIGNATURE_SECRET + followee_id + user_id + ua_part;
 
-        // UTF-8 bytes (matches browser's unescape(encodeURIComponent(s)))
         const bytes = Buffer.from(raw_signature, "utf8");
         let seed = 7996111;
         for (const byte of bytes) {
@@ -620,7 +629,7 @@ export namespace SoundCloud {
     }
 }
 
-// TODO clear this when migrate to extract sigpatching from scripts
+// clear this when migrate to extract sigpatching from scripts; maybe not though since it will have to be AST based and I'm not LuanRT lol
 // [FOLLOWING SIGNATURE NOTES]
 // from: https://a-v2.sndcdn.com/assets/54-c56123af.js
 /*
