@@ -23,8 +23,7 @@ import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import type { Lyrics } from "@illusive/lyrics";
 
 export namespace SQLTracks {
-    // TODO remove this and preprocess tracks 
-    const bad_artist_names = [',', '&', 'and'];
+    const bad_artist_names = [',', '&', 'and']; // keep this incase of bad parsing prolly
 
     export async function fixup(track: Track, t: Track) {
         let update = false;

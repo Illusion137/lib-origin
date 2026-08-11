@@ -199,6 +199,26 @@ export async function spotify_get_artist(id: string, opts?: ArtistOpts): Promise
     const union_artist = artist.data.artistUnion;
     const artist_uri: NamedUUID = { name: union_artist.profile.name, uri: create_uri("spotify", id) };
     const popular_release_albums = union_artist?.discography?.popularReleasesAlbums?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [];
+
+    const background_artwork_url = best_thumbnail(union_artist.visuals?.avatarImage?.sources)?.url;
+    const profile_artwork_url = best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url;
+    const similar_artists = union_artist.relatedContent.relatedArtists.items.map(parse_spotify_similar_artist);
+
+    if (profile_artwork_url) {
+        SQLArtists.insert_sql_artists({
+            artwork_url: profile_artwork_url,
+            name: union_artist.profile.name,
+            uri: create_uri('spotify', id)
+        }).catch(catch_log);
+    }
+    similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach(artist => {
+        SQLArtists.insert_sql_artists({
+            artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
+            name: artist.name.name,
+            uri: artist.name.uri!
+        }).catch(catch_log);
+    })
+
     return {
         name: union_artist.profile.name,
         albums: popular_release_albums.concat(union_artist.discography.albums.items?.[0]?.releases?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? []),
@@ -207,9 +227,9 @@ export async function spotify_get_artist(id: string, opts?: ArtistOpts): Promise
         tracks: union_artist.discography?.topTracks?.items.map(parse_spotify_artist_track) ?? [],
         singles_eps: union_artist.discography.singles.items?.map(item => item.releases.items)?.flat()?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [],
         appears_on: union_artist.relatedContent.appearsOn.items?.map(item => item.releases.items)?.flat()?.map(parse_spotify_artist_appears_on),
-        similar_artists: union_artist.relatedContent.relatedArtists.items.map(parse_spotify_similar_artist),
-        background_artwork_url: best_thumbnail(union_artist.visuals?.avatarImage?.sources)?.url,
-        profile_artwork_url: best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url,
+        similar_artists: similar_artists,
+        background_artwork_url: background_artwork_url,
+        profile_artwork_url: profile_artwork_url,
         is_following: undefined,
         follow: empty_async_call,
         unfollow: empty_async_call
