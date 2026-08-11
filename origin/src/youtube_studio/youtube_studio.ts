@@ -258,17 +258,17 @@ export namespace YouTubeStudio {
         }
     }
 
-    async function att_get_unbound(client: Innertube): Promise<RawUnboundAttestationChallengeResponse> {
-        return await with_studio_client(client, async() => reinterpret_cast<RawUnboundAttestationChallengeResponse>(await client.actions.execute('/att/get', {
+    async function att_get_unbound(): PromiseResult<RawUnboundAttestationChallengeResponse['data']> {
+        return await studio_execute<RawUnboundAttestationChallengeResponse['data']>('/att/get', {
             engagementType: "ENGAGEMENT_TYPE_UNBOUND"
-        })));
+        });
     }
 
-    async function att_get_creator_studio_action(client: Innertube, ids: Record<"externalChannelId", string>[], unbound_eats: string): Promise<RawStudioAttestationChallengeResponse> {
-        return await with_studio_client(client, async() => reinterpret_cast<RawStudioAttestationChallengeResponse>(await client.actions.execute('/att/get', {
+    async function att_get_creator_studio_action(ids: Record<"externalChannelId", string>[], unbound_eats: string): PromiseResult<RawStudioAttestationChallengeResponse['data']> {
+        return await studio_execute<RawStudioAttestationChallengeResponse['data']>('/att/get', {
             engagementType: "ENGAGEMENT_TYPE_CREATOR_STUDIO_ACTION",
             ids: ids
-        })), unbound_eats);
+        }, undefined, "none", unbound_eats);
     }
 
     function bg_challenge_of(bg_challenge: RawBotguardChallengeData | undefined): BotGuardChallenge | undefined {
@@ -281,17 +281,17 @@ export namespace YouTubeStudio {
         };
     }
 
-    async function get_unbound_challenge(client: Innertube, force_refresh = false): PromiseResult<UnboundChallenge> {
+    async function get_unbound_challenge(force_refresh = false): PromiseResult<UnboundChallenge> {
         try {
             if (!force_refresh && cached_unbound !== undefined && cached_unbound.expires_at_ms > Date.now()) return cached_unbound;
 
-            const attestation = await att_get_unbound(client);
-            if (!attestation.success) return generror("Failed to get the YouTube Studio attestation challenge", "CRITICAL", { status_code: attestation.status_code });
-            const challenge = attestation.data.challenge;
+            const attestation = await att_get_unbound();
+            if ("error" in attestation) return attestation;
+            const challenge = attestation.challenge;
             if (challenge === undefined || challenge === "") return generror("No challenge returned by /att/get", "CRITICAL");
-            const bg_challenge = bg_challenge_of(attestation.data.bgChallenge);
+            const bg_challenge = bg_challenge_of(attestation.bgChallenge);
             if (bg_challenge === undefined) return generror("No bgChallenge returned by /att/get", "CRITICAL");
-            const eats = attestation.data.eats;
+            const eats = attestation.eats;
 
             const unbound: UnboundChallenge = { challenge, bg_challenge, eats, expires_at_ms: challenge_expiry_ms(challenge) };
             cached_unbound = unbound;
@@ -299,8 +299,8 @@ export namespace YouTubeStudio {
         } catch (error) { return generror_catch(error, "Failed to get the YouTube Studio attestation challenge", "MEDIUM"); }
     }
 
-    async function mint_attestation(client: Innertube): PromiseResult<AttestationResponseData> {
-        const unbound = await get_unbound_challenge(client);
+    async function mint_attestation(): PromiseResult<AttestationResponseData> {
+        const unbound = await get_unbound_challenge();
         if ("error" in unbound) return unbound;
 
         if (cached_attestation?.challenge === unbound.challenge) return cached_attestation.response;
@@ -321,13 +321,14 @@ export namespace YouTubeStudio {
             const cache_hit = await FSCache.check_cache<string>(SESSION_TOKEN_CACHE_PAYLOAD, SESSION_TOKEN_CACHE_DURATION_MS, {serial_type: "stringable"});
             if(!force_refresh && cache_hit) return cache_hit;
 
-            const unbound = await get_unbound_challenge(client);
+            const unbound = await get_unbound_challenge();
             if ("error" in unbound) return unbound;
 
             // for some reason the attestation for this is just dumb
-            const attestation = await att_get_creator_studio_action(client, [{ externalChannelId: channel_id }], unbound.eats);
-            const challenge = attestation.data?.challenge;
-            if (!attestation.success || challenge === undefined || challenge === "") return generror("No challenge returned by /att/get for the studio action", "CRITICAL", { channel_id, status_code: attestation.status_code });
+            const attestation = await att_get_creator_studio_action([{ externalChannelId: channel_id }], unbound.eats);
+            if ("error" in attestation) return attestation;
+            const challenge = attestation.challenge;
+            if (challenge === undefined || challenge === "") return generror("No challenge returned by /att/get for the studio action", "CRITICAL", { channel_id });
 
             const botguard_response = await studio_attestation().generate_studio_attestation(unbound.bg_challenge, {
                 c: challenge,
@@ -336,33 +337,32 @@ export namespace YouTubeStudio {
             });
             if (typeof botguard_response === "object") return botguard_response;
 
-            const esr_response = await with_studio_client(client, async() => await client.actions.execute('/att/esr', {
+            const esr_data = await studio_execute<AttestationEsrResponse>('/att/esr', {
                 challenge,
                 botguardResponse: botguard_response,
                 xguardClientStatus: 0
-            }), unbound.eats);
-
-            const esr_data = reinterpret_cast<AttestationEsrResponse>(esr_response.data);
-            if (!esr_response.success || esr_data.ctx === undefined) return generror("/att/esr did not return a ctx", "CRITICAL", { status_code: esr_response.status_code });
+            }, undefined, "none", unbound.eats);
+            if ("error" in esr_data) return esr_data;
+            if (esr_data.ctx === undefined) return generror("/att/esr did not return a ctx", "CRITICAL");
 
             let grst_ctx = esr_data.ctx;
             let reauth_proof_token: string | undefined = undefined;
             if (esr_data.shouldFetchReauthSessionToken === true) {
-                const reauth_response = await with_studio_client(client, async() => await client.actions.execute('/security/get_web_reauth_url', {
+                const reauth_data = await studio_execute<WebReauthResponse>('/security/get_web_reauth_url', {
                     continueUrl: `${STUDIO_ORIGIN}/reauth`,
                     flow: "REAUTH_FLOW_YT_STUDIO_COLD_LOAD",
                     ivctx: esr_data.ctx,
                     challenge,
                     botguardResponse: botguard_response
-                }), unbound.eats);
-                const reauth_data = reinterpret_cast<WebReauthResponse>(reauth_response.data);
+                }, undefined, "none", unbound.eats);
+                if ("error" in reauth_data) return reauth_data;
                 // YouTube WANTS a sign in; but if they can ignore it so can I...
                 // if (reauth_data.webReauthUrl !== undefined && reauth_data.encodedReauthProofToken === undefined) {
                 //     session_token_available = false;
                 //     return generror("YouTube Studio wants an interactive sign in before it will issue a session token", "INFO", { reauth_data });
                 // }
-                if (!reauth_response.success || reauth_data.encodedReauthProofToken === undefined || reauth_data.sessionRiskCtx === undefined) {
-                    return generror("/security/get_web_reauth_url did not return a reauth proof", "MEDIUM", { status_code: reauth_response.status_code });
+                if (reauth_data.encodedReauthProofToken === undefined || reauth_data.sessionRiskCtx === undefined) {
+                    return generror("/security/get_web_reauth_url did not return a reauth proof", "MEDIUM");
                 }
                 grst_ctx = reauth_data.sessionRiskCtx;
                 reauth_proof_token = reauth_data.encodedReauthProofToken;
@@ -371,9 +371,9 @@ export namespace YouTubeStudio {
             const request_context = studio_request_context(client);
             if (reauth_proof_token !== undefined) request_context.reauthRequestInfo = { encodedReauthProofToken: reauth_proof_token };
             try {
-                const grst_response = await with_studio_client(client, async() => await client.actions.execute('/ars/grst', { ctx: grst_ctx }), unbound.eats);
-                const grst_data = reinterpret_cast<SessionTokenResponse>(grst_response.data);
-                if (!grst_response.success || grst_data.sessionToken === undefined) return generror("/ars/grst did not return a sessionToken", "CRITICAL", { status_code: grst_response.status_code });
+                const grst_data = await studio_execute<SessionTokenResponse>('/ars/grst', { ctx: grst_ctx }, undefined, "none", unbound.eats);
+                if ("error" in grst_data) return grst_data;
+                if (grst_data.sessionToken === undefined) return generror("/ars/grst did not return a sessionToken", "CRITICAL");
                 cached_session_token = grst_data.sessionToken;
                 await FSCache.insert_cache(SESSION_TOKEN_CACHE_PAYLOAD, cached_session_token, {serial_type: "stringable"});
                 return cached_session_token;
@@ -413,7 +413,7 @@ export namespace YouTubeStudio {
         }
 
         if (placement === "none" || attestation_retry_after_ms > Date.now()) return undefined;
-        const attestation_response_data = await mint_attestation(client);
+        const attestation_response_data = await mint_attestation();
         if ("error" in attestation_response_data) {
             attestation_retry_after_ms = Date.now() + ATTESTATION_FAILURE_COOLDOWN_MS;
             return undefined;
@@ -456,14 +456,14 @@ export namespace YouTubeStudio {
         } catch (error) { return generror_catch(error, "Failed to resolve the creator channel id", "CRITICAL"); }
     }
 
-    async function studio_execute<T extends object>(endpoint: string, payload: object, channel_id?: string, placement: AttestationPlacement = "none"): PromiseResult<T> {
+    async function studio_execute<T extends object>(endpoint: string, payload: object, channel_id?: string, placement: AttestationPlacement = "none", eats?: string): PromiseResult<T> {
         try {
             const client = await get_innertube_client();
             const top_level = await apply_studio_context(client, channel_id, placement);
             const response = await with_studio_client(client, async() => await client.actions.execute(endpoint, {
                 ...payload,
                 ...(top_level === undefined ? {} : { attestationResponseData: top_level })
-            }));
+            }), eats);
             if (!response.success) return generror(`YouTube Studio call to ${endpoint} failed`, "MEDIUM", { status_code: response.status_code });
             return reinterpret_cast<T>(response.data);
         } catch (error) { return generror_catch(error, `Failed to call YouTube Studio ${endpoint}`, "MEDIUM", { payload }); }
@@ -848,16 +848,15 @@ export namespace YouTubeStudio {
     export async function upload_feedback(tokens: string[], type: "CONTINUATION_TOKENS"): PromiseResult<UploadFeedbackResult>
     export async function upload_feedback(tokens: string[], type: "FEEDBACK_TOKENS"|"CONTINUATION_TOKENS"){
         if(tokens.filter(token => !is_empty(token)).length === 0) return generror("No non-empty tokens for feedback", "INFO", tokens);
-        const client = await get_innertube_client();
-        const feedback_response = await with_studio_client(client, async() => await client.actions.execute('upload/feedback?alt=json', 
-            type === "CONTINUATION_TOKENS" ? {continuations: tokens} : {feedbackTokens: tokens}));
-        if(!feedback_response.success) return generror("Failed to get upload_feedback", "INFO", { feedback_response });
+        const feedback_data = await studio_execute<{feedbackResponse?: {isProcessed: boolean}, continuationContents?: ContinuationsUploadFeedback}>('upload/feedback?alt=json',
+            type === "CONTINUATION_TOKENS" ? {continuations: tokens} : {feedbackTokens: tokens});
+        if("error" in feedback_data) return feedback_data;
         try {
-            if(type === "FEEDBACK_TOKENS") return feedback_response.data.feedbackResponse as {isProcessed: boolean};
-            const contents = feedback_response.data.continuationContents as ContinuationsUploadFeedback;
+            if(type === "FEEDBACK_TOKENS") return feedback_data.feedbackResponse as {isProcessed: boolean};
+            const contents = feedback_data.continuationContents as ContinuationsUploadFeedback;
             return {contents, next: async() => await upload_feedback([try_get_feedback_feedback_token(contents) ?? ""], "CONTINUATION_TOKENS")};
         } catch(e) {
-            return generror_catch(e, "failed to parse upload_feedback", "MEDIUM", {feedback_data: feedback_response.data})
+            return generror_catch(e, "failed to parse upload_feedback", "MEDIUM", {feedback_data})
         }
     }
 
