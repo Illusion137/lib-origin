@@ -120,7 +120,6 @@ export namespace YouTubeStudio {
     interface AttestationResponseData { challenge: string, webResponse: string }
     interface UnboundChallenge { challenge: string, bg_challenge: BotGuardChallenge, eats: string, expires_at_ms: number }
     interface ScottyUploadResult { status?: string, scottyResourceId?: string }
-    /** payload shape only, the operations that go up are built per field by build_metadata_update */
     type MetadataUpdatePayload = Record<string, unknown>;
 
     interface AttestationEsrResponse { ctx?: string, shouldFetchReauthSessionToken?: boolean }
@@ -144,6 +143,20 @@ export namespace YouTubeStudio {
     export function preload_cookies(cookie?: string){
         preloaded_cookies = cookie ?? process?.env?.YOUTUBE_COOKIE_JAR;
         force_refresh_client = true;
+    }
+
+    let force_refresh_session_token = false;
+    function eat_force_refresh_session_token(){
+        const temp = force_refresh_session_token;
+        force_refresh_session_token = false;
+        return temp;
+    }
+    let retry_on_auth_challenge = true;
+    export function set_retry_on_auth_challenge(enabled: boolean){
+        retry_on_auth_challenge = enabled;
+    }
+    interface StudioChallengeResponseContext {
+        responseContext?: { webResponseContextExtensionData?: { challenge?: { type?: string } } };
     }
 
     export async function get_innertube_client(cookie?: string): Promise<Innertube> {
@@ -405,7 +418,7 @@ export namespace YouTubeStudio {
         delete request_context.attestationResponseData;
 
         if (channel_id !== undefined) {
-            const session_token = await get_session_token(client, channel_id);
+            const session_token = await get_session_token(client, channel_id, eat_force_refresh_session_token());
             if (typeof session_token === "string") request_context.sessionInfo = { token: session_token };
             else {
                 delete request_context.sessionInfo;
@@ -456,7 +469,7 @@ export namespace YouTubeStudio {
         } catch (error) { return generror_catch(error, "Failed to resolve the creator channel id", "CRITICAL"); }
     }
 
-    async function studio_execute<T extends object>(endpoint: string, payload: object, channel_id?: string, placement: AttestationPlacement = "none", eats?: string): PromiseResult<T> {
+    async function studio_execute<T extends object>(endpoint: string, payload: object, channel_id?: string, placement: AttestationPlacement = "none", eats?: string, is_retry = false): PromiseResult<T> {
         try {
             const client = await get_innertube_client();
             const top_level = await apply_studio_context(client, channel_id, placement);
@@ -465,7 +478,17 @@ export namespace YouTubeStudio {
                 ...(top_level === undefined ? {} : { attestationResponseData: top_level })
             }), eats);
             if (!response.success) return generror(`YouTube Studio call to ${endpoint} failed`, "MEDIUM", { status_code: response.status_code });
-            return reinterpret_cast<T>(response.data);
+            const data = reinterpret_cast<T & StudioChallengeResponseContext>(response.data);
+
+            if (data.responseContext?.webResponseContextExtensionData?.challenge?.type === "CHALLENGE_PROMPT_TYPE_AUTHENTICATE") {
+                if (!is_retry && retry_on_auth_challenge && channel_id !== undefined) {
+                    force_refresh_session_token = true;
+                    return await studio_execute<T>(endpoint, payload, channel_id, placement, eats, true);
+                }
+                return generror(`YouTube Studio call to ${endpoint} was rejected with an authenticate challenge (likely a stale session token; clear yo damn cache?)`, "CRITICAL", { endpoint });
+            }
+
+            return data;
         } catch (error) { return generror_catch(error, `Failed to call YouTube Studio ${endpoint}`, "MEDIUM", { payload }); }
     }
 
@@ -936,10 +959,7 @@ export namespace YouTubeStudio {
         const video_id = created.videoId;
         if (video_id === undefined || video_id === "") {
             await chunks_uploaded;
-            // a 200 with no videoId means youtube rejected the request in the body rather than the status, so surface what it actually said instead of just the missing field
-            return generror("createvideo did not return a videoId" + 
-                    created?.responseContext?.webResponseContextExtensionData?.challenge?.type === "CHALLENGE_PROMPT_TYPE_AUTHENTICATE" ? " (likely bad session token; clear yo damn cache?)" : " (no clue why)", 
-                "CRITICAL", {
+            return generror("createvideo did not return a videoId", "CRITICAL", {
                 file_name,
                 frontend_upload_id,
                 created: created
@@ -1020,4 +1040,15 @@ export namespace YouTubeStudio {
             estimated_total_size: isNaN(Number(response.videosTotalSize?.size)) ? undefined : Number(response.videosTotalSize?.size)
         };
     }
+
+    export async function list_creator_playlists(){}
+    export async function list_creator_posts(){}
+    export async function list_creator_info_cards(){}
+    export async function get_video_translations(){}
+    export async function get_creator_channels(){}
+    export async function get_creator_endscreens(){}
+    export async function get_audio_waveform_url(){}
+    export async function get_thumbnail_waveform_url(){}
+    export async function edit_video(){}
+    export async function search_public_creator_entities(){}
 }
