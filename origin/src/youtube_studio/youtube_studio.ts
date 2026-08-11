@@ -216,22 +216,19 @@ export namespace YouTubeStudio {
         return ytcfg;
     }
     export async function get_ytcfg(): PromiseResult<YTCFG> {
-        const client = await get_innertube_client();
-        const html = await with_studio_client(client, async() => {
-            const response = await rozfetch(`${STUDIO_ORIGIN}/`, {
-                method: "GET",
-                headers: {
-                    ...cookie_headers(),
-                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "accept-language": "en-US,en;q=0.9",
-                    "User-Agent": USER_AGENT_WINDOWS
-                },
-                referrer: STUDIO_ORIGIN
-            });
-            if ("error" in response) return response;
-            return await response.text();
+        await get_innertube_client();
+        const response = await rozfetch(`${STUDIO_ORIGIN}/`, {
+            method: "GET",
+            headers: {
+                ...cookie_headers(),
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "accept-language": "en-US,en;q=0.9",
+                "User-Agent": USER_AGENT_WINDOWS
+            },
+            referrer: STUDIO_ORIGIN
         });
-        if (typeof html === "object") return html;
+        if ("error" in response) return response;
+        const html = await response.text();
         return extract_ytcfg(html);
     }
     export async function refresh_eats() {
