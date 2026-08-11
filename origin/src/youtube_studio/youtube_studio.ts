@@ -18,7 +18,7 @@ import type {
 } from './types';
 import type { PromiseResult, ResponseError, ResponseSuccess } from '@common/types';
 import { generror, generror_catch } from '@common/utils/error_util';
-import { gen_uuid, is_empty, milliseconds_of } from '@common/utils/util';
+import { extract_string_from_pattern, gen_uuid, is_empty, milliseconds_of } from '@common/utils/util';
 import { get_native_platform } from '@native/native_mode';
 import { reinterpret_cast } from '@common/cast';
 import rozfetch from '@common/rozfetch';
@@ -29,6 +29,8 @@ import { FSCache } from '@common/fs_cache';
 import type { ContinuationsUploadFeedback } from './types/ContinuationUploadFeedback';
 import type { CreateVideoResponse } from './types/CreateVideoResponse';
 import { wait } from '@common/utils/timed_util';
+import { try_json_eval } from '@common/utils/parse_util';
+import type { YTCFG } from './types/YTCFG';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -203,10 +205,45 @@ export namespace YouTubeStudio {
 
     const studio_client_name = 'WEB_CREATOR';
     const studio_client_version = '1.20260728.03.00';
-    // TODO actually extract this from the ytcfg prolly
-    const YTCFG_EATS = "AeCS5zA8mwKJA3VzvwD--o2-ZsGbWYFt6LMN2EuOPJLQrg6MIuKxBpbf9WNlMPlARBhbMM-hSWg982LQDZEnOBj-yHFw1TDTzIUdINTExUA6U5lOgLtxyv6guJS9HQ==";
 
-    async function with_studio_client<T>(client: Innertube, call: () => Promise<T>, eats: string = YTCFG_EATS): Promise<T> {
+    // ?? if you don't trust the eats; refresh it with refresh_eats
+    let ytcfg_eats = "AeCS5zA8mwKJA3VzvwD--o2-ZsGbWYFt6LMN2EuOPJLQrg6MIuKxBpbf9WNlMPlARBhbMM-hSWg982LQDZEnOBj-yHFw1TDTzIUdINTExUA6U5lOgLtxyv6guJS9HQ==";
+
+    function extract_ytcfg(html: string) {
+        const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
+        const extracted = extract_string_from_pattern(html, ytcfg_data_regex, "MEDIUM");
+        const ytcfg = try_json_eval<YTCFG>(extracted as string);
+        return ytcfg;
+    }
+    export async function get_ytcfg(): PromiseResult<YTCFG> {
+        const client = await get_innertube_client();
+        const html = await with_studio_client(client, async() => {
+            const response = await rozfetch(`${STUDIO_ORIGIN}/`, {
+                method: "GET",
+                headers: {
+                    ...cookie_headers(),
+                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "accept-language": "en-US,en;q=0.9",
+                    "User-Agent": USER_AGENT_WINDOWS
+                },
+                referrer: STUDIO_ORIGIN
+            });
+            if ("error" in response) return response;
+            return await response.text();
+        });
+        if (typeof html === "object") return html;
+        return extract_ytcfg(html);
+    }
+    export async function refresh_eats() {
+        const ytcfg = await get_ytcfg();
+        if("error" in ytcfg) {
+            console.warn("Unable to update EATS");
+            return;
+        }
+        ytcfg_eats = ytcfg.EATS;
+    }
+
+    async function with_studio_client<T>(client: Innertube, call: () => Promise<T>, eats: string = ytcfg_eats): Promise<T> {
         const context_client = client.session.context.client;
         const request_context = studio_request_context(client);
         request_context.eats = eats;

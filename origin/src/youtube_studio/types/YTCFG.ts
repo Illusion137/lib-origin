@@ -1,0 +1,1206 @@
+export interface YTCFG {
+	CLIENT_CANARY_STATE: string;
+	EVENT_ID: string;
+	EXPERIMENT_FLAGS: ExperimentFlags;
+	GAPI_HINT_PARAMS: string;
+	GAPI_HOST: string;
+	GAPI_LOCALE: string;
+	GL: string;
+	GOOGLE_FEEDBACK_BUCKET: string;
+	GOOGLE_FEEDBACK_PRODUCT_ID: string;
+	GOOGLE_FEEDBACK_PRODUCT_DATA: GoogleFeedbackProductData;
+	HL: string;
+	HTML_DIR: string;
+	HTML_LANG: string;
+	INNERTUBE_API_KEY: string;
+	INNERTUBE_API_VERSION: string;
+	INNERTUBE_CLIENT_NAME: string;
+	INNERTUBE_CLIENT_VERSION: string;
+	INNERTUBE_CONTEXT: InnertubeContext;
+	INNERTUBE_CONTEXT_CLIENT_NAME: number;
+	INNERTUBE_CONTEXT_CLIENT_VERSION: string;
+	INNERTUBE_CONTEXT_GL: string;
+	INNERTUBE_CONTEXT_HL: string;
+	LATEST_ECATCHER_SERVICE_TRACKING_PARAMS: LatestEcatcherServiceTrackingParams;
+	LOGGED_IN: boolean;
+	PAGE_BUILD_LABEL: string;
+	PAGE_CL: number;
+	SERVER_NAME: string;
+	SESSION_INDEX: string;
+	SIGNIN_URL: string;
+	VISITOR_DATA: string;
+	WEB_PLAYER_CONTEXT_CONFIGS: WebPlayerContextConfigs;
+	XSRF_FIELD_NAME: string;
+	XSRF_TOKEN: string;
+	YPC_MB_URL: string;
+	SERVER_VERSION: string;
+	CSI_SERVICE_NAME: string;
+	DATASYNC_ID: string;
+	SERIALIZED_CLIENT_CONFIG_DATA: string;
+	LIVE_CHAT_BASE_TANGO_CONFIG: LiveChatBaseTangoConfig;
+	CLIENT_PROTOCOL: string;
+	CLIENT_TRANSPORT: string;
+	PLAYER_CLIENT_VERSION: string;
+	TIME_CREATED_MS: number;
+	INNERTUBE_CONTEXT_SERIALIZED_DELEGATION_CONTEXT: string;
+	LOGIN_INFO: string;
+	VALID_SESSION_TEMPDATA_DOMAINS: string[];
+	PERSIST_IDENTITY_IFRAME_URL: PersistIdentityIframeUrl;
+	EATS: string;
+	LOG_STICKINESS: boolean;
+	USER_SESSION_ID: string;
+	LOTTIE_URL: LottieUrl;
+	IS_DBSC: boolean;
+	ONEPICK_URL: string;
+	YOUTUBE_ROOT_URL: string;
+	USE_CSN_FALLBACK: boolean;
+	SERVER_MILLIS_SINCE_EPOCH: number;
+	DISABLE_YT_IMG_DELAY_LOADING: boolean;
+	TIMEZONES: Timezones[];
+	ACCOUNT_FLAGS: AccountFlags;
+	ARTIST_IMAGE_UPLOAD_URL_MAP: ArtistImageUploadUrlMap;
+	CHANNEL_ID: string;
+	DELEGATION_CONTEXT: DelegationContext;
+	IS_MADISON_ACCOUNT: boolean;
+	REAUTH_SERVLET_URL: string;
+	UPLOAD_CONFIG: UploadConfig;
+	USER_SETTINGS: UserSettings;
+	IS_2SV_ENROLLED: boolean;
+	IS_2SV_EXEMPT: boolean;
+	CAN_MAKE_VIDEO_PUBLIC_WITHOUT_WARNING: boolean;
+	DISABLE_CLIENT_MODULE_PREFETCHING: boolean;
+	USES_PHONE_AS_PRIMARY_CONTACT: boolean;
+}
+
+export interface ExperimentFlags {
+	AdstubeByChannel__enable_adstube_follow_on_view_goal: boolean;
+	AdstubeByChannel__enable_comix_traffic_estimates: boolean;
+	AdstubeByChannel__enable_comix_traffic_estimates_for_views_goal: boolean;
+	AdstubeByChannel__enable_cta_promotion_creation: boolean;
+	AdstubeByChannel__enable_cta_promotion_update: boolean;
+	AdstubeByChannel__enable_default_video_selection: boolean;
+	AdstubeByChannel__enable_delinking_for_access_lost_ads_account: boolean;
+	AdstubeByChannel__enable_demographic_targeting: boolean;
+	AdstubeByChannel__enable_demographic_targeting_for_website_visit_goal: boolean;
+	AdstubeByChannel__enable_dma_reporting_links: boolean;
+	AdstubeByChannel__enable_follow_on_views_display: boolean;
+	AdstubeByChannel__enable_goals: boolean;
+	AdstubeByChannel__enable_impressions_estimates: boolean;
+	AdstubeByChannel__enable_manager_onboarding_workflow: boolean;
+	AdstubeByChannel__enable_onboarding_for_account_list_failure: boolean;
+	AdstubeByChannel__enable_promote_again_workflow: boolean;
+	AdstubeByChannel__enable_promotion_creation_date_column: boolean;
+	AdstubeByChannel__enable_promotion_list_filtering: boolean;
+	AdstubeByChannel__enable_promotion_prefix_removal: boolean;
+	AdstubeByChannel__enable_promotion_settings_for_oac: boolean;
+	AdstubeByChannel__enable_v2_goal_descriptions: boolean;
+	AdstubeByChannel__enable_website_goal_estimates: boolean;
+	AdstubeByChannel__enable_website_visit_goal: boolean;
+	AdstubeByChannel__show_radio_button_account_step: boolean;
+	AdstubeByChannel__skip_account_step: boolean;
+	AnalyticsByChannel__enable_jewels_reporting_web: boolean;
+	AnalyticsByChannel__enable_realtime_deep_dive_content_type_filter: boolean;
+	AnalyticsByChannel__enable_shorts_feed_ads_revenue_source_tooltip: boolean;
+	AnalyticsByChannel__enable_sponsors_only_content_in_deep_dive: boolean;
+	ContentInspirationByChannel__enable_brainstorm_idea_in_videos_tab: boolean;
+	ContentInspirationByChannel__enable_related_videos: boolean;
+	PodcastsByChannel__enable_audiovision_channel_eligibility_check: boolean;
+	PodcastsByChannel__enable_interleaved_outline_transcript: boolean;
+	PodcastsByChannel__enable_wiz_ytve_preview_dialog: boolean;
+	StudioWebHatsByGaia__enable_cms_album_survey: boolean;
+	StudioWebHatsByGaia__enable_cms_videos_survey: boolean;
+	VideoEditorByChannel__enable_new_trim_style: boolean;
+	WebFEAllAdstubeByChannel__disable_end_date_modification_for_website_visit_goal: boolean;
+	WebFEAllAdstubeByChannel__enable_advanced_search_in_interest_targeting: boolean;
+	WebFEAllAdstubeByChannel__enable_ai_asset_label: boolean;
+	WebFEAllAdstubeByChannel__enable_estimated_conversions_for_audience_growth_goal: boolean;
+	WebFEAllAdstubeByChannel__enable_eu_political_content_selector_for_promotion_creation: boolean;
+	WebFEAllAdstubeByChannel__enable_eu_political_content_selector_for_promotion_updates: boolean;
+	WebFEAllAdstubeByChannel__enable_improved_disapproval_guidance: boolean;
+	WebFEAllAdstubeByChannel__enable_interest_targeting: boolean;
+	WebFEAllAdstubeByChannel__enable_interest_targeting_for_views_goal: boolean;
+	WebFEAllAdstubeByChannel__enable_location_targeting: boolean;
+	WebFEAllAdstubeByChannel__enable_multi_ad_promotion: boolean;
+	WebFEAllAdstubeByChannel__enable_multi_ad_promotion_migration_for_read: boolean;
+	WebFEAllAdstubeByChannel__enable_promote_after_upload: boolean;
+	WebFEAllAdstubeByChannel__enable_promote_again_for_multi_video: boolean;
+	WebFEAllAdstubeByChannel__enable_promote_again_workflow_for_all_promotions: boolean;
+	WebFEAllAdstubeByChannel__enable_promote_again_workflow_for_details_page: boolean;
+	WebFEAllAdstubeByChannel__enable_promotion_creation_success_dialog: boolean;
+	WebFEAllAdstubeByChannel__enable_promotion_status_refactor: boolean;
+	WebFEAllAdstubeByChannel__enable_scroll_to_error_fields: boolean;
+	WebFEAllAdstubeByChannel__enable_shorts_preview: boolean;
+	WebFEAllAdstubeByChannel__enable_support_for_deleted_promotion: boolean;
+	WebFEAllAdstubeByChannel__enable_video_description_as_promotion_description: boolean;
+	WebFEAllAdstubeByChannel__enable_video_selection_improvements: boolean;
+	WebFEAllAnalyticsByChannel__enable_ad_status_breakdown: boolean;
+	WebFEAllAnalyticsByChannel__enable_ad_status_breakdown_dimension_for_shopping_revenue_metrics: boolean;
+	WebFEAllAnalyticsByChannel__enable_ad_status_filter: boolean;
+	WebFEAllAnalyticsByChannel__enable_audience_retention_initial_time: boolean;
+	WebFEAllAnalyticsByChannel__enable_collabs_subscribers_channel_name: boolean;
+	WebFEAllAnalyticsByChannel__enable_jewels_reporting_for_canada_web: boolean;
+	WebFEAllAnalyticsByChannel__enable_jewels_reporting_web_for_taiwan: boolean;
+	WebFEAllAnalyticsByChannel__enable_member_metrics_for_video: boolean;
+	WebFEAllAnalyticsByChannel__enable_merchant_breakdown_in_yta: boolean;
+	WebFEAllAnalyticsByChannel__enable_new_name_for_shopping_metrics: boolean;
+	WebFEAllAnalyticsByChannel__enable_primetime_program_grouping: boolean;
+	WebFEAllAnalyticsByChannel__enable_shopping_usage_type_metrics: boolean;
+	WebFEAllAnalyticsByChannel__enable_unique_reach_metric: boolean;
+	WebFEAllAnalyticsByChannel__enable_yta_read_gift_analytics_feature_bit_web: boolean;
+	WebFEAllAnalyticsByGaia__enable_channel_facts_item_explore_buttons: boolean;
+	WebFEAllAnalyticsByGaia__enable_saving_all_report_types: boolean;
+	WebFEAllContentInspirationByChannel__enable_save_toggle_button: boolean;
+	WebFEAllContentInspirationByChannel__skip_summary_generation: boolean;
+	WebFEAllCopyrightByChannel__enable_content_detection_leftnav_name: boolean;
+	WebFEAllCopyrightByChannel__enable_copyright_cc_feature: boolean;
+	WebFEAllCopyrightByChannel__enable_copyright_school_v2_web: boolean;
+	WebFEAllCopyrightByChannel__enable_creator_music_hide_paid_tabs: boolean;
+	WebFEAllCopyrightByChannel__enable_hats_for_likeness_onboarding: boolean;
+	WebFEAllCopyrightByChannel__enable_licensed_content_translation_web: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_autofill_by_user: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_filter_by_video: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_in_vci_web: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_m5: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_public_figures: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_takedown_contact_form_regrouping: boolean;
+	WebFEAllCopyrightByChannel__enable_likeness_v2_agreement: boolean;
+	WebFEAllCopyrightByChannel__enable_livestream_urls_on_webform: boolean;
+	WebFEAllCopyrightByChannel__enable_vci_impact_summary_sorting_web: boolean;
+	WebFEAllFamebitByChannel__enable_deal_reporting_on_web: boolean;
+	WebFEAllFamebitByChannel__enable_shared_access_code_web: boolean;
+	WebFEAllLiveStreamingByChannel__disable_processing_message_for_deferred_live_archival: boolean;
+	WebFEAllLiveStreamingByChannel__enable_dual_stream_toggle: boolean;
+	WebFEAllLiveStreamingByChannel__enable_lcr_ads_settings_infobox_fix: boolean;
+	WebFEAllLiveStreamingByChannel__enable_lcr_webcam_header_actions: boolean;
+	WebFEAllLiveStreamingByChannel__enable_live_monetization_defaults_preset: boolean;
+	WebFEAllLiveStreamingByChannel__enable_live_video_category_default: boolean;
+	WebFEAllLiveStreamingByChannel__enable_multi_aspect_1p_client_crop_in_lcr: boolean;
+	WebFEAllLiveStreamingByChannel__enable_multi_aspect_3p_ga_ui: boolean;
+	WebFEAllLiveStreamingByChannel__enable_tns_signals_collection_for_live_creation_lcr: boolean;
+	WebFEAllLiveStreamingByChannel__enable_webcam_go_live_stuck_fix: boolean;
+	WebFEAllLiveStreamingByChannel__enable_webcam_unmute_on_screenshare_fix: boolean;
+	WebFEAllLiveStreamingByChannel__enable_webrtc_transport_reconnect: boolean;
+	WebFEAllPartnerprogramByChannel__enable_eligibility_error_display_desktop: boolean;
+	WebFEAllPartnerprogramByChannel__enable_expanded_adsense_cooldown: boolean;
+	WebFEAllPartnerprogramByChannel__enable_playable_adsense_settings_desktop: boolean;
+	WebFEAllPartnerprogramByGaia__cms_enable_feature79: boolean;
+	WebFEAllShoppingByChannel__creator_wiz_experiment_ytshopping_merchant_event_details: boolean;
+	WebFEAllShoppingByChannel__creator_wiz_experiment_ytshopping_product_details: boolean;
+	WebFEAllShoppingByChannel__creator_wiz_experiment_ytshopping_product_details_dialog: boolean;
+	WebFEAllShoppingByChannel__creator_wiz_experiment_ytshopping_products: boolean;
+	WebFEAllShoppingByChannel__creator_wiz_experiment_ytve_product_timestamps_editor_options_panel: boolean;
+	WebFEAllShoppingByChannel__enable_auto_tag_removal_hats: boolean;
+	WebFEAllShoppingByChannel__enable_merch_shelf_removal_strings: boolean;
+	WebFEAllShoppingByChannel__enable_shopping_hub_analytics_cards: boolean;
+	WebFEAllShoppingByChannel__enable_subseller_drilldown_web: boolean;
+	WebFEAllShoppingByChannel__mvg_support_for_targeted_campaigns: boolean;
+	WebFEAllSponsorshipsByChannel__sponsorships_enable_compact_revenue_card_v2: boolean;
+	WebFEAllSponsorshipsByChannel__sponsorships_enable_key_metrics_card_v2: boolean;
+	WebFEAllSponsorshipsByChannel__sponsorships_enable_sponsors_graph_card_v2: boolean;
+	WebFEAllStudioByChannel__allow_content_publishing_in_video_smart_draft: boolean;
+	WebFEAllStudioByChannel__allow_content_replacement_in_video_smart_draft: boolean;
+	WebFEAllStudioByChannel__disable_9x5_artwork_for_tv_shows: boolean;
+	WebFEAllStudioByChannel__disable_artist_gallery: boolean;
+	WebFEAllStudioByChannel__disable_artist_gallery_upload: boolean;
+	WebFEAllStudioByChannel__disable_creator_chat_at_mentions: boolean;
+	WebFEAllStudioByChannel__disable_viewer_posts_new_badge_and_blue_dot: boolean;
+	WebFEAllStudioByChannel__enable_ai_use_language: boolean;
+	WebFEAllStudioByChannel__enable_analytics_regional_number_formatting: boolean;
+	WebFEAllStudioByChannel__enable_appeal_verification_web: boolean;
+	WebFEAllStudioByChannel__enable_ato_cleanup_v2_fe: boolean;
+	WebFEAllStudioByChannel__enable_audio_video_enhancement_opt_out_hats_survey: boolean;
+	WebFEAllStudioByChannel__enable_auto_dubbing_opt_out_hats_channel_data: boolean;
+	WebFEAllStudioByChannel__enable_auto_dubbing_opt_out_hats_survey: boolean;
+	WebFEAllStudioByChannel__enable_autocropped_highlight_editor_hats_survey: boolean;
+	WebFEAllStudioByChannel__enable_content_research_csv_banner: boolean;
+	WebFEAllStudioByChannel__enable_content_research_hardcoded_banner: boolean;
+	WebFEAllStudioByChannel__enable_creator_chat_for_generalist: boolean;
+	WebFEAllStudioByChannel__enable_creator_chat_renderer: boolean;
+	WebFEAllStudioByChannel__enable_creator_chat_sidebar: boolean;
+	WebFEAllStudioByChannel__enable_creator_chat_streaming_panel: boolean;
+	WebFEAllStudioByChannel__enable_creator_chat_streaming_response: boolean;
+	WebFEAllStudioByChannel__enable_creator_communities_perception_survey: boolean;
+	WebFEAllStudioByChannel__enable_highlight_suggestions_left_side_panel: boolean;
+	WebFEAllStudioByChannel__enable_ipos_appeals_playback: boolean;
+	WebFEAllStudioByChannel__enable_named_subtitles_show_row_fix: boolean;
+	WebFEAllStudioByChannel__enable_new_ui_for_title_component: boolean;
+	WebFEAllStudioByChannel__enable_non_blocking_prechecks_loading: boolean;
+	WebFEAllStudioByChannel__enable_pinned_rendering_for_viewer_posts: boolean;
+	WebFEAllStudioByChannel__enable_playlist_comments_filter: boolean;
+	WebFEAllStudioByChannel__enable_primetime_self_serve_monetization: boolean;
+	WebFEAllStudioByChannel__enable_quota_check_in_ab_dialog: boolean;
+	WebFEAllStudioByChannel__enable_release_comments_tab_in_studio_web: boolean;
+	WebFEAllStudioByChannel__enable_screen_manager_for_command_handler: boolean;
+	WebFEAllStudioByChannel__enable_semantic_search_comment_query_filter: boolean;
+	WebFEAllStudioByChannel__enable_semantic_search_text_query_filter: boolean;
+	WebFEAllStudioByChannel__enable_sidekick_safe_img_renderer: boolean;
+	WebFEAllStudioByChannel__enable_sidekick_thumbnail_feedback_dialog: boolean;
+	WebFEAllStudioByChannel__enable_studio_ingested_tv_show_ff: boolean;
+	WebFEAllStudioByChannel__enable_suggestions_hats_survey: boolean;
+	WebFEAllStudioByChannel__enable_tv_shows_channel_features_fetch: boolean;
+	WebFEAllStudioByChannel__enable_updated_2sv_all: boolean;
+	WebFEAllStudioByChannel__enable_video_files_dialog_in_studio: boolean;
+	WebFEAllStudioByChannel__enable_video_hosted_post_creation_in_studio: boolean;
+	WebFEAllStudioByChannel__enable_viewer_posts_edu: boolean;
+	WebFEAllStudioByContentOwner__cms_catalog_localization: boolean;
+	WebFEAllStudioByContentOwner__cms_wiz_migration_batch_five: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_yta_posts_engagement_rate_card: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytcd_post_snapshot_item: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytcp_dub_publication_settings: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytcp_header: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytcp_sam_chat: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytgn_video_translation_cell_audio: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytls_webcam_actions: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytshopping_channel_section: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_yttou_guided_resolution: boolean;
+	WebFEAllStudioByGaia__creator_wiz_experiment_ytve_video_highlight_suggestion_row: boolean;
+	WebFEAllStudioByGaia__enable_added_loudspeaker_regions_v2: boolean;
+	WebFEAllStudioByGaia__enable_apply_channel_spotlight_restrictions: boolean;
+	WebFEAllStudioByGaia__enable_creator_polymer_stvs: boolean;
+	WebFEAllStudioByGaia__enable_mss_lazy_loading: boolean;
+	WebFEAllStudioByGaia__enable_stickiness_script_minified: boolean;
+	WebFEAllStudioByGaia__enable_studio_renderers_theme_switch_reload: boolean;
+	WebFEAllStudioByGaia__enable_web_ui_unification: boolean;
+	WebFEAllStudioByGaia__get_thumbnail_suggestions_from_mde: boolean;
+	WebFEAllStudioByGaia__include_invitee_in_video_collaborations_invitation_url: boolean;
+	WebFEAllStudioByGaia__load_studio_extensions_module: boolean;
+	WebFEAllStudioByGaia__publishing_wiz_migration_batch_two: boolean;
+	ab_det_apb_b: boolean;
+	ab_det_apm: boolean;
+	ab_det_el_h: boolean;
+	action_companion_center_align_description: boolean;
+	add_superfans_to_creator_decoration: boolean;
+	adstube_account_creation: boolean;
+	adstube_account_selection: boolean;
+	adstube_async_account_calls: boolean;
+	adstube_feature_eligibility: boolean;
+	adstube_incentives: boolean;
+	allow_skip_networkless: boolean;
+	altered_content_bulk_edits: boolean;
+	att_web_record_metrics: boolean;
+	cms_potential_embed_metadata_comparison: boolean;
+	cms_ytv_content_performance_daily_report: boolean;
+	compress_gel: boolean;
+	console_log_js_exceptions: boolean;
+	cow_optimize_idom_compat: boolean;
+	creator_enable_dark_theme_in_account_menu: boolean;
+	creator_enable_hide_your_channel_in_suspended_account_menu: boolean;
+	csi_on_gel: boolean;
+	csstrfr: boolean;
+	dark_launch_ypp_benefits_for_ms1_desktop: boolean;
+	dedupping_server_ve: boolean;
+	delay_sheet_open_killswitch: boolean;
+	deprecate_live_viewers_column: boolean;
+	disable_child_node_auto_formatted_strings: boolean;
+	disable_log_to_visitor_layer: boolean;
+	disable_pacf_logging_for_memory_limited_tv: boolean;
+	disable_starred_tracks_migration: boolean;
+	embeds_desktop_enable_volume_slider: boolean;
+	enable_1p_product_level_sales_reporting_web: boolean;
+	enable_a11y_focus_fix_for_mac_panel_on_desktop: boolean;
+	enable_aadc_warning: boolean;
+	enable_aadc_warning_global: boolean;
+	enable_access_code_service_rpc: boolean;
+	enable_active_view_display_ad_renderer_web_home: boolean;
+	enable_ad_break_overlay: boolean;
+	enable_ads_m4: boolean;
+	enable_ads_video_linking_ui: boolean;
+	enable_affiliate_tiered_bonus_progress_tracker: boolean;
+	enable_age_asssurance_message: boolean;
+	enable_ai_disclosure_for_compact_landscape_image_web: boolean;
+	enable_ai_disclosure_for_compact_landscape_image_web_innertube: boolean;
+	enable_ai_disclosure_for_compact_landscape_no_button_web: boolean;
+	enable_ai_disclosure_for_compact_landscape_no_button_web_innertube: boolean;
+	enable_ai_disclosure_for_text_image_no_button_web: boolean;
+	enable_ai_disclosure_for_text_image_no_button_web_innertube: boolean;
+	enable_ai_disclosure_for_top_landscape_image_web: boolean;
+	enable_ai_disclosure_for_top_landscape_image_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_billboard_buttoned_web: boolean;
+	enable_ai_disclosure_for_video_display_billboard_buttoned_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_button_group_web: boolean;
+	enable_ai_disclosure_for_video_display_button_group_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_compact_button_group_web: boolean;
+	enable_ai_disclosure_for_video_display_compact_button_group_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_compact_buttoned_web: boolean;
+	enable_ai_disclosure_for_video_display_compact_buttoned_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_compact_carousel_button_group_web: boolean;
+	enable_ai_disclosure_for_video_display_compact_carousel_button_group_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_compact_web: boolean;
+	enable_ai_disclosure_for_video_display_compact_web_innertube: boolean;
+	enable_ai_disclosure_for_video_display_full_web: boolean;
+	enable_ai_disclosure_for_video_display_full_web_innertube: boolean;
+	enable_ask_studio_filter: boolean;
+	enable_attention_logging_measure_on_shown: boolean;
+	enable_au_u16_verify_age_page: boolean;
+	enable_auto_chapter_bulk_edit: boolean;
+	enable_auto_dub_channel_settings: boolean;
+	enable_auto_dub_channel_settings_ypp_early_access: boolean;
+	enable_auto_dub_channel_settings_ypp_early_access_expansion: boolean;
+	enable_auto_dub_channel_settings_ypp_info_default_on: boolean;
+	enable_auto_dubbing_satisfaction_survey_in_studio_web_language_page: boolean;
+	enable_auto_learning_concepts_opt_out: boolean;
+	enable_automotive_form_factor_check: boolean;
+	enable_badge_verification_on_studio_web: boolean;
+	enable_capi_for_media_kit_customization: boolean;
+	enable_channel_business_email_for_bcx_lite_offer_confirm_interest_dialog: boolean;
+	enable_channel_comment_guidelines_tns_safe: boolean;
+	enable_channel_guidelines_expansion: boolean;
+	enable_channel_pfl_contract_bto_flow_studio: boolean;
+	enable_channel_pronouns_on_web_studio: boolean;
+	enable_channel_settings_reauth: boolean;
+	enable_chat_support_shortcut_expansion: boolean;
+	enable_child_panels: boolean;
+	enable_client_only_wiz_tooltips: boolean;
+	enable_client_sli_logging: boolean;
+	enable_client_streamz_web: boolean;
+	enable_client_ve_spec: boolean;
+	enable_cls_force_enable_all_ads_format: boolean;
+	enable_command_handler_screen_manager: boolean;
+	enable_comment_settings_on_off_button_style: boolean;
+	enable_comments_digest_studio_web: boolean;
+	enable_community_section_title_via_comments: boolean;
+	enable_contact_email_prefill: boolean;
+	enable_content_inspiration_3_0: boolean;
+	enable_content_inspiration_4_0: boolean;
+	enable_course_and_podcast_tabs_on_deep_dive: boolean;
+	enable_creator_chat_entry_point_button_on_dashboard_page: boolean;
+	enable_creator_chat_feature_tour: boolean;
+	enable_creator_chat_ghats: boolean;
+	enable_creator_community_moderation_settings_new_ui: boolean;
+	enable_creator_music_track_generation: boolean;
+	enable_creator_pause_comments_setting: boolean;
+	enable_creator_show_cotyping: boolean;
+	enable_creator_who_can_comment_setting: boolean;
+	enable_creator_wiz_experiment_critical_apis_m1: boolean;
+	enable_dai_sdf_h5_preroll: boolean;
+	enable_datasync_id_header_in_web_vss_pings: boolean;
+	enable_default_mono_cta_migration_web_client: boolean;
+	enable_display_contracts_hub_signed_bcx_contracts: boolean;
+	enable_dubbing_asr_on_web: boolean;
+	enable_early_access_creators_allowlist: boolean;
+	enable_eating_disorder_and_malicious_clickbait: boolean;
+	enable_education_metadata_bulk_action: boolean;
+	enable_education_metadata_form: boolean;
+	enable_education_metadata_type_v2_migration: boolean;
+	enable_endemic_high_ccv_smearing_h5: boolean;
+	enable_enhanced_advanced_mode_m1: boolean;
+	enable_entity_store_from_dependency_injection: boolean;
+	enable_famebit_bcx_m1_offer_rejection_survey: boolean;
+	enable_famebit_bcx_reject_offer_deep_link: boolean;
+	enable_famebit_business_contact_input: boolean;
+	enable_famebit_creator_rate_card_v2: boolean;
+	enable_famebit_flow_logging: boolean;
+	enable_famebit_onboarding_dashboard_tour: boolean;
+	enable_fan_community_posts_bulk_actions: boolean;
+	enable_fan_community_studio_comments_content_type_filter: boolean;
+	enable_fan_shorts_for_creators_in_studio: boolean;
+	enable_follow_up_comments_filter: boolean;
+	enable_google_hats_analytics: boolean;
+	enable_guided_resolution_flow: boolean;
+	enable_guided_support_csp_chat: boolean;
+	enable_handles_account_menu_switcher: boolean;
+	enable_handles_everywhere: boolean;
+	enable_hide_edit_video_for_alc: boolean;
+	enable_hide_moderated_elq_comments: boolean;
+	enable_hype_on_jewels_age_verification: boolean;
+	enable_inclusive_gender: boolean;
+	enable_inline_muted_playback_on_web_search: boolean;
+	enable_inline_muted_playback_on_web_search_for_vdc: boolean;
+	enable_inline_muted_playback_on_web_search_for_vdcb: boolean;
+	enable_is_extended_monitoring: boolean;
+	enable_keyword_search: boolean;
+	enable_lcr_emoji_fountain: boolean;
+	enable_lcr_minor_dialog: boolean;
+	enable_lcr_modernization_phase_1: boolean;
+	enable_lifa_h5_campaign_launch: boolean;
+	enable_likeness_scaled_onboarding: boolean;
+	enable_list_oac_videos_in_related_video_picker: boolean;
+	enable_live_ad_settings_update: boolean;
+	enable_live_chat_moderation_strict: boolean;
+	enable_live_midroll_defaults_ptc: boolean;
+	enable_live_reactions_studio: boolean;
+	enable_livestream_reauth: boolean;
+	enable_ltc_param_fetch_from_innertube: boolean;
+	enable_lwe_web_mute: boolean;
+	enable_managing_moderators_ui: boolean;
+	enable_media_kit_hhi_parental_cards: boolean;
+	enable_mentions_creation_tooltip: boolean;
+	enable_metadata_editor_after_audio_upload: boolean;
+	enable_metric_name_update: boolean;
+	enable_mfk_and_strike_check_for_viewer_posts: boolean;
+	enable_mixed_direction_formatted_strings: boolean;
+	enable_most_relevant_by_default: boolean;
+	enable_ms2_for_all_channels_desktop: boolean;
+	enable_multi_track_deepdive: boolean;
+	enable_multi_track_filter_deepdive: boolean;
+	enable_multi_track_geo: boolean;
+	enable_mweb_keyboard_shortcuts: boolean;
+	enable_names_handles_account_switcher: boolean;
+	enable_new_iph_open_to_gse_flow_sam: boolean;
+	enable_new_self_termination_notification_text: boolean;
+	enable_new_shield_moderator_badge: boolean;
+	enable_nitrate_studio_web_dialog: boolean;
+	enable_non_compliant_tagged_products_video_filter: boolean;
+	enable_non_concurrent_lsam_messaging: boolean;
+	enable_open_in_new_tab_icon_for_short_dr_for_desktop_search: boolean;
+	enable_parent_post_replies_settings_update: boolean;
+	enable_pause_ads_on_ytv_html5: boolean;
+	enable_pdg_gift_experience_creator_studio_web: boolean;
+	enable_permission_switch_reauth: boolean;
+	enable_permissions_management_tour: boolean;
+	enable_pfl_contract_flow_cms_cla: boolean;
+	enable_pfl_contract_flow_studio: boolean;
+	enable_playables_builder_polling_recovery: boolean;
+	enable_player_for_learning_in_earn_hub: boolean;
+	enable_player_for_learning_signing_in_agreements: boolean;
+	enable_playlist_translations: boolean;
+	enable_playlist_videos_page_bulk_actions: boolean;
+	enable_playlist_view_count_and_filters: boolean;
+	enable_podcast_shows_feature_checks: boolean;
+	enable_polymer_resin: boolean;
+	enable_polymer_resin_migration: boolean;
+	enable_posts_advanced_tier_external_links_restriction: boolean;
+	enable_prechecks_as_a_platform: boolean;
+	enable_prechecks_notifications: boolean;
+	enable_premiere_intro_studio_flow: boolean;
+	enable_privacy_warning_dialog: boolean;
+	enable_product_tagging_video_filters: boolean;
+	enable_province_for_non_us_countries: boolean;
+	enable_pv_screen_modern_text: boolean;
+	enable_read_only_captions: boolean;
+	enable_reduced_step_grf_desktop: boolean;
+	enable_reduced_step_grf_improvements_desktop: boolean;
+	enable_rejection_reason_payment_info: boolean;
+	enable_rfa_verification_for_playlist_web_creator: boolean;
+	enable_rto_deprecation: boolean;
+	enable_rto_dialog_change: boolean;
+	enable_screen_manager_layer_separation: boolean;
+	enable_sdf_companion_h5: boolean;
+	enable_sdf_dai_h5_midroll: boolean;
+	enable_sdf_h5_endemic_mid_post_roll: boolean;
+	enable_sdf_on_h5_unplugged_vod_midroll: boolean;
+	enable_sdf_shorts_player_bytes_h5: boolean;
+	enable_self_certification_v15: boolean;
+	enable_self_termination_appeal_pending_review: boolean;
+	enable_shadydom_free_scoped_query_methods: boolean;
+	enable_shopping_analytics_carousel: boolean;
+	enable_show_last_update_date_delayed_eligibility_ui: boolean;
+	enable_sidekick_entry_chips_on_yta_page: boolean;
+	enable_simplified_ads_control_desktop: boolean;
+	enable_simplified_ads_control_for_live: boolean;
+	enable_skip_ad_guidance_prompt: boolean;
+	enable_skippable_ads_for_unplugged_ad_pod: boolean;
+	enable_smarter_replies: boolean;
+	enable_smarter_replies_guf: boolean;
+	enable_smearing_expansion_dai: boolean;
+	enable_social_proof_v1: boolean;
+	enable_social_suggestions_dropdown_refit: boolean;
+	enable_stream_revoked_string_update: boolean;
+	enable_studio_clips_remove_action: boolean;
+	enable_studio_comments_ranking: boolean;
+	enable_studio_comments_ranking_at_content_level: boolean;
+	enable_studio_dashboard_super_thanks_chip: boolean;
+	enable_studio_top_viewer_posts_feed: boolean;
+	enable_thumbnail_ab_experiment_finish_time_estimation: boolean;
+	enable_thumbnail_experiment_stop_and_set: boolean;
+	enable_thumbnail_experiment_video_list: boolean;
+	enable_thumbnail_experiment_wt_tooltip: boolean;
+	enable_tlcs_in_studio: boolean;
+	enable_top_voted_playlist_sorting: boolean;
+	enable_torso_premium_ms2_desktop: boolean;
+	enable_torso_remix_owner_opt_out: boolean;
+	enable_variable_timeout_web: boolean;
+	enable_video_breakdown_on_affiliate_kmc_detail: boolean;
+	enable_video_display_compact_button_group_for_desktop_search: boolean;
+	enable_video_highlights_in_clips: boolean;
+	enable_video_linking_filter_web: boolean;
+	enable_video_states_revamp_m1_earn_hub_update: boolean;
+	enable_video_states_revamp_revenue_column: boolean;
+	enable_video_states_revamp_web: boolean;
+	enable_video_states_video_filter: boolean;
+	enable_viewer_posts_feed: boolean;
+	enable_viewer_reply_posts_in_studio: boolean;
+	enable_views_in_playlist_breakdown: boolean;
+	enable_violative_video_deletion_warning: boolean;
+	enable_visual_remix_opt_out: boolean;
+	enable_web_content_hub_page_navigation_chips: boolean;
+	enable_web_delhi_icons: boolean;
+	enable_web_home_top_landscape_image_layout_level_click: boolean;
+	enable_web_tiered_gel: boolean;
+	enable_webcam_canvas_rendering: boolean;
+	enable_webcam_reconnect_in_lcr: boolean;
+	enable_webcam_screen_share: boolean;
+	enable_wiz_queue_effect_and_on_init_initial_runs: boolean;
+	enable_ycp_required_onboarding: boolean;
+	enable_ypp_ad_blocking: boolean;
+	enable_ypp_ghat_survey: boolean;
+	enable_ypp_midroll_revamp_gaia: boolean;
+	enable_ypp_midroll_revamp_video_filter_gaia: boolean;
+	enable_ypp_next_ms2_desktop: boolean;
+	enable_ypp_next_ms2_signup_desktop: boolean;
+	enable_yt_ata_iframe_authuser: boolean;
+	enable_ytbc_bcx_onboarding: boolean;
+	enable_zero_prefix_mention_suggestion_web: boolean;
+	export_networkless_options: boolean;
+	export_player_version_to_ytconfig: boolean;
+	fill_single_video_with_notify_to_lasr: boolean;
+	h5_companion_enable_adcpn_macro_substitution_for_click_pings: boolean;
+	h5_inplayer_enable_adcpn_macro_substitution_for_click_pings: boolean;
+	h5_reset_cache_and_filter_before_update_masthead: boolean;
+	handles_in_mention_suggest_posts: boolean;
+	high_ccv_client_side_caching_h5: boolean;
+	html5_log_trigger_events_with_debug_data: boolean;
+	html5_ssdai_enable_media_end_cue_range: boolean;
+	idb_immediate_commit: boolean;
+	il_attach_cache_limit: boolean;
+	il_use_view_model_logging_context: boolean;
+	in_creator_music_enabled_territory: boolean;
+	is_browser_support_for_webcam_streaming: boolean;
+	is_browser_supported_for_live_studio_streaming: boolean;
+	json_condensed_response: boolean;
+	kevlar_gel_error_routing: boolean;
+	kevlar_move_theme_action_handlers_killswitch: boolean;
+	kevlar_service_command_check: boolean;
+	kevlar_use_wil_icons: boolean;
+	killswitch_toggle_button_behavior_resolve_command: boolean;
+	limit_ytcsi_debug_array_size: boolean;
+	live_chat_cow_visibility_set_up: boolean;
+	live_chat_disable_send_button_in_slow_mode: boolean;
+	live_chat_enable_close_for_ticker_item: boolean;
+	live_chat_enable_rta_manager: boolean;
+	live_chat_gifts_on_classic_web: boolean;
+	live_chat_prune_all_participants_char_map: boolean;
+	live_chat_relocate_web_banner_update: boolean;
+	live_chat_require_space_for_autocomplete_emoji: boolean;
+	live_chat_web_fix_high_speed_autoscroll: boolean;
+	live_chat_web_use_emoji_manager_singleton: boolean;
+	live_streaming_enable_sink_wrapper: boolean;
+	log_click_with_layer_from_element_in_command_handler: boolean;
+	log_gel_compression_latency: boolean;
+	log_heartbeat_with_lifecycles: boolean;
+	log_unicorn_pages: boolean;
+	mentions_inbox: boolean;
+	mweb_account_linking_noapp: boolean;
+	mweb_enable_click_to_play_pause: boolean;
+	mweb_enable_fine_scrubbing_for_recs: boolean;
+	mweb_enable_more_chunks: boolean;
+	mweb_player_control_on_hover: boolean;
+	mweb_progress_bar_seek_on_mouse_click: boolean;
+	mweb_shorts_comments_panel_id_change: boolean;
+	mweb_use_microformat_title_for_posts: boolean;
+	opt_in_creator_email_in_monetization_signup: boolean;
+	opt_in_creator_email_option_enable_by_default: boolean;
+	pageid_as_header_web: boolean;
+	pbcm_fi_inject_decorators: boolean;
+	pbcm_fi_listen_decorators: boolean;
+	pbcm_fi_query_decorators: boolean;
+	personalized_auto_mid_roll_card: boolean;
+	player_controls_volume_controls_use_player_props: boolean;
+	polymer_bad_build_labels: boolean;
+	polymer_verifiy_app_state: boolean;
+	prechecks_notifications_optin_via_settings: boolean;
+	propagate_consistency_tokens_from_lcr_to_innertube: boolean;
+	propagate_consistency_tokens_from_studio_web_to_innertube: boolean;
+	qoe_send_and_write: boolean;
+	record_app_crashed_web: boolean;
+	remove_chevron_from_ad_disclosure_banner_h5: boolean;
+	remove_eval_cache: boolean;
+	remove_masthead_channel_banner_on_refresh: boolean;
+	remove_parent_post_creator_setting: boolean;
+	remove_slot_id_exited_trigger_for_dai_in_player_slot_expire: boolean;
+	rename_community_tab_to_posts_tab: boolean;
+	restudio_hagrid_permissions: boolean;
+	restudio_hagrid_sensitive: boolean;
+	return_404_if_delegation_is_missing: boolean;
+	shell_load_gcf: boolean;
+	smarter_ve_dedupping: boolean;
+	sponsorships_desktop_dynamic_peers: boolean;
+	sponsorships_enable_creator_incentives: boolean;
+	sponsorships_enable_early_access_web_shared: boolean;
+	sponsorships_enable_facepile_on_desktop: boolean;
+	stop_handling_click_for_non_rendering_overlay_layout: boolean;
+	studio_web_enable_community_creator_heart_rendering_on_posts: boolean;
+	suppress_error_204_logging: boolean;
+	tooltip_refactor_for_hotkey: boolean;
+	transport_use_scheduler: boolean;
+	update_parent_post_delete_confirmation_text: boolean;
+	use_event_time_ms_header: boolean;
+	use_fifo_for_networkless: boolean;
+	use_request_time_ms_header: boolean;
+	use_rta_manager_for_async: boolean;
+	use_session_based_sampling: boolean;
+	use_thumbnail_overlay_time_status_renderer_for_live_badge: boolean;
+	use_updated_smarter_replies_help_link: boolean;
+	vss_final_ping_send_and_write: boolean;
+	vss_playback_use_send_and_write: boolean;
+	web_api_url: boolean;
+	web_attention_logging_enabled: boolean;
+	web_attention_logging_export_to_gel: boolean;
+	web_button_or_anchor_list_item: boolean;
+	web_button_view_model_non_nullish_data: boolean;
+	web_button_vm_refactor_disabled: boolean;
+	web_csi_action_sampling_enabled: boolean;
+	web_dedupe_ve_grafting: boolean;
+	web_disable_chip_view_model_mutation: boolean;
+	web_enable_ab_rsp_cl: boolean;
+	web_enable_arrow_key_navigation_in_dropdown: boolean;
+	web_enable_chunk_prediction: boolean;
+	web_enable_course_icon_update: boolean;
+	web_enable_cow_rich_item_renderer: boolean;
+	web_enable_entity_upsert_on_update: boolean;
+	web_enable_error_204: boolean;
+	web_enable_safari_button_tabindex_fix: boolean;
+	web_enable_thumbnail_overlay_alignment: boolean;
+	web_ensure_monotonic_history_timestamps: boolean;
+	web_gcf_hashes_innertube: boolean;
+	web_hide_your_data_on_automotive: boolean;
+	web_modern_dialogs: boolean;
+	web_monomer_web_component_wrapper_handle_errors: boolean;
+	web_non_navigating_atag: boolean;
+	web_overlay_reactive_render: boolean;
+	web_prefetch_preload_video: boolean;
+	web_progress_bar_draggable: boolean;
+	web_propagate_visibility_to_application_state: boolean;
+	web_responsive_current: boolean;
+	web_unified_fetch: boolean;
+	webfe_eats_enabled: boolean;
+	webpo_exit_on_net_err: boolean;
+	wiz_diff_overwritable: boolean;
+	wiz_wrapper_callback_props_fix: boolean;
+	wug_feedback_endpoint_use_its: boolean;
+	wug_networking_gzip_request: boolean;
+	yt_iron_overlay_click_tap_killswitch: boolean;
+	ytpopup_close_sibling_popups_killswitch: boolean;
+	AdstubeByChannel__default_budget_multiplier: number;
+	H5_async_logging_delay_ms: number;
+	adstube_min_budget_multiplier: number;
+	log_window_onerror_fraction: number;
+	polymer_property_access_logging_percent: number;
+	web_attention_logging_scroll_throttle: number;
+	web_load_prediction_threshold: number;
+	web_navigation_prediction_threshold: number;
+	web_session_replay_sample_rate: number;
+	web_system_health_fraction: number;
+	ytidb_transaction_ended_event_rate_limit: number;
+	PodcastsByChannel__audio_to_video_draft_composition_expiry_warning_threshold_seconds: number;
+	PodcastsByChannel__autocrop_preview_chunk_duration_sec: number;
+	PodcastsByChannel__interleaved_outline_transcript_timeout_ms: number;
+	WebFEAllCopyrightByChannel__debug_storefront_page_size: number;
+	WebFEAllStudioByChannel__creator_commentary_audio_commentary_default_volume: number;
+	WebFEAllStudioByChannel__creator_commentary_audio_commentary_max_volume: number;
+	WebFEAllStudioByChannel__creator_commentary_audio_commentary_min_volume: number;
+	WebFEAllStudioByChannel__creator_commentary_audio_content_default_volume: number;
+	WebFEAllStudioByChannel__creator_commentary_audio_content_max_volume: number;
+	WebFEAllStudioByChannel__creator_commentary_audio_content_min_volume: number;
+	WebFEAllStudioByChannel__find_similar_nudge_threshold: number;
+	adstube_country_prefill_coverage: number;
+	adstube_country_prefill_limit: number;
+	block_audioswap_undo_group_id: number;
+	botguard_async_snapshot_timeout_ms: number;
+	check_navigator_accuracy_timeout_ms: number;
+	compression_disable_point: number;
+	custom_active_view_tos_timeout_ms: number;
+	desktop_fountain_emoji_size_px: number;
+	enable_alternative_strike_interstitial_format: number;
+	enable_lifa_h5_campaign_card_multi_arm: number;
+	enable_policy_training_language_picker: number;
+	enable_strike_dashboard_cta: number;
+	endemic_high_ccv_smearing_max_window_seconds: number;
+	fix_blur_regions_group_id: number;
+	gel_min_batch_size: number;
+	gel_queue_timeout_max_ms: number;
+	h5_fetch_ad_pings_initial_delay_ms: number;
+	h5_fetch_ad_pings_max_retries: number;
+	initial_gel_batch_timeout: number;
+	live_chat_chunk_rendering: number;
+	live_chat_chunking_qps_threshold: number;
+	live_chat_cold_load_smoothing_duration_sec: number;
+	live_chat_cold_load_smoothing_viewership_threshold: number;
+	live_chat_continuation_expiration_usec: number;
+	live_replay_user_edu_tcv_threshold: number;
+	max_body_size_to_compress: number;
+	max_prefetch_window_sec_for_livestream_optimization: number;
+	maximum_selectable_comments_number_via_bulk_actions: number;
+	merge_trims_on_backend_group_id: number;
+	min_prefetch_offset_sec_for_livestream_optimization: number;
+	network_polling_interval: number;
+	product_drop_delay_seconds_override: number;
+	rotating_pinned_product_interval_seconds_override: number;
+	rto_deprecation_group_id: number;
+	rto_dialog_change_group_id: number;
+	scatter_plot_with_color: number;
+	send_config_hash_timer: number;
+	slow_compressions_before_abandon_count: number;
+	web_foreground_heartbeat_interval_ms: number;
+	web_gel_debounce_ms: number;
+	web_logging_max_batch: number;
+	web_max_tracing_events: number;
+	web_session_replay_mousemove_interval: number;
+	web_session_replay_scroll_interval: number;
+	web_session_replay_send_after_timeout: number;
+	web_tracing_session_replay: number;
+	wil_icon_max_concurrent_fetches: number;
+	ytcsi_debug_max_size: number;
+	ytidb_remake_db_retries: number;
+	ytidb_reopen_db_retries: number;
+	WebFEAllContentInspirationByChannel__content_inspiration_idea_conversation_idea_name_prefix: string;
+	WebFEAllContentInspirationByChannel__content_inspiration_idea_conversation_prototype_prompt: string;
+	WebFEAllStudioByChannel__ave_workflow_name: string;
+	WebFEAllStudioByGaia__creator_web_ts_color_version: string;
+	community_guidelines_exit_csat_trigger_id: string;
+	community_guidelines_submit_csat_trigger_id: string;
+	creator_music_promoted_featured_collection_id: string;
+	debug_forced_internalcountrycode: string;
+	demo_chat_support_shortcut: string;
+	il_payload_scraping: string;
+	live_chat_unicode_emoji_json_url: string;
+	pdg_creator_studio_super_vod_updates: string;
+	web_client_version_override: string;
+	AdstubeByChannel__unsupported_billing_preauth_countries: string[];
+	VideoEditorByChannel__genai_audioswap_enabled_countries: any[];
+	disabled_locales_in_studio_web: any[];
+	endemic_high_ccv_smearing_allowed_video_ids: string[];
+	fan_communities_trusted_tester_channel_ids_list: string[];
+	kevlar_command_handler_command_banlist: any[];
+	live_chat_dynamic_chunking_interval_range: any[];
+	live_chat_dynamic_chunking_traffic_range: any[];
+	web_op_signal_type_banlist: any[];
+	web_tracing_enabled_spans: string[];
+}
+
+export interface GoogleFeedbackProductData {
+	productVersion: string;
+}
+
+export interface InnertubeContext {
+	client: Client;
+	user: User;
+	request: Request;
+	clickTracking: ClickTracking;
+}
+
+export interface Client {
+	hl: string;
+	gl: string;
+	remoteHost: string;
+	deviceMake: string;
+	deviceModel: string;
+	visitorData: string;
+	userAgent: string;
+	clientName: string;
+	clientVersion: string;
+	osName: string;
+	osVersion: string;
+	originalUrl: string;
+	platform: string;
+	clientFormFactor: string;
+	configInfo: ConfigInfo;
+	userInterfaceTheme: string;
+	timeZone: string;
+	browserName: string;
+	browserVersion: string;
+	acceptHeader: string;
+	deviceExperimentId: string;
+	rolloutToken: string;
+}
+
+export interface ConfigInfo {
+	appInstallData: string;
+}
+
+export interface User {
+	lockedSafetyMode: boolean;
+}
+
+export interface Request {
+	useSsl: boolean;
+}
+
+export interface ClickTracking {
+	clickTrackingParams: string;
+}
+
+export interface LatestEcatcherServiceTrackingParams {
+	"client.name": string;
+}
+
+export interface WebPlayerContextConfigs {
+	WEB_PLAYER_CONTEXT_CONFIG_ID_STUDIO: WebPlayerContextConfigIdStudio;
+	WEB_PLAYER_CONTEXT_CONFIG_ID_STUDIO_LIVE_STREAMING: WebPlayerContextConfigIdStudioLiveStreaming;
+	WEB_PLAYER_CONTEXT_CONFIG_ID_STUDIO_LIVE_STREAMING_CREATOR_COMMENTARY: WebPlayerContextConfigIdStudioLiveStreamingCreatorCommentary;
+	WEB_PLAYER_CONTEXT_CONFIG_ID_STUDIO_CREATOR_MUSIC: WebPlayerContextConfigIdStudioCreatorMusic;
+	WEB_PLAYER_CONTEXT_CONFIG_ID_STUDIO_CREATOR_GUIDANCE: WebPlayerContextConfigIdStudioCreatorGuidance;
+}
+
+export interface WebPlayerContextConfigIdStudio {
+	jsUrl: string;
+	cssUrl: string;
+	contextId: string;
+	contentRegion: string;
+	hl: string;
+	hostLanguage: string;
+	innertubeApiKey: string;
+	innertubeApiVersion: string;
+	innertubeContextClientVersion: string;
+	controlsType: number;
+	disableKeyboardControls: boolean;
+	disableRelatedVideos: boolean;
+	annotationsLoadPolicy: number;
+	device: Device;
+	serializedExperimentIds: string;
+	serializedExperimentFlags: string;
+	disableSharing: boolean;
+	hideInfo: boolean;
+	disableWatchLater: boolean;
+	cspNonce: string;
+	canaryState: string;
+	disableAutonav: boolean;
+	authorizedUserIndex: number;
+	datasyncId: string;
+	canaryStage: string;
+	trustedJsUrl: TrustedJsUrl;
+	trustedCssUrl: TrustedCssUrl;
+	serializedClientExperimentFlags: string;
+	externalWatchLaterRequest: boolean;
+}
+
+export interface Device {
+	brand: string;
+	model: string;
+	browser: string;
+	browserVersion: string;
+	os: string;
+	osVersion: string;
+	platform: string;
+	interfaceName: string;
+	interfaceVersion: string;
+}
+
+export interface TrustedJsUrl {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface TrustedCssUrl {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface WebPlayerContextConfigIdStudioLiveStreaming {
+	showMiniplayerButton: boolean;
+	externalFullscreen: boolean;
+	jsUrl: string;
+	cssUrl: string;
+	contextId: string;
+	contentRegion: string;
+	hl: string;
+	hostLanguage: string;
+	innertubeApiKey: string;
+	innertubeApiVersion: string;
+	innertubeContextClientVersion: string;
+	disableRelatedVideos: boolean;
+	annotationsLoadPolicy: number;
+	device: Device2;
+	serializedExperimentIds: string;
+	serializedExperimentFlags: string;
+	disableSharing: boolean;
+	hideInfo: boolean;
+	disableWatchLater: boolean;
+	startMuted: boolean;
+	enableMutedAutoplay: boolean;
+	cspNonce: string;
+	canaryState: string;
+	disableAutonav: boolean;
+	authorizedUserIndex: number;
+	datasyncId: string;
+	canaryStage: string;
+	trustedJsUrl: TrustedJsUrl2;
+	trustedCssUrl: TrustedCssUrl2;
+	serializedClientExperimentFlags: string;
+	externalWatchLaterRequest: boolean;
+}
+
+export interface Device2 {
+	brand: string;
+	model: string;
+	browser: string;
+	browserVersion: string;
+	os: string;
+	osVersion: string;
+	platform: string;
+	interfaceName: string;
+	interfaceVersion: string;
+}
+
+export interface TrustedJsUrl2 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface TrustedCssUrl2 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface WebPlayerContextConfigIdStudioLiveStreamingCreatorCommentary {
+	showMiniplayerButton: boolean;
+	externalFullscreen: boolean;
+	jsUrl: string;
+	cssUrl: string;
+	contextId: string;
+	contentRegion: string;
+	hl: string;
+	hostLanguage: string;
+	innertubeApiKey: string;
+	innertubeApiVersion: string;
+	innertubeContextClientVersion: string;
+	disableRelatedVideos: boolean;
+	annotationsLoadPolicy: number;
+	device: Device3;
+	serializedExperimentIds: string;
+	serializedExperimentFlags: string;
+	disableSharing: boolean;
+	hideInfo: boolean;
+	disableWatchLater: boolean;
+	startMuted: boolean;
+	enableMutedAutoplay: boolean;
+	cspNonce: string;
+	canaryState: string;
+	disableAutonav: boolean;
+	authorizedUserIndex: number;
+	datasyncId: string;
+	disableSeek: boolean;
+	disableMediaControls: boolean;
+	canaryStage: string;
+	trustedJsUrl: TrustedJsUrl3;
+	trustedCssUrl: TrustedCssUrl3;
+	enableProximaLowLatency: boolean;
+	serializedClientExperimentFlags: string;
+	externalWatchLaterRequest: boolean;
+}
+
+export interface Device3 {
+	brand: string;
+	model: string;
+	browser: string;
+	browserVersion: string;
+	os: string;
+	osVersion: string;
+	platform: string;
+	interfaceName: string;
+	interfaceVersion: string;
+}
+
+export interface TrustedJsUrl3 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface TrustedCssUrl3 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface WebPlayerContextConfigIdStudioCreatorMusic {
+	jsUrl: string;
+	cssUrl: string;
+	contextId: string;
+	eventLabel: string;
+	contentRegion: string;
+	hl: string;
+	hostLanguage: string;
+	innertubeApiKey: string;
+	innertubeApiVersion: string;
+	innertubeContextClientVersion: string;
+	controlsType: number;
+	disableKeyboardControls: boolean;
+	disableRelatedVideos: boolean;
+	annotationsLoadPolicy: number;
+	device: Device4;
+	serializedExperimentIds: string;
+	serializedExperimentFlags: string;
+	disableSharing: boolean;
+	hideInfo: boolean;
+	disableWatchLater: boolean;
+	cspNonce: string;
+	canaryState: string;
+	disableAutonav: boolean;
+	authorizedUserIndex: number;
+	datasyncId: string;
+	canaryStage: string;
+	trustedJsUrl: TrustedJsUrl4;
+	trustedCssUrl: TrustedCssUrl4;
+	serializedClientExperimentFlags: string;
+	externalWatchLaterRequest: boolean;
+}
+
+export interface Device4 {
+	brand: string;
+	model: string;
+	browser: string;
+	browserVersion: string;
+	os: string;
+	osVersion: string;
+	platform: string;
+	interfaceName: string;
+	interfaceVersion: string;
+}
+
+export interface TrustedJsUrl4 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface TrustedCssUrl4 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface WebPlayerContextConfigIdStudioCreatorGuidance {
+	jsUrl: string;
+	cssUrl: string;
+	contextId: string;
+	contentRegion: string;
+	hl: string;
+	hostLanguage: string;
+	innertubeApiKey: string;
+	innertubeApiVersion: string;
+	innertubeContextClientVersion: string;
+	controlsType: number;
+	disableKeyboardControls: boolean;
+	disableRelatedVideos: boolean;
+	annotationsLoadPolicy: number;
+	device: Device5;
+	serializedExperimentIds: string;
+	serializedExperimentFlags: string;
+	disableSharing: boolean;
+	hideInfo: boolean;
+	disableWatchLater: boolean;
+	disableFullscreen: boolean;
+	cspNonce: string;
+	canaryState: string;
+	disableAutonav: boolean;
+	authorizedUserIndex: number;
+	datasyncId: string;
+	canaryStage: string;
+	trustedJsUrl: TrustedJsUrl5;
+	trustedCssUrl: TrustedCssUrl5;
+	serializedClientExperimentFlags: string;
+	externalWatchLaterRequest: boolean;
+}
+
+export interface Device5 {
+	brand: string;
+	model: string;
+	browser: string;
+	browserVersion: string;
+	os: string;
+	osVersion: string;
+	platform: string;
+	interfaceName: string;
+	interfaceVersion: string;
+}
+
+export interface TrustedJsUrl5 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface TrustedCssUrl5 {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface LiveChatBaseTangoConfig {
+	apiKey: string;
+	channelUri: string;
+	clientName: string;
+	requiresAuthToken: boolean;
+	senderUri: string;
+	useNewTango: boolean;
+}
+
+export interface PersistIdentityIframeUrl {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface LottieUrl {
+	privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string;
+}
+
+export interface Timezones {
+	name: string;
+	localized_name: string;
+	utc_offset_s: number;
+	localized_utc_offset: string;
+}
+
+export interface AccountFlags {
+	has_unacknowledged_copyright_takedown: boolean;
+	has_unacknowledged_tou_strike: boolean;
+	has_artist_roster: boolean;
+}
+
+export interface ArtistImageUploadUrlMap {
+	PROFILE_SQUARE: string;
+	PROFILE_LANDSCAPE: string;
+	PROFILE_UNIFIED: string;
+	GALLERY: string;
+}
+
+export interface DelegationContext {
+	externalChannelId: string;
+	roleType: RoleType;
+}
+
+export interface RoleType {
+	channelRoleType: string;
+}
+
+export interface UploadConfig {
+	scottyUrl: string;
+	localStorageUserKey: string;
+	showKrNotice: boolean;
+	thumbnailsScottyUrl: string;
+	audioTracksScottyUrl: string;
+	maxShortVideoDuration: MaxShortVideoDuration;
+}
+
+export interface MaxShortVideoDuration {
+	seconds: number;
+}
+
+export interface UserSettings {
+	creatorApp: CreatorApp;
+	videoEditorSettings: VideoEditorSettings;
+	cmsSettings: CmsSettings;
+	donationsSettings: DonationsSettings;
+	artistSettings: ArtistSettings;
+	videoSelfCertificationSettings: VideoSelfCertificationSettings;
+	creatorLikenessSettings: CreatorLikenessSettings;
+}
+
+export interface CreatorApp {
+	warmWelcomeState: string;
+	dismissedGuidedTours: number[];
+	warmWelcomeV2State: string;
+}
+
+export interface VideoEditorSettings {
+	warmWelcomeScreenState: string;
+}
+
+export interface CmsSettings {
+	warmWelcomeState: string;
+	currency: string;
+}
+
+export interface DonationsSettings {
+	warmWelcomeState: string;
+}
+
+export interface ArtistSettings {
+	warmWelcomeState: string;
+	totalReachWelcomeState: string;
+}
+
+export interface VideoSelfCertificationSettings {
+	warmWelcomeState: string;
+	notificationState: string;
+	policyNotificationState: string;
+	mfkNotificationState: string;
+}
+
+export interface CreatorLikenessSettings {
+	likenessWelcomeDialogState: string;
+}
