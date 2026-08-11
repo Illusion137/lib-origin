@@ -12,5 +12,7 @@ declare namespace NodeJS {
 		INSTAGRAM_COOKIE_JAR: string;
 		GOOGLE_TRANSLATE_COOKIE_JAR: string;
 		BANDLAB_COOKIE_JAR: string;
+
+		LORIGIN: string;
 	}
 }
