@@ -5,7 +5,7 @@ import { find_album_year, parse_subtitle_text } from '@origin/youtube_music/pars
 import type { ArtistCarouselContent, ArtistTopTrack } from '@origin/youtube_music/types/ArtistResults_0';
 import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
 import type { MusicCardShelfRenderer, MusicResponsiveListItemRenderer2, SearchMusicResponsiveListItemRenderer } from '@origin/youtube_music/types/SearchResults_0';
-import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicNammedBrowseID, YouTubeMusicTrack, WatchNextQueueTrack } from '@origin/youtube_music/types/types';
+import type { YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicArtist, YouTubeMusicNammedBrowseID, YouTubeMusicTrack, WatchNextQueueTrack } from '@origin/youtube_music/types/types';
 import type { RelatedSection } from '@origin/youtube_music/parser';
 import { best_thumbnail, create_uri, is_duration_string, youtube_music_split_artists, youtube_views_number } from '@illusive/illusive_utils';
 import type { CompactArtist, CompactPlaylist, ISOString, MusicServicePlaylist, MusicServiceRelatedSection, NamedUUID, Runs, Track } from '@illusive/types';
@@ -72,6 +72,14 @@ export function parse_youtube_music_albums(albums: YouTubeMusicAlbum[], type: Co
         artwork_url: best_thumbnail(album.thumbnails)?.url,
         album_type: parse_youtube_music_album_type(album.album_type)
     }));
+}
+
+export function parse_youtube_music_artist(artist: YouTubeMusicArtist): CompactArtist{
+    return {
+        name: {name: artist.name, uri: artist.browse_id === undefined ? null : create_uri("youtubemusic", artist.browse_id)},
+        profile_artwork_url: best_thumbnail(artist.thumbnails)?.url,
+        is_official_artist_channel: true
+    };
 }
 
 export function parse_youtube_music_track(track: YouTubeMusicTrack): Track{

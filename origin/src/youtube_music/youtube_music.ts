@@ -326,15 +326,35 @@ export namespace YouTubeMusic {
 				if ("searchSuggestionRenderer" in content) {
 					return parse_runs(content.searchSuggestionRenderer.suggestion.runs, '');
 				}
-				// TODO parse more data like channels and such
 				else if ("musicResponsiveListItemRenderer" in content) {
-					try {
-						return Parser.parse_track_search_suggestion(content.musicResponsiveListItemRenderer);
+					const [ type_runs ] = Parser.parse_subtitle_text(content.musicResponsiveListItemRenderer.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs);
+					const type = parse_runs(type_runs);
+					const second_line = parse_runs(content.musicResponsiveListItemRenderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer.text.runs);
+
+					if(type === "Song") { // try track
+						try {
+							return Parser.parse_track_search_suggestion(content.musicResponsiveListItemRenderer);
+						}
+						catch { return undefined; }
 					}
-					catch { return undefined; }
-				}
-				else
+					if(type === "Album" || type === "EP" || type === "Single") { // try album
+						try {
+							return Parser.parse_album_search_suggestion(content.musicResponsiveListItemRenderer);
+						}
+						catch { return undefined; }
+					}
+					if(second_line.includes("monthly audience")) { // try artist
+						try {
+							return Parser.parse_artist_search_suggestion(content.musicResponsiveListItemRenderer);
+						}
+						catch { return undefined; }
+					}
 					return undefined;
+				}
+				else {
+					console.warn("Unknown YouTube Music suggestion type: ", content);
+					return undefined;
+				}
 			}).filter(content => content !== undefined);
 		}).flat() ?? [];
 	}

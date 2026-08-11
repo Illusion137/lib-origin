@@ -7,7 +7,7 @@ import type { NewReleasesAlbums, Run2 } from "@origin/youtube_music/types/NewRel
 import type { PlaylistResults_0 } from "@origin/youtube_music/types/PlaylistResults_0";
 import type { SearchResults_0 } from "@origin/youtube_music/types/SearchResults_0";
 import type { SuggestionMusicResponsiveListItemRenderer } from "@origin/youtube_music/types/SearchSuggestions";
-import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack, WatchNextQueueTrack, WatchNextResult, LyricsResult } from "@origin/youtube_music/types/types";
+import type { InitialData, YouTubeMusicAlbum, YouTubeMusicAlbumType, YouTubeMusicBadges, YouTubeMusicTrack, WatchNextQueueTrack, WatchNextResult, LyricsResult, YouTubeMusicArtist } from "@origin/youtube_music/types/types";
 import { youtube_views_number } from "@illusive/illusive_utils";
 
 const separator = '•';
@@ -110,7 +110,7 @@ export function parse_new_releases_albums(initial_data: InitialData[]): YouTubeM
     });
 }
 export function parse_track_search_suggestion(suggestion: SuggestionMusicResponsiveListItemRenderer): YouTubeMusicTrack{
-    const [album_type, artists, plays_string] = parse_subtitle_text(suggestion.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs);
+    const [track_type, artists, plays_string] = parse_subtitle_text(suggestion.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs);
     const album = suggestion.flexColumns[2] !== undefined ? suggestion.flexColumns[2].musicResponsiveListItemFlexColumnRenderer.text.runs[0] : undefined;
     return {
         thumbnails: suggestion.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [],
@@ -121,12 +121,39 @@ export function parse_track_search_suggestion(suggestion: SuggestionMusicRespons
         })).filter(artist => !not_artist_names.includes(artist.name.trim())),
         video_id: suggestion.playlistItemData.videoId,
         badges: suggestion.badges?.map(badge => badge.musicInlineBadgeRenderer.icon.iconType) as YouTubeMusicBadges ?? [],
-        track_type: parse_runs(album_type) as YouTubeMusicAlbumType,
+        track_type: parse_runs(track_type) as YouTubeMusicAlbumType,
         album: album ? {
             name: album.text,
             browse_id: album.navigationEndpoint?.browseEndpoint?.browseId ?? ""
         } : album,
         plays: youtube_views_number(parse_runs(plays_string)),
+    }
+}
+export function parse_album_search_suggestion(suggestion: SuggestionMusicResponsiveListItemRenderer): YouTubeMusicAlbum{
+    const [album_type, artists, years_string] = parse_subtitle_text(suggestion.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs);
+    const year = Number(parse_runs(years_string));
+    
+    return {
+        thumbnails: suggestion.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [],
+        title: parse_runs(suggestion.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs),
+        artists: artists?.map(artist => ({
+            name: artist.text,
+            browse_id: artist.navigationEndpoint?.browseEndpoint.browseId ?? ""
+        })).filter(artist => !not_artist_names.includes(artist.name.trim())),
+        browse_id: suggestion.navigationEndpoint.browseId ?? "",
+        badges: suggestion.badges?.map(badge => badge.musicInlineBadgeRenderer.icon.iconType) as YouTubeMusicBadges ?? [],
+        album_type: parse_runs(album_type) as YouTubeMusicAlbumType,
+        ...(!isNaN(year) ? {year: year} : {})
+    }
+}
+export function parse_artist_search_suggestion(suggestion: SuggestionMusicResponsiveListItemRenderer): YouTubeMusicArtist{
+    const artist_name = parse_runs(suggestion.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs);
+    const monthly_listeners_label = parse_runs(suggestion.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs).replace(" monthly audience", "");
+    return {
+        thumbnails: suggestion.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails,
+        name: artist_name,
+        browse_id: suggestion.navigationEndpoint.browseId ?? "",
+        monthly_audience: youtube_views_number(monthly_listeners_label)
     }
 }
 

@@ -568,6 +568,7 @@ export interface PlaylistItemData {
 export interface NavigationEndpoint5 {
     clickTrackingParams: string
     watchEndpoint: WatchEndpoint5
+    browseId?: string;
 }
 
 export interface WatchEndpoint5 {
