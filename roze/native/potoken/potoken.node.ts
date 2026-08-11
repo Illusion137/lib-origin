@@ -9,13 +9,11 @@ import { generror, generror_catch } from "@common/utils/error_util";
 import type { PromiseResult, ResponseError } from "@common/types";
 import rozfetch from "@common/rozfetch";
 import { try_json_parse } from "@common/utils/parse_util";
+import { extract_string_from_pattern } from '../../../common/utils/util';
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
-// TODO make this compatible with studio_attestation
 function setup_botguard_environment(page_html: string): ResponseError|null {
-    if (typeof globalThis.document !== 'undefined') return null;
-
     const dom = new JSDOM(
         '<!DOCTYPE html><html lang="en"><head><title></title></head><body></body></html>',
         {
@@ -25,12 +23,10 @@ function setup_botguard_environment(page_html: string): ResponseError|null {
         },
     );
 
-    // TODO migrate to extract_regex_from_string
     const ytcfg_regex = /ytcfg\.set\(({.+?})\);/s;
-    const yt_config = ytcfg_regex.exec(page_html)?.[1];
-    if (!yt_config) {
-        return generror("Could not find ytcfg in page HTML", "CRITICAL", { yt_config });
-    }
+    const yt_config = extract_string_from_pattern(page_html, ytcfg_regex, "CRITICAL");
+    if (typeof yt_config === "object") return yt_config;
+
     /* Needed because of EVENT_ID */
     const ytcfg = try_json_parse<object>(yt_config);
     if("error" in ytcfg) return ytcfg;
@@ -49,7 +45,6 @@ function setup_botguard_environment(page_html: string): ResponseError|null {
         Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator });
     }
 
-    // jsdom doesn't implement canvas; stub getContext so BotGuard's VM doesn't throw.
     Object.defineProperty(dom.window.HTMLCanvasElement.prototype, 'getContext', {
         value: () => null,
         writable: true,
@@ -76,12 +71,9 @@ async function create_minter(): PromiseResult<WebPoMinter>{
     if(setup_result !== null) return setup_result;
 
     const initial_attestation_data_regex = /window\.ytAtN\(\s*({[\s\S]*?})\s*\)/;
-    // TODO extract with safe function?
-    const initial_attestation_data_str = initial_attestation_data_regex.exec(page_html)?.[1];
+    const initial_attestation_data_str = extract_string_from_pattern(page_html, initial_attestation_data_regex, "CRITICAL");
 
-    if (!initial_attestation_data_str) {
-        return generror("Could not find challenge in page HTML", "CRITICAL", {page_html});
-    }
+    if (typeof initial_attestation_data_str === "object") return initial_attestation_data_str;
 
     let initial_attestation_data_json;
     try {

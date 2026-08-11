@@ -16,5 +16,4 @@ export interface AttestationBinding {
 
 export interface StudioAttestationGenerator {
 	generate_studio_attestation: (bg_challenge: BotGuardChallenge, binding: AttestationBinding) => PromiseResult<string>;
-	reset_studio_attestation: () => Promise<void>;
 }

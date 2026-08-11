@@ -7,6 +7,5 @@ export const mobile_studio_attestation: StudioAttestationGenerator = {
 			global_name: bg_challenge.global_name,
 			engagement_type: binding.e
 		});
-	},
-	reset_studio_attestation: async () => { return; }
+	}
 };
