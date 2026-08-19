@@ -7,6 +7,7 @@ import { YouTubeDL } from "@origin/youtube_dl/index";
 import { load_native_sabr_downloader, sabr_downloader } from "@native/sabr_downloader/sabr_downloader";
 import { gen_uuid } from "@common/utils/util";
 import { load_native_potoken } from '@native/potoken/potoken';
+import { refetch_env } from '@common/set_env_cookies';
 
 const is_win = process.platform === "win32";
 const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/ytdl_out/";
@@ -17,6 +18,8 @@ async function ytdl_main__() {
         console.error(red("NO URL SPECIFIED"));
         return;
     }
+    await refetch_env();
+    YouTubeDL.preload_cookies();
     await load_native_potoken();
     await load_native_sabr_downloader();
 
