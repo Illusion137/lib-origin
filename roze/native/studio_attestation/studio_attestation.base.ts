@@ -4,7 +4,7 @@ export interface BotGuardChallenge {
 	program: string;
 	global_name: string;
 	interpreter_hash?: string;
-	interpreter_url?: string;
+	interpreter_url: string;
 }
 
 export interface AttestationBinding {

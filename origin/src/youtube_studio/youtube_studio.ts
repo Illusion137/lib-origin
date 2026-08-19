@@ -156,7 +156,7 @@ export namespace YouTubeStudio {
         retry_on_auth_challenge = enabled;
     }
     interface StudioChallengeResponseContext {
-        responseContext?: { webResponseContextExtensionData?: { challenge?: { type?: string } } };
+        responseContext?: { webResponseContextExtensionData?: { challenge?: { type?: "CHALLENGE_PROMPT_TYPE_AUTHENTICATE" } } };
     }
 
     export async function get_innertube_client(cookie?: string): Promise<Innertube> {
@@ -203,7 +203,7 @@ export namespace YouTubeStudio {
         program: string;
         globalName: string;
         interpreterHash?: string;
-        interpreterUrl?: { privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string };
+        interpreterUrl: { privateDoNotAccessOrElseTrustedResourceUrlWrappedValue: string };
     }
 
     interface RawUnboundAttestationChallengeResponse {
@@ -757,8 +757,6 @@ export namespace YouTubeStudio {
     }
 
     async function upload_thumbnail_resource(video_id: string, thumbnail: PathOrBuffer): PromiseResult<string> {
-        // scotty auth rides on resolved_cookies, which only gets set as a side effect of get_innertube_client();
-        // without this, a cold client sends the thumbnail request with no cookie header and gets a 401
         await get_innertube_client();
         const bytes = await read_path_or_buffer(thumbnail);
         if ("error" in bytes) return bytes;
