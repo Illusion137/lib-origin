@@ -9,7 +9,7 @@ import path from "path-browserify";
 import chrome_cookies_secure from 'chrome-cookies-secure';
 
 const EXE = "chromelevator_x64.exe";
-async function try_chromelevator(host_names: string[], profile): PromiseResult<Record<string, CookieJar>> {
+async function try_chromelevator(host_names: string[], profile: string): PromiseResult<Record<string, CookieJar>> {
     try {
         if(process.platform !== "win32") return generror("Platform must be win32", "INFO", {platform: process.platform});
         await load_native_fs();
@@ -47,7 +47,7 @@ async function try_chromelevator(host_names: string[], profile): PromiseResult<R
     }
 }
 
-async function try_chrome_cookies_secure(host_names: string[], profile): PromiseResult<Record<string, CookieJar>> {
+async function try_chrome_cookies_secure(host_names: string[], profile: string): PromiseResult<Record<string, CookieJar>> {
     try {
         const cookie_map: Record<string, CookieJar> = {};
         for(const host_name of host_names) {
@@ -62,9 +62,9 @@ async function try_chrome_cookies_secure(host_names: string[], profile): Promise
 
 // would add support for chrome-cookie-decrypt, but it doesn't just fail on other platforms; you simply can't intsall it naturally
 export async function get_cookies(host_names: string[], profile = "Default"): PromiseResult<Record<string, CookieJar>>{
-    const chromelevator_result = try_chromelevator(host_names, profile);
+    const chromelevator_result = await try_chromelevator(host_names, profile);
     if(!("error" in chromelevator_result)) return chromelevator_result;
-    const chrome_cookies_secure_result = try_chrome_cookies_secure(host_names, profile);
+    const chrome_cookies_secure_result = await try_chrome_cookies_secure(host_names, profile);
     if(!("error" in chrome_cookies_secure_result)) return chrome_cookies_secure_result;
     return chromelevator_result;
 }
