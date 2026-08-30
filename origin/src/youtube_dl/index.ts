@@ -13,6 +13,7 @@ import {
 } from '@native/fs/fs';
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
+import { retry_result } from '@common/utils/retry_util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { jseval, load_native_jseval } from '@native/jseval/jseval';
 import { RCache } from './rcache';
@@ -168,21 +169,15 @@ export namespace YouTubeDL {
     }
 
     export async function resolve_sabr_info(video_id: string): Promise<SabrTrackParams | ResponseError> {
-        const MAX_RETRIES = 2;
-        let last_error: unknown;
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
-            try {
-                return await resolve_sabr_info_attempt(video_id);
-            } catch (error) {
-                if (attempt < MAX_RETRIES && error instanceof TypeError && error.message.includes("Network request failed")) {
-                    last_error = error;
-                    continue;
-                }
-                return generror_catch(error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
-            }
+        const try_resolve_sabr_info = async () => {
+            try { return await resolve_sabr_info_attempt(video_id); }
+            catch (error) { return generror_catch(error, "resolve_sabr_info attempt failed", "LOW", { video_id }); }
+        };
+        const result = await retry_result<SabrTrackParams>(try_resolve_sabr_info, {wait_for_network: true});
+        if (typeof result === "object" && result !== null && "error" in result) {
+            return generror_catch(result.error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
         }
-        return generror_catch(last_error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
+        return result;
     }
 
     async function resolve_sabr_info_attempt(video_id: string): Promise<SabrTrackParams | ResponseError> {
