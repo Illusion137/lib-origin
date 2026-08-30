@@ -24,7 +24,7 @@ import { SQLRecentlyPlayed } from '@illusive/sql/sql_recently_played';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
-import { breadcrumb } from '@common/sentry_error_handler';
+import { breadcrumb, set_context } from '@common/sentry_error_handler';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
 import { VibesSampler } from './vibes_sampler';
@@ -37,6 +37,16 @@ const sabr_content_binding_by_uid = new Map<string, string>();
 let current_active_track_uid: string | undefined;
 const sabr_po_token_refresh_in_flight = new Set<string>();
 
+interface SabrRuntimeStatus {
+    content_binding?: string;
+    po_token?: string;
+    is_placeholder: boolean;
+    sps?: number;
+    last_refresh_reason?: SabrTokenCallbackReason;
+    last_refresh_at?: string;
+}
+const sabr_status_by_uid = new Map<string, SabrRuntimeStatus>();
+
 async function refresh_active_sabr_po_token(uid: string, content_binding: string) {
     if (sabr_po_token_refresh_in_flight.has(uid)) return;
     sabr_po_token_refresh_in_flight.add(uid);
@@ -45,10 +55,114 @@ async function refresh_active_sabr_po_token(uid: string, content_binding: string
         if ("error" in result) throw result.error;
         if (current_active_track_uid !== uid) return;
         await TrackPlayer.updatePlaybackPoToken(result.po_token);
+        const status = sabr_status_by_uid.get(uid) ?? { is_placeholder: false };
+        status.content_binding = content_binding;
+        status.po_token = result.po_token;
+        status.is_placeholder = false;
+        status.last_refresh_at = new Date().toISOString();
+        sabr_status_by_uid.set(uid, status);
+        update_track_player_contexts().catch(catch_log);
     } catch (error) {
         catch_log(error as Error);
     } finally {
         sabr_po_token_refresh_in_flight.delete(uid);
+    }
+}
+
+function collect_track_ids(track: Track): Record<string, string | number> {
+    const id_fields: (keyof Track)[] = [
+        'id', 'imported_id', 'illusi_id', 'youtube_id', 'youtubemusic_id',
+        'soundcloud_id', 'soundcloud_permalink', 'spotify_id', 'amazonmusic_id',
+        'applemusic_id', 'bandlab_id', 'audiomack_id', 'deezer_id', 'pandora_id', 'tidal_id'
+    ];
+    const ids: Record<string, string | number> = {};
+    for (const field of id_fields) {
+        const value = track[field];
+        if (!is_empty(value)) ids[field] = value as string | number;
+    }
+    return ids;
+}
+
+function build_track_context(track: Track | undefined): Record<string, any> {
+    if (track === undefined) return { present: false };
+    const sabr = sabr_status_by_uid.get(track.uid);
+    return {
+        present: true,
+        title: track.title,
+        uid: track.uid,
+        artists: artist_string(track),
+        artist_names: track.artists?.map(artist => artist.name),
+        ids: collect_track_ids(track),
+        duration: track.duration,
+        downloaded: {
+            thumbnail: !is_empty(track.thumbnail_uri),
+            media: !is_empty(track.media_uri),
+            lyrics: !is_empty(track.lyrics_uri),
+            synced_lyrics: !is_empty(track.synced_lyrics_uri),
+            saved: track.downloading_data?.saved ?? false,
+            playlist_saved: track.downloading_data?.playlist_saved ?? false,
+            progress: track.downloading_data?.progress,
+        },
+        playback: {
+            added: track.playback?.added ?? false,
+            successful: track.playback?.successful ?? false,
+        },
+        sabr: sabr === undefined ? { is_sabr: false } : {
+            is_sabr: true,
+            content_binding: sabr.content_binding,
+            has_po_token: !is_empty(sabr.po_token),
+            po_token_length: sabr.po_token?.length,
+            po_token_preview: sabr.po_token?.slice(0, 12),
+            is_placeholder_po_token: sabr.is_placeholder,
+            sps: sabr.sps,
+            last_refresh_reason: sabr.last_refresh_reason,
+            last_refresh_at: sabr.last_refresh_at,
+            po_token_refresh_in_flight: sabr_po_token_refresh_in_flight.has(track.uid),
+        },
+    };
+}
+
+export async function update_track_player_contexts() {
+    try {
+        const tracks = GLOBALS.global_var.playing_tracks;
+        let active_index: number | undefined;
+        try { active_index = await TrackPlayer.getActiveTrackIndex(); } catch { active_index = undefined; }
+        const current = active_index === undefined ? undefined : tracks[active_index];
+        const next = active_index === undefined ? undefined : tracks[active_index + 1];
+        const previous = active_index === undefined || active_index <= 0 ? undefined : tracks[active_index - 1];
+
+        set_context('current_track', build_track_context(current));
+        set_context('next_track', build_track_context(next));
+        set_context('previous_track', build_track_context(previous));
+
+        let position: number | undefined;
+        let duration: number | undefined;
+        let buffered: number | undefined;
+        try {
+            const progress = await TrackPlayer.getProgress();
+            position = progress.position;
+            duration = progress.duration;
+            buffered = progress.buffered;
+        } catch {}
+
+        let state: State | undefined;
+        try { state = (await TrackPlayer.getPlaybackState()).state; } catch {}
+
+        set_context('track_player', {
+            is_playing: GLOBALS.global_var.is_playing,
+            queue_length: tracks.length,
+            active_index,
+            active_track_uid: current_active_track_uid,
+            state,
+            position,
+            duration,
+            buffered,
+            pending_url_resolutions: url_resolution_in_flight.size,
+            po_token_refreshes_in_flight: sabr_po_token_refresh_in_flight.size,
+            has_been_setup: trackplayer_has_been_setup,
+        });
+    } catch (error) {
+        catch_log(error as Error);
     }
 }
 
@@ -106,6 +220,7 @@ export async function on_modify_track_player_queue() {
     for (const listener of queue_modified_listeners) {
         try { listener(); } catch { };
     }
+    update_track_player_contexts().catch(catch_log);
 }
 
 export async function insert_track_into_player_queue(track_data: Track, plus_index: number) {
@@ -138,6 +253,7 @@ async function delete_track_from_player_queue_impl(track_data: Track | undefined
         const absolute_index = current_track_index + global_index;
         GLOBALS.global_var.playing_tracks.splice(absolute_index, 1);
         sabr_content_binding_by_uid.delete(track_data.uid);
+        sabr_status_by_uid.delete(track_data.uid);
         await run_native_queue_mutation(async () => {
             const tp_queue = await TrackPlayer.getQueue();
             const tp_index = tp_queue.slice(current_track_index).findIndex(track => {
@@ -182,6 +298,13 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
     });
     if (url_data.isSabr && url_data.content_binding) {
         sabr_content_binding_by_uid.set(track.uid, url_data.content_binding);
+    }
+    if (url_data.isSabr) {
+        sabr_status_by_uid.set(track.uid, {
+            content_binding: url_data.content_binding,
+            po_token: url_data.placeholder_po_token,
+            is_placeholder: true,
+        });
     }
     return {
         uid: track.uid,
@@ -268,6 +391,7 @@ async function resolve_pending_track_url_impl(track: Track): Promise<void> {
             const global_index = GLOBALS.global_var.playing_tracks.findIndex(t => t.uid === track.uid);
             if (global_index !== -1) GLOBALS.global_var.playing_tracks.splice(global_index, 1);
             sabr_content_binding_by_uid.delete(track.uid);
+            sabr_status_by_uid.delete(track.uid);
             await TrackPlayer.remove([native_index]).catch(catch_log);
             return true;
         }
@@ -392,6 +516,7 @@ async function wait_for_playback_recovery(): Promise<boolean> {
 
 export async function track_player_on_error(data: { error: string }) {
     const error_msg = `TP: ${data.error}`;
+    await update_track_player_contexts();
     GLOBALS.global_var.bottom_alert(error_msg, "WARN");
     if (handling_playback_error) return;
     handling_playback_error = true;
@@ -438,6 +563,11 @@ export async function playback_service() {
     TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (data: { outputPath?: string, reason: SabrTokenCallbackReason }) => {
         if (data.outputPath !== undefined) return;
         if (current_active_track_uid === undefined) return;
+        const status = sabr_status_by_uid.get(current_active_track_uid) ?? { is_placeholder: true };
+        status.last_refresh_reason = data.reason;
+        if (data.reason === 'placeholder_needed') status.sps = 1;
+        else if (data.reason === 'expired') status.sps = 2;
+        sabr_status_by_uid.set(current_active_track_uid, status);
         const content_binding = sabr_content_binding_by_uid.get(current_active_track_uid);
         if (content_binding === undefined) return;
         await refresh_active_sabr_po_token(current_active_track_uid, content_binding);
@@ -468,6 +598,7 @@ export async function playback_service() {
             await SQLRecentlyPlayed.insert_recently_played_track(GLOBALS.global_var.playing_tracks[data.index]);
             await sample();
             await save_past_queue();
+            update_track_player_contexts().catch(catch_log);
         } catch (error) { alert_trackplayer_error({ error: error as Error }); }
     });
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async (data) => {
