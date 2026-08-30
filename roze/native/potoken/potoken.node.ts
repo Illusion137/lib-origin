@@ -6,10 +6,11 @@ import { WebPoMinter } from 'bgutils-js/webpo';
 import type { Innertube, IRawResponse } from 'youtubei.js';
 import { JSDOM } from 'jsdom';
 import { generror, generror_catch } from "@common/utils/error_util";
-import type { PromiseResult, ResponseError } from "@common/types";
+import type { PromiseResult, ResponseError} from "@common/types";
+import { TimedCacheValue } from "@common/types";
 import rozfetch from "@common/rozfetch";
 import { try_json_parse } from "@common/utils/parse_util";
-import { extract_string_from_pattern } from '../../../common/utils/util';
+import { extract_string_from_pattern, milliseconds_of } from '../../../common/utils/util';
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
@@ -52,9 +53,10 @@ function setup_botguard_environment(page_html: string): ResponseError|null {
     return null;
 }
 
-let global_minter: WebPoMinter;
+const global_minter_cache: TimedCacheValue<WebPoMinter> = new TimedCacheValue<WebPoMinter>();
 async function create_minter(): PromiseResult<WebPoMinter>{
-    if(global_minter !== undefined) return global_minter;
+    const cache_result = global_minter_cache.get();
+    if(cache_result !== undefined) cache_result;
 
     const page_response = await rozfetch('https://www.youtube.com', {
         headers: {
@@ -138,7 +140,8 @@ async function create_minter(): PromiseResult<WebPoMinter>{
     };
 
     const web_po_minter = await WebPoMinter.create(token_integrity_data, web_po_signal_output);
-    global_minter = web_po_minter;
+
+    global_minter_cache.set_with_lifespan(web_po_minter, milliseconds_of({seconds: estimatedTtlSecs}));
     return web_po_minter;
 }
 
@@ -146,6 +149,7 @@ type MinterStatusResultSent = ["sent", PromiseResult<WebPoMinter>];
 type MinterStatusResultRecieved = ["recieved", WebPoMinter|ResponseError];
 let minter_status: MinterStatusResultSent|MinterStatusResultRecieved|undefined = undefined;
 export async function fetch_minter(): PromiseResult<WebPoMinter> {
+    if(global_minter_cache.get() === undefined && minter_status?.[0] === "recieved") minter_status = undefined;
     if(minter_status?.[0] === 'recieved') return minter_status[1];
     if(minter_status?.[0] === 'sent') {
         const recieved = await minter_status[1]
