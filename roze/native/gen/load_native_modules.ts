@@ -16,6 +16,7 @@ import { load_native_pdf_reader } from "@native/pdf_reader/pdf_reader";
 import { load_native_raw_to_png } from "@native/raw_to_png/raw_to_png";
 import { load_native_docx_converter } from "@native/docx_converter/docx_converter";
 import { load_native_voice_synth } from "@native/voice_synth/voice_synth";
+import { load_native_network } from "@native/network/network";
 
 export async function load_native_modules() {
 	await Promise.all([
@@ -36,6 +37,7 @@ export async function load_native_modules() {
 		load_native_pdf_reader(),
 		load_native_raw_to_png(),
 		load_native_docx_converter(),
-		load_native_voice_synth()
+		load_native_voice_synth(),
+		load_native_network()
 	]);
 }
