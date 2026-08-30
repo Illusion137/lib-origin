@@ -73,9 +73,9 @@ export const SEVERITY_HANDLER_MAP: Record<ErrorSeverity, (error: ResponseError) 
     INFO: () => { return; }
 };
 
-function handle_error(error: ResponseError, severity: ErrorSeverity): ResponseError {
-    if(Logger.is_enabled() && Logger.should_log(error) && severity !== "INFO") console.warn(error);
-    SEVERITY_HANDLER_MAP[severity](error);
+function handle_error(error: ResponseError, severity: ErrorSeverity, ignore = false): ResponseError {
+    if(Logger.is_enabled() && Logger.should_log(error) && severity !== "INFO" && !ignore) console.warn(error);
+    if(!ignore) SEVERITY_HANDLER_MAP[severity](error);
     return error;
 }
 
@@ -90,6 +90,9 @@ export function generror_catch(e: unknown, msg: string, severity: ErrorSeverity,
         return handle_error({ error: clean_error_trace(err) }, severity);
     }
     return handle_error({ error: clean_error_trace(new Error(`e: ${String(e)}\n ${generror_base_msg(msg, undefined, args)}`)) }, severity);
+}
+export function generror_ignore(msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
+    return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity, true);
 }
 export function generror(msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
     return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity);
