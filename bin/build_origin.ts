@@ -19,7 +19,7 @@ const ignore_sources: string[] = [
     "gitignore",
     ".git",
     ".history",
-    "translate",
+    "translate_m",
     "python",
     "ignore",
     ".venv",
