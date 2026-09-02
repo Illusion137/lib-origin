@@ -19,11 +19,13 @@ import BufferRN from "buffer/";
 import { generror } from "@common/utils/error_util";
 import rozfetch, { type RoZFetchRequestInit, type RoZFetchResponse } from "@common/rozfetch";
 import spotify_secrets_bytes from "./data/secret_bytes.json";
-import type { SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLibrary, SpotifyAPI, SpotifyAPIOperationNames, SpotifyArtistOverview, SpotifyGetAlbum, SpotifyGetCollection, SpotifyGetPlaylist, SpotifyHome, SpotifyProfileAccountAttributes, SpotifyQuery, SpotifyRemoveFromLibrary, SpotifyRemoveFromPlaylist, SpotifyRequiresCredentials, SpotifySearch, SpotifyTracksInLibrary, SPVar } from "./types/api";
+import persisted_queries_data from "./data/persisted_queries.json";
+import type { SpotifyAccountAttributes, SpotifyAccountLibrary, SpotifyAddToPlaylist, SpotifyAddTracksToLibrary, SpotifyAPI, SpotifyArtistOverview, SpotifyChildEntities, SpotifyExtractedColors, SpotifyFeedBaselineLookup, SpotifyGetAlbum, SpotifyGetCollection, SpotifyGetPlaylist, SpotifyHome, SpotifyIsCurated, SpotifyPlaylistMetadata, SpotifyProfileAccountAttributes, SpotifyProfileAttributes, SpotifyQuery, SpotifyRecentlyPlayed, SpotifyRemoveFromLibrary, SpotifyRemoveFromPlaylist, SpotifyRequiresCredentials, SpotifySearch, SpotifyTracksInLibrary, SPVar } from "./types/api";
 import { reinterpret_cast } from '../../../common/cast';
 import { try_json_parse } from "@common/utils/parse_util";
 import type { Query } from "./types/Query";
 import type { SeekTables } from './types/SeekTables';
+import type { AccountAttributes, ChildEntities, CuratedStatus, ExtractedColors, FeedBaseline, PlaylistMetadata, ProfileAttributes, RecentlyPlayed } from "./types/Results";
 
 const Buffer = BufferRN.Buffer;
 export namespace Spotify {
@@ -305,69 +307,28 @@ export namespace Spotify {
         return await response.json();
     }
 
-    export const api_persistant_queries: Record<SpotifyAPIOperationNames, string> = {
-        getAlbum: "a6db01c32b178b5859d7e0cd4f79b7f42b7bbcd8dc2cb4ee5d41f9937fda5b4b",
-        fetchLibraryTracks: "087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240",
-        queryArtistOverview: "da986392124383827dc03cbb3d66c1de81225244b6e20f8d78f9f802cc43df6e",
-        searchDesktop: "7a60179c5d6b6c385e849438efb1398392ef159d82f2ad7158be5e80bf7817a9",
-        searchTracks: "7a60179c5d6b6c385e849438efb1398392ef159d82f2ad7158be5e80bf7817a9",
-        searchArtists: "7a60179c5d6b6c385e849438efb1398392ef159d82f2ad7158be5e80bf7817a9",
-        searchAlbums: "7a60179c5d6b6c385e849438efb1398392ef159d82f2ad7158be5e80bf7817a9",
-        searchPlaylists: "7a60179c5d6b6c385e849438efb1398392ef159d82f2ad7158be5e80bf7817a9",
-        searchAudiobooks: "7a60179c5d6b6c385e849438efb1398392ef159d82f2ad7158be5e80bf7817a9",
-        home: "373a2db252f6a4620226c22808f016d634f748a36f06f03337e6158bf4f08bca",
-        libraryV3: "17d801ba80f3a3d7405966641818c334fe32158f97e9e8b38f1a92f764345df9",
-        areEntitiesInLibrary: "beaad62a3d5556d70764cebb98b588e44a0c06ade6136f6972aaca4e91f93807",
-        addToLibrary: "a3c1ff58e6a36fec5fe1e3a193dc95d9071d96b9ba53c5ba9c1494fb1ee73915",
-        addToPlaylist: "47c69e71df79e3c80e4af7e7a9a727d82565bb20ae20dc820d6bc6f94def482d",
-        removeFromLibrary: "a3c1ff58e6a36fec5fe1e3a193dc95d9071d96b9ba53c5ba9c1494fb1ee73915",
-        removeFromPlaylist: "47c69e71df79e3c80e4af7e7a9a727d82565bb20ae20dc820d6bc6f94def482d",
-        profileAndAccountAttributes: "b28d9a8b6e8b9a7ed4c2f4a490a3a1cba7e1eb379d90dfde6a3951e6bcb9fccc",
-        fetchPlaylist: "73a3b3470804983e4d55d83cd6cc99715019228fd999d51429cc69473a18789d",
-        searchSuggestions: "1b44e7bced744d15c47e6c4c11952541693324020c528dc97d19c4a38cfb754e"
-    };
-    export const api_methods: Record<SpotifyAPIOperationNames, FetchMethod> = {
-        fetchPlaylist: "GET",
-        getAlbum: "GET",
-        fetchLibraryTracks: "POST",
-        profileAndAccountAttributes: "GET",
-        queryArtistOverview: "GET",
-        searchDesktop: "GET",
-        searchTracks: "GET",
-        searchArtists: "GET",
-        searchAlbums: "GET",
-        searchAudiobooks: "GET",
-        searchPlaylists: "GET",
-        home: "GET",
-        libraryV3: "GET",
-        areEntitiesInLibrary: "GET",
-        addToLibrary: "POST",
-        addToPlaylist: "POST",
-        removeFromLibrary: "POST",
-        removeFromPlaylist: "POST",
-        searchSuggestions: "POST"
-    };
-    export const api_version: Record<SpotifyAPIOperationNames, number> = {
-        fetchPlaylist: 1,
-        getAlbum: 1,
-        fetchLibraryTracks: 2,
-        profileAndAccountAttributes: 1,
-        queryArtistOverview: 1,
-        searchDesktop: 1,
-        searchTracks: 1,
-        searchArtists: 1,
-        searchAlbums: 1,
-        searchAudiobooks: 1,
-        searchPlaylists: 1,
-        home: 1,
-        libraryV3: 1,
-        areEntitiesInLibrary: 1,
-        addToLibrary: 1,
-        addToPlaylist: 1,
-        removeFromLibrary: 1,
-        removeFromPlaylist: 1,
-        searchSuggestions: 2
-    };
+    export interface PersistedQuery {
+        type: "query" | "mutation" | "subscription";
+        sha256Hash: string;
+        method?: FetchMethod;
+        version?: number;
+        source?: string;
+    }
+    export const persisted_queries = persisted_queries_data as Record<string, PersistedQuery>;
+    export type SpotifyOperationName = keyof typeof persisted_queries_data;
+
+    export function operation_hash(operation_name: SpotifyOperationName): string { return persisted_queries[operation_name].sha256Hash; }
+    export function operation_method(operation_name: SpotifyOperationName): FetchMethod { return persisted_queries[operation_name].method ?? "POST"; }
+    export function operation_version(operation_name: SpotifyOperationName): number { return persisted_queries[operation_name].version ?? 2; }
+
+    const operation_names = Object.keys(persisted_queries) as SpotifyOperationName[];
+    export const api_persistant_queries = Object.fromEntries(operation_names.map(op => [op, operation_hash(op)])) as Record<SpotifyOperationName, string>;
+    export const api_methods = Object.fromEntries(operation_names.map(op => [op, operation_method(op)])) as Record<SpotifyOperationName, FetchMethod>;
+    export const api_version = Object.fromEntries(operation_names.map(op => [op, operation_version(op)])) as Record<SpotifyOperationName, number>;
+
+    export async function query<R = unknown>(operation_name: SpotifyOperationName, variables: object = {}, credentials: SpotifyRequiresCredentials = "no_credentials", opts: Opts = {}): PromiseResult<R> {
+        return await internal_api_query<R, SpotifyAPI>(reinterpret_cast<SpotifyAPI['operation_name']>(operation_name), reinterpret_cast<SpotifyAPI['var']>(variables), credentials, opts);
+    }
     export async function internal_api_query<R, T extends SpotifyAPI>(operation_name: T['operation_name'], variables: T['var'], credentials: SpotifyRequiresCredentials, opts: Opts): PromiseResult<R> {
         if (credentials === "requires_credentials" && (!opts.cookie_jar?.hasCookieName("sp_dc"))) {
             return generror(`Spotify: op["${operation_name}"] failed from lack of credentials`, "INFO", { credentials, variables, opts });
@@ -406,7 +367,8 @@ export namespace Spotify {
         opts.var = {
             uri: `spotify:playlist:${opts.var.uri.replace('spotify:playlist:', '')}`,
             offset: opts.var.offset ?? 0,
-            limit: opts.var.limit ?? 100
+            limit: opts.var.limit ?? 100,
+            enableWatchFeedEntrypoint: opts.var.enableWatchFeedEntrypoint ?? true
         };
         return await internal_api_query<UserPlaylist, SpotifyGetPlaylist>("fetchPlaylist", opts.var, "no_credentials", opts);
     }
@@ -453,7 +415,7 @@ export namespace Spotify {
         return await internal_api_query<Artist, SpotifyArtistOverview>("queryArtistOverview", opts.var, "no_credentials", opts);
     }
 
-    async function search_base(operation_name: SpotifyAPIOperationNames, opts: SPVar<SpotifySearch> & Opts): Promise<SearchResult | ResponseError> {
+    async function search_base(operation_name: SpotifyOperationName, opts: SPVar<SpotifySearch> & Opts): Promise<SearchResult | ResponseError> {
         opts.var = {
             searchTerm: opts.var.searchTerm,
             offset: opts.var.offset ?? 0,
@@ -488,11 +450,13 @@ export namespace Spotify {
 
     export async function get_home(opts: SPVar<SpotifyHome> & Opts): Promise<Home | ResponseError> {
         opts.var = {
+            homeEndUserIntegration: opts.var.homeEndUserIntegration ?? "INTEGRATION_WEB_PLAYER",
             timeZone: opts.var.timeZone ?? "America/Los_Angeles",
             sp_t: opts.var.sp_t,
             country: opts.var.country ?? "US",
-            facet: null,
-            sectionItemsLimit: opts.var.sectionItemsLimit ?? 10
+            facet: opts.var.facet ?? "",
+            sectionItemsLimit: opts.var.sectionItemsLimit ?? 10,
+            includeEpisodeContentRatingsV2: opts.var.includeEpisodeContentRatingsV2 ?? true
         };
         return await internal_api_query<Home, SpotifyHome>("home", opts.var, "no_credentials", opts);
     }
@@ -502,7 +466,7 @@ export namespace Spotify {
             filters: opts.var.filters ?? [],
             order: opts.var.order ?? null,
             textFilter: opts.var.textFilter ?? "",
-            features: opts.var.features ?? ["LIKED_SONGS", "YOUR_EPISODES"],
+            features: opts.var.features ?? ["LIKED_SONGS", "YOUR_EPISODES_V2", "PRERELEASES", "PRERELEASES_V2", "CLIPS", "EVENTS"],
             limit: opts.var.limit ?? 10,
             offset: opts.var.offset ?? 0,
             flatten: opts.var.flatten ?? false,
@@ -570,6 +534,44 @@ export namespace Spotify {
             deltas: [{ ops: [{ kind: 3, rem: { items: [{ uri: opts.playlist_uri }], itemsAsKey: true } }], info: { source: { client: 5 } } }], wantResultingRevisions: false, wantSyncResult: false, nonces: []
         }
         return await post_data_with_client<{}>("https://spclient.wg.spotify.com/playlist/v2/playlist", payload, "requires_credentials", opts);
+    }
+
+    export async function get_profile_attributes(opts: SPVar<SpotifyProfileAttributes> & Opts): PromiseResult<ProfileAttributes> {
+        return await internal_api_query<ProfileAttributes, SpotifyProfileAttributes>("profileAttributes", opts.var ?? {}, "requires_credentials", opts);
+    }
+
+    export async function get_account_attributes(opts: SPVar<SpotifyAccountAttributes> & Opts): PromiseResult<AccountAttributes> {
+        return await internal_api_query<AccountAttributes, SpotifyAccountAttributes>("accountAttributes", opts.var ?? {}, "requires_credentials", opts);
+    }
+
+    export async function fetch_recently_played(opts: SPVar<SpotifyRecentlyPlayed> & Opts): PromiseResult<RecentlyPlayed> {
+        return await internal_api_query<RecentlyPlayed, SpotifyRecentlyPlayed>("fetchEntitiesForRecentlyPlayed", opts.var, "requires_credentials", opts);
+    }
+
+    export async function fetch_extracted_colors(opts: SPVar<SpotifyExtractedColors> & Opts): PromiseResult<ExtractedColors> {
+        return await internal_api_query<ExtractedColors, SpotifyExtractedColors>("fetchExtractedColors", opts.var, "no_credentials", opts);
+    }
+
+    export async function get_playlist_metadata(opts: SPVar<SpotifyPlaylistMetadata> & Opts): PromiseResult<PlaylistMetadata> {
+        opts.var = {
+            uri: `spotify:playlist:${url_to_id(opts.var.uri)}`,
+            offset: opts.var.offset ?? 0,
+            limit: opts.var.limit ?? 100,
+            enableWatchFeedEntrypoint: opts.var.enableWatchFeedEntrypoint ?? true
+        };
+        return await internal_api_query<PlaylistMetadata, SpotifyPlaylistMetadata>("fetchPlaylistMetadata", opts.var, "no_credentials", opts);
+    }
+
+    export async function lookup_child_entities(opts: SPVar<SpotifyChildEntities> & Opts): PromiseResult<ChildEntities> {
+        return await internal_api_query<ChildEntities, SpotifyChildEntities>("lookupChildEntities", opts.var, "no_credentials", opts);
+    }
+
+    export async function are_entities_curated(opts: SPVar<SpotifyIsCurated> & Opts): PromiseResult<CuratedStatus> {
+        return await internal_api_query<CuratedStatus, SpotifyIsCurated>("isCurated", opts.var, "requires_credentials", opts);
+    }
+
+    export async function feed_baseline_lookup(opts: SPVar<SpotifyFeedBaselineLookup> & Opts): PromiseResult<FeedBaseline> {
+        return await internal_api_query<FeedBaseline, SpotifyFeedBaselineLookup>("feedBaselineLookup", opts.var, "no_credentials", opts);
     }
 
     export async function seektables(opts: {file_id: string} & Opts){

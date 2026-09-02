@@ -2,7 +2,7 @@ interface SpotifyAPIBase<OpName extends string, Var extends Record<string, any>>
     operation_name: OpName;
     var: Var;
 }
-export type SpotifyGetPlaylist = SpotifyAPIBase<"fetchPlaylist", {uri: string, offset?: number, limit?: number}>;
+export type SpotifyGetPlaylist = SpotifyAPIBase<"fetchPlaylist", {uri: string, offset?: number, limit?: number, enableWatchFeedEntrypoint?: boolean}>;
 export type SpotifyGetAlbum = SpotifyAPIBase<"getAlbum", {uri: string, locale?: string, offset?: number, limit?: number}>;
 export type SpotifyGetCollection = SpotifyAPIBase<"fetchLibraryTracks", {offset?: number, limit?: number}>;
 export type SpotifyProfileAccountAttributes = SpotifyAPIBase<"profileAndAccountAttributes", {}>;
@@ -23,17 +23,20 @@ export type SpotifySearchAlbums = SpotifyAPIBase<"searchAlbums", SpotifySearch['
 export type SpotifySearchAudiobooks = SpotifyAPIBase<"searchAudiobooks", SpotifySearch['var']>;
 export type SpotifySearchPlaylists = SpotifyAPIBase<"searchPlaylists", SpotifySearch['var']>;
 export type SpotifyHome = SpotifyAPIBase<"home", {
+    homeEndUserIntegration?: string;
     timeZone?: string;
     sp_t: string;
     country?: string;
-    facet?: null;
+    facet?: null | string;
     sectionItemsLimit?: number;
+    includeEpisodeContentRatingsV2?: boolean;
 }>;
+export type SpotifyLibraryFeature = "LIKED_SONGS"|"YOUR_EPISODES"|"YOUR_EPISODES_V2"|"PRERELEASES"|"PRERELEASES_V2"|"CLIPS"|"EVENTS";
 export type SpotifyAccountLibrary = SpotifyAPIBase<"libraryV3", {
     filters?: ("Playlists")[];
     order?: null;
     textFilter?: "";
-    features?: ("LIKED_SONGS"|"YOUR_EPISODES")[];
+    features?: SpotifyLibraryFeature[];
     limit?: number;
     offset?: number;
     flatten?: boolean;
@@ -68,6 +71,15 @@ export type SpotifyQuery = SpotifyAPIBase<"searchSuggestions", {
     includeEpisodeContentRatingsV2?: boolean;
 }>;
 
+export type SpotifyProfileAttributes = SpotifyAPIBase<"profileAttributes", {}>;
+export type SpotifyAccountAttributes = SpotifyAPIBase<"accountAttributes", {}>;
+export type SpotifyRecentlyPlayed = SpotifyAPIBase<"fetchEntitiesForRecentlyPlayed", {uris: string[]}>;
+export type SpotifyExtractedColors = SpotifyAPIBase<"fetchExtractedColors", {imageUris: string[]}>;
+export type SpotifyPlaylistMetadata = SpotifyAPIBase<"fetchPlaylistMetadata", {uri: string; offset?: number; limit?: number; enableWatchFeedEntrypoint?: boolean}>;
+export type SpotifyChildEntities = SpotifyAPIBase<"lookupChildEntities", {uris: string[]}>;
+export type SpotifyIsCurated = SpotifyAPIBase<"isCurated", {uris: string[]}>;
+export type SpotifyFeedBaselineLookup = SpotifyAPIBase<"feedBaselineLookup", {uris: string[]}>;
+
 export type SpotifyAPI = SpotifyGetPlaylist 
     | SpotifyGetAlbum 
     | SpotifyGetCollection 
@@ -86,7 +98,15 @@ export type SpotifyAPI = SpotifyGetPlaylist
     | SpotifyAddToPlaylist
     | SpotifyRemoveFromLibrary
     | SpotifyRemoveFromPlaylist
-    | SpotifyQuery;
+    | SpotifyQuery
+    | SpotifyProfileAttributes
+    | SpotifyAccountAttributes
+    | SpotifyRecentlyPlayed
+    | SpotifyExtractedColors
+    | SpotifyPlaylistMetadata
+    | SpotifyChildEntities
+    | SpotifyIsCurated
+    | SpotifyFeedBaselineLookup;
 export type SpotifyAPIOperationNames = SpotifyAPI['operation_name'];
 export interface SPVar<T extends SpotifyAPI> {var:  T['var']};
 
