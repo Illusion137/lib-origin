@@ -10,7 +10,6 @@ const TRANSIENT_NETWORK_SIGNATURES: RegExp[] = [
     /the network connection was interrupted/i,
     /the internet connection appears to be offline/i,
     /network request failed/i,
-    /fetch failed/i,
     /load failed/i,
     /socket hang up/i,
     /timed out/i,
