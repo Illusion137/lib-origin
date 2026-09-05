@@ -45,7 +45,7 @@ export interface RetryResultOptions {
 }
 
 export async function retry_result<T>(op: (attempt: number) => PromiseResult<T>, options: RetryResultOptions = {}): PromiseResult<T> {
-    const retries = options.retries ?? 3;
+    const retries = options.retries ?? 2;
     const base_delay_ms = options.base_delay_ms ?? 500;
     const max_delay_ms = options.max_delay_ms ?? 8000;
     const wait_for_network = options.wait_for_network ?? false;
