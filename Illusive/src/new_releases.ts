@@ -26,7 +26,7 @@ export async function soundcloud_get_new_releases(): Promise<CompactPlaylist[]> 
             new_releases.push(
                 {
                     title: {name: item.track.title, uri: null},
-                    artist: [{name: item.user.username, uri: create_uri("soundcloud", item.user.permalink)}],
+                    artist: soundcloud_parse_track(item.track).artists,
                     artwork_thumbnails: [],
                     artwork_url: item.track.artwork_url ? sc_highest_artwork(item.track.artwork_url) : sc_highest_artwork(item.user.avatar_url),
                     date: reinterpret_cast<ISOString>(item.created_at),
