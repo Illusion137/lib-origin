@@ -84,20 +84,37 @@ export interface CuratedStatus {
     };
 }
 
+export interface RecentlyPlayedEntity {
+    __typename: string;
+    uri: string;
+    name: string;
+    artists?: { items: { uri: string; profile: { name: string } }[] };
+    coverArt?: { sources: SpotifyImageSource[] };
+}
+
 export interface RecentlyPlayed {
     data: {
         lookup: {
             __typename: string;
             _uri: string;
-            data: {
-                __typename: string;
-                uri: string;
-                name: string;
-                artists?: { items: { uri: string; profile: { name: string } }[] };
-                coverArt?: { sources: SpotifyImageSource[] };
-            };
+            data: RecentlyPlayedEntity;
         }[];
     };
+}
+
+export interface RecentlyPlayedContext {
+    uri: string;
+    lastPlayedTime: number;
+    lastPlayedTrackUri: string;
+}
+
+export interface RecentlyPlayedContexts {
+    playContexts: RecentlyPlayedContext[];
+}
+
+export interface RecentlyPlayedItem extends RecentlyPlayedContext {
+    context: RecentlyPlayedEntity | null;
+    track: RecentlyPlayedEntity | null;
 }
 
 export interface FeedBaseline {

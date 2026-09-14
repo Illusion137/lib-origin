@@ -25,7 +25,7 @@ import { reinterpret_cast } from '../../../common/cast';
 import { try_json_parse } from "@common/utils/parse_util";
 import type { Query } from "./types/Query";
 import type { SeekTables } from './types/SeekTables';
-import type { AccountAttributes, ChildEntities, CuratedStatus, ExtractedColors, FeedBaseline, PlaylistMetadata, ProfileAttributes, RecentlyPlayed } from "./types/Results";
+import type { AccountAttributes, ChildEntities, CuratedStatus, ExtractedColors, FeedBaseline, PlaylistMetadata, ProfileAttributes, RecentlyPlayed, RecentlyPlayedContexts, RecentlyPlayedItem } from "./types/Results";
 
 const Buffer = BufferRN.Buffer;
 export namespace Spotify {
@@ -546,6 +546,39 @@ export namespace Spotify {
 
     export async function fetch_recently_played(opts: SPVar<SpotifyRecentlyPlayed> & Opts): PromiseResult<RecentlyPlayed> {
         return await internal_api_query<RecentlyPlayed, SpotifyRecentlyPlayed>("fetchEntitiesForRecentlyPlayed", opts.var, "requires_credentials", opts);
+    }
+
+    export async function fetch_recently_played_contexts(opts: { user_id: string, limit?: number, offset?: number } & Opts): PromiseResult<RecentlyPlayedContexts> {
+        const params = encode_params({
+            format: "json",
+            offset: opts.offset ?? 0,
+            limit: opts.limit ?? 50,
+            filter: "default,collection-new-episodes",
+            market: "from_token"
+        });
+        const url = `https://spclient.wg.spotify.com/recently-played/v3/user/${opts.user_id}/recently-played?${params}`;
+        return await getch_data_with_client<RecentlyPlayedContexts>(url, "requires_credentials", opts);
+    }
+
+    export async function get_recently_played(opts: { user_id?: string, limit?: number, offset?: number } & Opts = {}): PromiseResult<RecentlyPlayedItem[]> {
+        let user_id = opts.user_id;
+        if (user_id === undefined) {
+            const profile = await get_profile_attributes({ ...opts, var: {} });
+            if ("error" in profile) return profile;
+            user_id = profile.data.me.profile.username;
+        }
+        const contexts = await fetch_recently_played_contexts({ ...opts, user_id });
+        if ("error" in contexts) return contexts;
+        const uris = [...new Set(contexts.playContexts.flatMap(context => [context.uri, context.lastPlayedTrackUri]))];
+        if (is_empty(uris)) return [];
+        const hydrated = await fetch_recently_played({ ...opts, var: { uris } });
+        if ("error" in hydrated) return hydrated;
+        const entity_by_uri = new Map(hydrated.data.lookup.map(entry => [entry._uri, entry.data]));
+        return contexts.playContexts.map(context => ({
+            ...context,
+            context: entity_by_uri.get(context.uri) ?? null,
+            track: entity_by_uri.get(context.lastPlayedTrackUri) ?? null
+        }));
     }
 
     export async function fetch_extracted_colors(opts: SPVar<SpotifyExtractedColors> & Opts): PromiseResult<ExtractedColors> {
