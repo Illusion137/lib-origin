@@ -13,6 +13,7 @@ import { and, asc, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import type {
     LocalPlaylist,
     LocalPlaylistTrack,
+    LocalTableName,
     LocalTrack,
     RemotePlaylistInsert,
     RemotePlaylistTrackInsert,
@@ -20,40 +21,28 @@ import type {
     RemoteTrackWithUserData,
     RemoteUTrackInsert,
 } from './types';
+import { MergeResolver } from './merge_resolver';
 import { Prefs } from '@illusive/prefs';
 import type { Database } from '../database.types';
 import { catch_log } from '@common/utils/error_util';
 import { SQLGlobal } from '../../sql/sql_global';
 import { SQLPlaylists } from '../../sql/sql_playlists';
 import { PlaylistArtwork } from './playlist_artwork';
+import { chunkify } from '@common/utils/util';
 
-// ---------------------------------------------------------------------------
-// Push dependency order: tracks must precede playlists_tracks (FK constraint).
-// new_releases is push-only by identity — wiring deferred until server unique
-// constraint is confirmed; pull is intentionally disabled per product contract.
-// ---------------------------------------------------------------------------
 type SyncableLocalTableName = 'tracks' | 'playlists' | 'playlists_tracks';
 const PULL_TABLES: SyncableLocalTableName[] = ['tracks', 'playlists', 'playlists_tracks'];
+const PLAYLISTS_TRACKS_TABLES: SyncableLocalTableName[] = ['playlists_tracks'];
+const OTHER_TABLES: SyncableLocalTableName[] = ['tracks', 'playlists'];
 
 const PUSH_BATCH_SIZE = 250;
 const PULL_PAGE_SIZE = 1000;
 const IN_CLAUSE_CHUNK_SIZE = 300;
 
-// ---------------------------------------------------------------------------
-// Classification of push errors
-// ---------------------------------------------------------------------------
-type PushResult = 'synced' | 'dropped' | 'retry';
+const PLAYLISTS_TRACKS_DEBOUNCE_MS = 60 * 1000;
+const OTHER_DEBOUNCE_MS = 10 * 1000;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-function chunk_array<T>(arr: T[], size: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < arr.length; i += size) {
-        chunks.push(arr.slice(i, i + size));
-    }
-    return chunks;
-}
+type PushResult = 'synced' | 'dropped' | 'retry';
 
 function safe_to_iso(value: unknown): string {
     if (value == null) return new Date().toISOString();
@@ -81,57 +70,6 @@ function normalize_soundcloud_id(value: unknown): number {
     return r;
 }
 
-function safe_json_parse<T>(value: unknown, fallback: T): T {
-    if (value == null) return fallback;
-    if (typeof value !== 'string') return value as T;
-    const trimmed = value.trim();
-    if (trimmed.length === 0) return fallback;
-    try {
-        return JSON.parse(trimmed) as T;
-    } catch {
-        return fallback;
-    }
-}
-
-function normalize_json_string(value: unknown): string | null {
-    if (value == null) return null;
-    if (typeof value === 'string') return value.trim();
-    try {
-        return JSON.stringify(value);
-    } catch {
-        return null;
-    }
-}
-
-function is_empty_json_array(value: unknown): boolean {
-    if (value == null) return true;
-    if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === 'string') {
-        const s = value.trim();
-        if (s === '' || s === '[]') return true;
-        const parsed = safe_json_parse<unknown>(s, null);
-        return Array.isArray(parsed) ? parsed.length === 0 : false;
-    }
-    return false;
-}
-
-function is_empty_album(value: unknown): boolean {
-    if (value == null) return true;
-    if (typeof value === 'string') {
-        const s = value.trim();
-        if (s === '') return true;
-        const parsed = safe_json_parse<any>(s, null);
-        if (parsed == null) return false;
-        return is_empty_album(parsed);
-    }
-    if (typeof value !== 'object') return false;
-    const v = value as { name?: unknown; uri?: unknown };
-    const name = typeof v.name === 'string' ? v.name : '';
-    const uri = v.uri;
-    const uri_is_empty = uri == null || uri === '';
-    return name.trim() === '' && uri_is_empty;
-}
-
 function parse_playlist_track_record_id(record_id: string): { playlist_uuid: string; track_uid: string } | null {
     const colon_idx = record_id.indexOf(':');
     if (colon_idx <= 0 || colon_idx >= record_id.length - 1) return null;
@@ -141,48 +79,11 @@ function parse_playlist_track_record_id(record_id: string): { playlist_uuid: str
     };
 }
 
-// function new_release_identity_key(title_value: unknown): string | null {
-//     if (title_value === null || title_value === undefined) return null;
-//     const parsed = typeof title_value === 'string' ? (() => {
-//         try {
-//             return JSON.parse(title_value) as unknown;
-//         } catch {
-//             return title_value;
-//         }
-//     })() : title_value;
-
-//     if (!parsed) return null;
-//     if (typeof parsed === 'object' && 'uri' in parsed) {
-//         const uri = (parsed as { uri?: unknown }).uri;
-//         if (typeof uri === 'string' && uri.length > 0) return `uri:${uri}`;
-//     }
-
-//     try {
-//         return `json:${JSON.stringify(parsed)}`;
-//     } catch {
-//         // eslint-disable-next-line @typescript-eslint/no-base-to-string
-//         return `raw:${String(parsed)}`;
-//     }
-// }
-
 async function get_authed_user_uid(supabase: SupabaseClient<Database>): Promise<string | null> {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.user?.id ?? null;
 }
 
-/**
- * Classify a Supabase/PostgREST error for push retry logic.
- *
- * - dropped: non-retryable (unique/check constraint, invalid data).
- *   The changelog entry should be removed so the queue can drain.
- * - retry:   transient (network failure, 5xx, rate-limit).
- *   The changelog entry should be kept and retried later.
- */
-/**
- * Wrap a thrown supabase error into a push outcome with a logged context label.
- * `dropped` outcomes carry the reason; `retry` outcomes are silent at the
- * data-layer and surface in the caller's per-table watermark stall.
- */
 function classify_outcome(err: unknown, label: string): { outcome: PushResult; reason?: string } {
     const reason = err instanceof Error ? err.message : String(err);
     const classification = classify_push_error(err);
@@ -200,19 +101,16 @@ function classify_push_error(error: unknown): PushResult {
     const code = typeof e.code === 'string' ? e.code : '';
     const status = typeof e.status === 'number' ? e.status : 0;
 
-    // PostgreSQL unique-constraint and check-constraint violations → drop
-    if (code === '23505') return 'dropped'; // unique_violation
-    if (code === '23514') return 'dropped'; // check_violation
-    if (code === '22P02') return 'dropped'; // invalid_text_representation
-    if (code === '22003') return 'dropped'; // numeric_value_out_of_range
-    if (code === '42501') return 'dropped'; // insufficient_privilege (RLS rejected)
-    if (code === 'PGRST301') return 'dropped'; // JWT expired — needs re-auth, not a data problem
+    if (code === '23505') return 'dropped';
+    if (code === '23514') return 'dropped';
+    if (code === '22P02') return 'dropped';
+    if (code === '22003') return 'dropped';
+    if (code === '42501') return 'dropped';
+    if (code === 'PGRST301') return 'dropped';
 
-    // HTTP-level non-retryable client errors
-    if (status === 409) return 'dropped'; // Conflict
-    if (status === 422) return 'dropped'; // Unprocessable entity
+    if (status === 409) return 'dropped';
+    if (status === 422) return 'dropped';
 
-    // Everything else: network issue, 5xx, etc. — retry
     return 'retry';
 }
 
@@ -220,10 +118,6 @@ export class SyncEngine {
     private is_syncing = false;
     private is_initialized = false;
     private is_destroyed = false;
-    // Count of in-memory global-track mutations made silently during a pull, so
-    // pull_tracks can notify listeners ONCE at the end. Notifying per row cloned
-    // the whole library and re-rendered every screen per pulled track — a
-    // sustained JS-thread saturation on large sync batches.
     private pull_dirty_global_tracks = 0;
     private resync_requested = false;
     private consecutive_failures = 0;
@@ -231,8 +125,14 @@ export class SyncEngine {
     private last_sync_started_at?: number;
     private last_sync_completed_at?: number;
     private sync_interval?: ReturnType<typeof setInterval>;
-    private debounce_timeout?: ReturnType<typeof setTimeout>;
+    private full_debounce_timeout?: ReturnType<typeof setTimeout>;
+    private pt_debounce_timeout?: ReturnType<typeof setTimeout>;
+    private other_debounce_timeout?: ReturnType<typeof setTimeout>;
     private network_subscription?: ReturnType<NetworkMonitor['on_network_change']>;
+    private server_offset_ms = 0;
+    private server_time_synced = false;
+    private readonly last_pushed_global_hash = new Map<string, string>();
+    private readonly resyncing_tables = new Set<SyncableLocalTableName>();
     private readonly supabase: SupabaseClient<Database>;
     private readonly network_monitor: NetworkMonitor;
 
@@ -241,45 +141,84 @@ export class SyncEngine {
         this.network_monitor = networkMonitor;
     }
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
-    /**
-     * Request a full resync. On the next sync cycle the engine will:
-     * 1. Push all local state to remote (idempotent upserts).
-     * 2. Reset pull watermarks to epoch so all remote data is re-fetched.
-     * 3. Resume normal incremental sync.
-     */
     request_resync() {
         this.resync_requested = true;
-        this.schedule_sync(500);
+        this.schedule_full_sync(500);
     }
 
-    schedule_sync(delay_ms = 3000) {
+    schedule_full_sync(delay_ms = 1000) {
         if (this.is_destroyed) return;
-        if (this.debounce_timeout) clearTimeout(this.debounce_timeout);
+        if (this.full_debounce_timeout) clearTimeout(this.full_debounce_timeout);
         const failure_multiplier = Math.min(Math.pow(2, Math.max(this.consecutive_failures - 1, 0)), 32);
         const effective_delay = Math.min(delay_ms * failure_multiplier, 5 * 60 * 1000);
-        this.debounce_timeout = setTimeout(() => {
-            this.debounce_timeout = undefined;
-            if (this.is_destroyed) return;
-            if (this.is_syncing) {
-                this.schedule_sync(1000);
-                return;
-            }
-            this.sync().catch(catch_log);
+        this.full_debounce_timeout = setTimeout(() => {
+            this.full_debounce_timeout = undefined;
+            this.fire_sync(PULL_TABLES);
         }, effective_delay);
+    }
+
+    private schedule_table_sync(table_name: LocalTableName) {
+        if (this.is_destroyed) return;
+        if (table_name === 'playlists_tracks') {
+            if (this.pt_debounce_timeout) clearTimeout(this.pt_debounce_timeout);
+            this.pt_debounce_timeout = setTimeout(() => {
+                this.pt_debounce_timeout = undefined;
+                this.fire_sync(PLAYLISTS_TRACKS_TABLES);
+            }, PLAYLISTS_TRACKS_DEBOUNCE_MS);
+            return;
+        }
+        if (table_name === 'tracks' || table_name === 'playlists') {
+            if (this.other_debounce_timeout) clearTimeout(this.other_debounce_timeout);
+            this.other_debounce_timeout = setTimeout(() => {
+                this.other_debounce_timeout = undefined;
+                this.fire_sync(OTHER_TABLES);
+            }, OTHER_DEBOUNCE_MS);
+        }
+    }
+
+    private fire_sync(scope: SyncableLocalTableName[]) {
+        if (this.is_destroyed) return;
+        const effective = scope.filter(table_name => !this.resyncing_tables.has(table_name));
+        if (effective.length === 0) return;
+        if (this.is_syncing) {
+            setTimeout(() => this.fire_sync(effective), 1000);
+            return;
+        }
+        this.sync(effective).catch(catch_log);
+    }
+
+    private async sync_server_time() {
+        const url = process.env.EXPO_PUBLIC_SUPABASE_PROJECT_URL;
+        const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLIC_KEY;
+        if (!url || !key) return;
+        try {
+            const started = Date.now();
+            const res = await fetch(`${url}/rest/v1/`, { method: 'HEAD', headers: { apikey: key } });
+            const date_header = res.headers.get('date');
+            if (!date_header) return;
+            const server_ms = new Date(date_header).getTime();
+            if (!isFinite(server_ms)) return;
+            const round_trip = Date.now() - started;
+            this.server_offset_ms = server_ms + Math.round(round_trip / 2) - Date.now();
+            this.server_time_synced = true;
+        } catch (error) {
+            catch_log(error);
+        }
+    }
+
+    private remote_to_local_epoch(remote_modified_at: unknown): number {
+        return safe_to_epoch_merge(remote_modified_at) - this.server_offset_ms;
     }
 
     async initialize() {
         if (this.is_initialized || this.is_destroyed) return;
         const initialize_generation = this.destroy_generation;
         this.is_initialized = true;
-        ChangeTracker.set_on_change(() => this.schedule_sync());
+        ChangeTracker.set_on_change((table_name) => this.schedule_table_sync(table_name));
 
-        // Schedule an initial sync shortly after startup.
-        this.schedule_sync(1000);
+        void this.sync_server_time();
+
+        this.schedule_full_sync(1000);
 
         if (this.is_destroyed || initialize_generation !== this.destroy_generation) {
             this.is_initialized = false;
@@ -289,7 +228,7 @@ export class SyncEngine {
         this.network_subscription = this.network_monitor.on_network_change(async (isGoodTime) => {
             if (this.is_destroyed) return;
             if (isGoodTime) {
-                this.schedule_sync(500);
+                this.schedule_full_sync(500);
             }
         });
 
@@ -305,24 +244,13 @@ export class SyncEngine {
             const isGoodTime = await this.network_monitor.is_good_time_to_sync();
             if (this.is_destroyed) return;
             if (isGoodTime) {
-                this.schedule_sync(1000);
+                this.schedule_full_sync(1000);
             }
         }, 5 * 60 * 1000);
     }
 
-    // destroy_generation is used to cancel inflight initialize() calls after destroy().
     private destroy_generation = 0;
 
-    // ---------------------------------------------------------------------
-    // Pull-echo suppression. Rows applied from remote carry fresh modified_at
-    // values that look locally dirty to the push watermark, so without this
-    // every pulled row gets upserted straight back to the server it just came
-    // from. Remember exactly what the pull wrote — a dirty row whose
-    // modified_at still matches was last touched by the pull and is skipped;
-    // any real local edit bumps modified_at and breaks the match. In-memory
-    // only: after a restart the next push re-upserts at most one backlog of
-    // pull-applied rows (idempotent) and converges.
-    // ---------------------------------------------------------------------
     private readonly pull_applied_upserts: Record<SyncableLocalTableName, Map<string, number>> = {
         tracks: new Map(), playlists: new Map(), playlists_tracks: new Map(),
     };
@@ -343,7 +271,7 @@ export class SyncEngine {
         return this.pull_applied_deletes[table_name as SyncableLocalTableName]?.has(record_id) ?? false;
     }
 
-    async sync() {
+    async sync(scope: SyncableLocalTableName[] = PULL_TABLES) {
         if (this.is_syncing || this.is_destroyed) return;
         this.last_sync_started_at = Date.now();
         try {
@@ -354,19 +282,26 @@ export class SyncEngine {
 
             if (this.is_destroyed) return;
 
-            // Handle resync request: push all local state then reset pull watermarks.
-            if (this.resync_requested) {
+            if (!this.server_time_synced) await this.sync_server_time();
+            if (this.is_destroyed) return;
+
+            const is_full_sync = PULL_TABLES.every(table_name => scope.includes(table_name));
+            if (this.resync_requested && is_full_sync) {
                 this.resync_requested = false;
-                await this.resync(user_uid);
+                for (const table_name of scope) this.resyncing_tables.add(table_name);
+                try {
+                    await this.resync(user_uid, scope);
+                } finally {
+                    for (const table_name of scope) this.resyncing_tables.delete(table_name);
+                }
                 if (this.is_destroyed) return;
             }
 
-            await this.push_changes(user_uid);
+            await this.pull_changes(user_uid, scope);
             if (this.is_destroyed) return;
-            await this.pull_changes(user_uid);
+            await this.push_changes(user_uid, scope);
             if (this.is_destroyed) return;
 
-            // Always update last_synced after a complete push+pull cycle.
             await Prefs.save_pref('last_synced', new Date());
             this.consecutive_failures = 0;
             this.last_error_message = undefined;
@@ -380,11 +315,6 @@ export class SyncEngine {
         }
     }
 
-    /**
-     * Set the pull and push watermarks for all tables to the current time.
-     * Useful after a manual data import so the next sync only fetches changes
-     * that occurred after the import, rather than re-pulling/re-pushing everything.
-     */
     async mark_all_tables_synced_now() {
         const now = Date.now();
         for (const table_name of PULL_TABLES) {
@@ -397,15 +327,6 @@ export class SyncEngine {
         }
     }
 
-    /**
-     * Advance push watermarks past everything currently local, without touching
-     * pull watermarks. For after an initial full pull into an empty database:
-     * the pulled rows carry server modified_at timestamps newer than the push
-     * watermark, so without this the whole library gets re-pushed to the place
-     * it just came from. Capped at client-now so rows stamped by a server clock
-     * running ahead stay dirty (harmless idempotent re-push) rather than local
-     * edits made in the skew window being skipped.
-     */
     async mark_all_tables_pushed() {
         const now = Date.now();
         const newest_tracks = await db.select({ modified_at: tracks_table.modified_at })
@@ -466,53 +387,50 @@ export class SyncEngine {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // RESYNC — re-upload every local row by upsert, then reset both watermarks
-    // so the next push and pull scan from scratch.
-    // -------------------------------------------------------------------------
-    private async resync(user_uid: string) {
-        console.info('[SyncEngine] resync started — pushing all local state');
+    private async resync(user_uid: string, scope: SyncableLocalTableName[]) {
+        console.info('[SyncEngine] resync started — pushing local state for', scope.join(', '));
 
-        // Upsert all local tracks (global + utrack), preserving each row's `deleted` state.
-        const all_tracks = await db.select().from(tracks_table);
-        for (let i = 0; i < all_tracks.length; i += PUSH_BATCH_SIZE) {
-            const batch = all_tracks.slice(i, i + PUSH_BATCH_SIZE);
-            const { error: te } = await this.supabase.from('tracks')
-                .upsert(batch.map(t => this.track_to_global_insert(t)), { onConflict: 'uid' });
-            if (te) console.warn('[SyncEngine] resync tracks upsert error:', te);
-            const { error: ue } = await this.supabase.from('utracks')
-                .upsert(
-                    batch.map(t => ({ ...this.track_to_utrack_insert(t, user_uid), deleted: t.deleted })),
-                    { onConflict: 'user_uid,track_uid' });
-            if (ue) console.warn('[SyncEngine] resync utracks upsert error:', ue);
+        if (scope.includes('tracks')) {
+            const all_tracks = await db.select().from(tracks_table);
+            for (let i = 0; i < all_tracks.length; i += PUSH_BATCH_SIZE) {
+                const batch = all_tracks.slice(i, i + PUSH_BATCH_SIZE);
+                const { error: te } = await this.supabase.from('tracks')
+                    .upsert(batch.map(t => this.track_to_global_insert(t)), { onConflict: 'uid' });
+                if (te) console.warn('[SyncEngine] resync tracks upsert error:', te);
+                const { error: ue } = await this.supabase.from('utracks')
+                    .upsert(
+                        batch.map(t => ({ ...this.track_to_utrack_insert(t, user_uid), deleted: t.deleted })),
+                        { onConflict: 'user_uid,track_uid' });
+                if (ue) console.warn('[SyncEngine] resync utracks upsert error:', ue);
+            }
         }
 
-        const all_playlists = await db.select().from(playlists_table);
-        for (let i = 0; i < all_playlists.length; i += PUSH_BATCH_SIZE) {
-            const batch = all_playlists.slice(i, i + PUSH_BATCH_SIZE);
-            // Best effort during resync — a failed artwork upload just resyncs
-            // the row with its current (null) artwork_path; the dirty-row push
-            // path retries the upload later.
-            for (const p of batch) await this.ensure_playlist_artwork_uploaded(p);
-            const { error } = await this.supabase.from('playlists')
-                .upsert(
-                    batch.map(p => ({ ...this.playlist_to_insert(p, user_uid), deleted: p.deleted })),
-                    { onConflict: 'uuid' });
-            if (error) console.warn('[SyncEngine] resync playlists upsert error:', error);
+        if (scope.includes('playlists')) {
+            const all_playlists = await db.select().from(playlists_table);
+            for (let i = 0; i < all_playlists.length; i += PUSH_BATCH_SIZE) {
+                const batch = all_playlists.slice(i, i + PUSH_BATCH_SIZE);
+                for (const p of batch) await this.ensure_playlist_artwork_uploaded(p);
+                const { error } = await this.supabase.from('playlists')
+                    .upsert(
+                        batch.map(p => ({ ...this.playlist_to_insert(p, user_uid), deleted: p.deleted })),
+                        { onConflict: 'uuid' });
+                if (error) console.warn('[SyncEngine] resync playlists upsert error:', error);
+            }
         }
 
-        const all_pts = await db.select().from(playlists_tracks_table);
-        for (let i = 0; i < all_pts.length; i += PUSH_BATCH_SIZE) {
-            const batch = all_pts.slice(i, i + PUSH_BATCH_SIZE);
-            const { error } = await this.supabase.from('playlists_tracks')
-                .upsert(
-                    batch.map(pt => ({ ...this.playlist_track_to_insert(pt), deleted: pt.deleted })),
-                    { onConflict: 'uuid,track_uid' });
-            if (error) console.warn('[SyncEngine] resync playlists_tracks upsert error:', error);
+        if (scope.includes('playlists_tracks')) {
+            const all_pts = await db.select().from(playlists_tracks_table);
+            for (let i = 0; i < all_pts.length; i += PUSH_BATCH_SIZE) {
+                const batch = all_pts.slice(i, i + PUSH_BATCH_SIZE);
+                const { error } = await this.supabase.from('playlists_tracks')
+                    .upsert(
+                        batch.map(pt => ({ ...this.playlist_track_to_insert(pt), deleted: pt.deleted })),
+                        { onConflict: 'uuid,track_uid' });
+                if (error) console.warn('[SyncEngine] resync playlists_tracks upsert error:', error);
+            }
         }
 
-        // Reset both watermarks to epoch so the next sync re-scans everything.
-        for (const table_name of PULL_TABLES) {
+        for (const table_name of scope) {
             await db.insert(sync_metadata_table)
                 .values({ table_name, last_sync_at: 0, last_pushed_at: 0, last_modified_at: 0 })
                 .onConflictDoUpdate({
@@ -520,35 +438,30 @@ export class SyncEngine {
                     set: { last_sync_at: 0, last_pushed_at: 0, last_modified_at: 0 },
                 });
         }
-        // Clear any sync_error marks so previously-rejected rows get another try.
-        await db.update(tracks_table).set({ sync_error: null });
-        await db.update(playlists_table).set({ sync_error: null });
-        await db.update(playlists_tracks_table).set({ sync_error: null });
-        await db.update(sync_deletes_table).set({ sync_error: null });
+
+        if (scope.includes('tracks')) await db.update(tracks_table).set({ sync_error: null });
+        if (scope.includes('playlists')) await db.update(playlists_table).set({ sync_error: null });
+        if (scope.includes('playlists_tracks')) await db.update(playlists_tracks_table).set({ sync_error: null });
+        await db.update(sync_deletes_table).set({ sync_error: null })
+            .where(inArray(sync_deletes_table.table_name, scope));
 
         console.info('[SyncEngine] resync complete');
     }
 
-    // -------------------------------------------------------------------------
-    // PUSH — dirty-row scan.
-    //
-    // Per syncable table: select rows where modified_at > last_pushed_at AND
-    // sync_error IS NULL, ordered by modified_at ASC. Push each via upsert.
-    //   - synced  → advance watermark to this row's modified_at.
-    //   - dropped → mark sync_error so the row is excluded next scan, then continue.
-    //   - retry   → stop pushing this table this cycle (next sync re-tries).
-    //
-    // Tracks must precede playlists_tracks (FK). Tombstone-driven deletes are
-    // applied after the upsert pass so they don't fight in-flight restores.
-    // -------------------------------------------------------------------------
-    private async push_changes(user_uid: string) {
-        await this.push_dirty_tracks(user_uid);
-        if (this.is_destroyed) return;
-        await this.push_dirty_playlists(user_uid);
-        if (this.is_destroyed) return;
-        await this.push_dirty_playlists_tracks(user_uid);
-        if (this.is_destroyed) return;
-        await this.push_pending_deletes(user_uid);
+    private async push_changes(user_uid: string, scope: SyncableLocalTableName[]) {
+        if (scope.includes('tracks')) {
+            await this.push_dirty_tracks(user_uid);
+            if (this.is_destroyed) return;
+        }
+        if (scope.includes('playlists')) {
+            await this.push_dirty_playlists(user_uid);
+            if (this.is_destroyed) return;
+        }
+        if (scope.includes('playlists_tracks')) {
+            await this.push_dirty_playlists_tracks(user_uid);
+            if (this.is_destroyed) return;
+        }
+        await this.push_pending_deletes(user_uid, scope);
     }
 
     private async get_push_watermark(table_name: SyncableLocalTableName): Promise<number> {
@@ -573,8 +486,6 @@ export class SyncEngine {
 
     private async push_dirty_tracks(user_uid: string) {
         let watermark = await this.get_push_watermark('tracks');
-        // Drain in batches until nothing dirty remains, so a large backlog
-        // clears in one sync cycle instead of one PUSH_BATCH_SIZE per cycle.
         while (!this.is_destroyed) {
             const dirty = await db.select().from(tracks_table)
                 .where(and(
@@ -585,9 +496,6 @@ export class SyncEngine {
                 .limit(PUSH_BATCH_SIZE);
             if (dirty.length === 0) break;
 
-            // Rows whose modified_at is exactly what the pull stamped are
-            // echoes — remote already has them. Advancing the watermark past
-            // them is safe: any later local edit re-dirties with a newer stamp.
             const to_push = dirty.filter(track => !this.is_pull_echo('tracks', track.uid, track.modified_at));
             if (to_push.length === 0) {
                 watermark = dirty[dirty.length - 1].modified_at;
@@ -596,9 +504,6 @@ export class SyncEngine {
                 continue;
             }
 
-            // Fast path: 2 requests for the whole batch. PostgREST batch
-            // failures are atomic, so on error fall back to per-row uploads to
-            // keep the dropped/retry classification.
             const batch_ok = await this.upload_track_rows_batch(to_push, user_uid);
             if (batch_ok) {
                 watermark = dirty[dirty.length - 1].modified_at;
@@ -623,7 +528,6 @@ export class SyncEngine {
                         .where(eq(tracks_table.id, track.id));
                     watermark = track.modified_at;
                 } else {
-                    // Retryable — stop here so we don't skip past this row.
                     hit_retryable = true;
                     break;
                 }
@@ -633,21 +537,29 @@ export class SyncEngine {
         }
     }
 
+    private global_hash(insert: RemoteTrackInsert): string {
+        const { created_at: _created_at, modified_at: _modified_at, ...content } = insert;
+        return JSON.stringify(content);
+    }
+
     private async upload_track_rows_batch(tracks: LocalTrack[], user_uid: string): Promise<boolean> {
         try {
-            // "Greatest duration wins" holds without pre-fetching remote
-            // durations: every pull merge takes max(local, remote), and a
-            // remote-side raise bumps utracks.modified_at so the next
-            // watermark pull re-raises us. Pushing the local value can only
-            // lower remote within that one-cycle window, and converges.
-            const global_inserts = tracks.map(track => {
+            const global_inserts: RemoteTrackInsert[] = [];
+            const pushed_hashes: { uid: string; hash: string }[] = [];
+            for (const track of tracks) {
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
                 const local_duration = Math.round(Number(track.duration ?? 0));
-                return this.track_to_global_insert({ ...track, duration: isFinite(local_duration) ? local_duration : 0 } as LocalTrack);
-            });
-            const { error: te } = await this.supabase.from('tracks')
-                .upsert(global_inserts, { onConflict: 'uid' });
-            if (te) throw te;
+                const insert = this.track_to_global_insert({ ...track, duration: isFinite(local_duration) ? local_duration : 0 } as LocalTrack);
+                const hash = this.global_hash(insert);
+                if (this.last_pushed_global_hash.get(track.uid) === hash) continue;
+                global_inserts.push(insert);
+                pushed_hashes.push({ uid: track.uid, hash });
+            }
+            if (global_inserts.length > 0) {
+                const { error: te } = await this.supabase.from('tracks')
+                    .upsert(global_inserts, { onConflict: 'uid' });
+                if (te) throw te;
+            }
 
             const utrack_inserts = tracks.map(track => ({
                 ...this.track_to_utrack_insert(track, user_uid),
@@ -656,6 +568,7 @@ export class SyncEngine {
             const { error: ue } = await this.supabase.from('utracks')
                 .upsert(utrack_inserts, { onConflict: 'user_uid,track_uid' });
             if (ue) throw ue;
+            for (const entry of pushed_hashes) this.last_pushed_global_hash.set(entry.uid, entry.hash);
             return true;
         } catch (err) {
             console.warn('[SyncEngine] batch track push failed, falling back to per-row:', (err as {message?: string})?.message ?? err, (err as {code?: string})?.code ?? '', (err as {details?: string})?.details ?? '');
@@ -723,8 +636,6 @@ export class SyncEngine {
                 continue;
             }
 
-            // Per-row fallback keeps the FK-repair path (upload missing track,
-            // retry) and dropped/retry classification.
             let hit_retryable = false;
             for (const pt of dirty) {
                 if (this.is_destroyed) break;
@@ -752,9 +663,6 @@ export class SyncEngine {
 
     private async upload_playlist_track_rows_batch(pts: LocalPlaylistTrack[]): Promise<boolean> {
         try {
-            // The local table has no unique (uuid, track_uid) constraint but the
-            // remote upsert conflict target does — keep the last occurrence
-            // (highest modified_at, since the batch is ordered ascending).
             const by_key = new Map<string, RemotePlaylistTrackInsert>();
             for (const pt of pts) {
                 by_key.set(`${pt.uuid}:${pt.track_uid}`, {
@@ -772,15 +680,8 @@ export class SyncEngine {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Track upload — dual-write: `tracks` (global) + `utracks` (per-user).
-    // Duration rule: server stores max(local, remote).
-    // `plays` is NEVER pushed; per-device counts live only in meta.plays.
-    // -------------------------------------------------------------------------
     private async upload_track_row(track: LocalTrack, user_uid: string): Promise<{ outcome: PushResult; reason?: string }> {
         try {
-            // Duration reconciliation happens on pull (merge takes the max);
-            // see upload_track_rows_batch for why no remote pre-fetch is needed.
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
             const local_duration = Math.round(Number(track.duration ?? 0));
 
@@ -789,9 +690,12 @@ export class SyncEngine {
                 duration: isFinite(local_duration) ? local_duration : 0,
             } as LocalTrack);
 
-            const { error: te } = await this.supabase.from('tracks')
-                .upsert(global_insert, { onConflict: 'uid' });
-            if (te) throw te;
+            const hash = this.global_hash(global_insert);
+            if (this.last_pushed_global_hash.get(track.uid) !== hash) {
+                const { error: te } = await this.supabase.from('tracks')
+                    .upsert(global_insert, { onConflict: 'uid' });
+                if (te) throw te;
+            }
 
             const { error: ue } = await this.supabase.from('utracks')
                 .upsert(
@@ -799,19 +703,13 @@ export class SyncEngine {
                     { onConflict: 'user_uid,track_uid' },
                 );
             if (ue) throw ue;
+            this.last_pushed_global_hash.set(track.uid, hash);
             return { outcome: 'synced' };
         } catch (err) {
             return classify_outcome(err, `tracks/${track.uid}`);
         }
     }
 
-    /**
-     * Lazily upload the playlist's custom artwork before the row is pushed.
-     * artwork_path === null with a non-empty thumbnail_uri means "not uploaded
-     * yet" (freshly-set custom artwork, or a pre-22.0.0 playlist). On success
-     * both artwork_path and thumbnail_uri converge on the content-hash webp
-     * WITHOUT bumping modified_at, so the row doesn't re-dirty itself.
-     */
     private async ensure_playlist_artwork_uploaded(playlist: LocalPlaylist): Promise<'ok' | 'retry'> {
         if (playlist.deleted) return 'ok';
         if (playlist.artwork_path != null) return 'ok';
@@ -832,9 +730,6 @@ export class SyncEngine {
 
     private async upload_playlist_row(playlist: LocalPlaylist, user_uid: string): Promise<{ outcome: PushResult; reason?: string }> {
         try {
-            // Push the row only once its artwork made it to storage — otherwise
-            // other devices would pull a stale/null artwork_path and clear their
-            // local artwork under last-write-wins.
             const artwork_outcome = await this.ensure_playlist_artwork_uploaded(playlist);
             if (artwork_outcome === 'retry') return { outcome: 'retry' };
 
@@ -860,13 +755,11 @@ export class SyncEngine {
                 .upsert(payload, { onConflict: 'uuid,track_uid' });
             if (!error) return { outcome: 'synced' };
 
-            // FK violation: the track doesn't exist remotely yet — attempt repair.
             if (!this.is_playlists_tracks_track_fk_error(error)) throw error;
 
             const local_track = await db.select().from(tracks_table)
                 .where(eq(tracks_table.uid, pt.track_uid)).get();
             if (!local_track) {
-                // Dangling reference — soft-delete locally so it's never selected again.
                 await db.update(playlists_tracks_table)
                     .set({ deleted: true })
                     .where(and(
@@ -876,7 +769,6 @@ export class SyncEngine {
                 return { outcome: 'dropped', reason: 'missing local track for FK repair' };
             }
 
-            // Upload the missing track first.
             const { error: te } = await this.supabase.from('tracks')
                 .upsert(this.track_to_global_insert(local_track), { onConflict: 'uid' });
             if (te) throw te;
@@ -887,7 +779,6 @@ export class SyncEngine {
                 );
             if (ue) throw ue;
 
-            // Retry the playlist-track upsert.
             const { error: retry_error } = await this.supabase.from('playlists_tracks')
                 .upsert(payload, { onConflict: 'uuid,track_uid' });
             if (retry_error) throw retry_error;
@@ -897,14 +788,12 @@ export class SyncEngine {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Tombstone-driven deletes — drain sync_deletes for hard-deleted rows.
-    // DELETE triggers (see migration 0008) capture hard deletes into this table
-    // since the dirty-row scan can't see rows that no longer exist locally.
-    // -------------------------------------------------------------------------
-    private async push_pending_deletes(user_uid: string) {
+    private async push_pending_deletes(user_uid: string, scope: SyncableLocalTableName[]) {
         const tombstones = await db.select().from(sync_deletes_table)
-            .where(isNull(sync_deletes_table.sync_error))
+            .where(and(
+                isNull(sync_deletes_table.sync_error),
+                inArray(sync_deletes_table.table_name, scope),
+            ))
             .orderBy(asc(sync_deletes_table.deleted_at))
             .limit(PUSH_BATCH_SIZE);
 
@@ -913,9 +802,6 @@ export class SyncEngine {
         const synced_ids: number[] = [];
         for (const ts of tombstones) {
             if (this.is_destroyed) break;
-            // Hard deletes applied by the pull fire the same DELETE triggers
-            // as user deletes — drop those tombstones without echoing the
-            // delete back to the server that ordered it.
             if (this.is_pull_echo_delete(ts.table_name, ts.record_id)) {
                 synced_ids.push(ts.id);
                 continue;
@@ -928,7 +814,6 @@ export class SyncEngine {
                     .set({ sync_error: result.reason ?? 'unknown' })
                     .where(eq(sync_deletes_table.id, ts.id));
             }
-            // retryable: leave tombstone for next cycle
         }
         if (synced_ids.length > 0) {
             await db.delete(sync_deletes_table).where(inArray(sync_deletes_table.id, synced_ids));
@@ -968,7 +853,6 @@ export class SyncEngine {
                     return { outcome: 'synced' };
                 }
                 default:
-                    // Unknown table — keep the tombstone visible for inspection.
                     return { outcome: 'dropped', reason: `unknown tombstone table: ${tombstone.table_name}` };
             }
         } catch (err) {
@@ -976,9 +860,6 @@ export class SyncEngine {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Error helpers
-    // -------------------------------------------------------------------------
     // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private assert_supabase_ok(context: string, error: unknown) {
         if (!error) return;
@@ -998,13 +879,10 @@ export class SyncEngine {
         return code === '23503' && message.includes('playlists_tracks_track_uid_fkey');
     }
 
-    // -------------------------------------------------------------------------
-    // PULL — fetch remote changes and apply locally
-    // new_releases is intentionally excluded (push-only).
-    // -------------------------------------------------------------------------
-    private async pull_changes(user_uid: string) {
+    private async pull_changes(user_uid: string, scope: SyncableLocalTableName[]) {
         for (const table_name of PULL_TABLES) {
             if (this.is_destroyed) return;
+            if (!scope.includes(table_name)) continue;
             await this.pull_table_changes(table_name, user_uid);
         }
     }
@@ -1016,7 +894,6 @@ export class SyncEngine {
             .where(eq(sync_metadata_table.table_name, table_name))
             .get();
 
-        // Subtract a small overlap (2 s) to tolerate clock skew between client and DB server.
         const last_sync_iso = new Date((metadata?.last_sync_at ?? 0) - 2000).toISOString();
 
         switch (table_name) {
@@ -1024,9 +901,6 @@ export class SyncEngine {
                 try {
                     await this.pull_tracks(last_sync_iso, user_uid);
                 } finally {
-                    // Flush silent per-row global-track mutations ONCE per pull —
-                    // also on error exits (page-fetch throw mid-pull), so listeners
-                    // never miss mutations that were already applied.
                     this.flush_pull_dirty_global_tracks();
                 }
                 break;
@@ -1035,13 +909,6 @@ export class SyncEngine {
         }
     }
 
-    /**
-     * Watermark is the maximum server-side `modified_at` observed in this pull.
-     * Using the server's own timestamp (not client `Date.now()`) avoids skipping
-     * rows when the client clock runs ahead of the DB clock.
-     * If nothing was observed we leave the existing watermark untouched —
-     * the next sync re-queries the same range and is cheap when empty.
-     */
     private async save_pull_watermark(table_name: SyncableLocalTableName, max_modified_at_ms: number) {
         if (max_modified_at_ms <= 0) return;
         await db
@@ -1054,8 +921,6 @@ export class SyncEngine {
     }
 
     private async pull_tracks(last_sync_iso: string, user_uid: string) {
-        // Probe with a HEAD count first — the common cycle has nothing new,
-        // and this keeps it to one bodyless request instead of a joined query.
         const { count: changed_count, error: count_error } = await this.supabase
             .from('utracks')
             .select('*', { count: 'exact', head: true })
@@ -1072,11 +937,6 @@ export class SyncEngine {
             if (v > max_modified_at) max_modified_at = v;
         };
 
-        // utracks changes (delete/restore + user meta fields), joined with the
-        // global tracks row. Global-metadata enrichment by any user bumps every
-        // owner's utracks.modified_at (see migration
-        // 20260713000000_propagate_tracks_enrichment_to_utracks), so this single
-        // user-scoped pull also carries cross-user catalog edits.
         let offset = 0;
         while (true) {
             const { data: utrack_rows, error: u_err } = await this.supabase
@@ -1116,32 +976,15 @@ export class SyncEngine {
             offset += utrack_rows.length;
         }
 
-        // Global-track listeners are flushed once per pull by
-        // flush_pull_dirty_global_tracks() in pull_table_changes' finally,
-        // which also covers error exits.
         await this.save_pull_watermark('tracks', max_modified_at);
     }
 
-    /**
-     * Notify global-track listeners once for all silent per-row mutations made
-     * during a pull (the per-row update/delete/add calls pass notify=false).
-     * Invoked from pull_table_changes' finally so listeners are flushed even
-     * when a pull aborts partway through.
-     */
     private flush_pull_dirty_global_tracks() {
         if (this.pull_dirty_global_tracks === 0) return;
         this.pull_dirty_global_tracks = 0;
         SQLGlobal.notify_global_tracks_updated();
     }
 
-    /**
-     * Used by pull-apply paths to know which local rows have unpushed changes,
-     * so a remote row doesn't clobber a local edit that hasn't reached the server yet.
-     *   - upserts:  rows where modified_at > last_pushed_at AND sync_error IS NULL
-     *               and deleted = false (or soft-restored).
-     *   - deletes:  pending tombstones in sync_deletes (with no sync_error) PLUS
-     *               dirty rows whose `deleted` is true (soft-delete still pending push).
-     */
     private async get_pending_change_sets(table_name: SyncableLocalTableName): Promise<{
         upserts: Set<string>;
         deletes: Set<string>;
@@ -1200,7 +1043,6 @@ export class SyncEngine {
             }
         }
 
-        // Hard-delete tombstones recorded by DELETE triggers.
         const tombstones = await db.select({ record_id: sync_deletes_table.record_id })
             .from(sync_deletes_table)
             .where(and(
@@ -1218,163 +1060,62 @@ export class SyncEngine {
     ) {
         const has_pending_delete = pending_track_changes.deletes.has(row.uid);
         const has_pending_upsert = pending_track_changes.upserts.has(row.uid);
+        const is_conflict = has_pending_delete || has_pending_upsert;
 
         const existing = await db.select().from(tracks_table)
             .where(eq(tracks_table.uid, row.uid)).get();
 
-        // Remote delete → soft-delete locally (never overwrite if local wants to keep it).
-        if (row.deleted) {
-            if (has_pending_upsert) return;
+        if (is_conflict && existing) {
+            const merged = MergeResolver.resolve_track(existing, row);
+            merged.id = existing.id;
+            merged.uid = existing.uid;
+            merged.media_uri = existing.media_uri;
+            merged.thumbnail_uri = existing.thumbnail_uri;
+            merged.lyrics_uri = existing.lyrics_uri;
+            merged.synced_lyrics_uri = existing.synced_lyrics_uri;
+            merged.plays = existing.plays;
+            await db.update(tracks_table).set(merged).where(eq(tracks_table.uid, row.uid));
+            if (merged.deleted) SQLGlobal.delete_global_track_item(row.uid, false);
+            else SQLGlobal.update_global_track_item(row.uid, merged, false);
+            this.pull_dirty_global_tracks++;
+            return;
+        }
+        if (is_conflict && row.deleted) return;
 
+        const remote_modified = this.remote_to_local_epoch(row.modified_at);
+        if (existing && remote_modified < existing.modified_at) return;
+
+        if (row.deleted) {
             if (existing) {
-                const applied_modified_at = Math.max(existing.modified_at, safe_to_epoch_merge(row.modified_at));
                 await db.update(tracks_table)
-                    .set({
-                        deleted: true,
-                        modified_at: applied_modified_at,
-                    })
+                    .set({ deleted: true, modified_at: remote_modified })
                     .where(eq(tracks_table.uid, row.uid));
-                this.record_pull_upsert('tracks', row.uid, applied_modified_at);
+                this.record_pull_upsert('tracks', row.uid, remote_modified);
                 SQLGlobal.delete_global_track_item(row.uid, false);
                 this.pull_dirty_global_tracks++;
             }
             return;
         }
 
-        // Remote restore / update.
-        if (has_pending_delete) return;
-        // A pending local upsert wins until it's pushed — the field-level merge
-        // prefers non-empty remote values and would overwrite unpushed local edits
-        // (title/artists/album/etc., not just meta). Same rule as the playlists pulls.
-        if (has_pending_upsert && existing) return;
-
-        if (existing) {
-            const merged = this.remote_merge_utrack(existing, row);
-
-            // Always preserve local-only file URIs — they are never synced.
-            merged.media_uri = existing.media_uri;
-            merged.thumbnail_uri = existing.thumbnail_uri;
-            merged.lyrics_uri = existing.lyrics_uri;
-            merged.synced_lyrics_uri = existing.synced_lyrics_uri;
-
-            merged.deleted = false;
-
-            // plays is NEVER synced from remote — always keep local value.
-            merged.plays = existing.plays;
-
-            await db.update(tracks_table).set(merged)
-                .where(eq(tracks_table.uid, row.uid));
-            this.record_pull_upsert('tracks', row.uid, merged.modified_at as number);
-            SQLGlobal.update_global_track_item(row.uid, { ...existing, ...merged } as LocalTrack, false);
+        if (!existing) {
+            const inserted = this.remote_track_to_local(row);
+            await db.insert(tracks_table).values(inserted);
+            this.record_pull_upsert('tracks', row.uid, inserted.modified_at);
+            SQLGlobal.add_global_track_item(inserted as LocalTrack, false);
             this.pull_dirty_global_tracks++;
             return;
         }
 
-        // Insert new track received from remote.
-        const local = this.remote_track_to_local(row);
-        await db.insert(tracks_table).values(local);
-        this.record_pull_upsert('tracks', row.uid, local.modified_at);
-        SQLGlobal.add_global_track_item(local as LocalTrack, false);
+        const updated = this.remote_track_to_local(row);
+        updated.media_uri = existing.media_uri;
+        updated.thumbnail_uri = existing.thumbnail_uri;
+        updated.lyrics_uri = existing.lyrics_uri;
+        updated.synced_lyrics_uri = existing.synced_lyrics_uri;
+        updated.plays = existing.plays;
+        await db.update(tracks_table).set(updated).where(eq(tracks_table.uid, row.uid));
+        this.record_pull_upsert('tracks', row.uid, updated.modified_at);
+        SQLGlobal.update_global_track_item(row.uid, { ...existing, ...updated } as LocalTrack, false);
         this.pull_dirty_global_tracks++;
-    }
-
-    // -------------------------------------------------------------------------
-    // Merge helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Merge a global tracks row (no plays/meta) into an existing local track.
-     * Used as the base merge by remote_merge_utrack.
-     */
-    private remote_merge_global(
-        existing: LocalTrack,
-        remote: Database['public']['Tables']['tracks']['Row'],
-    ): Partial<LocalTrack> {
-        const pick_str = (local: string, remote_val: string): string =>
-            local !== '' ? local : remote_val;
-        const pick_num = (local: number, remote_val: number): number =>
-            local !== 0 ? local : remote_val;
-
-        const remote_artists = typeof remote.artists === 'string'
-            ? safe_json_parse<any[]>(remote.artists, [])
-            : (remote.artists as any[]);
-        const remote_tags = typeof remote.tags === 'string'
-            ? safe_json_parse<any[]>(remote.tags, [])
-            : (remote.tags as any[]);
-        const remote_album = typeof remote.album === 'string'
-            ? safe_json_parse<any>(remote.album, { name: '', uri: null })
-            : remote.album;
-
-        const remote_artists_non_empty = !is_empty_json_array(remote_artists);
-        const remote_tags_non_empty = !is_empty_json_array(remote_tags);
-        const remote_album_non_empty = !is_empty_album(remote_album);
-
-        return {
-            title: remote.title && remote.title.trim() !== '' ? remote.title : existing.title,
-            alt_title: remote.alt_title && remote.alt_title.trim() !== '' ? remote.alt_title : existing.alt_title,
-            artists: remote_artists_non_empty ? remote_artists : existing.artists,
-            duration: Math.max(existing.duration ?? 0, remote.duration ?? 0),
-            prods: remote.prods && remote.prods.trim() !== '' ? remote.prods : existing.prods,
-            genre: remote.genre && remote.genre.trim() !== '' ? remote.genre : existing.genre,
-            tags: remote_tags_non_empty ? remote_tags : existing.tags,
-            explicit: (remote.explicit !== 'NONE' ? remote.explicit : existing.explicit) as any,
-            unreleased: remote.unreleased || existing.unreleased,
-            album: remote_album_non_empty ? remote_album : existing.album,
-            artwork_url: remote.artwork_url && remote.artwork_url.trim() !== '' ? remote.artwork_url : existing.artwork_url,
-            youtube_id: pick_str(existing.youtube_id, remote.youtube_id),
-            youtubemusic_id: pick_str(existing.youtubemusic_id, remote.youtubemusic_id),
-            soundcloud_id: pick_num(existing.soundcloud_id, remote.soundcloud_id),
-            soundcloud_permalink: pick_str(existing.soundcloud_permalink, remote.soundcloud_permalink),
-            spotify_id: pick_str(existing.spotify_id, remote.spotify_id),
-            amazonmusic_id: pick_str(existing.amazonmusic_id, remote.amazonmusic_id),
-            applemusic_id: pick_str(existing.applemusic_id, remote.applemusic_id),
-            bandlab_id: pick_str(existing.bandlab_id, remote.bandlab_id),
-            audiomack_id: pick_str(existing.audiomack_id, remote.audiomack_id),
-            deezer_id: pick_str(existing.deezer_id, remote.deezer_id),
-            tidal_id: pick_str(existing.tidal_id, remote.tidal_id),
-            pandora_id: pick_str(existing.pandora_id, remote.pandora_id),
-            illusi_id: pick_str(existing.illusi_id, remote.illusi_id),
-            imported_id: pick_str(existing.imported_id, remote.imported_id),
-            media_uri: existing.media_uri,
-            thumbnail_uri: existing.thumbnail_uri,
-            lyrics_uri: existing.lyrics_uri,
-            synced_lyrics_uri: existing.synced_lyrics_uri,
-            acousticness: Math.max(existing.acousticness, remote.acousticness),
-            danceability: Math.max(existing.danceability, remote.danceability),
-            energy: Math.max(existing.energy, remote.energy),
-            instrumentalness: Math.max(existing.instrumentalness, remote.instrumentalness),
-            liveness: Math.max(existing.liveness, remote.liveness),
-            speechiness: Math.max(existing.speechiness, remote.speechiness),
-            valence: Math.max(existing.valence, remote.valence),
-            modified_at: Math.max(existing.modified_at, safe_to_epoch_merge(remote.modified_at)),
-        };
-    }
-
-    /**
-     * Merge a utracks-joined row (has plays + meta) into an existing local track.
-     * Used by apply_track (PASS A).
-     * plays is intentionally NOT carried over; meta is synced from utracks.
-     */
-    private remote_merge_utrack(
-        existing: LocalTrack,
-        remote: RemoteTrackWithUserData,
-    ): Partial<LocalTrack> {
-        const base = this.remote_merge_global(existing, remote);
-
-        // Sync meta from utracks (includes meta.plays).
-        // Never overwrite with an empty remote meta payload.
-        const remote_meta = typeof remote.meta === 'string'
-            ? safe_json_parse<any>(remote.meta, {})
-            : remote.meta;
-        const remote_meta_str = normalize_json_string(remote_meta) ?? '';
-        const remote_meta_is_empty = remote_meta_str === '' || remote_meta_str === '{}' || remote_meta_str === 'null';
-        base.meta = remote_meta_is_empty ? existing.meta : remote_meta;
-
-        // plays is NOT synced from remote (track-level play counter is local-only).
-        // Preserve existing local value; callers can override if needed.
-        base.plays = existing.plays;
-
-        return base;
     }
 
     private async pull_playlists(last_sync_iso: string, user_uid: string) {
@@ -1409,24 +1150,36 @@ export class SyncEngine {
                 const record_id = row.uuid;
                 const has_pending_upsert = pending_changes.upserts.has(record_id);
                 const has_pending_delete = pending_changes.deletes.has(record_id);
-                if (row.deleted) {
-                    // Accept server deletion only when local intent agrees: pending delete AND no pending upsert.
-                    // Otherwise local wins (e.g. locally re-adding this playlist).
-                    if (has_pending_upsert || !has_pending_delete) {
-                        continue;
-                    }
-                    await db.delete(playlists_table).where(eq(playlists_table.uuid, row.uuid));
-                    this.record_pull_delete('playlists', row.uuid);
-                    continue;
-                }
-                if (has_pending_upsert || has_pending_delete) {
-                    continue;
-                }
+                const is_conflict = has_pending_upsert || has_pending_delete;
 
                 const existing = await db.select().from(playlists_table)
                     .where(eq(playlists_table.uuid, row.uuid)).get();
-                const local = await this.remote_playlist_to_local(row, existing);
 
+                if (is_conflict && existing) {
+                    const merged = MergeResolver.resolve_playlist(existing, row);
+                    merged.id = existing.id;
+                    merged.uuid = existing.uuid;
+                    if (merged.deleted) {
+                        await db.delete(playlists_table).where(eq(playlists_table.uuid, row.uuid));
+                    } else {
+                        await db.update(playlists_table).set(merged).where(eq(playlists_table.uuid, row.uuid));
+                    }
+                    continue;
+                }
+                if (is_conflict && row.deleted) continue;
+
+                const remote_modified = this.remote_to_local_epoch(row.modified_at);
+                if (existing && remote_modified < existing.modified_at) continue;
+
+                if (row.deleted) {
+                    if (existing) {
+                        await db.delete(playlists_table).where(eq(playlists_table.uuid, row.uuid));
+                        this.record_pull_delete('playlists', row.uuid);
+                    }
+                    continue;
+                }
+
+                const local = await this.remote_playlist_to_local(row, existing);
                 if (existing) {
                     await db.update(playlists_table).set(local).where(eq(playlists_table.uuid, row.uuid));
                 } else {
@@ -1439,14 +1192,11 @@ export class SyncEngine {
             offset += data.length;
         }
         db.$client.flushPendingReactiveQueries?.();
-        // Remote pulls bypass ChangeTracker — drop resolved playlist caches directly.
         SQLPlaylists.invalidate_playlist_tracks_cache();
         await this.save_pull_watermark('playlists', max_modified_at);
     }
 
     private async pull_playlists_tracks(last_sync_iso: string, _user_uid: string) {
-        // Playlists pull first in the same cycle, so the local table already
-        // reflects the remote playlist set — no need for a remote listing.
         const local_playlists = await db.select({ uuid: playlists_table.uuid })
             .from(playlists_table)
             .where(eq(playlists_table.deleted, false));
@@ -1456,7 +1206,7 @@ export class SyncEngine {
         let pending_changes: { upserts: Set<string>; deletes: Set<string> } | null = null;
         let max_modified_at = 0;
 
-        const uuid_chunks = chunk_array(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
+        const uuid_chunks = chunkify(playlist_uuids, IN_CLAUSE_CHUNK_SIZE);
         for (const uuid_chunk of uuid_chunks) {
             const { count: changed_count, error: count_error } = await this.supabase
                 .from('playlists_tracks')
@@ -1487,28 +1237,40 @@ export class SyncEngine {
                     const record_id = `${row.uuid}:${row.track_uid}`;
                     const has_pending_upsert = pending.upserts.has(record_id);
                     const has_pending_delete = pending.deletes.has(record_id);
+                    const is_conflict = has_pending_upsert || has_pending_delete;
                     const existing = await db.select().from(playlists_tracks_table)
                         .where(and(
                             eq(playlists_tracks_table.uuid, row.uuid),
                             eq(playlists_tracks_table.track_uid, row.track_uid)
                         )).get();
 
+                    if (is_conflict && existing) {
+                        const merged = MergeResolver.resolve_playlist_track(existing, row);
+                        merged.id = existing.id;
+                        merged.uuid = existing.uuid;
+                        merged.track_uid = existing.track_uid;
+                        await db.update(playlists_tracks_table).set(merged)
+                            .where(and(
+                                eq(playlists_tracks_table.uuid, row.uuid),
+                                eq(playlists_tracks_table.track_uid, row.track_uid)
+                            ));
+                        continue;
+                    }
+                    if (is_conflict && row.deleted) continue;
+
+                    const remote_modified = this.remote_to_local_epoch(row.modified_at);
+                    if (existing && remote_modified < existing.modified_at) continue;
+
                     if (row.deleted) {
-                        // Accept server deletion only when local intent agrees: pending delete AND no pending upsert.
-                        if (has_pending_upsert || !has_pending_delete) {
-                            continue;
-                        }
                         if (existing) {
-                            await db.delete(playlists_tracks_table)
+                            await db.update(playlists_tracks_table)
+                                .set({ deleted: true, modified_at: remote_modified })
                                 .where(and(
                                     eq(playlists_tracks_table.uuid, row.uuid),
                                     eq(playlists_tracks_table.track_uid, row.track_uid)
                                 ));
-                            this.record_pull_delete('playlists_tracks', record_id);
+                            this.record_pull_upsert('playlists_tracks', record_id, remote_modified);
                         }
-                        continue;
-                    }
-                    if (has_pending_upsert || has_pending_delete) {
                         continue;
                     }
 
@@ -1534,9 +1296,6 @@ export class SyncEngine {
         await this.save_pull_watermark('playlists_tracks', max_modified_at);
     }
 
-    // -------------------------------------------------------------------------
-    // local → remote insert shapes
-    // -------------------------------------------------------------------------
     private track_to_global_insert(t: LocalTrack): RemoteTrackInsert {
         return {
             uid: t.uid,
@@ -1572,17 +1331,11 @@ export class SyncEngine {
             liveness: t.liveness,
             speechiness: t.speechiness,
             valence: t.valence,
-
             created_at: safe_to_iso(t.created_at),
             modified_at: safe_to_iso(t.modified_at),
         };
     }
 
-    /**
-     * Build a utracks insert payload.
-     * plays is intentionally omitted — it is not synced between devices.
-     * meta (which contains meta.plays) IS synced.
-     */
     private track_to_utrack_insert(t: LocalTrack, user_uid: string): RemoteUTrackInsert {
         return {
             user_uid,
@@ -1624,26 +1377,6 @@ export class SyncEngine {
         };
     }
 
-    // private new_release_to_insert(r: LocalNewRelease, user_uid: string): RemoteNewReleaseInsert {
-    //     return {
-    //         user_uid,
-    //         title: r.title,
-    //         artist: r.artist,
-    //         artwork_url: r.artwork_url,
-    //         artwork_thumbnails: r.artwork_thumbnails,
-    //         explicit: r.explicit,
-    //         album_type: r.album_type,
-    //         type: r.type,
-    //         date: r.date,
-    //         song_track: r.song_track ?? null,
-    //         deleted: false,
-    //         created_at: safe_to_iso(r.created_at),
-    //     };
-    // }
-
-    // -------------------------------------------------------------------------
-    // remote → local shapes
-    // -------------------------------------------------------------------------
     private remote_track_to_local(row: RemoteTrackWithUserData): Omit<LocalTrack, 'id'> {
         return {
             uid: row.uid,
@@ -1679,9 +1412,6 @@ export class SyncEngine {
             liveness: row.liveness,
             speechiness: row.speechiness,
             valence: row.valence,
-            // plays is intentionally NOT synced from remote. Each device tracks play counts
-            // independently via the local play counter. The remote utracks.plays value is
-            // not authoritative and is ignored. Per-device play semantics live in meta.plays.
             plays: 0,
             meta: row.meta,
             thumbnail_uri: '',
@@ -1690,21 +1420,11 @@ export class SyncEngine {
             synced_lyrics_uri: '',
             deleted: false,
             created_at: safe_to_epoch(row.created_at),
-            modified_at: safe_to_epoch(row.modified_at),
+            modified_at: this.remote_to_local_epoch(row.modified_at),
             sync_error: null,
         };
     }
 
-    /**
-     * Artwork is last-write-wins keyed on artwork_path (a content hash, so
-     * equality means identical bytes):
-     *   - unchanged  → keep the local thumbnail as-is.
-     *   - changed    → download the new webp into the custom-thumbnail dir
-     *                  (skipped when the hash-named file already exists);
-     *                  on download failure keep the previous artwork so the
-     *                  playlist never loses its visible thumbnail.
-     *   - now null   → remote removed the artwork; clear the local one.
-     */
     private async remote_playlist_artwork_fields(
         remote_artwork_path: string | null,
         existing: LocalPlaylist | undefined,
@@ -1746,7 +1466,7 @@ export class SyncEngine {
             deleted: false,
             date: row.created_at,
             created_at: safe_to_epoch(row.created_at),
-            modified_at: safe_to_epoch(row.modified_at),
+            modified_at: this.remote_to_local_epoch(row.modified_at),
             sync_error: null,
         };
     }
@@ -1759,7 +1479,7 @@ export class SyncEngine {
             track_uid: row.track_uid,
             deleted: false,
             created_at: safe_to_epoch(row.created_at),
-            modified_at: safe_to_epoch(row.modified_at),
+            modified_at: this.remote_to_local_epoch(row.modified_at),
             sync_error: null,
         };
     }
@@ -1772,9 +1492,17 @@ export class SyncEngine {
             clearInterval(this.sync_interval);
             this.sync_interval = undefined;
         }
-        if (this.debounce_timeout) {
-            clearTimeout(this.debounce_timeout);
-            this.debounce_timeout = undefined;
+        if (this.full_debounce_timeout) {
+            clearTimeout(this.full_debounce_timeout);
+            this.full_debounce_timeout = undefined;
+        }
+        if (this.pt_debounce_timeout) {
+            clearTimeout(this.pt_debounce_timeout);
+            this.pt_debounce_timeout = undefined;
+        }
+        if (this.other_debounce_timeout) {
+            clearTimeout(this.other_debounce_timeout);
+            this.other_debounce_timeout = undefined;
         }
         if (this.network_subscription) {
             this.network_subscription();

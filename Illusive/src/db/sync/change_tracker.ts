@@ -24,16 +24,12 @@ const batch_key_columns: Partial<Record<LocalTableName, string>> = {
 };
 
 export class ChangeTracker {
-    private static on_change_callback?: () => void;
+    private static on_change_callback?: (table_name: LocalTableName) => void;
 
-    static set_on_change(callback: () => void) {
+    static set_on_change(callback: (table_name: LocalTableName) => void) {
         ChangeTracker.on_change_callback = callback;
     }
 
-    // Batched variant of log_change: one UPDATE per chunk instead of one per row.
-    // Timestamps are strictly increasing across the batch — the sync push loop
-    // advances its watermark per row and would skip rows sharing a modified_at
-    // if a push failed mid-batch.
     static async log_changes(
         table_name: LocalTableName,
         operation: 'insert' | 'update' | 'delete',
@@ -78,7 +74,7 @@ export class ChangeTracker {
             return;
         }
         db.$client.flushPendingReactiveQueries?.();
-        ChangeTracker.on_change_callback?.();
+        ChangeTracker.on_change_callback?.(table_name);
     }
 
     static async log_change(
@@ -161,6 +157,6 @@ export class ChangeTracker {
             }
         }
         db.$client.flushPendingReactiveQueries?.();
-        ChangeTracker.on_change_callback?.();
+        ChangeTracker.on_change_callback?.(table_name);
     }
 }
