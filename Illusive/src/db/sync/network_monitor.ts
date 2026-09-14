@@ -18,9 +18,6 @@ export class NetworkMonitor {
             Battery.getBatteryStateAsync(),
         ]);
 
-        // Good conditions:
-        // - WiFi or good cellular connection
-        // - Not on low battery (>20% or charging)
         const has_good_connection: boolean =
             (net_state.isConnected ?? false) &&
             (net_state.type === NetInfoStateType.wifi ||
