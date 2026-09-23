@@ -67,7 +67,7 @@ export const node_sabr_downloader: SabrDownloader = {
 		sabr_stream.on('abort', () => console.log('[SABR] aborted'));
 		// try logging ALL events if SabrStream extends EventEmitter:
 
-		const { audioStream, selectedFormats } = await sabr_stream.start({
+		const { audioStream, selectedFormats } = sabr_stream.start({
 			isPostLiveDvr: false,
 			enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
 			audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
