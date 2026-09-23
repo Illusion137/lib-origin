@@ -130,6 +130,7 @@ export namespace YouTubeDL {
     export async function fetch_potoken_bytes(content_binding: string): Promise<Uint8Array> {
         const po_token = await potoken().generate_potoken_bytes(innertube_client, content_binding);
         if("error" in po_token) return new Uint8Array();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return po_token;
     }
 

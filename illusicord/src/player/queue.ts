@@ -13,6 +13,7 @@ import path from "path-browserify";
 import { SabrStream, type ReloadResponse } from 'googlevideo/sabr-stream';
 import { Readable } from 'stream';
 import { YouTubeDL } from "@origin/youtube_dl";
+import { EnabledTrackTypes } from "googlevideo/utils";
 
 interface PreparedStream { stream_input: Readable | string; input_type: StreamType };
 type DownloadUrlResult = Awaited<ReturnType<typeof Illusive.get_download_url>>;
@@ -237,15 +238,16 @@ export class Queue<T = unknown> {
                         }
                         return BAD;
                     },
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
                     onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(download_url.content_binding!)
                 },
             });
 
-            sabr.on('abort', () => console.error('[SABR] aborted'));
+            sabr.on('abort', () => console.error('[SABR] aborted.'));
 
             const { audioStream } = await sabr.start({
                 isPostLiveDvr: false,
-                videoPreferences: { container: 'webm' },
+                enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
                 audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
             });
 

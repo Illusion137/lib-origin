@@ -3,6 +3,7 @@ import { SabrStream, type ReloadResponse } from "googlevideo/sabr-stream";
 import type { SabrDownloader, SabrDownloadParams } from "./sabr_downloader.base";
 import { YouTubeDL } from "@origin/youtube_dl";
 import { catch_log } from "@common/utils/error_util";
+import { EnabledTrackTypes } from "googlevideo/utils";
 
 export const node_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params: SabrDownloadParams, output_path: string, on_progress?: (progress: number) => void) => {
@@ -68,7 +69,7 @@ export const node_sabr_downloader: SabrDownloader = {
 
 		const { audioStream, selectedFormats } = await sabr_stream.start({
 			isPostLiveDvr: false,
-			videoPreferences: { container: 'webm' },
+			enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
 			audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
 		});
 
