@@ -2,6 +2,8 @@ import { Config } from "@illusicord/config";
 import { Client, GatewayIntentBits } from "discord.js";
 import { on_message_create, send_message, track_to_string, type DiscordClient } from "@illusicord/cmds";
 import { Player } from "@illusicord/player/player";
+import { Logger, LogLevel } from "googlevideo/utils";
+Logger.getInstance().setLogLevels(LogLevel.ALL);
 
 const client: DiscordClient = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.MessageContent]

@@ -245,9 +245,10 @@ export class Queue<T = unknown> {
 
             sabr.on('abort', () => console.error('[SABR] aborted.'));
 
-            const { audioStream } = await sabr.start({
+            const { audioStream } = sabr.start({
                 isPostLiveDvr: false,
                 enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
+                // videoPreferences: { container: 'webm' },
                 audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
             });
 
