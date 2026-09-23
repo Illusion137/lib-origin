@@ -108,7 +108,7 @@
     "ffmpeg-kit-react-native": "^6.0.2",
     "fuzzysort": "^3.1.0",
     "get-audio-duration": "^4.0.1",
-    "googlevideo": "^4.0.4",
+    "googlevideo": "https://github.com/LuanRT/googlevideo",
     "got-scraping": "^4.2.1",
     "image-size": "^2.0.2",
     "jsdom": "^28.1.0",

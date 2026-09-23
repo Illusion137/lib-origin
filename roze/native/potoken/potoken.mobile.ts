@@ -40,5 +40,9 @@ export const mobile_potoken: PoTokenGenerator = {
 		} catch (e: any) {
 			return generror(`Node potoken generation failed: ${e.message}`, "CRITICAL");
 		}
+	},
+	generate_potoken_bytes(_innertube, _content_binding) {
+		// TODO implement this maybe if needed?
+		throw new Error("Unimplemented generate_potoken_bytes");
 	}
 };

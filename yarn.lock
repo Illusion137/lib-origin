@@ -6811,10 +6811,9 @@ globrex@^0.1.2:
   resolved "https://registry.yarnpkg.com/globrex/-/globrex-0.1.2.tgz#dd5d9ec826232730cd6793a5e33a9302985e6098"
   integrity sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==
 
-googlevideo@^4.0.4:
-  version "4.0.4"
-  resolved "https://registry.yarnpkg.com/googlevideo/-/googlevideo-4.0.4.tgz#a6420cc512179ce3cbe572707258738bcdee97fc"
-  integrity sha512-S/rfuoPBI+qXCEUPJeVhXsHoISMgVhOz8hHSpGWa0OztfHhh+g9EKaEcqAb/+ttO7meoNQNqIy9dfIpz7HPc4g==
+"googlevideo@https://github.com/LuanRT/googlevideo":
+  version "4.1.1"
+  resolved "https://github.com/LuanRT/googlevideo#de3efde38264f40baf0013f7cbc0498d8ad55aa9"
   dependencies:
     "@bufbuild/protobuf" "^2.0.0"
 

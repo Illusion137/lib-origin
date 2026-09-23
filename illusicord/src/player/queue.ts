@@ -8,10 +8,9 @@ import { Constants } from "@illusicord/constants";
 import { Constants as IllusiveConstants } from "@illusive/constants";
 import { Utils } from "@illusicord/player/utils";
 import type { Player } from "@illusicord/player/player";
-import { catch_ignore, catch_log } from "@common/utils/error_util";
+import { catch_ignore } from "@common/utils/error_util";
 import path from "path-browserify";
-import { SabrStream } from 'googlevideo/sabr-stream';
-import { EnabledTrackTypes } from 'googlevideo/utils';
+import { SabrStream, type ReloadResponse } from 'googlevideo/sabr-stream';
 import { Readable } from 'stream';
 import { YouTubeDL } from "@origin/youtube_dl";
 
@@ -211,50 +210,43 @@ export class Queue<T = unknown> {
 
         if (!("error" in download_url) && download_url.isSabr) {
             const sabr = new SabrStream({
-                serverAbrStreamingUrl: download_url.sabrServerUrl,
-                videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig,
-                formats: download_url.sabrFormats,
+                clientInfo: download_url.clientInfo!,
+                serverAbrStreamingUrl: download_url.sabrServerUrl!,
+                formats: download_url.sabrFormats ?? [],
+                videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig!,
+                // ? Assuming video_id is content_binding
+                videoId: download_url.content_binding!,
                 poToken: download_url.placeholder_po_token,
-                clientInfo: download_url.clientInfo,
-            });
-
-            YouTubeDL.fetch_potoken(download_url.content_binding!).then(result => {
-                if ("error" in result) throw result.error;
-                sabr.setPoToken(result.po_token);
-            }).catch(catch_log);
-
-            let real_token_applied = false;
-            sabr.on('streamProtectionStatusUpdate', async (status: any) => {
-                // console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
-                if (status.status === 2) {
-                    if (!real_token_applied) {
-                        real_token_applied = true;
+                callbacks: {
+                    onReloadPlayerResponse: async (ctx): Promise<ReloadResponse> => {
+                        const BAD = {
+                            serverAbrStreamingUrl: '',
+                            videoPlaybackUstreamerConfig: ''
+                        };
+                        if (!download_url.on_reload_player_response) return BAD;
                         try {
-                            const refreshed = await YouTubeDL.fetch_potoken(download_url.content_binding!);
-                            if ("error" in refreshed) throw refreshed.error;
-                            sabr.setPoToken(refreshed.po_token);
-                        } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-                    }
-                }
-            });
-
-            sabr.on('reloadPlayerResponse', async (ctx: any) => {
-                console.log('reloading?', ctx);
-                if (!download_url.on_reload_player_response) return;
-                try {
-                    const updated = await download_url.on_reload_player_response(ctx);
-                    if (updated) {
-                        sabr.setStreamingURL(updated.sabrServerUrl);
-                        sabr.setUstreamerConfig(updated.sabrUstreamerConfig);
-                    }
-                } catch (e) { console.error('[SABR] Failed to reload player response:', e); }
+                            const updated = await download_url.on_reload_player_response(ctx);
+                            if (updated) {
+                                return {
+                                    serverAbrStreamingUrl: updated.sabrServerUrl,
+                                    videoPlaybackUstreamerConfig: updated.sabrUstreamerConfig
+                                }
+                            }
+                        } catch (e) {
+                            console.error('[SABR] Failed to reload player response:', e);
+                        }
+                        return BAD;
+                    },
+                    onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(download_url.content_binding!)
+                },
             });
 
             sabr.on('abort', () => console.error('[SABR] aborted'));
 
             const { audioStream } = await sabr.start({
-                enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
-                preferOpus: true,
+                isPostLiveDvr: false,
+                videoPreferences: { container: 'webm' },
+                audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
             });
 
             return { stream_input: Readable.fromWeb(audioStream as any), input_type: StreamType.WebmOpus };

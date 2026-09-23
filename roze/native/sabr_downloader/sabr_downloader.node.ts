@@ -1,14 +1,11 @@
 import { createWriteStream } from "fs";
-import { SabrStream } from "googlevideo/sabr-stream";
-import { EnabledTrackTypes } from "googlevideo/utils";
-import type { ReloadPlaybackContext } from "googlevideo/protos";
+import { SabrStream, type ReloadResponse } from "googlevideo/sabr-stream";
 import type { SabrDownloader, SabrDownloadParams } from "./sabr_downloader.base";
 import { YouTubeDL } from "@origin/youtube_dl";
 import { catch_log } from "@common/utils/error_util";
 
 export const node_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params: SabrDownloadParams, output_path: string, on_progress?: (progress: number) => void) => {
-		const { sabrServerUrl, sabrUstreamerConfig, sabrFormats, placeholder_po_token, clientInfo, cookie } = params;
 		// Logger.getInstance().setLogLevels(99);
 
 		const sabr_fetch: typeof fetch = async (input, init) => {
@@ -16,7 +13,7 @@ export const node_sabr_downloader: SabrDownloader = {
 				"origin": "https://www.youtube.com",
 				"referer": "https://www.youtube.com/",
 			};
-			if (cookie) extra_headers.cookie = cookie;
+			if (params.cookie) extra_headers.cookie = params.cookie;
 			const resp = await fetch(input, {
 				...init,
 				headers: {
@@ -31,53 +28,48 @@ export const node_sabr_downloader: SabrDownloader = {
 		};
 
 		// Start with placeholder token; real token is applied on first SPS=2 event.
-		const initial_token = placeholder_po_token;
+		const initial_token = params.placeholder_po_token;
 
 		const sabr_stream = new SabrStream({
-			serverAbrStreamingUrl: sabrServerUrl,
-			videoPlaybackUstreamerConfig: sabrUstreamerConfig,
-			formats: sabrFormats,
+			clientInfo: params.clientInfo!,
+			serverAbrStreamingUrl: params.sabrServerUrl,
+			formats: params.sabrFormats ?? [],
+			videoPlaybackUstreamerConfig: params.sabrUstreamerConfig,
+			// ? Assuming video_id is content_binding
+			videoId: params.content_binding,
 			poToken: initial_token,
-			clientInfo: clientInfo,
-			fetch: sabr_fetch,
-		});
-		YouTubeDL.fetch_potoken(params.content_binding).then(result => {
-			if("error" in result) throw result.error;
-			sabr_stream.setPoToken(result.po_token);
-		}).catch(catch_log);
-
-		let real_token_applied = false;
-		sabr_stream.on('streamProtectionStatusUpdate', async (status: any) => {
-			// console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
-			if (status.status === 2) {
-				if (!real_token_applied) {
-					real_token_applied = true;
+			fetchFunction: sabr_fetch,
+			callbacks: {
+				onReloadPlayerResponse: async(ctx): Promise<ReloadResponse> => {
+					const BAD = {
+						serverAbrStreamingUrl: '',
+						videoPlaybackUstreamerConfig: ''
+					};
+					if (!params.on_reload_player_response) return BAD;
 					try {
-						const refreshed = await YouTubeDL.fetch_potoken(params.content_binding);
-						if ("error" in refreshed) throw refreshed.error;
-						sabr_stream.setPoToken(refreshed.po_token);
-					} catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-				} 
-			}
-		});
-
-		sabr_stream.on('reloadPlayerResponse', async (ctx: ReloadPlaybackContext) => {
-			if (!params.on_reload_player_response) return;
-			try {
-				const updated = await params.on_reload_player_response(ctx);
-				if (updated) {
-					sabr_stream.setStreamingURL(updated.sabrServerUrl);
-					sabr_stream.setUstreamerConfig(updated.sabrUstreamerConfig);
-				}
-			} catch (e) { console.error('[SABR] Failed to reload player response:', e); }
+						const updated = await params.on_reload_player_response(ctx);
+						if (updated) {
+							return {
+								serverAbrStreamingUrl: updated.sabrServerUrl,
+								videoPlaybackUstreamerConfig: updated.sabrUstreamerConfig
+							}
+						}
+					} catch (e) {
+						console.error('[SABR] Failed to reload player response:', e);
+					}
+					return BAD;
+				},
+				onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(params.content_binding)
+			},
 		});
 
 		sabr_stream.on('abort', () => console.log('[SABR] aborted'));
 		// try logging ALL events if SabrStream extends EventEmitter:
 
 		const { audioStream, selectedFormats } = await sabr_stream.start({
-			enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
-			preferOpus: params.preferOpus,
+			isPostLiveDvr: false,
+			videoPreferences: { container: 'webm' },
+			audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
 		});
 
 		const content_length = selectedFormats.audioFormat.contentLength;

@@ -172,5 +172,12 @@ export const node_potoken: PoTokenGenerator = {
             po_token,
             identifier: content_binding
         };
+    },
+    generate_potoken_bytes: async (_innertube: Innertube, content_binding: string) => {
+        content_binding ??= "";
+        const web_po_minter = await fetch_minter();
+        if("error" in web_po_minter) return web_po_minter;
+        const po_token = await web_po_minter.mint(content_binding);
+        return po_token;
     }
 };

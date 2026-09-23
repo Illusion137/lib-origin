@@ -127,6 +127,11 @@ export namespace YouTubeDL {
         else content_binding_status_map[content_binding] = ["recieved", result];
         return result;
     }
+    export async function fetch_potoken_bytes(content_binding: string): Promise<Uint8Array> {
+        const po_token = await potoken().generate_potoken_bytes(innertube_client, content_binding);
+        if("error" in po_token) return new Uint8Array();
+        return po_token;
+    }
 
     export function inject_potoken(content_binding: string, po_token: string) {
         content_binding_status_map[content_binding] = ["recieved", {

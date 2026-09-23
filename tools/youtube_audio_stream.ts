@@ -1,6 +1,5 @@
 import { YouTubeDL } from "@origin/youtube_dl";
-import { SabrStream } from "googlevideo/sabr-stream";
-import { EnabledTrackTypes } from 'googlevideo/utils';
+import { SabrStream, type ReloadResponse } from "googlevideo/sabr-stream";
 import { EventEmitter } from "events";
 import express from "express";
 import { catch_log } from "@common/utils/error_util";
@@ -44,49 +43,43 @@ function get_or_start_track(video_id: string): TrackBuffer {
             if ("error" in sabr_info) throw new Error(sabr_info.error.message);
 
             const sabr_stream = new SabrStream({
+                clientInfo: sabr_info.clientInfo!,
                 serverAbrStreamingUrl: sabr_info.sabrServerUrl,
+                formats: sabr_info.sabrFormats ?? [],
                 videoPlaybackUstreamerConfig: sabr_info.sabrUstreamerConfig,
-                formats: sabr_info.sabrFormats,
+                // ? Assuming video_id is content_binding
+                videoId: sabr_info.content_binding,
                 poToken: sabr_info.placeholder_po_token,
-                clientInfo: sabr_info.clientInfo,
-            });
-
-            YouTubeDL.fetch_potoken(sabr_info.content_binding).then(result => {
-                if("error" in result) throw result.error;
-                sabr_stream.setPoToken(result.po_token);
-            }).catch(catch_log);
-
-            let real_token_applied = false;
-            sabr_stream.on('streamProtectionStatusUpdate', async (status: any) => {
-                // console.log(`[SABR] streamProtectionStatus: ${JSON.stringify(status)}`);
-                if (status.status === 2) {
-                    if (!real_token_applied) {
-                        real_token_applied = true;
+                callbacks: {
+                    onReloadPlayerResponse: async (ctx): Promise<ReloadResponse> => {
+                        const BAD = {
+                            serverAbrStreamingUrl: '',
+                            videoPlaybackUstreamerConfig: ''
+                        };
+                        if (!sabr_info.on_reload_player_response) return BAD;
                         try {
-                            const refreshed = await YouTubeDL.fetch_potoken(sabr_info.content_binding);
-                            if ("error" in refreshed) throw refreshed.error;
-                            sabr_stream.setPoToken(refreshed.po_token);
-                        } catch (e) { console.error('[SABR] Failed to refresh poToken:', e); }
-                    } 
-                }
-            });
-
-            sabr_stream.on('reloadPlayerResponse', async (ctx: any) => {
-                if (!sabr_info.on_reload_player_response) return;
-                try {
-                    const updated = await sabr_info.on_reload_player_response(ctx);
-                    if (updated) {
-                        sabr_stream.setStreamingURL(updated.sabrServerUrl);
-                        sabr_stream.setUstreamerConfig(updated.sabrUstreamerConfig);
-                    }
-                } catch (e) { console.error('[SABR] Failed to reload player response:', e); }
+                            const updated = await sabr_info.on_reload_player_response(ctx);
+                            if (updated) {
+                                return {
+                                    serverAbrStreamingUrl: updated.sabrServerUrl,
+                                    videoPlaybackUstreamerConfig: updated.sabrUstreamerConfig
+                                }
+                            }
+                        } catch (e) {
+                            console.error('[SABR] Failed to reload player response:', e);
+                        }
+                        return BAD;
+                    },
+                    onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(sabr_info.content_binding)
+                },
             });
 
             sabr_stream.on('abort', () => console.error('[SABR] aborted'));
 
             const { audioStream: audio_stream, selectedFormats: selected_formats } = await sabr_stream.start({
-                enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
-                preferOpus: true,
+                isPostLiveDvr: false,
+                videoPreferences: { container: 'webm' },
+                audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
             });
 
             const audio_format = selected_formats.audioFormat;
@@ -99,7 +92,7 @@ function get_or_start_track(video_id: string): TrackBuffer {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                track.chunks.push(Buffer.from(value));
+                track.chunks.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
                 track.downloaded_length += value.byteLength;
                 track.emitter.emit('data');
             }
