@@ -103,7 +103,7 @@ export function chunkify<T>(array: T[], size: number): T[][] {
 export function chunkify_back<T>(array: T[], size: number): T[][] {
 	const chunk_map: T[][] = [];
 	for (let i = 0; i < array.length; i += size) {
-		chunk_map.push(array.slice(-(i + size), -i == 0 ? undefined : -i));
+		chunk_map.push(array.slice(-(i + size), -i === 0 ? undefined : -i));
 	}
 	return chunk_map.reverse();
 }
@@ -279,3 +279,5 @@ export function filter_by_set<T>(arr: T[], get: (item: T) => string | number): T
 		return true;
 	});
 }
+
+export function get_main_key(obj: object) { return Object.keys(obj)[0]; }
