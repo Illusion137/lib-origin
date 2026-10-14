@@ -1,6 +1,17 @@
-import type { Cookies } from "@react-native-community/cookies";
-import type { AxiosResponse } from "axios";
 import { filter_by_set } from "./util";
+
+interface AxiosResponse { headers: Record<string, any>; }
+export interface ReactNativeCookie {
+    name: string;
+    value: string;
+    path?: string;
+    domain?: string;
+    version?: string;
+    expires?: string;
+    secure?: boolean;
+    httpOnly?: boolean;
+}
+export type ReactNativeCookies = Record<string, ReactNativeCookie>;
 
 type SameSite = "None" | "Lax" | "Strict" | undefined;
 
@@ -16,20 +27,6 @@ export interface CookieData {
     secure?: boolean,
 }
 
-/* ---- https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie ----
-Set-Cookie: <cookie-name>=<cookie-value>
-Set-Cookie: <cookie-name>=<cookie-value>; Domain=<domain-value>
-Set-Cookie: <cookie-name>=<cookie-value>; Expires=<date>
-Set-Cookie: <cookie-name>=<cookie-value>; HttpOnly
-Set-Cookie: <cookie-name>=<cookie-value>; Max-Age=<number>
-Set-Cookie: <cookie-name>=<cookie-value>; Partitioned
-Set-Cookie: <cookie-name>=<cookie-value>; Path=<path-value>
-Set-Cookie: <cookie-name>=<cookie-value>; Secure
-
-Set-Cookie: <cookie-name>=<cookie-value>; SameSite=Strict
-Set-Cookie: <cookie-name>=<cookie-value>; SameSite=Lax
-Set-Cookie: <cookie-name>=<cookie-value>; SameSite=None; Secure
-*/
 export class Cookie {
     readonly #data: CookieData
     constructor(c: CookieData) {
@@ -89,7 +86,7 @@ export class CookieJar {
         const jar: Cookie[] = cstrings.map(cstring => Cookie.fromString(cstring));
         return new CookieJar(jar.filter(cookie => !cookie.hasExpired()));
     }
-    static fromCookies(cookies: Cookies) {
+    static fromCookies(cookies: ReactNativeCookies) {
         const cookie_data: Cookie[] = Object.values(cookies).map((cookie) => {
             return new Cookie({
                 name: cookie.name,
