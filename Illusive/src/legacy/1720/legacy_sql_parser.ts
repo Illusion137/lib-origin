@@ -23,6 +23,7 @@ export namespace LSQLParser {
 	export function sql_track_to_track(sql_track: LT1720.SQLTrack): LT1720.Track | ResponseError {
 		try {
 			const { id, Timestamp, ...sql_track_clean } = sql_track as any;
+			id; Timestamp;
 			const meta: LT1720.TrackMetaData = JSON.parse(sql_track_clean.meta);
 			const album = JSON.parse(sql_track_clean.album) as NamedUUID;
 			if ((album as any).uri === '') album.uri = null;

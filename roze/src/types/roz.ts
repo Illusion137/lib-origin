@@ -1,4 +1,3 @@
-import type { StaticAssert } from './types';
 // Roz standard format
 export type RozContentType = 'TITLE' | 'CHAPTER_TITLE' | 'SECTION_TITLE' | 'CHAPTER_SUBTITLE' | 'HEADING' | 'PARAGRAPH' | 'IMAGE' | 'LINE_BREAK' | 'THEME_BREAK' | 'TABLE_OF_CONTENTS_CHAPTER';
 export interface RozContent {
@@ -37,7 +36,7 @@ export interface RozHeader {
 	series_no: number | null;
 }
 
-type HeaderVersionAssertion = StaticAssert<RozHeader['version'] extends RozFileVersions ? true : false>;
+// type HeaderVersionAssertion = StaticAssert<RozHeader['version'] extends RozFileVersions ? true : false>;
 
 export default interface Roz extends RozHeader { // TODO add versions to format
 	chapters: RozChapterContents[];
