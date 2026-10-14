@@ -11,7 +11,7 @@ import type { ResponseError } from "@common/types";
 import { SQLNewReleases } from "./sql/sql_new_releases";
 import { create_uri, should_automatic_refresh } from "./illusive_utils";
 import { Prefs } from "./prefs";
-import { call_wtimeout } from "@common/utils/timed_util";
+import { timeout_call } from "@common/utils/timed_util";
 import * as Origin from '@origin/index';
 import { soundcloud_parse_system_playlist, soundcloud_parse_user } from "./parsers/soundcloud_parser";
 import { supabase } from "./db/supabase";
@@ -64,7 +64,7 @@ export namespace Explore {
 			const music_service = Illusive.music_service.get(type)!;
 			const should_service_refresh_new_releases = music_service.has_credentials() && should_automatic_refresh(Prefs.get_pref("automatic_new_releases_last_refreshed"));
 			if (should_service_refresh_new_releases) {
-				call_wtimeout(async () => await refresh_service_new_releases(type, get_persistant_new_releases, set_is_loading), milliseconds_of({ seconds: 8 })).catch(catch_log);
+				timeout_call(async () => await refresh_service_new_releases(type, get_persistant_new_releases, set_is_loading), milliseconds_of({ seconds: 8 })).catch(catch_log);
 			}
 		}
 		await Prefs.save_pref("automatic_new_releases_last_refreshed", new Date());
