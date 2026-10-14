@@ -3,23 +3,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { vi, describe, it, expect } from "vitest";
 
-// Mock react-native-tts-export for mobile impl
-vi.mock("react-native-tts-export", () => {
-	const voices = [
-		{ id: "com.apple.voice.compact.en-US.Samantha", name: "Samantha", language: "en-US", quality: 300, latency: 100, networkConnectionRequired: false, notInstalled: false },
-		{ id: "com.apple.voice.enhanced.en-US.Evan", name: "Evan", language: "en-US", quality: 500, latency: 200, networkConnectionRequired: false, notInstalled: false }
-	];
-	return {
-		default: {
-			setDefaultRate: async () => { },
-			setIgnoreSilentSwitch: async () => { },
-			voices: async () => voices,
-			speak: (_text: string, _opts: any) => "utterance-id-mock",
-			export: async (_text: string, opts: any) => opts.filename
-		}
-	};
-});
-
 // Mock @lib/say/say for node voice synth
 vi.mock("../roze/lib/say/say", () => ({
 	default: {
