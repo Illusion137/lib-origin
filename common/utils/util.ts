@@ -169,6 +169,9 @@ export function pad_value_left(value: unknown, padding: number) {
 	return String(value).padStart(padding, '0');
 }
 
+export function random_between(low_in: number, high_ex: number): number {
+	return Math.floor(Math.random() * (Math.floor(high_ex) - low_in) + low_in);
+}
 export function random_of<T>(arr: T[]): T {
 	const randidx = Math.floor(Math.random() * (Math.floor(arr.length) - 0) + 0);
 	return arr[randidx];

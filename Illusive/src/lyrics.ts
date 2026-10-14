@@ -85,8 +85,9 @@ export namespace Lyrics {
 		});
 		if (best_result === undefined) return generror('Unable to find a good lyrics result', 'INFO', { track: small_track(track), search_query });
 		const lyrics_response = await Origin.Genius.get_lyrics(best_result.result, {});
-		if (typeof lyrics_response === 'object') return lyrics_response;
-		return { plain: lyrics_response, synced: undefined };
+		if ('error' in lyrics_response) return lyrics_response;
+		if (typeof lyrics_response.lyrics === 'object') return lyrics_response.lyrics;
+		return { plain: lyrics_response.lyrics, synced: undefined };
 	}
 	async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
 		// LRCLib pass
