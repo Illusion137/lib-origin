@@ -156,7 +156,7 @@
     "util": "^0.10.4",
     "web-streams-polyfill": "^4.2.0",
     "win-dpapi": "file:./vendor/win-dpapi",
-    "youtubei.js": "17.0.1",
+    "youtubei.js": "https://github.com/Illusion137/YouTube.js#SUPER",
     "zustand": "^5.0.9"
   },
   "react-native": {
