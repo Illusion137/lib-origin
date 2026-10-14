@@ -98,7 +98,9 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 		);
 	},
 	illusno: async (client, message, args) => {
-		await play_base(client, message, [play_track_discord_recieve(args.join(" "))]);
+		const track = play_track_discord_recieve(args.join(" "));
+		if("error" in track) return;
+		await play_base(client, message, [ track ]);
 	},
 	illusplus: async (client, message, args) => {
 		const [encoded_playlist_uri, mode] = args as [string, DiscordPlaylistMode];
