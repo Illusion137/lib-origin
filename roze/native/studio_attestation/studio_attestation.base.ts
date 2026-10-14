@@ -1,4 +1,4 @@
-import type { PromiseResult } from "@common/types";
+import type { PromiseResult } from '@common/types';
 
 export interface BotGuardChallenge {
 	program: string;

@@ -3,7 +3,7 @@ import 'web-streams-polyfill';
 import 'text-encoding-polyfill';
 import 'react-native-url-polyfill/auto';
 import { decode, encode } from 'base-64';
-import BufferRN from "buffer/";
+import BufferRN from 'buffer/';
 const Buffer = BufferRN.Buffer;
 
 // isomorphic-git (used by the OTA git-mode updater) checks the global `Buffer`
@@ -30,13 +30,16 @@ class MMKV {
 		this.id = id;
 		this.map = new Map();
 	}
+
 	getBuffer(key: string) {
 		const value = this.map.get(key);
 		return value ? { buffer: value } : null;
 	}
+
 	set(key: string, value: Uint8Array) {
 		this.map.set(key, value);
 	}
+
 	delete(key: string) {
 		this.map.delete(key);
 	}

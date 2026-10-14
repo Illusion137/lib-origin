@@ -1,131 +1,131 @@
 export interface CreatePlaylist {
-    responseContext: ResponseContext
-    playlistId: string
-    actions: Action[]
-    trackingParams: string
+	responseContext: ResponseContext;
+	playlistId: string;
+	actions: Action[];
+	trackingParams: string;
 }
 
 export interface ResponseContext {
-    serviceTrackingParams: ServiceTrackingParam[]
-    consistencyTokenJar: ConsistencyTokenJar
-    mainAppWebResponseContext: MainAppWebResponseContext
-    webResponseContextExtensionData: WebResponseContextExtensionData
+	serviceTrackingParams: ServiceTrackingParam[];
+	consistencyTokenJar: ConsistencyTokenJar;
+	mainAppWebResponseContext: MainAppWebResponseContext;
+	webResponseContextExtensionData: WebResponseContextExtensionData;
 }
 
 export interface ServiceTrackingParam {
-    service: string
-    params: Param[]
+	service: string;
+	params: Param[];
 }
 
 export interface Param {
-    key: string
-    value: string
+	key: string;
+	value: string;
 }
 
 export interface ConsistencyTokenJar {
-    encryptedTokenJarContents: string
-    expirationSeconds: string
+	encryptedTokenJarContents: string;
+	expirationSeconds: string;
 }
 
 export interface MainAppWebResponseContext {
-    datasyncId: string
-    loggedOut: boolean
-    trackingParam: string
+	datasyncId: string;
+	loggedOut: boolean;
+	trackingParam: string;
 }
 
 export interface WebResponseContextExtensionData {
-    hasDecorated: boolean
+	hasDecorated: boolean;
 }
 
 export interface Action {
-    clickTrackingParams: string
-    addToGuideSectionAction?: AddToGuideSectionAction
-    openPopupAction?: OpenPopupAction
-    runAttestationCommand?: RunAttestationCommand
+	clickTrackingParams: string;
+	addToGuideSectionAction?: AddToGuideSectionAction;
+	openPopupAction?: OpenPopupAction;
+	runAttestationCommand?: RunAttestationCommand;
 }
 
 export interface AddToGuideSectionAction {
-    handlerData: string
-    items: Item[]
+	handlerData: string;
+	items: Item[];
 }
 
 export interface Item {
-    guideEntryRenderer: GuideEntryRenderer
+	guideEntryRenderer: GuideEntryRenderer;
 }
 
 export interface GuideEntryRenderer {
-    navigationEndpoint: NavigationEndpoint
-    icon: Icon
-    trackingParams: string
-    formattedTitle: FormattedTitle
-    entryData: EntryData
+	navigationEndpoint: NavigationEndpoint;
+	icon: Icon;
+	trackingParams: string;
+	formattedTitle: FormattedTitle;
+	entryData: EntryData;
 }
 
 export interface NavigationEndpoint {
-    clickTrackingParams: string
-    commandMetadata: CommandMetadata
-    browseEndpoint: BrowseEndpoint
+	clickTrackingParams: string;
+	commandMetadata: CommandMetadata;
+	browseEndpoint: BrowseEndpoint;
 }
 
 export interface CommandMetadata {
-    webCommandMetadata: WebCommandMetadata
+	webCommandMetadata: WebCommandMetadata;
 }
 
 export interface WebCommandMetadata {
-    url: string
-    webPageType: string
-    rootVe: number
-    apiUrl: string
+	url: string;
+	webPageType: string;
+	rootVe: number;
+	apiUrl: string;
 }
 
 export interface BrowseEndpoint {
-    browseId: string
+	browseId: string;
 }
 
 export interface Icon {
-    iconType: string
+	iconType: string;
 }
 
 export interface FormattedTitle {
-    simpleText: string
+	simpleText: string;
 }
 
 export interface EntryData {
-    guideEntryData: GuideEntryData
+	guideEntryData: GuideEntryData;
 }
 
 export interface GuideEntryData {
-    guideEntryId: string
+	guideEntryId: string;
 }
 
 export interface OpenPopupAction {
-    popup: Popup
-    popupType: string
+	popup: Popup;
+	popupType: string;
 }
 
 export interface Popup {
-    notificationActionRenderer: NotificationActionRenderer
+	notificationActionRenderer: NotificationActionRenderer;
 }
 
 export interface NotificationActionRenderer {
-    responseText: ResponseText
-    trackingParams: string
+	responseText: ResponseText;
+	trackingParams: string;
 }
 
 export interface ResponseText {
-    runs: Run[]
+	runs: Run[];
 }
 
 export interface Run {
-    text: string
+	text: string;
 }
 
 export interface RunAttestationCommand {
-    ids: Id[]
-    engagementType: string
+	ids: Id[];
+	engagementType: string;
 }
 
 export interface Id {
-    playlistId?: string
-    externalChannelId?: string
+	playlistId?: string;
+	externalChannelId?: string;
 }

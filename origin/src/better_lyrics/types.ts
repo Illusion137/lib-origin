@@ -22,12 +22,12 @@ export interface Lyric {
 }
 
 export interface LrcLyrics {
-	type: "lrc";
+	type: 'lrc';
 	lyrics: Lyric[];
 }
 
 export interface TtmlLyrics {
-	type: "ttml";
+	type: 'ttml';
 	raw: string;
 	score?: number;
 }

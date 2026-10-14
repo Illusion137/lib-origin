@@ -1,595 +1,595 @@
-import type { Continuation } from "@origin/youtube_music/types/Continuation"
+import type { Continuation } from '@origin/youtube_music/types/Continuation';
 
 export interface PlaylistResults_1 {
-    responseContext: ResponseContext
-    continuationContents: ContinuationContents
-    trackingParams: string
+	responseContext: ResponseContext;
+	continuationContents: ContinuationContents;
+	trackingParams: string;
 }
 
 export interface ResponseContext {
-    serviceTrackingParams: ServiceTrackingParam[]
+	serviceTrackingParams: ServiceTrackingParam[];
 }
 
 export interface ServiceTrackingParam {
-    service: string
-    params: Param[]
+	service: string;
+	params: Param[];
 }
 
 export interface Param {
-    key: string
-    value: string
+	key: string;
+	value: string;
 }
 
 export interface ContinuationContents {
-    musicPlaylistShelfContinuation: MusicPlaylistShelfContinuation
+	musicPlaylistShelfContinuation: MusicPlaylistShelfContinuation;
 }
 
 export interface MusicPlaylistShelfContinuation {
-    contents: Content[]
-    continuations: Continuation
-    trackingParams: string
+	contents: Content[];
+	continuations: Continuation;
+	trackingParams: string;
 }
 
 export interface Content {
-    musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer
+	musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer;
 }
 
 export interface MusicResponsiveListItemRenderer {
-    trackingParams: string
-    thumbnail: Thumbnail
-    overlay: Overlay
-    flexColumns: FlexColumn[]
-    fixedColumns: FixedColumn[]
-    menu: Menu
-    playlistItemData: PlaylistItemData
-    multiSelectCheckbox: MultiSelectCheckbox
-    badges?: Badge[]
+	trackingParams: string;
+	thumbnail: Thumbnail;
+	overlay: Overlay;
+	flexColumns: FlexColumn[];
+	fixedColumns: FixedColumn[];
+	menu: Menu;
+	playlistItemData: PlaylistItemData;
+	multiSelectCheckbox: MultiSelectCheckbox;
+	badges?: Badge[];
 }
 
 export interface Thumbnail {
-    musicThumbnailRenderer: MusicThumbnailRenderer
+	musicThumbnailRenderer: MusicThumbnailRenderer;
 }
 
 export interface MusicThumbnailRenderer {
-    thumbnail: Thumbnail2
-    thumbnailCrop: string
-    thumbnailScale: string
-    trackingParams: string
+	thumbnail: Thumbnail2;
+	thumbnailCrop: string;
+	thumbnailScale: string;
+	trackingParams: string;
 }
 
 export interface Thumbnail2 {
-    thumbnails: Thumbnail3[]
+	thumbnails: Thumbnail3[];
 }
 
 export interface Thumbnail3 {
-    url: string
-    width: number
-    height: number
+	url: string;
+	width: number;
+	height: number;
 }
 
 export interface Overlay {
-    musicItemThumbnailOverlayRenderer: MusicItemThumbnailOverlayRenderer
+	musicItemThumbnailOverlayRenderer: MusicItemThumbnailOverlayRenderer;
 }
 
 export interface MusicItemThumbnailOverlayRenderer {
-    background: Background
-    content: Content2
-    contentPosition: string
-    displayStyle: string
+	background: Background;
+	content: Content2;
+	contentPosition: string;
+	displayStyle: string;
 }
 
 export interface Background {
-    verticalGradient: VerticalGradient
+	verticalGradient: VerticalGradient;
 }
 
 export interface VerticalGradient {
-    gradientLayerColors: string[]
+	gradientLayerColors: string[];
 }
 
 export interface Content2 {
-    musicPlayButtonRenderer: MusicPlayButtonRenderer
+	musicPlayButtonRenderer: MusicPlayButtonRenderer;
 }
 
 export interface MusicPlayButtonRenderer {
-    playNavigationEndpoint: PlayNavigationEndpoint
-    trackingParams: string
-    playIcon: PlayIcon
-    pauseIcon: PauseIcon
-    iconColor: number
-    backgroundColor: number
-    activeBackgroundColor: number
-    loadingIndicatorColor: number
-    playingIcon: PlayingIcon
-    iconLoadingColor: number
-    activeScaleFactor: number
-    buttonSize: string
-    rippleTarget: string
-    accessibilityPlayData: AccessibilityPlayData
-    accessibilityPauseData: AccessibilityPauseData
+	playNavigationEndpoint: PlayNavigationEndpoint;
+	trackingParams: string;
+	playIcon: PlayIcon;
+	pauseIcon: PauseIcon;
+	iconColor: number;
+	backgroundColor: number;
+	activeBackgroundColor: number;
+	loadingIndicatorColor: number;
+	playingIcon: PlayingIcon;
+	iconLoadingColor: number;
+	activeScaleFactor: number;
+	buttonSize: string;
+	rippleTarget: string;
+	accessibilityPlayData: AccessibilityPlayData;
+	accessibilityPauseData: AccessibilityPauseData;
 }
 
 export interface PlayNavigationEndpoint {
-    clickTrackingParams: string
-    watchEndpoint: WatchEndpoint
+	clickTrackingParams: string;
+	watchEndpoint: WatchEndpoint;
 }
 
 export interface WatchEndpoint {
-    videoId: string
-    playlistId: string
-    playerParams: string
-    playlistSetVideoId: string
-    loggingContext: LoggingContext
-    watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs
-    params?: string
+	videoId: string;
+	playlistId: string;
+	playerParams: string;
+	playlistSetVideoId: string;
+	loggingContext: LoggingContext;
+	watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs;
+	params?: string;
 }
 
 export interface LoggingContext {
-    vssLoggingContext: VssLoggingContext
+	vssLoggingContext: VssLoggingContext;
 }
 
 export interface VssLoggingContext {
-    serializedContextData: string
+	serializedContextData: string;
 }
 
 export interface WatchEndpointMusicSupportedConfigs {
-    watchEndpointMusicConfig: WatchEndpointMusicConfig
+	watchEndpointMusicConfig: WatchEndpointMusicConfig;
 }
 
 export interface WatchEndpointMusicConfig {
-    musicVideoType: string
+	musicVideoType: string;
 }
 
 export interface PlayIcon {
-    iconType: string
+	iconType: string;
 }
 
 export interface PauseIcon {
-    iconType: string
+	iconType: string;
 }
 
 export interface PlayingIcon {
-    iconType: string
+	iconType: string;
 }
 
 export interface AccessibilityPlayData {
-    accessibilityData: AccessibilityData
+	accessibilityData: AccessibilityData;
 }
 
 export interface AccessibilityData {
-    label: string
+	label: string;
 }
 
 export interface AccessibilityPauseData {
-    accessibilityData: AccessibilityData2
+	accessibilityData: AccessibilityData2;
 }
 
 export interface AccessibilityData2 {
-    label: string
+	label: string;
 }
 
 export interface FlexColumn {
-    musicResponsiveListItemFlexColumnRenderer: MusicResponsiveListItemFlexColumnRenderer
+	musicResponsiveListItemFlexColumnRenderer: MusicResponsiveListItemFlexColumnRenderer;
 }
 
 export interface MusicResponsiveListItemFlexColumnRenderer {
-    text: Text
-    displayPriority: string
+	text: Text;
+	displayPriority: string;
 }
 
 export interface Text {
-    runs: Run[]
+	runs: Run[];
 }
 
 export interface Run {
-    text: string
-    navigationEndpoint?: NavigationEndpoint
+	text: string;
+	navigationEndpoint?: NavigationEndpoint;
 }
 
 export interface NavigationEndpoint {
-    clickTrackingParams: string
-    browseEndpoint?: BrowseEndpoint
-    watchEndpoint?: WatchEndpoint2
+	clickTrackingParams: string;
+	browseEndpoint?: BrowseEndpoint;
+	watchEndpoint?: WatchEndpoint2;
 }
 
 export interface BrowseEndpoint {
-    browseId: string
-    browseEndpointContextSupportedConfigs: BrowseEndpointContextSupportedConfigs
+	browseId: string;
+	browseEndpointContextSupportedConfigs: BrowseEndpointContextSupportedConfigs;
 }
 
 export interface BrowseEndpointContextSupportedConfigs {
-    browseEndpointContextMusicConfig: BrowseEndpointContextMusicConfig
+	browseEndpointContextMusicConfig: BrowseEndpointContextMusicConfig;
 }
 
 export interface BrowseEndpointContextMusicConfig {
-    pageType: string
+	pageType: string;
 }
 
 export interface WatchEndpoint2 {
-    videoId: string
-    playlistId: string
-    playerParams: string
-    loggingContext: LoggingContext2
-    watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs2
-    params?: string
+	videoId: string;
+	playlistId: string;
+	playerParams: string;
+	loggingContext: LoggingContext2;
+	watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs2;
+	params?: string;
 }
 
 export interface LoggingContext2 {
-    vssLoggingContext: VssLoggingContext2
+	vssLoggingContext: VssLoggingContext2;
 }
 
 export interface VssLoggingContext2 {
-    serializedContextData: string
+	serializedContextData: string;
 }
 
 export interface WatchEndpointMusicSupportedConfigs2 {
-    watchEndpointMusicConfig: WatchEndpointMusicConfig2
+	watchEndpointMusicConfig: WatchEndpointMusicConfig2;
 }
 
 export interface WatchEndpointMusicConfig2 {
-    musicVideoType: string
+	musicVideoType: string;
 }
 
 export interface FixedColumn {
-    musicResponsiveListItemFixedColumnRenderer: MusicResponsiveListItemFixedColumnRenderer
+	musicResponsiveListItemFixedColumnRenderer: MusicResponsiveListItemFixedColumnRenderer;
 }
 
 export interface MusicResponsiveListItemFixedColumnRenderer {
-    text: Text2
-    displayPriority: string
-    size: string
+	text: Text2;
+	displayPriority: string;
+	size: string;
 }
 
 export interface Text2 {
-    runs: Run2[]
+	runs: Run2[];
 }
 
 export interface Run2 {
-    text: string
+	text: string;
 }
 
 export interface Menu {
-    menuRenderer: MenuRenderer
+	menuRenderer: MenuRenderer;
 }
 
 export interface MenuRenderer {
-    items: Item[]
-    trackingParams: string
-    topLevelButtons: TopLevelButton[]
-    accessibility: Accessibility
+	items: Item[];
+	trackingParams: string;
+	topLevelButtons: TopLevelButton[];
+	accessibility: Accessibility;
 }
 
 export interface Item {
-    menuNavigationItemRenderer?: MenuNavigationItemRenderer
-    menuServiceItemRenderer?: MenuServiceItemRenderer
-    toggleMenuServiceItemRenderer?: ToggleMenuServiceItemRenderer
-    menuServiceItemDownloadRenderer?: MenuServiceItemDownloadRenderer
+	menuNavigationItemRenderer?: MenuNavigationItemRenderer;
+	menuServiceItemRenderer?: MenuServiceItemRenderer;
+	toggleMenuServiceItemRenderer?: ToggleMenuServiceItemRenderer;
+	menuServiceItemDownloadRenderer?: MenuServiceItemDownloadRenderer;
 }
 
 export interface MenuNavigationItemRenderer {
-    text: Text3
-    icon: Icon
-    navigationEndpoint: NavigationEndpoint2
-    trackingParams: string
+	text: Text3;
+	icon: Icon;
+	navigationEndpoint: NavigationEndpoint2;
+	trackingParams: string;
 }
 
 export interface Text3 {
-    runs: Run3[]
+	runs: Run3[];
 }
 
 export interface Run3 {
-    text: string
+	text: string;
 }
 
 export interface Icon {
-    iconType: string
+	iconType: string;
 }
 
 export interface NavigationEndpoint2 {
-    clickTrackingParams: string
-    shareEntityEndpoint?: ShareEntityEndpoint
-    browseEndpoint?: BrowseEndpoint2
-    addToPlaylistEndpoint?: AddToPlaylistEndpoint
-    watchEndpoint?: WatchEndpoint3
+	clickTrackingParams: string;
+	shareEntityEndpoint?: ShareEntityEndpoint;
+	browseEndpoint?: BrowseEndpoint2;
+	addToPlaylistEndpoint?: AddToPlaylistEndpoint;
+	watchEndpoint?: WatchEndpoint3;
 }
 
 export interface ShareEntityEndpoint {
-    serializedShareEntity: string
-    sharePanelType: string
+	serializedShareEntity: string;
+	sharePanelType: string;
 }
 
 export interface BrowseEndpoint2 {
-    browseId: string
-    browseEndpointContextSupportedConfigs: BrowseEndpointContextSupportedConfigs2
+	browseId: string;
+	browseEndpointContextSupportedConfigs: BrowseEndpointContextSupportedConfigs2;
 }
 
 export interface BrowseEndpointContextSupportedConfigs2 {
-    browseEndpointContextMusicConfig: BrowseEndpointContextMusicConfig2
+	browseEndpointContextMusicConfig: BrowseEndpointContextMusicConfig2;
 }
 
 export interface BrowseEndpointContextMusicConfig2 {
-    pageType: string
+	pageType: string;
 }
 
 export interface AddToPlaylistEndpoint {
-    videoId: string
+	videoId: string;
 }
 
 export interface WatchEndpoint3 {
-    videoId: string
-    playlistId: string
-    params: string
-    loggingContext: LoggingContext3
-    watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs3
+	videoId: string;
+	playlistId: string;
+	params: string;
+	loggingContext: LoggingContext3;
+	watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs3;
 }
 
 export interface LoggingContext3 {
-    vssLoggingContext: VssLoggingContext3
+	vssLoggingContext: VssLoggingContext3;
 }
 
 export interface VssLoggingContext3 {
-    serializedContextData: string
+	serializedContextData: string;
 }
 
 export interface WatchEndpointMusicSupportedConfigs3 {
-    watchEndpointMusicConfig: WatchEndpointMusicConfig3
+	watchEndpointMusicConfig: WatchEndpointMusicConfig3;
 }
 
 export interface WatchEndpointMusicConfig3 {
-    musicVideoType: string
+	musicVideoType: string;
 }
 
 export interface MenuServiceItemRenderer {
-    text: Text4
-    icon: Icon2
-    serviceEndpoint: ServiceEndpoint
-    trackingParams: string
+	text: Text4;
+	icon: Icon2;
+	serviceEndpoint: ServiceEndpoint;
+	trackingParams: string;
 }
 
 export interface Text4 {
-    runs: Run4[]
+	runs: Run4[];
 }
 
 export interface Run4 {
-    text: string
+	text: string;
 }
 
 export interface Icon2 {
-    iconType: string
+	iconType: string;
 }
 
 export interface ServiceEndpoint {
-    clickTrackingParams: string
-    playlistEditEndpoint?: PlaylistEditEndpoint
-    queueAddEndpoint?: QueueAddEndpoint
+	clickTrackingParams: string;
+	playlistEditEndpoint?: PlaylistEditEndpoint;
+	queueAddEndpoint?: QueueAddEndpoint;
 }
 
 export interface PlaylistEditEndpoint {
-    playlistId: string
-    actions: Action[]
+	playlistId: string;
+	actions: Action[];
 }
 
 export interface Action {
-    setVideoId: string
-    action: string
-    removedVideoId: string
+	setVideoId: string;
+	action: string;
+	removedVideoId: string;
 }
 
 export interface QueueAddEndpoint {
-    queueTarget: QueueTarget
-    queueInsertPosition: string
-    commands: Command[]
+	queueTarget: QueueTarget;
+	queueInsertPosition: string;
+	commands: Command[];
 }
 
 export interface QueueTarget {
-    videoId: string
-    onEmptyQueue: OnEmptyQueue
+	videoId: string;
+	onEmptyQueue: OnEmptyQueue;
 }
 
 export interface OnEmptyQueue {
-    clickTrackingParams: string
-    watchEndpoint: WatchEndpoint4
+	clickTrackingParams: string;
+	watchEndpoint: WatchEndpoint4;
 }
 
 export interface WatchEndpoint4 {
-    videoId: string
+	videoId: string;
 }
 
 export interface Command {
-    clickTrackingParams: string
-    addToToastAction: AddToToastAction
+	clickTrackingParams: string;
+	addToToastAction: AddToToastAction;
 }
 
 export interface AddToToastAction {
-    item: Item2
+	item: Item2;
 }
 
 export interface Item2 {
-    notificationTextRenderer: NotificationTextRenderer
+	notificationTextRenderer: NotificationTextRenderer;
 }
 
 export interface NotificationTextRenderer {
-    successResponseText: SuccessResponseText
-    trackingParams: string
+	successResponseText: SuccessResponseText;
+	trackingParams: string;
 }
 
 export interface SuccessResponseText {
-    runs: Run5[]
+	runs: Run5[];
 }
 
 export interface Run5 {
-    text: string
+	text: string;
 }
 
 export interface ToggleMenuServiceItemRenderer {
-    defaultText: DefaultText
-    defaultIcon: DefaultIcon
-    defaultServiceEndpoint: DefaultServiceEndpoint
-    toggledText: ToggledText
-    toggledIcon: ToggledIcon
-    toggledServiceEndpoint: ToggledServiceEndpoint
-    trackingParams: string
+	defaultText: DefaultText;
+	defaultIcon: DefaultIcon;
+	defaultServiceEndpoint: DefaultServiceEndpoint;
+	toggledText: ToggledText;
+	toggledIcon: ToggledIcon;
+	toggledServiceEndpoint: ToggledServiceEndpoint;
+	trackingParams: string;
 }
 
 export interface DefaultText {
-    runs: Run6[]
+	runs: Run6[];
 }
 
 export interface Run6 {
-    text: string
+	text: string;
 }
 
 export interface DefaultIcon {
-    iconType: string
+	iconType: string;
 }
 
 export interface DefaultServiceEndpoint {
-    clickTrackingParams: string
-    feedbackEndpoint: FeedbackEndpoint
+	clickTrackingParams: string;
+	feedbackEndpoint: FeedbackEndpoint;
 }
 
 export interface FeedbackEndpoint {
-    feedbackToken: string
+	feedbackToken: string;
 }
 
 export interface ToggledText {
-    runs: Run7[]
+	runs: Run7[];
 }
 
 export interface Run7 {
-    text: string
+	text: string;
 }
 
 export interface ToggledIcon {
-    iconType: string
+	iconType: string;
 }
 
 export interface ToggledServiceEndpoint {
-    clickTrackingParams: string
-    feedbackEndpoint: FeedbackEndpoint2
+	clickTrackingParams: string;
+	feedbackEndpoint: FeedbackEndpoint2;
 }
 
 export interface FeedbackEndpoint2 {
-    feedbackToken: string
+	feedbackToken: string;
 }
 
 export interface MenuServiceItemDownloadRenderer {
-    serviceEndpoint: ServiceEndpoint2
-    trackingParams: string
+	serviceEndpoint: ServiceEndpoint2;
+	trackingParams: string;
 }
 
 export interface ServiceEndpoint2 {
-    clickTrackingParams: string
-    offlineVideoEndpoint: OfflineVideoEndpoint
+	clickTrackingParams: string;
+	offlineVideoEndpoint: OfflineVideoEndpoint;
 }
 
 export interface OfflineVideoEndpoint {
-    videoId: string
-    onAddCommand: OnAddCommand
+	videoId: string;
+	onAddCommand: OnAddCommand;
 }
 
 export interface OnAddCommand {
-    clickTrackingParams: string
-    getDownloadActionCommand: GetDownloadActionCommand
+	clickTrackingParams: string;
+	getDownloadActionCommand: GetDownloadActionCommand;
 }
 
 export interface GetDownloadActionCommand {
-    videoId: string
-    params: string
+	videoId: string;
+	params: string;
 }
 
 export interface TopLevelButton {
-    likeButtonRenderer: LikeButtonRenderer
+	likeButtonRenderer: LikeButtonRenderer;
 }
 
 export interface LikeButtonRenderer {
-    target: Target
-    likeStatus: string
-    trackingParams: string
-    likesAllowed: boolean
-    serviceEndpoints: ServiceEndpoint3[]
+	target: Target;
+	likeStatus: string;
+	trackingParams: string;
+	likesAllowed: boolean;
+	serviceEndpoints: ServiceEndpoint3[];
 }
 
 export interface Target {
-    videoId: string
+	videoId: string;
 }
 
 export interface ServiceEndpoint3 {
-    clickTrackingParams: string
-    likeEndpoint: LikeEndpoint
+	clickTrackingParams: string;
+	likeEndpoint: LikeEndpoint;
 }
 
 export interface LikeEndpoint {
-    status: string
-    target: Target2
-    actions?: Action2[]
+	status: string;
+	target: Target2;
+	actions?: Action2[];
 }
 
 export interface Target2 {
-    videoId: string
+	videoId: string;
 }
 
 export interface Action2 {
-    clickTrackingParams: string
-    musicLibraryStatusUpdateCommand: MusicLibraryStatusUpdateCommand
+	clickTrackingParams: string;
+	musicLibraryStatusUpdateCommand: MusicLibraryStatusUpdateCommand;
 }
 
 export interface MusicLibraryStatusUpdateCommand {
-    libraryStatus: string
-    addToLibraryFeedbackToken: string
+	libraryStatus: string;
+	addToLibraryFeedbackToken: string;
 }
 
 export interface Accessibility {
-    accessibilityData: AccessibilityData3
+	accessibilityData: AccessibilityData3;
 }
 
 export interface AccessibilityData3 {
-    label: string
+	label: string;
 }
 
 export interface PlaylistItemData {
-    playlistSetVideoId: string
-    videoId: string
-    voteSortValue: number
+	playlistSetVideoId: string;
+	videoId: string;
+	voteSortValue: number;
 }
 
 export interface MultiSelectCheckbox {
-    checkboxRenderer: CheckboxRenderer
+	checkboxRenderer: CheckboxRenderer;
 }
 
 export interface CheckboxRenderer {
-    onSelectionChangeCommand: OnSelectionChangeCommand
-    checkedState: string
-    trackingParams: string
+	onSelectionChangeCommand: OnSelectionChangeCommand;
+	checkedState: string;
+	trackingParams: string;
 }
 
 export interface OnSelectionChangeCommand {
-    clickTrackingParams: string
-    updateMultiSelectStateCommand: UpdateMultiSelectStateCommand
+	clickTrackingParams: string;
+	updateMultiSelectStateCommand: UpdateMultiSelectStateCommand;
 }
 
 export interface UpdateMultiSelectStateCommand {
-    multiSelectParams: string
-    multiSelectItem: string
+	multiSelectParams: string;
+	multiSelectItem: string;
 }
 
 export interface Badge {
-    musicInlineBadgeRenderer: MusicInlineBadgeRenderer
+	musicInlineBadgeRenderer: MusicInlineBadgeRenderer;
 }
 
 export interface MusicInlineBadgeRenderer {
-    trackingParams: string
-    icon: Icon3
-    accessibilityData: AccessibilityData4
+	trackingParams: string;
+	icon: Icon3;
+	accessibilityData: AccessibilityData4;
 }
 
 export interface Icon3 {
-    iconType: string
+	iconType: string;
 }
 
 export interface AccessibilityData4 {
-    accessibilityData: AccessibilityData5
+	accessibilityData: AccessibilityData5;
 }
 
 export interface AccessibilityData5 {
-    label: string
+	label: string;
 }

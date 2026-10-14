@@ -1,31 +1,31 @@
-import * as Parser from "@origin/youtube/parser";
-import type { CookieJar } from "@common/utils/cookie_util";
+import * as Parser from '@origin/youtube/parser';
+import type { CookieJar } from '@common/utils/cookie_util';
 import type { PromiseResult, ResponseError } from '@common/types';
-import { extract_string_from_pattern, urlid } from "@common/utils/util";
-import type { Continuation } from "@origin/youtube/types/Continuation";
-import type { ContinuationItemViewModel } from "@origin/youtube/types/PlaylistResultsW";
+import { extract_string_from_pattern, urlid } from '@common/utils/util';
+import type { Continuation } from '@origin/youtube/types/Continuation';
+import type { ContinuationItemViewModel } from '@origin/youtube/types/PlaylistResultsW';
 import type { ContinuedResults_0 } from '@origin/youtube/types/ContinuedResults_0';
-import type { CreatePlaylist } from "@origin/youtube/types/CreatePlaylist";
+import type { CreatePlaylist } from '@origin/youtube/types/CreatePlaylist';
 import type { InitialData } from '@origin/youtube/types/types';
-import type { YTCFG } from "@origin/youtube/types/YTCFG";
-import type { Proxy } from "@origin/proxy/proxy";
-import { sapisid_hash_auth1 } from "@common/utils/auth_utilt";
-import { try_json_eval, try_json_parse } from "@common/utils/parse_util";
-import { encode_params, google_query } from "@common/utils/fetch_util";
-import type { RoZFetchRequestInit } from "@common/rozfetch";
-import rozfetch from "@common/rozfetch";
-import { get_native_platform } from "@native/native_mode";
-import { generror_catch } from "@common/utils/error_util";
+import type { YTCFG } from '@origin/youtube/types/YTCFG';
+import type { Proxy } from '@origin/proxy/proxy';
+import { sapisid_hash_auth1 } from '@common/utils/auth_utilt';
+import { try_json_eval, try_json_parse } from '@common/utils/parse_util';
+import { encode_params, google_query } from '@common/utils/fetch_util';
+import type { RoZFetchRequestInit } from '@common/rozfetch';
+import rozfetch from '@common/rozfetch';
+import { get_native_platform } from '@native/native_mode';
+import { generror_catch } from '@common/utils/error_util';
 
 export namespace YouTube {
 	const user_agent_mobile = 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36';
 	const user_agent_windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
-	interface Opts { cookie_jar?: CookieJar, proxy?: Proxy.Proxy, fetch_opts?: RoZFetchRequestInit };
-	type Privacy = "PUBLIC" | "UNLISTED" | "PRIVATE";
+	interface Opts { cookie_jar?: CookieJar; proxy?: Proxy.Proxy; fetch_opts?: RoZFetchRequestInit }
+	type Privacy = 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
 	interface ICFG {
-		initial_data: InitialData,
-		ytcfg: YTCFG
-	};
+		initial_data: InitialData;
+		ytcfg: YTCFG;
+	}
 
 	// let client_cache = {client: {ytcfg: null}, enabled: true};
 	// export function enable_cache(enable: boolean) { client_cache.enabled = enable; }
@@ -34,72 +34,71 @@ export namespace YouTube {
 	export function get_ad_signal_params(epoch: Date) {
 		return {
 			params: [
-				{ key: "dt", value: String(epoch.getTime()) }, // Epoch Time
-				{ key: "flash", value: "0" },
-				{ key: "frm", value: "0" },
-				{ key: "u_tz", value: "-420" },
-				{ key: "u_his", value: "11" },
-				{ key: "u_h", value: "1080" }, // Monitor Height
-				{ key: "u_w", value: "1920" }, // Monitor With
-				{ key: "u_ah", value: "1032" },
-				{ key: "u_aw", value: "1920" },
-				{ key: "u_cd", value: "24" },
-				{ key: "bc", value: "31" },
-				{ key: "bih", value: "911" },
-				{ key: "biw", value: "963" },
-				{ key: "brdim", value: "2560,0,2560,0,1920,0,1920,1032,980,911" },
-				{ key: "vis", value: "1" },    // Visibility%
-				{ key: "wgl", value: "true" }, // WEBGL
-				{ key: "ca_type", value: "image" }
+				{ key: 'dt', value: String(epoch.getTime()) }, // Epoch Time
+				{ key: 'flash', value: '0' },
+				{ key: 'frm', value: '0' },
+				{ key: 'u_tz', value: '-420' },
+				{ key: 'u_his', value: '11' },
+				{ key: 'u_h', value: '1080' }, // Monitor Height
+				{ key: 'u_w', value: '1920' }, // Monitor With
+				{ key: 'u_ah', value: '1032' },
+				{ key: 'u_aw', value: '1920' },
+				{ key: 'u_cd', value: '24' },
+				{ key: 'bc', value: '31' },
+				{ key: 'bih', value: '911' },
+				{ key: 'biw', value: '963' },
+				{ key: 'brdim', value: '2560,0,2560,0,1920,0,1920,1032,980,911' },
+				{ key: 'vis', value: '1' }, // Visibility%
+				{ key: 'wgl', value: 'true' }, // WEBGL
+				{ key: 'ca_type', value: 'image' }
 			]
 		};
 	}
 	export function playlist_urlid(playlist_url: string) {
-		return urlid(playlist_url, "youtube.com/", "playlist?list=", /&.+/);
+		return urlid(playlist_url, 'youtube.com/', 'playlist?list=', /&.+/);
 	}
 	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg?: YTCFG): Record<string, any> {
-		const SAPISID = cookie_jar.getCookie("SAPISID")?.getData()?.value;
+		const SAPISID = cookie_jar.getCookie('SAPISID')?.getData()?.value;
 		const base_headers = {
-			"User-Agent": user_agent_mobile,
-			"accept": "*/*",
-			"accept-language": "en-US,en;q=0.9",
-			"authorization": SAPISID === undefined ? undefined : sapisid_hash_auth1(SAPISID, epoch, ytcfg!, 'https://www.youtube.com'),
-			"content-type": "application/json",
-			"priority": "u=1, i",
-			"sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
-			"sec-ch-ua-arch": "\"x86\"",
-			"sec-ch-ua-bitness": "\"64\"",
-			"sec-ch-ua-form-factors": "\"Desktop\"",
-			"sec-ch-ua-full-version": "\"126.0.6478.127\"",
-			"sec-ch-ua-full-version-list": "\"Not/A)Brand\";v=\"8.0.0.0\", \"Chromium\";v=\"126.0.6478.127\", \"Google Chrome\";v=\"126.0.6478.127\"",
-			"sec-ch-ua-mobile": "?0",
-			"sec-ch-ua-model": "\"\"",
-			"sec-ch-ua-platform": "\"Windows\"",
-			"sec-ch-ua-platform-version": "\"15.0.0\"",
-			"sec-ch-ua-wow64": "?0",
-			"sec-fetch-dest": "empty",
-			"sec-fetch-mode": "same-origin",
-			"sec-fetch-site": "same-origin",
-			"x-client-data": "CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==",
-			"x-goog-authuser": "0",
-			"x-goog-visitor-id": "CgtVVWsxR3NiMXh1USjZp_G0BjIKCgJVUxIEGgAgWw%3D%3D",
-			"x-origin": "https://www.youtube.com",
-			"x-youtube-bootstrap-logged-in": "true",
-			"x-youtube-client-name": "67",
-			"x-youtube-client-version": "1.20240717.01.00",
-			"Referer": "https://www.youtube.com",
-			"Referrer-Policy": "strict-origin-when-cross-origin"
+			'User-Agent': user_agent_mobile,
+			'accept': '*/*',
+			'accept-language': 'en-US,en;q=0.9',
+			'authorization': SAPISID === undefined ? undefined : sapisid_hash_auth1(SAPISID, epoch, ytcfg!, 'https://www.youtube.com'),
+			'content-type': 'application/json',
+			'priority': 'u=1, i',
+			'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+			'sec-ch-ua-arch': '"x86"',
+			'sec-ch-ua-bitness': '"64"',
+			'sec-ch-ua-form-factors': '"Desktop"',
+			'sec-ch-ua-full-version': '"126.0.6478.127"',
+			'sec-ch-ua-full-version-list': '"Not/A)Brand";v="8.0.0.0", "Chromium";v="126.0.6478.127", "Google Chrome";v="126.0.6478.127"',
+			'sec-ch-ua-mobile': '?0',
+			'sec-ch-ua-model': '""',
+			'sec-ch-ua-platform': '"Windows"',
+			'sec-ch-ua-platform-version': '"15.0.0"',
+			'sec-ch-ua-wow64': '?0',
+			'sec-fetch-dest': 'empty',
+			'sec-fetch-mode': 'same-origin',
+			'sec-fetch-site': 'same-origin',
+			'x-client-data': 'CIa2yQEIpLbJAQipncoBCPvuygEIlqHLAQj0mM0BCIWgzQEIqp7OAQj/oM4BCKeizgEI46XOAQjep84BCJqozgEIg6zOARihnc4BGPGnzgEY642lFw==',
+			'x-goog-authuser': '0',
+			'x-goog-visitor-id': 'CgtVVWsxR3NiMXh1USjZp_G0BjIKCgJVUxIEGgAgWw%3D%3D',
+			'x-origin': 'https://www.youtube.com',
+			'x-youtube-bootstrap-logged-in': 'true',
+			'x-youtube-client-name': '67',
+			'x-youtube-client-version': '1.20240717.01.00',
+			'Referer': 'https://www.youtube.com',
+			'Referrer-Policy': 'strict-origin-when-cross-origin'
 		} as const;
-		if (get_native_platform() === "REACT_NATIVE") {
+		if (get_native_platform() === 'REACT_NATIVE') {
 			return {
 				...base_headers,
-				"Cookies": cookie_jar?.toString()
+				Cookies: cookie_jar?.toString()
 			};
-		}
-		else {
+		} else {
 			return {
 				...base_headers,
-				"cookie": cookie_jar?.toString()
+				cookie: cookie_jar?.toString()
 			};
 		}
 	}
@@ -114,19 +113,19 @@ export namespace YouTube {
 	function extract_initial_data(html: string) {
 		const initial_data_regex0 = /var ytInitialData ?= ?('.+?');/gs;
 		const initial_data_regex1 = /var ytInitialData ?= ?({.+?});/gs;
-		let extracted = extract_string_from_pattern(html, initial_data_regex0, "LOW");
-		if (typeof extracted === "object") {
-			extracted = extract_string_from_pattern(html, initial_data_regex1, "LOW");
+		let extracted = extract_string_from_pattern(html, initial_data_regex0, 'LOW');
+		if (typeof extracted === 'object') {
+			extracted = extract_string_from_pattern(html, initial_data_regex1, 'LOW');
 			const initial_data = try_json_eval<InitialData>(extracted as string);
 			return initial_data;
 		}
 		const initial_data = try_json_eval<string>(extracted);
-		if (typeof initial_data === "object") return initial_data;
+		if (typeof initial_data === 'object') return initial_data;
 		return try_json_parse<InitialData>(initial_data);
 	}
 	function extract_ytcfg(html: string): YTCFG | ResponseError {
 		const ytcfg_data_regex = /ytcfg.set\((\{.+?\})\);/gs;
-		const extracted = extract_string_from_pattern(html, ytcfg_data_regex, "MEDIUM");
+		const extracted = extract_string_from_pattern(html, ytcfg_data_regex, 'MEDIUM');
 		const ytcfg = try_json_eval<YTCFG>(extracted as string);
 		return ytcfg;
 	}
@@ -137,152 +136,152 @@ export namespace YouTube {
 			const page_response = await rozfetch(url, {
 				...opts.fetch_opts,
 				headers: {
-					...(cookies ? get_native_platform() === "REACT_NATIVE" ? { "Cookies": cookies } : { "cookie": cookies } : {}),
-					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-					"accept-language": "en-US,en;q=0.9",
-					"priority": "u=0, i",
-					"sec-ch-ua": "\"Google Chrome\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
-					"sec-ch-ua-arch": "\"arm\"",
-					"sec-ch-ua-bitness": "\"64\"",
-					"sec-ch-ua-form-factors": "\"Desktop\"",
-					"sec-ch-ua-full-version": "\"137.0.7151.120\"",
-					"sec-ch-ua-full-version-list": "\"Google Chrome\";v=\"137.0.7151.120\", \"Chromium\";v=\"137.0.7151.120\", \"Not/A)Brand\";v=\"24.0.0.0\"",
-					"sec-ch-ua-mobile": "?0",
-					"sec-ch-ua-model": "\"\"",
-					"sec-ch-ua-platform": "\"macOS\"",
-					"sec-ch-ua-platform-version": "\"15.2.0\"",
-					"sec-ch-ua-wow64": "?0",
-					"sec-fetch-dest": "document",
-					"sec-fetch-mode": "navigate",
-					"sec-fetch-site": "none",
-					"sec-fetch-user": "?1",
-					"service-worker-navigation-preload": "true",
-					"upgrade-insecure-requests": "1",
-					"x-browser-channel": "stable",
-					"x-browser-copyright": "Copyright 2025 Google LLC. All rights reserved.",
-					"x-browser-validation": "jWhhuGepE5WyX9SzRfjQzPC9+KI=",
-					"x-browser-year": "2025",
-					"x-client-data": "CJG2yQEIpbbJAQipncoBCP7lygEIlaHLAQiRo8sBCIagzQEI/uzOAQik8s4BCL3yzgEIkvbOAQ==",
+					...(cookies ? get_native_platform() === 'REACT_NATIVE' ? { Cookies: cookies } : { cookie: cookies } : {}),
+					'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+					'accept-language': 'en-US,en;q=0.9',
+					'priority': 'u=0, i',
+					'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+					'sec-ch-ua-arch': '"arm"',
+					'sec-ch-ua-bitness': '"64"',
+					'sec-ch-ua-form-factors': '"Desktop"',
+					'sec-ch-ua-full-version': '"137.0.7151.120"',
+					'sec-ch-ua-full-version-list': '"Google Chrome";v="137.0.7151.120", "Chromium";v="137.0.7151.120", "Not/A)Brand";v="24.0.0.0"',
+					'sec-ch-ua-mobile': '?0',
+					'sec-ch-ua-model': '""',
+					'sec-ch-ua-platform': '"macOS"',
+					'sec-ch-ua-platform-version': '"15.2.0"',
+					'sec-ch-ua-wow64': '?0',
+					'sec-fetch-dest': 'document',
+					'sec-fetch-mode': 'navigate',
+					'sec-fetch-site': 'none',
+					'sec-fetch-user': '?1',
+					'service-worker-navigation-preload': 'true',
+					'upgrade-insecure-requests': '1',
+					'x-browser-channel': 'stable',
+					'x-browser-copyright': 'Copyright 2025 Google LLC. All rights reserved.',
+					'x-browser-validation': 'jWhhuGepE5WyX9SzRfjQzPC9+KI=',
+					'x-browser-year': '2025',
+					'x-client-data': 'CJG2yQEIpbbJAQipncoBCP7lygEIlaHLAQiRo8sBCIagzQEI/uzOAQik8s4BCL3yzgEIkvbOAQ==',
 					'authority': 'www.youtube.com',
-					"User-Agent": user_agent_windows,
-					"cache-control": "max-age=0",
+					'User-Agent': user_agent_windows,
+					'cache-control': 'max-age=0'
 				},
 				body: undefined,
 				proxy: opts.proxy,
-				method: "GET"
+				method: 'GET'
 			});
-			if ("error" in page_response) return page_response;
+			if ('error' in page_response) return page_response;
 			const page_html = await page_response.text();
 			const initial_data = extract_initial_data(page_html);
-			if ("error" in initial_data) return initial_data;
+			if ('error' in initial_data) return initial_data;
 			const ytcfg = extract_ytcfg(page_html);
-			if ("error" in ytcfg) return ytcfg;
+			if ('error' in ytcfg) return ytcfg;
 			return {
 				initial_data,
 				ytcfg
 			};
 		} catch (error) { return { error: error as Error }; }
 	}
-	interface ICFGData<T> { icfg: ICFG, data: T }
+	interface ICFGData<T> { icfg: ICFG; data: T }
 	type PromiseICFGData<T extends (...args: any) => any> = PromiseResult<ICFGData<ReturnType<T>>>;
 	async function parse_initial<T extends (...args: any) => any>(opts: Opts, init_url: string, parser: (contents: any) => any, tuser_agent?: string): PromiseICFGData<T> {
 		try {
 			const icfg = await get_initial_data_config(opts, init_url, tuser_agent);
-			if ("error" in icfg) return icfg;
+			if ('error' in icfg) return icfg;
 			const parsed = parser(icfg.initial_data);
 			return {
 				icfg,
 				data: parsed
 			};
-		} catch (error) { return generror_catch(error, "Failed to parse YouTube", "CRITICAL", { opts, init_url }); }
+		} catch (error) { return generror_catch(error, 'Failed to parse YouTube', 'CRITICAL', { opts, init_url }); }
 	}
 	async function post_check_response<T>(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		try {
-			if (opts.cookie_jar === undefined) throw new Error("CookieJar is empty");
+			if (opts.cookie_jar === undefined) throw new Error('CookieJar is empty');
 			const epoch = new Date();
-			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } }
+			const merged_payload = { ...payload, ...{ context: get_payload_context(ytcfg, epoch) } };
 			const url = `https://www.youtube.com/youtubei/v1/${path}`;
-			const response = await rozfetch<T>(url, { method: "POST", proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
+			const response = await rozfetch<T>(url, { method: 'POST', proxy: opts.proxy, headers: get_post_headers(opts.cookie_jar, epoch, new_auth ? ytcfg : ytcfg), body: JSON.stringify(merged_payload) });
 			return response;
-		} catch (error) { return { error: error as Error } }
+		} catch (error) { return { error: error as Error }; }
 	}
-	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, "https://www.youtube.com/", Parser.parse_home_contents); }
+	export async function get_home(opts: Opts): PromiseICFGData<typeof Parser.parse_home_contents> { return await parse_initial(opts, 'https://www.youtube.com/', Parser.parse_home_contents); }
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseICFGData<typeof Parser.parse_playlist_contents> { return await parse_initial(opts, `https://www.youtube.com/playlist?list=${playlist_urlid(playlist_id)}`, Parser.parse_playlist_contents, user_agent_windows); }
 	export async function get_artist(opts: Opts, artist_id: string): PromiseICFGData<typeof Parser.parse_channel_contents> { return await parse_initial(opts, `https://www.youtube.com/channel/${artist_id}`, Parser.parse_channel_contents); }
 	export async function search(opts: Opts, search_query: string): PromiseICFGData<typeof Parser.parse_search_contents> { return await parse_initial(opts, `https://www.youtube.com/results?search_query=${google_query(search_query)}`, Parser.parse_search_contents, user_agent_windows); }
 	export async function get_youtube_mix(opts: Opts, video_id: string): PromiseICFGData<typeof Parser.parse_mix_contents> { return await parse_initial(opts, `https://www.youtube.com/watch?v=${video_id}&start_radio=1&list=RDMM`, Parser.parse_mix_contents, user_agent_windows); }
-	export async function get_library(opts: Opts): PromiseICFGData<typeof Parser.parse_library_contents> { return await parse_initial(opts, "https://www.youtube.com/feed/playlists", Parser.parse_library_contents, user_agent_windows); }
+	export async function get_library(opts: Opts): PromiseICFGData<typeof Parser.parse_library_contents> { return await parse_initial(opts, 'https://www.youtube.com/feed/playlists', Parser.parse_library_contents, user_agent_windows); }
 	export async function get_continuation(opts: Opts, ytcfg: YTCFG, next_con: Continuation | ContinuationItemViewModel, path?: string) {
 		try {
 			const query_params = {
 				prettyPrint: false
-			}
+			};
 			const payload = {
 				// initial playlist pages use the new lockup layout (ContinuationItemViewModel), continuation pages the old renderer shape
-				continuation: "continuationEndpoint" in next_con
+				continuation: 'continuationEndpoint' in next_con
 					? next_con.continuationEndpoint.continuationCommand.token
-					: next_con.continuationCommand.innertubeCommand.continuationCommand.token,
+					: next_con.continuationCommand.innertubeCommand.continuationCommand.token
 			};
-			const response = await post_check_response<ContinuedResults_0>(opts, ytcfg, `${path ?? "browse"}?${encode_params(query_params)}`, payload, false);
-			if ("error" in response) throw response.error;
+			const response = await post_check_response<ContinuedResults_0>(opts, ytcfg, `${path ?? 'browse'}?${encode_params(query_params)}`, payload, false);
+			if ('error' in response) throw response.error;
 			return await response.json();
-		} catch (error) { return { error: error as Error } }
+		} catch (error) { return { error: error as Error }; }
 	}
 	async function post_check_succeed(opts: Opts, ytcfg: YTCFG, path: string, payload: object, new_auth: boolean) {
 		const response = await post_check_response(opts, ytcfg, path, payload, new_auth);
-		if ("error" in response) return false;
+		if ('error' in response) return false;
 		return response.ok;
 	}
 	export async function post_like(opts: Opts, ytcfg: YTCFG, video_id: string, like_path: string) {
 		const payload = {
-			target: { videoId: video_id },
-		}
+			target: { videoId: video_id }
+		};
 		return await post_check_succeed(opts, ytcfg, `${like_path}?prettyPrint=false`, payload, true);
 	}
 	export async function post_edit_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, actions: object[]) {
 		const payload = {
 			actions,
 			playlistId: playlist_id
-		}
-		return await post_check_succeed(opts, ytcfg, "browse/edit_playlist?prettyPrint=false", payload, true);
+		};
+		return await post_check_succeed(opts, ytcfg, 'browse/edit_playlist?prettyPrint=false', payload, true);
 	}
-	export async function like_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/like"); }
-	export async function dislike_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/dislike"); }
-	export async function unlike_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, "like/removelike"); }
+	export async function like_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, 'like/like'); }
+	export async function dislike_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, 'like/dislike'); }
+	export async function unlike_track(opts: Opts, ytcfg: YTCFG, video_id: string) { return await post_like(opts, ytcfg, video_id, 'like/removelike'); }
 	export async function create_playlist(opts: Opts, ytcfg: YTCFG, title: string, privacy: Privacy) {
 		const payload = {
 			title,
 			privacyStatus: privacy,
 			videoIds: []
-		}
-		const response = await post_check_response<CreatePlaylist>(opts, ytcfg, "playlist/create?prettyPrint=false", payload, true);
-		if ("error" in response) return response;
+		};
+		const response = await post_check_response<CreatePlaylist>(opts, ytcfg, 'playlist/create?prettyPrint=false', payload, true);
+		if ('error' in response) return response;
 		if (!response.ok) return { error: new Error(`Failed to create playlist with status code ${response.status}`) };
 		return await response.json();
 	}
 	export async function delete_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string) {
 		const payload = {
 			playlistId: playlist_urlid(playlist_id)
-		}
-		return await post_check_succeed(opts, ytcfg, "playlist/delete?prettyPrint=false", payload, true);
+		};
+		return await post_check_succeed(opts, ytcfg, 'playlist/delete?prettyPrint=false', payload, true);
 	}
 	export async function add_tracks_to_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, video_ids: string[]) {
-		const actions = video_ids.map((video_id) => ({ addedVideoId: video_id, action: "ACTION_ADD_VIDEO", dedupeOption: "DEDUPE_OPTION_CHECK" }));
+		const actions = video_ids.map(video_id => ({ addedVideoId: video_id, action: 'ACTION_ADD_VIDEO', dedupeOption: 'DEDUPE_OPTION_CHECK' }));
 		return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
 	}
 	export async function remove_tracks_to_playlist(opts: Opts, ytcfg: YTCFG, playlist_id: string, video_ids: string[]) {
-		const actions = video_ids.map((video_id) => ({ removedVideoId: video_id, action: "ACTION_REMOVE_VIDEO" }));
+		const actions = video_ids.map(video_id => ({ removedVideoId: video_id, action: 'ACTION_REMOVE_VIDEO' }));
 		return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
 	}
 	export async function edit_playlist_data(opts: Opts, ytcfg: YTCFG, playlist_id: string, playlist_data: {
-		name: string,
-		description: string,
-		privacy: Privacy
+		name: string;
+		description: string;
+		privacy: Privacy;
 	}) {
 		const actions = [
-			{ action: "ACTION_SET_PLAYLIST_PRIVACY", playlistPrivacy: playlist_data.privacy },
-			{ action: "ACTION_SET_PLAYLIST_NAME", playlistName: playlist_data.name },
-			{ action: "ACTION_SET_PLAYLIST_DESCRIPTION", playlistDescription: playlist_data.description }
+			{ action: 'ACTION_SET_PLAYLIST_PRIVACY', playlistPrivacy: playlist_data.privacy },
+			{ action: 'ACTION_SET_PLAYLIST_NAME', playlistName: playlist_data.name },
+			{ action: 'ACTION_SET_PLAYLIST_DESCRIPTION', playlistDescription: playlist_data.description }
 		];
 		return await post_edit_playlist(opts, ytcfg, playlist_urlid(playlist_id), actions);
 	}

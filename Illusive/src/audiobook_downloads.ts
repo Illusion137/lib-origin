@@ -1,14 +1,14 @@
-import { fs } from "@native/fs/fs";
-import type { ResumableDownload } from "@native/fs/fs.base";
-import { SQLfs } from "@illusive/sql/sql_fs";
-import { Audiobooks } from "@illusive/audiobooks";
-import { GLOBALS } from "@illusive/globals";
-import { generror_catch } from "@common/utils/error_util";
-import type { CookieJar } from "@common/utils/cookie_util";
-import type { PromiseResult } from "@common/types";
+import { fs } from '@native/fs/fs';
+import type { ResumableDownload } from '@native/fs/fs.base';
+import { SQLfs } from '@illusive/sql/sql_fs';
+import { Audiobooks } from '@illusive/audiobooks';
+import { GLOBALS } from '@illusive/globals';
+import { generror_catch } from '@common/utils/error_util';
+import type { CookieJar } from '@common/utils/cookie_util';
+import type { PromiseResult } from '@common/types';
 
 export namespace AudiobookDownloads {
-	export type DownloadStatus = "queued" | "downloading" | "processing" | "error";
+	export type DownloadStatus = 'queued' | 'downloading' | 'processing' | 'error';
 
 	export interface DownloadState {
 		uuid: string;
@@ -40,7 +40,7 @@ export namespace AudiobookDownloads {
 	const paused = new Set<string>();
 
 	function registry_path(): string {
-		return SQLfs.audiobook_directory("_downloads.json");
+		return SQLfs.audiobook_directory('_downloads.json');
 	}
 
 	export function subscribe(cb: () => void): () => void {
@@ -67,7 +67,7 @@ export namespace AudiobookDownloads {
 	}
 
 	async function persist(): Promise<void> {
-		const payload = [...states.values()].filter(s => s.status !== "error").map(to_persisted);
+		const payload = [...states.values()].filter(s => s.status !== 'error').map(to_persisted);
 		await Promise.resolve(SQLfs.create_file(registry_path(), JSON.stringify(payload))).catch(() => undefined);
 	}
 
@@ -75,7 +75,7 @@ export namespace AudiobookDownloads {
 		const path = registry_path();
 		if (!(await SQLfs.info(path)).exists) return [];
 		const raw = await SQLfs.read_file(path);
-		if (typeof raw !== "string") return [];
+		if (typeof raw !== 'string') return [];
 		try {
 			const parsed = JSON.parse(raw) as unknown;
 			return Array.isArray(parsed) ? parsed as PersistedDownload[] : [];
@@ -95,18 +95,18 @@ export namespace AudiobookDownloads {
 
 	export async function enqueue_remote_import(opts: EnqueueRemoteImportOpts): PromiseResult<DownloadState> {
 		const prepared = await Audiobooks.prepare_remote_import(opts);
-		if ("error" in prepared) return prepared;
+		if ('error' in prepared) return prepared;
 		const { rel } = Audiobooks.remote_source_dest(prepared.uuid, opts.url);
 		const state: DownloadState = {
 			uuid: prepared.uuid,
 			url: opts.url,
-			title: opts.title ?? prepared.title ?? "",
+			title: opts.title ?? prepared.title ?? '',
 			dest_rel: rel,
-			source_file_type: opts.source_file_type ?? "REMOTE",
+			source_file_type: opts.source_file_type ?? 'REMOTE',
 			headers: Audiobooks.build_remote_headers(opts),
-			status: "queued",
+			status: 'queued',
 			bytes_written: 0,
-			bytes_total: 0,
+			bytes_total: 0
 		};
 		states.set(state.uuid, state);
 		await persist();
@@ -118,7 +118,7 @@ export namespace AudiobookDownloads {
 	async function run_download(state: DownloadState): Promise<void> {
 		try {
 			paused.delete(state.uuid);
-			state.status = "downloading";
+			state.status = 'downloading';
 			state.error = undefined;
 			notify();
 
@@ -131,7 +131,7 @@ export namespace AudiobookDownloads {
 					state.bytes_written = written;
 					state.bytes_total = total;
 					notify();
-				},
+				}
 			});
 			handles.set(state.uuid, handle);
 			const result = await handle.start();
@@ -139,24 +139,24 @@ export namespace AudiobookDownloads {
 
 			if (paused.has(state.uuid)) return;
 
-			if (typeof result !== "string") {
-				state.status = "error";
+			if (typeof result !== 'string') {
+				state.status = 'error';
 				state.error = result.error.message;
 				notify();
 				await persist();
-				GLOBALS.global_var.bottom_alert(`Download failed: ${state.title || "audiobook"}`, "WARN");
+				GLOBALS.global_var.bottom_alert(`Download failed: ${state.title || 'audiobook'}`, 'WARN');
 				return;
 			}
 
-			state.status = "processing";
+			state.status = 'processing';
 			notify();
 			const finalized = await Audiobooks.finalize_remote_import(state.uuid, result, { title: state.title });
-			if ("error" in finalized) {
-				state.status = "error";
+			if ('error' in finalized) {
+				state.status = 'error';
 				state.error = finalized.error.message;
 				notify();
 				await persist();
-				GLOBALS.global_var.bottom_alert(`Import failed: ${state.title || "audiobook"}`, "WARN");
+				GLOBALS.global_var.bottom_alert(`Import failed: ${state.title || 'audiobook'}`, 'WARN');
 				return;
 			}
 
@@ -166,8 +166,8 @@ export namespace AudiobookDownloads {
 		} catch (e) {
 			handles.delete(state.uuid);
 			if (paused.has(state.uuid)) return;
-			const err = generror_catch(e, "Audiobook download crashed", "MEDIUM", { uuid: state.uuid });
-			state.status = "error";
+			const err = generror_catch(e, 'Audiobook download crashed', 'MEDIUM', { uuid: state.uuid });
+			state.status = 'error';
 			state.error = err.error.message;
 			notify();
 			await persist();
@@ -179,23 +179,23 @@ export namespace AudiobookDownloads {
 		let added = false;
 		for (const p of persisted) {
 			if (states.has(p.uuid)) continue;
-			states.set(p.uuid, { ...p, status: "queued", bytes_written: 0, bytes_total: 0 });
+			states.set(p.uuid, { ...p, status: 'queued', bytes_written: 0, bytes_total: 0 });
 			added = true;
 		}
 		if (added) notify();
 		for (const state of states.values()) {
-			if (state.status === "queued" && !handles.has(state.uuid)) run_download(state).catch(() => undefined);
+			if (state.status === 'queued' && !handles.has(state.uuid)) run_download(state).catch(() => undefined);
 		}
 	}
 
 	export async function persist_for_background(): Promise<void> {
-		const active = [...states.values()].filter(s => s.status === "downloading");
+		const active = [...states.values()].filter(s => s.status === 'downloading');
 		for (const state of active) {
 			const handle = handles.get(state.uuid);
 			if (handle === undefined) continue;
 			paused.add(state.uuid);
 			state.resume_data = await handle.pause();
-			state.status = "queued";
+			state.status = 'queued';
 		}
 		await persist();
 		if (active.length > 0) notify();

@@ -1,11 +1,11 @@
-import React, { useCallback, useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import CookieManager from "@react-native-community/cookies";
-import type { TurnstileSolver, TurnstileSolveResult } from "@native/turnstile/turnstile.base";
-import { generror } from "@common/utils/error_util";
+import React, { useCallback, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import CookieManager from '@react-native-community/cookies';
+import type { TurnstileSolver, TurnstileSolveResult } from '@native/turnstile/turnstile.base';
+import { generror } from '@common/utils/error_util';
 
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
 
 const CF_CLEARANCE_SETTLE_MS = 1_000;
 
@@ -54,7 +54,7 @@ function handle_message(event: WebViewMessageEvent) {
 	let data: any;
 	try { data = JSON.parse(event.nativeEvent.data); } catch { return; }
 
-	if (data.type === "turnstile-token" && typeof data.token === "string") {
+	if (data.type === 'turnstile-token' && typeof data.token === 'string') {
 		const { page_url } = pending;
 		const token = data.token as string;
 		setTimeout(() => {
@@ -62,25 +62,25 @@ function handle_message(event: WebViewMessageEvent) {
 		}, CF_CLEARANCE_SETTLE_MS);
 		return;
 	}
-	if (data.type === "turnstile-error") {
-		settle(generror(`Turnstile widget error: ${data.error}`, "MEDIUM", {}));
+	if (data.type === 'turnstile-error') {
+		settle(generror(`Turnstile widget error: ${data.error}`, 'MEDIUM', {}));
 	}
 }
 
 export const mobile_turnstile: TurnstileSolver = {
-	solve: async (opts) => new Promise<TurnstileSolveResult | { error: Error }>((resolve) => {
+	solve: async opts => new Promise<TurnstileSolveResult | { error: Error }>((resolve) => {
 		if (!_set_uri) {
-			resolve(generror("TurnstileWebView is not mounted. Add <TurnstileWebView /> to your component tree.", "CRITICAL", {}));
+			resolve(generror('TurnstileWebView is not mounted. Add <TurnstileWebView /> to your component tree.', 'CRITICAL', {}));
 			return;
 		}
 		if (_pending) {
-			resolve(generror("A turnstile solve is already in progress", "LOW", {}));
+			resolve(generror('A turnstile solve is already in progress', 'LOW', {}));
 			return;
 		}
-		const timer = setTimeout(() => settle(generror("Turnstile WebView timed out", "MEDIUM", { page_url: opts.page_url })), opts.timeout_ms ?? 45_000);
+		const timer = setTimeout(() => settle(generror('Turnstile WebView timed out', 'MEDIUM', { page_url: opts.page_url })), opts.timeout_ms ?? 45_000);
 		_pending = { resolve, page_url: opts.page_url, timer };
 		// cache-bust so re-solves force a fresh navigation/widget execution
-		_set_uri(`${opts.page_url}${opts.page_url.includes("?") ? "&" : "?"}_cf=${Date.now()}`);
+		_set_uri(`${opts.page_url}${opts.page_url.includes('?') ? '&' : '?'}_cf=${Date.now()}`);
 	})
 };
 
@@ -113,14 +113,14 @@ export function TurnstileWebView() {
 
 const styles = StyleSheet.create({
 	hidden: {
-		position: "absolute",
+		position: 'absolute',
 		top: -10000,
 		left: 0,
 		width: 1,
 		height: 1,
-		opacity: 0,
+		opacity: 0
 	},
 	webview: {
-		flex: 1,
-	},
+		flex: 1
+	}
 });

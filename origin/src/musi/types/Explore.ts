@@ -1,40 +1,40 @@
-import type { ResponseError } from "@common/types"
+import type { ResponseError } from '@common/types';
 
-export type Explore = ExploreSuccess|ResponseError;
+export type Explore = ExploreSuccess | ResponseError;
 export interface ExploreSuccess {
-    success: Success
+	success: Success;
 }
 export interface Success {
-    modules: Module[]
-    top_tracks: TopTrack[]
-}  
+	modules: Module[];
+	top_tracks: TopTrack[];
+}
 export interface Module {
-    identifier: string
-    placements: Placement[]
-    type: "hero"|"scroller"
-    title?: string
-} 
+	identifier: string;
+	placements: Placement[];
+	type: 'hero' | 'scroller';
+	title?: string;
+}
 export interface Placement {
-    icon_image_url: string
-    subtitle: string
-    title: string
-    track?: MusiTrackV2
-    playlist?: Playlist
-} 
+	icon_image_url: string;
+	subtitle: string;
+	title: string;
+	track?: MusiTrackV2;
+	playlist?: Playlist;
+}
 export interface MusiTrackV2 {
-    duration: number
-    id: string
-    title: string
-    user: string
-} 
+	duration: number;
+	id: string;
+	title: string;
+	user: string;
+}
 export interface Playlist {
-    name: string
-    youtube_playlist_id?: string
-    musi_playlist_id?: string
-}  
+	name: string;
+	youtube_playlist_id?: string;
+	musi_playlist_id?: string;
+}
 export interface TopTrack {
-    duration: number
-    id: string
-    title: string
-    user: string
-}  
+	duration: number;
+	id: string;
+	title: string;
+	user: string;
+}

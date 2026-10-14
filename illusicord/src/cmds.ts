@@ -1,15 +1,15 @@
-import type { Channel, Client, Message, OmitPartialGroupDMChannel } from "discord.js";
-import type { Player } from "@illusicord/player/player";
-import { RepeatMode, type DiscordTrack } from "@illusicord/types";
-import type { IllusiveURI, MusicServiceType, Track } from "@illusive/types";
-import { is_empty, shuffle_array } from "@common/utils/util";
-import { Illusive } from "@illusive/illusive";
-import { MEDIA } from "@illusicord/media";
-import { play_playliist_discord_recieve, play_track_discord_recieve } from "@illusive/discord";
-import { Utils } from "@illusicord/player/utils";
-import { Constants } from "@illusicord/constants";
-import { duration_to_string, split_uri } from "@illusive/illusive_utils";
-import { catch_ignore } from "@common/utils/error_util";
+import type { Channel, Client, Message, OmitPartialGroupDMChannel } from 'discord.js';
+import type { Player } from '@illusicord/player/player';
+import { RepeatMode, type DiscordTrack } from '@illusicord/types';
+import type { IllusiveURI, MusicServiceType, Track } from '@illusive/types';
+import { is_empty, shuffle_array } from '@common/utils/util';
+import { Illusive } from '@illusive/illusive';
+import { MEDIA } from '@illusicord/media';
+import { play_playliist_discord_recieve, play_track_discord_recieve } from '@illusive/discord';
+import { Utils } from '@illusicord/player/utils';
+import { Constants } from '@illusicord/constants';
+import { duration_to_string, split_uri } from '@illusive/illusive_utils';
+import { catch_ignore } from '@common/utils/error_util';
 import { music_service_uri_to_music_service } from '@illusive/illusive_utils';
 import type { DiscordPlaylistMode } from '@illusive/discord';
 
@@ -22,26 +22,26 @@ function guild_queue(client: DiscordClient, message: DiscordMessage) {
 }
 
 export function track_to_string(track: DiscordTrack) {
-	return `\`${track?.title ?? ""} | ${track?.artists[0].name ?? ""} | ${duration_to_string(track?.duration ?? 0)}\``;
+	return `\`${track?.title ?? ''} | ${track?.artists[0].name ?? ''} | ${duration_to_string(track?.duration ?? 0)}\``;
 }
 
-let channel_id = "";
+let channel_id = '';
 let disable_messages = false;
 export function send_message(client: DiscordClient, content: string) {
 	console.log(content);
 	if (disable_messages) return;
-	console.log("[MSG]: " + content);
-	if (is_empty(channel_id) || is_empty(content) || typeof content !== "string") return;
+	console.log('[MSG]: ' + content);
+	if (is_empty(channel_id) || is_empty(content) || typeof content !== 'string') return;
 	const text_channel: Channel & { send: (content: string) => void } = client.channels.cache.get(channel_id)! as any;
 	text_channel.send(content);
 }
 
 function get_best_channel(message: OmitPartialGroupDMChannel<Message>) {
-	return message.guild?.channels.cache.filter((channel) => channel.isVoiceBased() && channel.members.size > 0).first();
+	return message.guild?.channels.cache.filter(channel => channel.isVoiceBased() && channel.members.size > 0).first();
 }
 
 async function get_playlist_tracks(args: string[], service: MusicServiceType): Promise<DiscordTrack[]> {
-	return (await Illusive.music_service.get(service)!.get_full_playlist(args.join(" "))).tracks.map(Utils.track_to_discord_track);
+	return (await Illusive.music_service.get(service)!.get_full_playlist(args.join(' '))).tracks.map(Utils.track_to_discord_track);
 }
 async function get_uri_playlist_tracks(playlist_uri: IllusiveURI): Promise<DiscordTrack[]> {
 	const [service, id] = split_uri(playlist_uri);
@@ -54,78 +54,78 @@ async function play_base(client: DiscordClient, message: DiscordMessage, tracks:
 	const queue = has_queue ? client.player.get_queue(message.guild!.id)! : client.player.create_queue(message.guild!.id);
 	if (!has_queue) {
 		const joined = await queue.join(message.member?.voice.channel ?? get_best_channel(message)!).catch((err) => {
-			send_message(client, "[ERROR]: " + err);
+			send_message(client, '[ERROR]: ' + err);
 			return null;
 		});
 		if (!joined) return;
 	}
-	if (typeof tracks[0] === "function") {
+	if (typeof tracks[0] === 'function') {
 		for (const track_function of tracks as (() => Promise<DiscordTrack | undefined>)[]) {
 			const maybe_track = await track_function();
-			if (maybe_track) await queue.play(maybe_track, {}).catch((err) => send_message(client, err));
+			if (maybe_track) await queue.play(maybe_track, {}).catch(err => send_message(client, err));
 		}
 	} else {
 		for (const track of (tracks as Track[]).map(Utils.track_to_discord_track)) {
-			await queue.play(track, {}).catch((err) => send_message(client, err));
+			await queue.play(track, {}).catch(err => send_message(client, err));
 		}
 	}
 }
 
 function get_search_track_functions(args: string[], service: MusicServiceType) {
-	const queries = args.join(" ").split(" && ");
-	const track_functions = queries.map((query) => async () => (await Illusive.music_service.get(service)!.search!(query)).tracks.map(Utils.track_to_discord_track)[0]);
+	const queries = args.join(' ').split(' && ');
+	const track_functions = queries.map(query => async () => (await Illusive.music_service.get(service)!.search!(query)).tracks.map(Utils.track_to_discord_track)[0]);
 	return track_functions;
 }
 
 const COMMANDS: Record<string, IllusicordCommand> = {
 	help: async (client, _, __) => {
-		send_message(client, `Commands: ${Object.keys(COMMANDS).join(", ")}`);
+		send_message(client, `Commands: ${Object.keys(COMMANDS).join(', ')}`);
 	},
 	play: async (client, message, args) => {
-		await play_base(client, message, get_search_track_functions(args, "YouTube Music"));
+		await play_base(client, message, get_search_track_functions(args, 'YouTube Music'));
 	},
 	play_yt: async (client, message, args) => {
-		await play_base(client, message, get_search_track_functions(args, "YouTube"));
+		await play_base(client, message, get_search_track_functions(args, 'YouTube'));
 	},
 	lafou: async (client, message, args) => {
-		await play_base(client, message, get_search_track_functions(args, "SoundCloud"));
+		await play_base(client, message, get_search_track_functions(args, 'SoundCloud'));
 	},
 	local: async (client, message, args) => {
 		await play_base(
 			client,
 			message,
-			args.map((index) => MEDIA[parseInt(index) - 1]).filter(m => m)
+			args.map(index => MEDIA[parseInt(index) - 1]).filter(m => m)
 		);
 	},
 	illusno: async (client, message, args) => {
-		const track = play_track_discord_recieve(args.join(" "));
-		if("error" in track) return;
-		await play_base(client, message, [ track ]);
+		const track = play_track_discord_recieve(args.join(' '));
+		if ('error' in track) return;
+		await play_base(client, message, [track]);
 	},
 	illusplus: async (client, message, args) => {
 		const [encoded_playlist_uri, mode] = args as [string, DiscordPlaylistMode];
 		const tracks = await get_uri_playlist_tracks(play_playliist_discord_recieve(encoded_playlist_uri));
 		disable_messages = true;
 		let good = true;
-		switch(mode){
-			case "order":
+		switch (mode) {
+			case 'order':
 				await play_base(client, message, tracks);
 				break;
-			case "shuffle":
+			case 'shuffle':
 				await play_base(client, message, shuffle_array(tracks));
 				break;
 			default:
 				good = false;
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+
 				console.warn(`Unknown playlist mode: ${mode}`);
 				break;
 		}
 		disable_messages = false;
-		if(good) send_message(client, `Added \`${tracks.length}\` Songs from \`${play_playliist_discord_recieve(encoded_playlist_uri)}\``);
+		if (good) send_message(client, `Added \`${tracks.length}\` Songs from \`${play_playliist_discord_recieve(encoded_playlist_uri)}\``);
 	},
 	playlist: async (client, message, args) => {
 		disable_messages = true;
-		const tracks = await get_playlist_tracks(args, "YouTube Music");
+		const tracks = await get_playlist_tracks(args, 'YouTube Music');
 		await play_base(client, message, tracks);
 		disable_messages = false;
 		send_message(client, `Added \`${tracks.length}\` Songs`);
@@ -160,26 +160,26 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 		guild_queue(client, message)?.shuffle();
 	},
 	queue: async (client, message, _) => {
-		let str = "";
+		let str = '';
 		const guild_tracks = guild_queue(client, message).tracks;
 		for (let i = 0; i < Math.min(20, guild_tracks.length); i++) {
 			const track = guild_tracks[i];
-			str += `> Queued (${i + 1}) -> ` + track_to_string(track) + "\n";
+			str += `> Queued (${i + 1}) -> ` + track_to_string(track) + '\n';
 		}
 		if (Math.min(20, guild_tracks.length) !== guild_tracks.length) str += `... +${guild_tracks.length - 20} Songs\n`;
 		send_message(client, str);
 	},
 	media: async (client, _, __) => {
-		let str = "";
+		let str = '';
 		for (let i = 0; i < Math.floor(MEDIA.length / 2); i++) {
 			const track = MEDIA[i];
-			str += `> Media (${i + 1}) -> ` + track_to_string(track) + "\n";
+			str += `> Media (${i + 1}) -> ` + track_to_string(track) + '\n';
 		}
 		send_message(client, str);
-		str = "";
+		str = '';
 		for (let i = Math.floor(MEDIA.length / 2); i < MEDIA.length; i++) {
 			const track = MEDIA[i];
-			str += `> Media (${i + 1}) -> ` + track_to_string(track) + "\n";
+			str += `> Media (${i + 1}) -> ` + track_to_string(track) + '\n';
 		}
 		send_message(client, str);
 	},
@@ -203,8 +203,8 @@ export async function on_message_create(client: DiscordClient, message: DiscordM
 		const command_id = args.shift()!;
 		channel_id = message.channelId;
 
-		COMMANDS[command_id](client, message, args).catch((e) => send_message(client, "[ERROR]: " + e));
+		COMMANDS[command_id](client, message, args).catch(e => send_message(client, '[ERROR]: ' + e));
 	} catch (e) {
-		send_message(client, "[ERROR]: " + (e as any));
+		send_message(client, '[ERROR]: ' + (e as any));
 	}
 }

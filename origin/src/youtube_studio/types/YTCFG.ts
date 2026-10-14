@@ -821,7 +821,7 @@ export interface ClickTracking {
 }
 
 export interface LatestEcatcherServiceTrackingParams {
-	"client.name": string;
+	'client.name': string;
 }
 
 export interface WebPlayerContextConfigs {

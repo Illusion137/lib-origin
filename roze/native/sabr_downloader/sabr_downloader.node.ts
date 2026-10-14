@@ -1,9 +1,9 @@
-import { createWriteStream } from "fs";
-import { SabrStream, type ReloadResponse } from "googlevideo/sabr-stream";
-import type { SabrDownloader, SabrDownloadParams } from "./sabr_downloader.base";
-import { YouTubeDL } from "@origin/youtube_dl";
-import { catch_log } from "@common/utils/error_util";
-import { EnabledTrackTypes } from "googlevideo/utils";
+import { createWriteStream } from 'fs';
+import { SabrStream, type ReloadResponse } from 'googlevideo/sabr-stream';
+import type { SabrDownloader, SabrDownloadParams } from './sabr_downloader.base';
+import { YouTubeDL } from '@origin/youtube_dl';
+import { catch_log } from '@common/utils/error_util';
+import { EnabledTrackTypes } from 'googlevideo/utils';
 
 export const node_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params: SabrDownloadParams, output_path: string, on_progress?: (progress: number) => void) => {
@@ -11,16 +11,16 @@ export const node_sabr_downloader: SabrDownloader = {
 
 		const sabr_fetch: typeof fetch = async (input, init) => {
 			const extra_headers: Record<string, string> = {
-				"origin": "https://www.youtube.com",
-				"referer": "https://www.youtube.com/",
+				origin: 'https://www.youtube.com',
+				referer: 'https://www.youtube.com/'
 			};
 			if (params.cookie) extra_headers.cookie = params.cookie;
 			const resp = await fetch(input, {
 				...init,
 				headers: {
 					...((init?.headers as Record<string, string>) ?? {}),
-					...extra_headers,
-				},
+					...extra_headers
+				}
 			});
 			if (!resp.ok) {
 				console.error(`[sabr_fetch] ${resp.status} ${resp.statusText} url=${input.toString().substring(0, 100)}`);
@@ -41,7 +41,7 @@ export const node_sabr_downloader: SabrDownloader = {
 			poToken: initial_token,
 			fetchFunction: sabr_fetch,
 			callbacks: {
-				onReloadPlayerResponse: async(ctx): Promise<ReloadResponse> => {
+				onReloadPlayerResponse: async (ctx): Promise<ReloadResponse> => {
 					const BAD = {
 						serverAbrStreamingUrl: '',
 						videoPlaybackUstreamerConfig: ''
@@ -53,7 +53,7 @@ export const node_sabr_downloader: SabrDownloader = {
 							return {
 								serverAbrStreamingUrl: updated.sabrServerUrl,
 								videoPlaybackUstreamerConfig: updated.sabrUstreamerConfig
-							}
+							};
 						}
 					} catch (e) {
 						console.error('[SABR] Failed to reload player response:', e);
@@ -61,7 +61,7 @@ export const node_sabr_downloader: SabrDownloader = {
 					return BAD;
 				},
 				onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(params.content_binding)
-			},
+			}
 		});
 
 		sabr_stream.on('abort', () => console.log('[SABR] aborted'));
@@ -107,7 +107,7 @@ export const node_sabr_downloader: SabrDownloader = {
 				});
 			}
 
-			write_stream.on("error", reject);
+			write_stream.on('error', reject);
 			pump();
 		});
 	}

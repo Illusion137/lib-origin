@@ -1,9 +1,9 @@
 export interface InitialData {
-	contents: any
-	trackingParams: string
-	responseContext: object
+	contents: any;
+	trackingParams: string;
+	responseContext: object;
 }
-export type YouTubeMusicAlbumType = "Single"|"Album"|"EP"|"Song";
+export type YouTubeMusicAlbumType = 'Single' | 'Album' | 'EP' | 'Song';
 export type YouTubeMusicBadges = Partial<['MUSIC_EXPLICIT_BADGE']>;
 export interface YouTubeMusicThumbnail {
 	url: string;

@@ -1,8 +1,8 @@
-import { Audiobooks, type AudiobookTTSOpts } from "@illusive/audiobooks";
-import type { AudiobookTableItem } from "@illusive/db/schema";
-import { GLOBALS } from "@illusive/globals";
-import type Roz from "@roze/types/roz";
-import { generror_catch } from "@common/utils/error_util";
+import { Audiobooks, type AudiobookTTSOpts } from '@illusive/audiobooks';
+import type { AudiobookTableItem } from '@illusive/db/schema';
+import { GLOBALS } from '@illusive/globals';
+import type Roz from '@roze/types/roz';
+import { generror_catch } from '@common/utils/error_util';
 
 export namespace AudiobookGeneration {
 	export interface GenState {
@@ -63,7 +63,7 @@ export namespace AudiobookGeneration {
 			total: novel.chapter_count,
 			chapter_done: 0,
 			chapter_total: chapter_content_total(target_chapter ?? 0),
-			encode_progress: null,
+			encode_progress: null
 		};
 		states.set(novel.uuid, state);
 		notify();
@@ -99,15 +99,15 @@ export namespace AudiobookGeneration {
 						on_content_export: bump,
 						on_content_skip: bump,
 						on_encode_progress: encode_progress,
-						on_chapter_finish: finish_chapter,
+						on_chapter_finish: finish_chapter
 					})
 				: await Audiobooks.generate_chapter_audio(novel.uuid, target_chapter, opts, { on_content_export: bump, on_content_skip: bump, on_encode_progress: encode_progress, on_chapter_finish: finish_chapter });
-			if ("error" in result) {
-				GLOBALS.global_var.bottom_alert(`Generation failed: ${result.error.message}`, "WARN");
+			if ('error' in result) {
+				GLOBALS.global_var.bottom_alert(`Generation failed: ${result.error.message}`, 'WARN');
 			}
 		} catch (e) {
-			const err = generror_catch(e, "Audiobook generation crashed", "MEDIUM", { uuid: novel.uuid });
-			GLOBALS.global_var.bottom_alert(`Generation failed: ${err.error.message}`, "WARN");
+			const err = generror_catch(e, 'Audiobook generation crashed', 'MEDIUM', { uuid: novel.uuid });
+			GLOBALS.global_var.bottom_alert(`Generation failed: ${err.error.message}`, 'WARN');
 		} finally {
 			states.delete(novel.uuid);
 			notify();

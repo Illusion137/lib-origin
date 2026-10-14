@@ -1,5 +1,5 @@
-import { ProxyAgent, fetch as undici_fetch } from "undici";
-import type { ProxyFetch } from "@native/proxyfetch/proxyfetch.base";
+import { ProxyAgent, fetch as undici_fetch } from 'undici';
+import type { ProxyFetch } from '@native/proxyfetch/proxyfetch.base';
 
 const proxy_agents = new Map<string, ProxyAgent>();
 

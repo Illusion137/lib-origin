@@ -1,13 +1,13 @@
-import { db } from "@illusive/db/database";
-import { audiobooks_table, type AudiobookTableInsert, type AudiobookTableItem } from "@illusive/db/schema";
-import { Constants } from "@illusive/constants";
-import { SQLfs } from "@illusive/sql/sql_fs";
-import { and, asc, eq } from "drizzle-orm";
+import { db } from '@illusive/db/database';
+import { audiobooks_table, type AudiobookTableInsert, type AudiobookTableItem } from '@illusive/db/schema';
+import { Constants } from '@illusive/constants';
+import { SQLfs } from '@illusive/sql/sql_fs';
+import { and, asc, eq } from 'drizzle-orm';
 
 export namespace SQLAudiobook {
 	function resolve_cover_path(cover: string): string {
 		if (!cover) return cover;
-		if (cover.startsWith("data:") || cover.startsWith("http")) return cover;
+		if (cover.startsWith('data:') || cover.startsWith('http')) return cover;
 		const marker = Constants.audiobooks_archive_path;
 		const idx = cover.lastIndexOf(marker);
 		const rel = idx >= 0 ? cover.slice(idx + marker.length) : cover;

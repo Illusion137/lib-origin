@@ -1,10 +1,10 @@
-import { SayPlatformLinux } from "./platform/linux";
-import { SayPlatformDarwin } from "./platform/darwin";
-import { SayPlatformWin32 } from "./platform/win32";
+import { SayPlatformLinux } from './platform/linux';
+import { SayPlatformDarwin } from './platform/darwin';
+import { SayPlatformWin32 } from './platform/win32';
 
-const MACOS = "darwin";
-const LINUX = "linux";
-const WIN32 = "win32";
+const MACOS = 'darwin';
+const LINUX = 'linux';
+const WIN32 = 'win32';
 
 export const platforms = {
 	WIN32: WIN32,

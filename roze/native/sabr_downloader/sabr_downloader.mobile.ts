@@ -1,5 +1,5 @@
 import TrackPlayer, { Event } from 'react-native-track-player';
-import type { SabrDownloader, SabrTokenCallbackReason } from "./sabr_downloader.base";
+import type { SabrDownloader, SabrTokenCallbackReason } from './sabr_downloader.base';
 import { YouTubeDL } from '@origin/youtube_dl';
 
 export const mobile_sabr_downloader: SabrDownloader = {
@@ -26,13 +26,13 @@ export const mobile_sabr_downloader: SabrDownloader = {
 			});
 		}
 		let token_refresh_in_flight = false;
-		const unsub_refresh = TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (event: { outputPath?: string, reason: SabrTokenCallbackReason }) => {
+		const unsub_refresh = TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (event: { outputPath?: string; reason: SabrTokenCallbackReason }) => {
 			if (event.outputPath !== output_path) return;
 			if (token_refresh_in_flight) return;
 			token_refresh_in_flight = true;
 			try {
 				const token = await YouTubeDL.fetch_potoken(params.content_binding);
-				if("error" in token) throw token.error;
+				if ('error' in token) throw token.error;
 				await TrackPlayer.updateSabrPoToken(output_path, token.po_token);
 			} catch {
 				// ignore — stream will fail naturally if token can't be refreshed

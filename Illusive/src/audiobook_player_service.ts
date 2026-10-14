@@ -36,7 +36,7 @@ export namespace AudiobookPlayer {
 				uuid: cc.chapter.uuid,
 				title: cc.chapter.title || `Chapter ${index + 1}`,
 				audio_path: cc.chapter.audio_path,
-				duration: cc.chapter.duration ?? 0,
+				duration: cc.chapter.duration ?? 0
 			});
 		});
 		return tracks;
@@ -62,13 +62,13 @@ export namespace AudiobookPlayer {
 		if (chapter_tracks.length === 0) return chapter_tracks;
 
 		const artwork = meta.cover && meta.cover.length > 0 ? meta.cover : undefined;
-		const add_tracks: AddTrack[] = chapter_tracks.map((ct) => ({
+		const add_tracks: AddTrack[] = chapter_tracks.map(ct => ({
 			url: Audiobooks.resolve_relative_path(ct.audio_path),
 			title: ct.title,
 			artist: meta.author || 'Audiobook',
 			album: meta.title || 'Audiobook',
 			artwork,
-			duration: ct.duration,
+			duration: ct.duration
 		}));
 		await TrackPlayer.add(add_tracks);
 

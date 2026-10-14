@@ -1,6 +1,6 @@
-import type Roz from "@roze/types/roz";
-import type { RozContent } from "@roze/types/roz";
-import { paginate_roz_contents, type WindowSize } from "./paginator";
+import type Roz from '@roze/types/roz';
+import type { RozContent } from '@roze/types/roz';
+import { paginate_roz_contents, type WindowSize } from './paginator';
 
 export interface TimedContent {
 	content: RozContent;
@@ -59,8 +59,7 @@ function rightmost_at_or_before<T extends { start: number }>(sorted: T[], t: num
 	let lo = 0, hi = sorted.length - 1, idx = 0;
 	while (lo <= hi) {
 		const mid = (lo + hi) >> 1;
-		if (sorted[mid].start <= t) { idx = mid; lo = mid + 1; }
-		else hi = mid - 1;
+		if (sorted[mid].start <= t) { idx = mid; lo = mid + 1; } else hi = mid - 1;
 	}
 	return idx;
 }
@@ -73,20 +72,20 @@ export function content_at_time(timeline: AudiobookContentTimeline, t: number): 
 export function build_image_timeline(roz: Roz): AudiobookImageTimeline {
 	const { items, total_duration } = build_content_timeline(roz);
 	const images: TimedImage[] = [];
-	const cover = roz.cover ?? "";
-	const first_image = items.find(it => it.content.type === "IMAGE");
+	const cover = roz.cover ?? '';
+	const first_image = items.find(it => it.content.type === 'IMAGE');
 	const cover_end = first_image ? first_image.start : total_duration;
 	if (cover.length > 0) images.push({ image: cover, is_cover: true, start: 0, end: cover_end });
 
 	let i = 0;
 	while (i < items.length) {
-		if (items[i].content.type !== "IMAGE") { i++; continue; }
+		if (items[i].content.type !== 'IMAGE') { i++; continue; }
 		const run: TimedContent[] = [];
-		while (i < items.length && items[i].content.type === "IMAGE") { run.push(items[i]); i++; }
+		while (i < items.length && items[i].content.type === 'IMAGE') { run.push(items[i]); i++; }
 		const window_start = run[0].start;
 		let next_image_start = total_duration;
 		for (let j = i; j < items.length; j++) {
-			if (items[j].content.type === "IMAGE") { next_image_start = items[j].start; break; }
+			if (items[j].content.type === 'IMAGE') { next_image_start = items[j].start; break; }
 		}
 		const span = Math.max(next_image_start - window_start, run.length);
 		const per = span / run.length;
@@ -94,7 +93,7 @@ export function build_image_timeline(roz: Roz): AudiobookImageTimeline {
 			image: it.content.content,
 			is_cover: false,
 			start: window_start + per * k,
-			end: window_start + per * (k + 1),
+			end: window_start + per * (k + 1)
 		}));
 	}
 

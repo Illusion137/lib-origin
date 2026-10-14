@@ -1,24 +1,24 @@
 export interface Continuation {
-    trigger: string
-    continuationEndpoint: ContinuationEndpoint
+	trigger: string;
+	continuationEndpoint: ContinuationEndpoint;
 }
 
 export interface ContinuationEndpoint {
-    clickTrackingParams: string
-    commandMetadata: CommandMetadata
-    continuationCommand: ContinuationCommand
+	clickTrackingParams: string;
+	commandMetadata: CommandMetadata;
+	continuationCommand: ContinuationCommand;
 }
 
 export interface CommandMetadata {
-    webCommandMetadata: WebCommandMetadata
+	webCommandMetadata: WebCommandMetadata;
 }
 
 export interface WebCommandMetadata {
-    sendPost: boolean
-    apiUrl: string
+	sendPost: boolean;
+	apiUrl: string;
 }
 
 export interface ContinuationCommand {
-    token: string
-    request: string
+	token: string;
+	request: string;
 }
