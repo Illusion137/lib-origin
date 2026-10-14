@@ -10,4 +10,3 @@ export function encode_params(data: Record<string, unknown>, query?: [string, st
 		encoded_params.push(`${query[0]}=${query[1]}`);
 	return encoded_params.join('&');
 }
-export function get_main_key(obj: object) { return Object.keys(obj)[0]; }

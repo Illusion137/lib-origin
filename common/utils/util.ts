@@ -13,12 +13,6 @@ export function generate_new_uid(prefix_name: string) {
 export function gen_uuid(): string {
     return uuid.v4();
 }
-export function decode_hex(hex: string) {
-    return hex.replace(/\\x22/g, '"').replace(/\\x7b/g, '{').replace(/\\x7d/g, '}').replace(/\\x5b/g, '[').replace(/\\x5d/g, ']').replace(/\\x3b/g, ';').replace(/\\x3d/g, '=').replace(/\\x27/g, '\'').replace(/\\\\/g, 'doubleAntiSlash').replace(/\\/g, '').replace(/doubleAntiSlash/g, '\\')
-}
-export function gen_small_id(){
-    return gen_uuid().slice(0,8);
-}
 
 export function small_string(str: string, length = 50) {
     if (str.length < length) return str;
@@ -171,11 +165,6 @@ export function cycle<T>(value: T, values: T[]): T {
     if (value_index === values.length - 1) return values[0];
     return values[value_index + 1];
 }
-export function character_count(haystack: string, needle: string) {
-    let count = 0;
-    for (const char of haystack) if (char === needle) count++;
-    return count;
-}
 
 export function pad_value_left(value: unknown, padding: number) {
     return String(value).padStart(padding, "0");
@@ -276,15 +265,6 @@ export function filter_group_array<T, V extends ((item: T) => boolean)[]>(array:
         array = array.filter((item) => !filter_fn(item));
     }
     return output as { [Key in keyof V]: T };
-}
-
-export function catch_function_sync<T>(func: () => T, on_error: (error: unknown) => any) {
-    try { return func(); } catch (error) { on_error(error); }
-    return reinterpret_cast<T>({});
-}
-export async function catch_function_async<T>(func: () => Promise<T>, on_error: (error: Error) => any) {
-    try { return await func(); } catch (error) { on_error(error as Error); }
-    return reinterpret_cast<T>({});
 }
 
 export function join_uri(base: string, ...paths: string[]): string {
