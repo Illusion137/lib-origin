@@ -164,7 +164,7 @@ export namespace FileParser {
 					},
 					contents: roz_contents
 				});
-			} else if (roz_sections.length == 0) {
+			} else if (roz_sections.length === 0) {
 				roz_sections.push({
 					chapter: {
 						uuid: gen_uuid(),

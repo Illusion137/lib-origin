@@ -615,7 +615,7 @@ export function tracks_with_artist(tracks: Track[], artist_name: string) {
 	return tracks.filter(
 		(track) => {
 			for (const artist of track.artists) {
-				if (artist_string(artist).toLowerCase() == remove_topic(artist_name).toLowerCase().trim()) {
+				if (artist_string(artist).toLowerCase() === remove_topic(artist_name).toLowerCase().trim()) {
 					return true;
 				}
 			}

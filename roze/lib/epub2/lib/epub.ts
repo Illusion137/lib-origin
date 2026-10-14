@@ -210,7 +210,7 @@ export class EPub extends EventEmitter {
 		let i, len;
 
 		for (i = 0, len = this.zip_names.length; i < len; i++) {
-			if (posix.basename(this._normalizeZipName(this.zip_names[i])) == 'mimetype') {
+			if (posix.basename(this._normalizeZipName(this.zip_names[i])) === 'mimetype') {
 				this.mimeFile = this.zip_names[i];
 				break;
 			}
@@ -312,14 +312,14 @@ export class EPub extends EventEmitter {
 				if (Array.isArray(rootfile)) {
 					for (i = 0, len = rootfile.length; i < len; i++) {
 						if (rootfile[i]['@']['media-type']
-							&& rootfile[i]['@']['media-type'] == 'application/oebps-package+xml'
+							&& rootfile[i]['@']['media-type'] === 'application/oebps-package+xml'
 							&& rootfile[i]['@']['full-path']) {
 							filename = rootfile[i]['@']['full-path'].toLowerCase().trim();
 							break;
 						}
 					}
 				} else if (rootfile['@']) {
-					if (rootfile['@']['media-type'] != 'application/oebps-package+xml' || !rootfile['@']['full-path']) {
+					if (rootfile['@']['media-type'] !== 'application/oebps-package+xml' || !rootfile['@']['full-path']) {
 						this.emit('error', new Error('Rootfile in unknown format'));
 						return;
 					}
@@ -516,7 +516,7 @@ export class EPub extends EventEmitter {
 					}
 					break;
 				case 'identifier':
-					if (currentData['@']?.['opf:scheme'] == 'ISBN') {
+					if (currentData['@']?.['opf:scheme'] === 'ISBN') {
 						this.metadata.ISBN = String(currentData['#'] || '').trim();
 					} else if (currentData['@']?.id?.match(/uuid/i)) {
 						this.metadata.UUID = String(currentData['#'] || '')
@@ -526,7 +526,7 @@ export class EPub extends EventEmitter {
 					} else if (Array.isArray(currentData)) {
 						for (j = 0; j < currentData.length; j++) {
 							if (currentData[j]['@']) {
-								if (currentData[j]['@']['opf:scheme'] == 'ISBN') {
+								if (currentData[j]['@']['opf:scheme'] === 'ISBN') {
 									this.metadata.ISBN = String(currentData[j]['#'] || '').trim();
 								} else if (currentData[j]['@'].id?.match(/uuid/i)) {
 									this.metadata.UUID = String(currentData[j]['#'] || '')
@@ -539,7 +539,7 @@ export class EPub extends EventEmitter {
 					}
 					break;
 				case 'meta':
-					if (currentData['#'] && currentData['@'].property == 'calibre:author_link_map') {
+					if (currentData['#'] && currentData['@'].property === 'calibre:author_link_map') {
 						this.metadata.contribute = this.metadata.contribute || [];
 						this.metadata.author_link_map = this.metadata.author_link_map || {};
 
@@ -570,7 +570,7 @@ export class EPub extends EventEmitter {
 				const name = meta['@'].name;
 				this.metadata[name] = meta['@'].content;
 
-				if (name == 'calibre:series') {
+				if (name === 'calibre:series') {
 					this.metadata.series = this.metadata.series || meta['@'].content;
 				}
 			}
@@ -578,7 +578,7 @@ export class EPub extends EventEmitter {
 				this.metadata[meta['@'].property] = meta['#'];
 			}
 
-			if (meta.name && meta.name == 'cover') {
+			if (meta.name && meta.name === 'cover') {
 				this.metadata[meta.name] = meta.content;
 			}
 		}, this);
@@ -610,7 +610,7 @@ export class EPub extends EventEmitter {
 
 					element = this._Elem(element);
 
-					if (element.href && element.href.substr(0, path_str.length) != path_str) {
+					if (element.href && element.href.substr(0, path_str.length) !== path_str) {
 						element.href = path.concat([element.href]).join('/');
 					}
 
@@ -771,7 +771,7 @@ export class EPub extends EventEmitter {
 						element.id = (item['@']?.id || '').trim();
 					}
 
-					if (level == 0) {
+					if (level === 0) {
 						const idx = this.ncx.length;
 
 						currentNcx = this.ncx[idx] = {
@@ -886,7 +886,7 @@ export class EPub extends EventEmitter {
 
 				for (i = 0, len = keys.length; i < len; i++)
 				{
-					if (this.manifest[keys[i]].href == img)
+					if (this.manifest[keys[i]].href === img)
 					{
 						element = this.manifest[keys[i]];
 						break;
@@ -913,7 +913,7 @@ export class EPub extends EventEmitter {
 				let element;
 
 				for (i = 0, len = keys.length; i < len; i++) {
-					if ((this.manifest[keys[i]].href ?? '').split('#')[0] == link) {
+					if ((this.manifest[keys[i]].href ?? '').split('#')[0] === link) {
 						element = this.manifest[keys[i]];
 						break;
 					}
@@ -947,7 +947,7 @@ export class EPub extends EventEmitter {
 	 **/
 	getChapterRaw(chapterId: string, callback: (error: Error | null, text?: string) => void) {
 		if (this.manifest[chapterId]) {
-			if (!(this.manifest[chapterId]['media-type'] == 'application/xhtml+xml' || this.manifest[chapterId]['media-type'] == 'image/svg+xml')) {
+			if (!(this.manifest[chapterId]['media-type'] === 'application/xhtml+xml' || this.manifest[chapterId]['media-type'] === 'image/svg+xml')) {
 				return callback(new Error(`Invalid mime type for chapter "${chapterId}" ${this.manifest[chapterId]['media-type']}`));
 			}
 

@@ -110,7 +110,7 @@ export namespace GoMovies {
 	}
 	export async function search_autocomplete(search_query: string): Promise<GoMovie_Display_Content[]> {
 		search_query = search_query.trim().replace(/[^a-zA-Z0-9 ,]/g, '').trim();
-		if (search_query == '') return [];
+		if (search_query === '') return [];
 		const search_autocomplete_ajax_html_data = (await axios.post('search', `keyword=${search_query.replace(' ', '+')}`, { baseURL: BASE_AJAX_URL, headers: DEFAULT_AJAX_HEADERS })).data;
 		const document = jsdom_document(search_autocomplete_ajax_html_data);
 		const contents = document.querySelectorAll('a');
@@ -141,7 +141,7 @@ export namespace GoMovies {
 	}
 	export async function search_by_query(search_query: string, page = 1): PromiseResult<GoMovieSearchPage> {
 		search_query = search_query.trim().replace(/[^a-zA-Z0-9 ,]/g, '').trim();
-		if (search_query == '') generror('Bad search_query', 'LOW', { search_query, page });
+		if (search_query === '') generror('Bad search_query', 'LOW', { search_query, page });
 		return await get_page(`search/${search_query.replace(/ /g, '-')}`, page);
 	}
 	export async function search_path(path: Path, data: Genre | Country | string, page = 0): Promise<GoMovieSearchPage> {

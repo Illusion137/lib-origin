@@ -9,7 +9,6 @@ import type { CreatePlaylist } from '@origin/youtube/types/CreatePlaylist';
 import type { InitialData } from '@origin/youtube/types/types';
 import type { YTCFG } from '@origin/youtube/types/YTCFG';
 import type { Proxy } from '@origin/proxy/proxy';
-import { sapisid_hash_auth1 } from '@common/utils/auth_utilt';
 import { try_json_eval, try_json_parse } from '@common/utils/parse_util';
 import { encode_params, google_query } from '@common/utils/fetch_util';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
@@ -57,13 +56,13 @@ export namespace YouTube {
 	export function playlist_urlid(playlist_url: string) {
 		return urlid(playlist_url, 'youtube.com/', 'playlist?list=', /&.+/);
 	}
-	export function get_post_headers(cookie_jar: CookieJar, epoch: Date, ytcfg?: YTCFG): Record<string, any> {
-		const SAPISID = cookie_jar.getCookie('SAPISID')?.getData()?.value;
+	export function get_post_headers(cookie_jar: CookieJar, _epoch: Date, _ytcfg?: YTCFG): Record<string, any> {
+		const _SAPISID = cookie_jar.getCookie('SAPISID')?.getData()?.value;
 		const base_headers = {
 			'User-Agent': user_agent_mobile,
 			'accept': '*/*',
 			'accept-language': 'en-US,en;q=0.9',
-			'authorization': SAPISID === undefined ? undefined : sapisid_hash_auth1(SAPISID, epoch, ytcfg!, 'https://www.youtube.com'),
+			// 'authorization': SAPISID === undefined ? undefined : sapisid_hash_auth1(SAPISID, epoch, ytcfg!, 'https://www.youtube.com'),
 			'content-type': 'application/json',
 			'priority': 'u=1, i',
 			'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',

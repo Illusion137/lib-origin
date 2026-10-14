@@ -28,7 +28,7 @@ export function fixToc(epub: EPub | libEPub) {
 			for (const k of manifest_keys) {
 				const row = epub.manifest[k];
 
-				if ((row.href == toc.href) || ((row.href ?? '').replace(/#.+$/g, '') == (toc.href ?? '').replace(/#.+$/g, ''))) {
+				if ((row.href === toc.href) || ((row.href ?? '').replace(/#.+$/g, '') === (toc.href ?? '').replace(/#.+$/g, ''))) {
 					toc.id = k;
 				}
 			}

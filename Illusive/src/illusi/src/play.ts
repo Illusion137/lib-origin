@@ -35,7 +35,7 @@ export async function filter_play_tracks(start_track: Track, tracks: Track[], pl
 }
 export async function play_shuffle(tracks: Track[], from: string) {
 	const shuffled_tracks = Illusive.shuffle_tracks('SHUFFLE', [...tracks]);
-	if (shuffled_tracks.length == 0) { return; }
+	if (shuffled_tracks.length === 0) { return; }
 	GLOBALS.global_var.play_tracks(shuffled_tracks[0], shuffled_tracks, from);
 }
 export async function push_track_to_playing_queue(track_data: Track) {

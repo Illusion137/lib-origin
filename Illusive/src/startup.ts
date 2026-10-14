@@ -1,5 +1,5 @@
 import type { SetState } from '@illusive/types';
-import { catch_function_async, is_empty } from '@common/utils/util';
+import { is_empty } from '@common/utils/util';
 import { Prefs } from '@illusive/prefs';
 import { GLOBALS } from './globals';
 import { download_track, download_track_lyrics } from './downloader';
@@ -108,7 +108,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 		breadcrumb('startup', `illusi_startup: ${name}`, { elapsed_ms: elapsed, section_ms });
 	};
 
-	await catch_function_async(async () => {
+	try {
 		phase('native modules start');
 		await Promise.all([
 			load_native_fs(),
@@ -237,7 +237,9 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 				extra: { total_ms, track_count: GLOBALS.global_var.sql_tracks.length, ...phase_summary }
 			});
 		}
-	}, error => GLOBALS.global_var.bottom_alert('Illusi Startup Failed', 'ERROR', { error }));
+	} catch (error) {
+		GLOBALS.global_var.bottom_alert('Illusi Startup Failed', 'ERROR', { error: error as Error });
+	}
 }
 
 async function run_shortcut(play_tracks: typeof GLOBALS.global_var.play_tracks, userInfo: { uuid: string }, activityType: string) {

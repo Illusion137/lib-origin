@@ -1,6 +1,6 @@
 import { CookieJar } from '@common/utils/cookie_util';
 import type { HexColor, LinkerLink, Track } from '@illusive/types';
-import { gen_small_id, gen_uuid } from '@common/utils/util';
+import { gen_uuid, generate_new_uid } from '@common/utils/util';
 import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref, type BasePrefLoadMap, type BasePrefSaveMap, type BasePrefTypes } from '@native/mmkv/mmkv_utils';
 import { fs } from '@native/fs/fs';
 import type { MMKVModule } from '@native/mmkv/mmkv.base';
@@ -154,7 +154,7 @@ export namespace Prefs {
 		theme: { default_value: 'dark', current_value: 'dark', type: 'STRING' } as BasePref<PossibleThemes, OtherPrefTypes>,
 		track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: 'BIAS' } as BasePref<Bias, OtherPrefTypes>,
 		carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: 'STRING' } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
-		p2p_name: { default_value: `sumi!-${gen_small_id()}`, current_value: `sumi!-${gen_small_id()}`, type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		p2p_name: { default_value: `sumi!-${generate_new_uid('')}`, current_value: `sumi!-${generate_new_uid('')}`, type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 		recent_rejected_ota_update: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 
 		default_playlist_max_size: { default_value: 200, current_value: 200, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,

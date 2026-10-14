@@ -27,7 +27,7 @@ export function on_alphabet_scroll_update(alphabet_scroll: AlphabetScroll, char_
 		populate_alphabet_scroll(alphabet_scroll, char_data);
 	const target = Math.floor(event.nativeEvent.pageY);
 	const closest = closest_to(target + (offset ?? 0), alphabet_scroll.all_alphabet_fast_scroll_locations);
-	if (alphabet_scroll.current_position == closest) return;
+	if (alphabet_scroll.current_position === closest) return;
 	alphabet_scroll.current_position = closest;
 	(biglist_ref?.current?.scrollToLocation as any)({ animated: false, itemIndex: 0, sectionIndex: alphabet_scroll.all_alphabet_fast_scroll_locations.indexOf(closest) });
 	Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(catch_ignore);

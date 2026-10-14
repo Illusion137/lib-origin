@@ -6,7 +6,7 @@ export const mobile_get_audio_duration: GetAudioDuration = {
 		const sound_temp = createAudioPlayer({ uri: path });
 		if (sound_temp.isLoaded) {
 			const duration_seconds = sound_temp.duration ?? 0;
-			sound_temp.release();
+			sound_temp.remove();
 			return duration_seconds;
 		}
 
@@ -14,7 +14,7 @@ export const mobile_get_audio_duration: GetAudioDuration = {
 			const listener = sound_temp.addListener('playbackStatusUpdate', (status) => {
 				if (sound_temp.isLoaded) {
 					const duration_seconds = status.duration ?? 0;
-					sound_temp.release();
+					sound_temp.remove();
 					listener.remove();
 					resolve(duration_seconds);
 				}

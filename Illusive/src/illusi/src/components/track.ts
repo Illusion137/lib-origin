@@ -14,7 +14,7 @@ export async function download_track(track_data: Track, redownload: boolean, is_
 	const track = await SQLTracks.fetch_track_data_from_uid(track_data.uid);
 	if (!track || 'error' in track) return;
 	set_is_downloading(true);
-	if (!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex(item => item.uid == track_data.uid) === -1))) {
+	if (!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex(item => item.uid === track_data.uid) === -1))) {
 		const result = await GLOBALS.global_var.download_track(track_data, redownload);
 		if (typeof result === 'object') {
 			await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

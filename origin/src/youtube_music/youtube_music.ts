@@ -12,7 +12,6 @@ import type { YTCFG } from '@origin/youtube_music/types/YTCFG';
 import type { Proxy } from '@origin/proxy/proxy';
 import type { ContinuationItemRenderer } from '@origin/youtube_music/types/PlaylistResults_0';
 import type { SearchSuggestions } from '@origin/youtube_music/types/SearchSuggestions';
-import { sapisid_hash_auth0, sapisid_hash_auth1 } from '@common/utils/auth_utilt';
 import { generror, generror_catch, generror_fetch } from '@common/utils/error_util';
 import { parse_runs, try_json_eval, try_json_parse } from '@common/utils/parse_util';
 import { encode_params, google_query } from '@common/utils/fetch_util';
@@ -32,11 +31,11 @@ export namespace YouTubeMusic {
 		ytcfg: YTCFG;
 	}
 
-	export function get_sapisid_hash_auth0(SAPISID: string, epoch: Date, ORIGIN = 'https://music.youtube.com') {
-		return sapisid_hash_auth0(SAPISID, epoch, ORIGIN);
+	export function get_sapisid_hash_auth0(_SAPISID: string, _epoch: Date, _ORIGIN = 'https://music.youtube.com') {
+		return '';
 	}
-	export function get_sapisid_hash_auth1(SAPISID: string, epoch: Date, ytcfg: object, ORIGIN = 'https://music.youtube.com') {
-		return sapisid_hash_auth1(SAPISID, epoch, ytcfg as any, ORIGIN);
+	export function get_sapisid_hash_auth1(_SAPISID: string, _epoch: Date, _ytcfg: object, _ORIGIN = 'https://music.youtube.com') {
+		return '';
 	}
 
 	export function get_ad_signal_params(epoch: Date) {
@@ -312,7 +311,7 @@ export namespace YouTubeMusic {
 		const all_search = await search(opts, search_query);
 		if ('error' in all_search) return all_search;
 		if (mode === 'All') return all_search;
-		return search_mode(opts, all_search.data.mode_endpoints.find(endpoint => endpoint.id == mode)?.endpoint as Endpoint, all_search.icfg.ytcfg);
+		return search_mode(opts, all_search.data.mode_endpoints.find(endpoint => endpoint.id === mode)?.endpoint as Endpoint, all_search.icfg.ytcfg);
 	}
 
 	export async function search_suggestions(opts: Opts, search_query: string, ytcfg?: YTCFG) {

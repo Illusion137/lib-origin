@@ -31,7 +31,7 @@ export function parse_time(clock_time: string | undefined): number {
 	const time_split = clock_time.split(':');
 	for (let i = 0; i < time_split.length; i++) {
 		const parsed = parseInt(time_split[time_split.length - 1 - i]);
-		if (i == 0) time += parsed;
+		if (i === 0) time += parsed;
 		else time += parsed * Math.pow(60, i);
 	}
 	return time;

@@ -388,8 +388,8 @@ export namespace SQLPlaylists {
 	export async function create_playlist(title: string, cuuid?: string): Promise<string> {
 		const playlist_names = await all_playlists_names();
 		let count = 2;
-		if (playlist_names.findIndex(item => item.title == title) != -1) {
-			while (playlist_names.findIndex(item => item.title == `${title} ${count}`) != -1 && count <= 100)
+		if (playlist_names.findIndex(item => item.title === title) !== -1) {
+			while (playlist_names.findIndex(item => item.title === `${title} ${count}`) !== -1 && count <= 100)
 				count++;
 			if (count > 0)
 				title = `${title} ${count}`;

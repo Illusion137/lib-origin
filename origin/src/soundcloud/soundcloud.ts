@@ -384,7 +384,7 @@ export namespace SoundCloud {
 			} else return client_id;
 		}
 		if (typeof opts.client_id === 'object') return opts.client_id;
-		const playlist_hyrdration: HydratablePlaylist = hydration.hydration.find(hydratable => hydratable.hydratable == 'playlist') as HydratablePlaylist;
+		const playlist_hyrdration: HydratablePlaylist = hydration.hydration.find(hydratable => hydratable.hydratable === 'playlist') as HydratablePlaylist;
 
 		const locale_params = {
 			client_id: opts.client_id,

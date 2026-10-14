@@ -4,7 +4,7 @@ import type { Album } from '@origin/spotify/types/Album';
 import type { Collection } from '@origin/spotify/types/Collection';
 import type { UserPlaylist } from '@origin/spotify/types/UserPlaylist';
 import type { ResponseError } from '@common/types';
-import { is_empty, milliseconds_of, urlid } from '@common/utils/util';
+import { get_main_key, is_empty, milliseconds_of, urlid } from '@common/utils/util';
 import { parse_playlist_continuation_contents } from '@origin/youtube/parser';
 import type * as YT_CONTINUATION from '@origin/youtube/types/Continuation';
 import type { ContinuationItemViewModel } from '@origin/youtube/types/PlaylistResultsW';
@@ -27,7 +27,6 @@ import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation,
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import { get_main_key } from '@common/utils/fetch_util';
 import { parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './parsers/spotify_parser';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
 import { bandlab_parse_track } from './parsers/bandlab_parser';

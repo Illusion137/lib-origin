@@ -162,7 +162,7 @@ export namespace AppleMusic {
 	export async function get_playlist(playlist_path: string, opts: Opts) {
 		const playlist_response = await get_serialized_server_data(`https://music.apple.com/${urlid(playlist_path, 'music.apple.com/')}`, opts);
 		if ('error' in playlist_response) return playlist_response;
-		if ((playlist_response?.data as Playlist)?.[0]?.intent?.$kind == 'PlaylistDetailPageIntent') {
+		if ((playlist_response?.data as Playlist)?.[0]?.intent?.$kind === 'PlaylistDetailPageIntent') {
 			// Non-user playlist
 			const playlist = playlist_response.data as Playlist;
 			return { data: playlist[0].data, authorization: playlist_response.authorization };

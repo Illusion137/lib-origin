@@ -132,7 +132,8 @@ export default function sharp(data: Buffer | Uint8Array, opts: { raw: { width: n
 		async toBuffer(): Promise<Buffer> {
 			const mod = await load_native_raw_to_png();
 			let raw = data instanceof Uint8Array ? data : new Uint8Array((data as Buffer).buffer, (data as Buffer).byteOffset, (data as Buffer).byteLength);
-			let { width, height, channels } = state.raw;
+			let { width, height } = state.raw;
+			const { channels } = state.raw;
 
 			if (state.resize_opts) {
 				const resized = resize_raw(raw, width, height, channels, state.resize_opts.width, state.resize_opts.height, state.resize_opts.fit);
