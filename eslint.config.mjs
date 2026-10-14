@@ -69,43 +69,6 @@ export default tseslint.config(
 		rules: {
 			"@stylistic/no-extra-semi": "error",
 			"@stylistic/max-statements-per-line": "off",
-			"@typescript-eslint/naming-convention": [
-				"error",
-				{ selector: "import", format: null },
-				{
-					selector: "variable",
-					modifiers: ["destructured"],
-					format: null,
-				},
-				{ selector: "objectLiteralProperty", format: null },
-				{ selector: "typeProperty", format: null },
-				{
-					selector: "variable",
-					format: ["snake_case", "UPPER_CASE", "PascalCase"],
-					leadingUnderscore: "allowDouble",
-					trailingUnderscore: "allowDouble",
-				},
-				{
-					selector: "parameter",
-					format: ["snake_case"],
-					leadingUnderscore: "allowDouble",
-					trailingUnderscore: "allowDouble",
-				},
-				{
-					selector: "function",
-					format: ["snake_case", "PascalCase"],
-					leadingUnderscore: "allowDouble",
-				},
-				{
-					selector: "typeLike",
-					format: ["PascalCase"],
-					leadingUnderscore: "allow",
-				},
-				{
-					selector: "enumMember",
-					format: ["UPPER_CASE", "PascalCase"],
-				},
-			],
 			"@typescript-eslint/only-throw-error": "error",
 			"@typescript-eslint/restrict-template-expressions": "off",
 			"@typescript-eslint/restrict-plus-operands": "off",
