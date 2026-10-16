@@ -1,4 +1,4 @@
-import { YouTubeDL } from "@origin/youtube_dl";
+import { YouTubeDL } from "@origin/youtube/youtube_dl";
 import { SabrStream, type ReloadResponse } from "googlevideo/sabr-stream";
 import { EventEmitter } from "events";
 import express from "express";

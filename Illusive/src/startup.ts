@@ -15,7 +15,7 @@ import { default_playlists } from './default_playlists';
 import { addShortcutListener, getInitialShortcut } from 'react-native-siri-shortcut';
 import { reinterpret_cast } from '../../common/cast';
 import { Constants } from './constants';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { SoundCloud } from '@origin/index';
 import { ffmpeg, load_native_ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { SQLUpdate } from './sql/sql_update';

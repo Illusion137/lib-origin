@@ -5,14 +5,11 @@ import type { ResponseError } from '@common/types';
 import { is_empty } from '@common/utils/util';
 import { supabase } from '@illusive/db/supabase';
 import type { ISOString, TrackMetaData } from '@illusive/types';
-import { parse_search_continuation_contents } from '@origin/youtube/parser';
-import type * as YT_CONTINUATION from '@origin/youtube/types/Continuation';
-import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
+import type { YTSearchResult } from '@origin/youtube/parser';
 import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_apple_music_search_playlist, parse_apple_music_search_track } from '@illusive/parsers/apple_music_parser';
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from '@illusive/parsers/soundcloud_parser';
-import { determine_music_responsive_list_item_renderer, parse_youtube_music_search_artist, parse_youtube_music_search_playlist, parse_youtube_music_search_top_result, parse_youtube_music_search_top_result_contents_track } from '@illusive/parsers/youtube_music_parser';
+import { ytm_album, ytm_artist, ytm_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
-import { youtube_music_get_playlist } from '@illusive/get_playlist';
 import { spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import { parse_amazon_music_search_track } from '@illusive/track_parser';
@@ -25,8 +22,6 @@ import { pandora_parse_track } from './parsers/pandora_parser';
 import { tidal_parse_track } from './parsers/tidal_parser';
 import type { Track as AudiomackTrack } from '@origin/audiomack/types';
 import type { DeezerTrack } from '@origin/deezer/types';
-import type { MusicResponsiveListItemRenderer2 } from '@origin/youtube_music/types/SearchResults_0';
-import { reinterpret_cast } from '@common/cast';
 
 function default_search(error?: ResponseError): MusicSearchResponse {
 	return {
@@ -74,92 +69,44 @@ export async function amazon_music_search(query: string, _?: SearchOpts): Promis
 		continuation: null
 	};
 }
-interface YouTubeSearchContinuation { ytcfg: YT_YTCFG.YTCFG; continuation: YT_CONTINUATION.Continuation }
-function youtube_parse_search(search_response: Awaited<ReturnType<typeof Origin.YouTube.search>>) {
-	if ('error' in search_response) return default_search(search_response);
+interface YouTubeSearchContinuation { continuation: string }
+function youtube_parse_search(data: YTSearchResult, continuation: string | null): MusicSearchResponse {
 	return {
-		tracks: youtube_parse_videos(search_response.data.videos),
-		playlists: youtube_parse_playlists(search_response.data.playlists),
-		artists: youtube_parse_channels(search_response.data.artists),
+		tracks: youtube_parse_videos(data.tracks),
+		playlists: youtube_parse_playlists(data.playlists),
+		artists: youtube_parse_channels(data.artists),
 		albums: [],
-		continuation: is_empty(search_response.data.continuation) ? null : { ytcfg: search_response.icfg.ytcfg, continuation: search_response.data.continuation } as YouTubeSearchContinuation
+		continuation: continuation === null ? null : { continuation } as YouTubeSearchContinuation
 	};
 }
-export async function youtube_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+export async function youtube_search(query: string, _opts?: SearchOpts): Promise<MusicSearchResponse> {
 	const cookie_jar = get_cookie_jar('youtube_cookie_jar');
-	const search_response = await Origin.YouTube.search({ cookie_jar, proxy: opts?.proxy }, query);
-	return youtube_parse_search(search_response);
+	const search_response = await Origin.YouTube.search({ cookie_jar }, query);
+	if ('error' in search_response) return default_search(search_response);
+	return youtube_parse_search(search_response.data, search_response.continuation);
 }
 export async function youtube_search_continuation(opts: YouTubeSearchContinuation): Promise<MusicSearchResponse> {
 	const cookie_jar = get_cookie_jar('youtube_cookie_jar');
-	const search_response = await Origin.YouTube.get_continuation({ cookie_jar }, opts.ytcfg, opts.continuation);
+	const search_response = await Origin.YouTube.get_continuation({ cookie_jar }, opts.continuation);
 	if ('error' in search_response) return default_search(search_response);
-	const parsed_search = parse_search_continuation_contents(search_response);
-	return youtube_parse_search(({ data: parsed_search, icfg: { ytcfg: opts.ytcfg } }) as unknown as Awaited<ReturnType<typeof Origin.YouTube.search>>);
+	return youtube_parse_search(search_response.data as YTSearchResult, search_response.continuation);
 }
 
-export async function youtube_music_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
+export async function youtube_music_search(query: string, _opts?: SearchOpts): Promise<MusicSearchResponse> {
 	const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
-	const search_response = await Origin.YouTubeMusic.search({ cookie_jar, proxy: opts?.proxy }, query);
+	const search_response = await Origin.YouTubeMusic.search({ cookie_jar }, query);
 	if ('error' in search_response) return default_search(search_response);
-	const top_result = await parse_youtube_music_search_top_result(search_response.data.contents.find(item => item.musicCardShelfRenderer !== undefined)?.musicCardShelfRenderer, youtube_music_get_playlist);
-	const results = search_response.data.contents.flatMap((item) => {
-		if (item.musicShelfRenderer) return item.musicShelfRenderer.contents.map(c => c.musicResponsiveListItemRenderer);
 
-		if (item.itemSectionRenderer) return item.itemSectionRenderer.contents
-			.map(c => reinterpret_cast<MusicResponsiveListItemRenderer2>(c.musicResponsiveListItemRenderer))
-			.filter((c): c is NonNullable<typeof c> => c !== undefined);
-		return [];
-	});
+	const tracks: IllusiveTypes.Track[] = search_response.tracks.map(ytm_track);
+	const albums: CompactPlaylist[] = search_response.albums.map(album => ytm_album(album, 'ALBUM'));
+	const playlists: CompactPlaylist[] = search_response.playlists.map(playlist => ytm_album(playlist, 'PLAYLIST'));
+	const artists: CompactArtist[] = search_response.artists.map(ytm_artist);
 
-	const tracks: IllusiveTypes.Track[] = [];
-	const playlists: CompactPlaylist[] = [];
-	const albums: CompactPlaylist[] = [];
-	const artists: CompactArtist[] = [];
+	const top_result = search_response.top_result;
+	if (top_result?.type === 'TRACK' && top_result.track) tracks.unshift(ytm_track(top_result.track));
+	else if (top_result?.type === 'ALBUM' && top_result.album) albums.unshift(ytm_album(top_result.album, 'ALBUM'));
+	else if (top_result?.type === 'ARTIST' && top_result.artist) artists.unshift(ytm_artist(top_result.artist));
 
-	switch (top_result?.top_result.type) {
-		case 'TRACK':
-			tracks.push(top_result.top_result);
-			break;
-		case 'ALBUM':
-			albums.push(top_result.top_result);
-			break;
-		case 'ARTIST':
-			artists.push(top_result.top_result);
-			break;
-		case undefined:
-		default: break;
-	}
-
-	if ((top_result?.side_contents.length ?? 0) > 0) {
-		tracks.push(...top_result!.side_contents);
-	}
-	if (results) {
-		for (const content of results) {
-			const type = determine_music_responsive_list_item_renderer(content);
-			switch (type) {
-				case 'Song':
-				case 'Video':
-					tracks.push(parse_youtube_music_search_top_result_contents_track(content));
-					break;
-				case 'EP':
-				case 'Single':
-				case 'Album':
-					albums.push(parse_youtube_music_search_playlist(content));
-					break;
-				case 'Playlist':
-					playlists.push(parse_youtube_music_search_playlist(content));
-					break;
-				case 'Profile':
-					artists.push(parse_youtube_music_search_artist(content, false));
-					break;
-				case 'Artist':
-					artists.push(parse_youtube_music_search_artist(content, true));
-					break;
-				default: break;
-			}
-		}
-	}
 	return {
 		tracks,
 		playlists,

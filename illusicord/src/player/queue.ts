@@ -12,7 +12,7 @@ import { catch_ignore } from '@common/utils/error_util';
 import path from 'path-browserify';
 import { SabrStream, type ReloadResponse } from 'googlevideo/sabr-stream';
 import { Readable } from 'stream';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { EnabledTrackTypes } from 'googlevideo/utils';
 
 interface PreparedStream { stream_input: Readable | string; input_type: StreamType }

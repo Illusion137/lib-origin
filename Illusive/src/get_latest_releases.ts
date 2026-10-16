@@ -1,13 +1,12 @@
 import { SoundCloud, YouTubeMusic } from '@origin/index';
 import { CookieJar } from '@common/utils/cookie_util';
 import { soundcloud_parse_track, soundcloud_parse_track_to_song } from '@illusive/parsers/soundcloud_parser';
-import { parse_youtube_music_artist_album } from '@illusive/parsers/youtube_music_parser';
+import { ytm_album } from '@illusive/parsers/youtube_music_parser';
 import { apple_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { best_thumbnail, create_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import type { ArtistOpts, CompactPlaylist, NamedUUID, Track } from '@illusive/types';
+import type { ArtistOpts, CompactPlaylist, Track } from '@illusive/types';
 import type * as SoundcloudTypes from '@origin/soundcloud/types/Search';
-import { parse_runs } from '@common/utils/parse_util';
 import { SQLArtists } from '@illusive/sql/sql_artists';
 import { catch_log } from '@common/utils/error_util';
 
@@ -15,18 +14,15 @@ function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
 	return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
 }
 
-export async function youtube_music_get_latest_releases(id: string, opts?: ArtistOpts): Promise<CompactPlaylist[] | undefined> {
-	const artist_response = await YouTubeMusic.get_artist({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, id);
+export async function youtube_music_get_latest_releases(id: string, _opts?: ArtistOpts): Promise<CompactPlaylist[] | undefined> {
+	const artist_response = await YouTubeMusic.get_artist({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, id);
 
 	if ('error' in artist_response) return undefined;
 
-	const name = parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs ?? []);
-	const artist_info: NamedUUID = { name: name, uri: create_uri('youtubemusic', artist_response.data.artist_id ?? id) };
-	const artist_albums_response = await YouTubeMusic.get_only_artist_albums({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response.icfg.ytcfg, id);
+	const name = artist_response.artist.name;
+	const releases = [...artist_response.albums, ...artist_response.singles].map(release => ytm_album(release, 'ALBUM'));
 
-	const potential_all_albums_singles = 'error' in artist_albums_response ? [] : artist_albums_response.data.map(item => parse_youtube_music_artist_album({ musicTwoRowItemRenderer: item }, artist_info, 'ALBUM'));
-
-	const background_thumbnail = best_thumbnail(artist_response.data.header?.musicImmersiveHeaderRenderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
+	const background_thumbnail = best_thumbnail(artist_response.artist.thumbnails)?.url;
 	if (background_thumbnail) {
 		SQLArtists.insert_sql_artists({
 			artwork_url: background_thumbnail,
@@ -35,7 +31,7 @@ export async function youtube_music_get_latest_releases(id: string, opts?: Artis
 		}).catch(catch_log);
 	}
 
-	return potential_all_albums_singles.length <= 0 ? undefined : potential_all_albums_singles.slice(0, 3);
+	return releases.length <= 0 ? undefined : releases.slice(0, 3);
 }
 
 export async function apple_music_get_latest_releases(id: string, opts?: ArtistOpts): Promise<CompactPlaylist[] | undefined> {

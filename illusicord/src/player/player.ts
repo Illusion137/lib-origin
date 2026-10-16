@@ -5,7 +5,7 @@ import EventEmitter from 'events';
 import { Queue } from '@illusicord/player/queue';
 import { DMPError, DMPErrors } from '@illusicord/player/dmp_error';
 import { Constants } from '@illusicord/constants';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 
 export class Player<OptionsData = any> extends EventEmitter {
 	client: Client;

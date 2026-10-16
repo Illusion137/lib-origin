@@ -1,7 +1,6 @@
 import type { ResponseError } from '@common/types';
 import { generror_catch } from '@common/utils/error_util';
-import { is_empty, small_string } from '@common/utils/util';
-import { remove } from '@common/utils/clean_util';
+import { small_string } from '@common/utils/util';
 import { reinterpret_cast } from '../cast';
 
 function json_eval<T>(json: string): T {
@@ -36,18 +35,7 @@ export function parse_time(clock_time: string | undefined): number {
 	}
 	return time;
 }
-export function youtube_views_number(views_string?: string): number {
-	if (is_empty(views_string)) return 0;
-	views_string = remove(views_string!, ' views', ' view', ' plays', ' play');
-	const last_char = views_string[views_string.length - 1];
 
-	switch (last_char) {
-		case 'B': return parseFloat(views_string) * 1000000000;
-		case 'M': return parseFloat(views_string) * 1000000;
-		case 'K': return parseFloat(views_string) * 1000;
-		default: return parseFloat(views_string);
-	}
-}
 export function parse_runs(runs: ({ text: string }[]) | undefined, join_with?: string): string {
 	if (runs === undefined) return '';
 	return runs.map(run => run.text).join(join_with ?? ' ');

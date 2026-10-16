@@ -1,4 +1,4 @@
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import express from 'express';
 import "dotenv/config";
 import type { ResponseError } from '@common/types';

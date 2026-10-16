@@ -28,7 +28,7 @@ import { breadcrumb, set_context } from '@common/sentry_error_handler';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
 import { VibesSampler } from './vibes_sampler';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
 
 export let trackplayer_has_been_setup = false;

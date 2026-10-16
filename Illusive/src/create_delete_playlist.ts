@@ -33,34 +33,24 @@ export async function amazon_music_delete_playlist(playlist_url: string) {
 
 export async function youtube_create_playlist(playlist_name: string) {
 	const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
-	const home = await Origin.YouTube.get_home({});
-	if ('error' in home) return '';
-	const creation_response = await Origin.YouTube.create_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_name, 'UNLISTED');
-	if ('error' in creation_response) return '';
+	const creation_response = await Origin.YouTube.create_playlist({ cookie_jar: cookie_jar }, playlist_name, 'UNLISTED');
+	if ('error' in creation_response || creation_response.playlistId === undefined) return '';
 	return create_uri('youtube', creation_response.playlistId);
 }
 export async function youtube_delete_playlist(playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
-	const home = await Origin.YouTube.get_home({});
-	if ('error' in home) return false;
-	const deletion_response = await Origin.YouTube.delete_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_url);
-	return deletion_response;
+	return await Origin.YouTube.delete_playlist({ cookie_jar: cookie_jar }, playlist_url);
 }
 
 export async function youtube_music_create_playlist(playlist_name: string) {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-	const home = await Origin.YouTubeMusic.get_home({});
-	if ('error' in home) return '';
-	const creation_response = await Origin.YouTubeMusic.create_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_name, 'UNLISTED');
-	if ('error' in creation_response) return '';
+	const creation_response = await Origin.YouTubeMusic.create_playlist({ cookie_jar: cookie_jar }, playlist_name, 'UNLISTED');
+	if ('error' in creation_response || creation_response.playlistId === undefined) return '';
 	return create_uri('youtubemusic', creation_response.playlistId);
 }
 export async function youtube_music_delete_playlist(playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-	const home = await Origin.YouTubeMusic.get_home({});
-	if ('error' in home) return false;
-	const deletion_response = await Origin.YouTubeMusic.delete_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_url);
-	return deletion_response;
+	return await Origin.YouTubeMusic.delete_playlist({ cookie_jar: cookie_jar }, playlist_url);
 }
 export async function apple_music_create_playlist(playlist_name: string) {
 	const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');

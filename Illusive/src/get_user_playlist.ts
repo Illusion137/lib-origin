@@ -1,6 +1,7 @@
 import * as Origin from '@origin/index';
 import { milliseconds_of, urlid } from '@common/utils/util';
 import { create_thumbnails, create_uri, spotify_uri_to_type, spotify_uri_to_uri } from '@illusive/illusive_utils';
+import { ytm_album } from '@illusive/parsers/youtube_music_parser';
 import { Prefs } from '@illusive/prefs';
 import type { CompactPlaylist, CompactPlaylistsResult, ISOString } from '@illusive/types';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
@@ -58,7 +59,7 @@ export async function youtube_get_user_playlists(): Promise<CompactPlaylistsResu
 	return {
 		playlists: user_playlists_response.data.map((playlist) => {
 			return {
-				title: { name: playlist.title, uri: create_uri('youtube', playlist.endpoint) },
+				title: { name: playlist.title, uri: create_uri('youtube', playlist.playlist_id) },
 				artist: [],
 				artwork_thumbnails: playlist.thumbnails
 			};
@@ -71,13 +72,7 @@ export async function youtube_music_get_user_playlists(): Promise<CompactPlaylis
 	const user_playlists_response = await Origin.YouTubeMusic.get_library({ cookie_jar: cookie_jar, fetch_opts });
 	if ('error' in user_playlists_response) return { playlists: [], error: user_playlists_response.error };
 	return {
-		playlists: user_playlists_response.data.map((playlist) => {
-			return {
-				title: { name: playlist.title, uri: create_uri('youtubemusic', playlist.endpoint) },
-				artist: [],
-				artwork_thumbnails: playlist.thumbnails
-			};
-		})
+		playlists: user_playlists_response.data.map(playlist => ytm_album(playlist, 'PLAYLIST'))
 	};
 }
 

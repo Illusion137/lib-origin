@@ -1,6 +1,6 @@
 import TrackPlayer, { Event } from 'react-native-track-player';
 import type { SabrDownloader, SabrTokenCallbackReason } from './sabr_downloader.base';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 
 export const mobile_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params, output_path, on_progress) => {

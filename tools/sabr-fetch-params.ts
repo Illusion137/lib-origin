@@ -21,7 +21,7 @@
 
 import { load_native_fs } from '@native/fs/fs';
 import { load_native_potoken } from '@native/potoken/potoken';
-import { YouTubeDL } from '@origin/youtube_dl/index';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 
 const VIDEO_ID = process.argv[2] ?? 'wf4kRfGzflo';
 

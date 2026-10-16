@@ -45,48 +45,30 @@ export async function amazon_music_delete_tracks_from_playlist(tracks: Track[], 
 	return deletion_response.ok;
 }
 
-let home_;
 export async function youtube_add_tracks_to_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
 	tracks = tracks.filter(track => !is_empty(track.youtube_id));
 	const uris = tracks.map(track => track.youtube_id) as string[];
-	if (home_ === undefined) home_ = await Origin.YouTube.get_home({ cookie_jar });
-	if ('error' in home_) return false;
-	const add_response = await Origin.YouTube.add_tracks_to_playlist({ cookie_jar }, home_.icfg.ytcfg, playlist_url, uris);
-	return add_response;
+	return await Origin.YouTube.add_tracks_to_playlist({ cookie_jar }, playlist_url, uris);
 }
 export async function youtube_delete_tracks_from_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
 	tracks = tracks.filter(track => !is_empty(track.youtube_id));
 	const uris = tracks.map(track => track.youtube_id as string);
-	const home = await Origin.YouTube.get_home({ cookie_jar });
-	if ('error' in home) return false;
-	const deletion_response = await Origin.YouTube.remove_tracks_to_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_url, uris);
-	return deletion_response;
+	return await Origin.YouTube.remove_tracks_to_playlist({ cookie_jar: cookie_jar }, playlist_url, uris);
 }
 
 export async function youtube_music_add_tracks_to_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-	tracks = tracks.filter(track => !is_empty(track.youtubemusic_id));
-	const uris = tracks.map(track => track.youtubemusic_id) as string[];
-	const home = await Origin.YouTubeMusic.get_home({ cookie_jar: cookie_jar });
-	if ('error' in home) return false;
-	const add_response = await Origin.YouTubeMusic.add_tracks_to_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_url, uris);
-	return add_response;
+	tracks = tracks.filter(track => !is_empty(track.youtube_id));
+	const uris = tracks.map(track => track.youtube_id) as string[];
+	return await Origin.YouTubeMusic.add_tracks_to_playlist({ cookie_jar: cookie_jar }, playlist_url, uris);
 }
 export async function youtube_music_delete_tracks_from_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
 	tracks = tracks.filter(track => !is_empty(track.youtubemusic_id));
-	const uris = tracks.map((track) => {
-		return {
-			video_id: track.youtube_id as string,
-			set_video_id: track.youtubemusic_id as string
-		};
-	});
-	const home = await Origin.YouTubeMusic.get_home({ cookie_jar: cookie_jar });
-	if ('error' in home) return false;
-	const deletion_response = await Origin.YouTubeMusic.remove_tracks_to_playlist({ cookie_jar: cookie_jar }, home.icfg.ytcfg, playlist_url, uris);
-	return deletion_response;
+	const set_video_ids = tracks.map(track => track.youtubemusic_id as string);
+	return await Origin.YouTubeMusic.remove_tracks_to_playlist({ cookie_jar: cookie_jar }, playlist_url, set_video_ids);
 }
 export async function apple_music_add_tracks_to_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');

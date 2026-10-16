@@ -2,13 +2,12 @@ import type * as Origin from '@origin/index';
 import type { CookieJar } from '@common/utils/cookie_util';
 import type { PromiseResult, ResponseError } from '@common/types';
 import { TimedCache } from '@common/types';
-// import type { Chapter } from "@origin/youtube_dl/types";
 import { Constants } from '@illusive/constants';
 import type { Prefs } from '@illusive/prefs';
 import { remove } from '@common/utils/clean_util';
 import type { BasePref } from '@native/mmkv/mmkv_utils';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
-import type { YouTubeDL } from '@origin/youtube_dl/index';
+import type { YouTubeDL } from '@origin/youtube/youtube_dl';
 import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
 
 type ArtworkCacheType = 'force-cache';

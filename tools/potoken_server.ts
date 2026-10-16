@@ -1,5 +1,5 @@
 import { potoken } from '@native/potoken/potoken';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import express from 'express';
 const app = express();
 const port = 3000;

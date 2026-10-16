@@ -5,7 +5,6 @@ import { Constants } from '@illusive/constants';
 import { Prefs } from '@illusive/prefs';
 import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from '@illusive/query_flags';
 import type { AlbumSortMode, Artwork, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from '@illusive/types';
-import type { Run3 } from '@origin/youtube/types/PlaylistResults_0';
 import fuzzysort from 'fuzzysort';
 import { reinterpret_cast } from '../../common/cast';
 import type { BasePref } from '@native/mmkv/mmkv_utils';
@@ -415,33 +414,6 @@ export function is_duration_string(str: string | undefined) {
 }
 export function is_number(str: string) {
 	return !isNaN(parseFloat(str));
-}
-export function youtube_views_number(views_string?: string): number {
-	if (is_empty(views_string)) return 0;
-	views_string = remove(views_string!, ' views', ' view', ' plays', ' play');
-	const last_char = views_string[views_string.length - 1];
-
-	switch (last_char) {
-		case 'B':
-			return parseFloat(views_string) * 1000000000;
-		case 'M':
-			return parseFloat(views_string) * 1000000;
-		case 'K':
-			return parseFloat(views_string) * 1000;
-		default:
-			return parseFloat(views_string);
-	}
-}
-export function youtube_music_split_artists(runs: Run3[]): NamedUUID[] {
-	if (is_empty(runs)) return [];
-	const named_uris: NamedUUID[] = [];
-	if (runs.length === 1) named_uris.push({ name: runs[0].text, uri: runs[0].navigationEndpoint !== undefined ? create_uri('youtubemusic', runs[0].navigationEndpoint.browseEndpoint.browseId) : null });
-	else
-		for (const run of runs) {
-			const is_year = run.text.length === 4 && !isNaN(parseInt(run.text));
-			if (!run.text.includes(',') && !run.text.includes('&') && !run.text.includes('and') && !run.text.includes(' • ') && !is_year) named_uris.push({ name: run.text, uri: run.navigationEndpoint !== undefined ? create_uri('youtubemusic', run.navigationEndpoint.browseEndpoint.browseId) : null });
-		}
-	return named_uris;
 }
 export function tracks_include(original: Track[], incoming: Track[]): Track[] {
 	const original_seen_uid_set = new Set(original.map(({ uid }) => uid));

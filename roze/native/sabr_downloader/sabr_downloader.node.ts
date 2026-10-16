@@ -1,7 +1,7 @@
 import { createWriteStream } from 'fs';
 import { SabrStream, type ReloadResponse } from 'googlevideo/sabr-stream';
 import type { SabrDownloader, SabrDownloadParams } from './sabr_downloader.base';
-import { YouTubeDL } from '@origin/youtube_dl';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { catch_log } from '@common/utils/error_util';
 import { EnabledTrackTypes } from 'googlevideo/utils';
 

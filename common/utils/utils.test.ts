@@ -11,7 +11,7 @@ import {
 } from './util';
 import { remove, remove_topic } from './clean_util';
 import {
-	parse_time, youtube_views_number, parse_runs, parse_pdf_date, force_json_parse,
+	parse_time, parse_runs, parse_pdf_date, force_json_parse,
 	force_json_parse_array, try_json_parse, try_json_eval
 } from './parse_util';
 import { Cookie, CookieJar } from './cookie_util';
@@ -220,13 +220,6 @@ describe('parse_util.ts', () => {
 		expect(parse_time('1:30')).toBe(90);
 		expect(parse_time('1:00:00')).toBe(3600);
 		expect(parse_time(undefined)).toBeNaN();
-	});
-	it('youtube_views_number expands K/M/B suffixes', () => {
-		expect(youtube_views_number('500')).toBe(500);
-		expect(youtube_views_number('2K plays')).toBe(2000);
-		expect(youtube_views_number('1.5M views')).toBe(1_500_000);
-		expect(youtube_views_number('1B views')).toBe(1_000_000_000);
-		expect(youtube_views_number(undefined)).toBe(0);
 	});
 	it('parse_runs concatenates run text', () => {
 		expect(parse_runs([{ text: 'a' }, { text: 'b' }])).toBe('a b');

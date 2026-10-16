@@ -1,4 +1,4 @@
-import type { YouTubeDL } from '@origin/youtube_dl/index';
+import type { YouTubeDL } from '@origin/youtube/youtube_dl';
 
 export type SabrTokenCallbackReason = 'placeholder_needed' | 'proactive' | 'expired';
 

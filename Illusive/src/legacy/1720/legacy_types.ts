@@ -6,7 +6,7 @@ import type { Prefs } from '@illusive/prefs';
 import { remove } from '@common/utils/clean_util';
 import type { BasePref } from '@native/mmkv/mmkv_utils';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
-import type { YouTubeDL } from '@origin/youtube_dl/index';
+import type { YouTubeDL } from '@origin/youtube/youtube_dl';
 
 export namespace LT1720 {
 	type ArtworkCacheType = 'force-cache';

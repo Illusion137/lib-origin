@@ -3,7 +3,7 @@ import { TimeLog } from "@common/time_log";
 import { red, green } from "colors";
 import cli_progress from 'cli-progress';
 import path from 'path';
-import { YouTubeDL } from "@origin/youtube_dl/index";
+import { YouTubeDL } from "@origin/youtube/youtube_dl";
 import { ffmpeg, load_native_ffmpeg } from "@native/ffmpeg/ffmpeg";
 import { gen_uuid, milliseconds_of } from "@common/utils/util";
 import { load_native_potoken } from '@native/potoken/potoken';

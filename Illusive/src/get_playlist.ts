@@ -5,28 +5,18 @@ import type { Collection } from '@origin/spotify/types/Collection';
 import type { UserPlaylist } from '@origin/spotify/types/UserPlaylist';
 import type { ResponseError } from '@common/types';
 import { get_main_key, is_empty, milliseconds_of, urlid } from '@common/utils/util';
-import { parse_playlist_continuation_contents } from '@origin/youtube/parser';
-import type * as YT_CONTINUATION from '@origin/youtube/types/Continuation';
-import type { ContinuationItemViewModel } from '@origin/youtube/types/PlaylistResultsW';
-import type * as YT_YTCFG from '@origin/youtube/types/YTCFG';
-import type * as YTMUSIC_CONTINUATION from '@origin/youtube_music/types/Continuation';
-import type { YouTubeMusicPlaylistTrack } from '@origin/youtube_music/types/PlaylistResults_0';
-import type { PlaylistResults_1 } from '@origin/youtube_music/types/PlaylistResults_1';
-import type { PlaylistResults_3 } from '@origin/youtube_music/types/PlaylistResults_3';
-import type * as YTMUSIC_YTCFG from '@origin/youtube_music/types/YTCFG';
-import type * as YTMUSIC_CONTINUATION_RENDERER from '@origin/youtube/types/PlaylistResults_0';
+import type { YTMPlaylistResult, YTPlaylistResult } from '@origin/youtube/parser';
 import { clean_album_title, parse_apple_music_album_track, parse_apple_music_artwork, parse_apple_music_playlist_track, parse_apple_music_user_playlist_track } from '@illusive/parsers/apple_music_parser';
 import { musi_parse_track } from '@illusive/parsers/musi_parser';
 import { soundcloud_parse_track } from '@illusive/parsers/soundcloud_parser';
-import { parse_youtube_music_album_track, parse_youtube_music_playlist_track } from '@illusive/parsers/youtube_music_parser';
+import { ytm_named, ytm_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_playlist_header, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
-import { best_thumbnail, create_uri, date_from, spotify_uri_to_uri, youtube_music_split_artists } from '@illusive/illusive_utils';
+import { best_thumbnail, create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import { parse_amazon_music_playlist_track } from '@illusive/track_parser';
-import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, Runs, NamedUUID } from '@illusive/types';
+import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, NamedUUID } from '@illusive/types';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
-import { parse_runs } from '@common/utils/parse_util';
 import { parse_spotify_album_track, parse_spotify_collection_track, parse_spotify_playlist_track } from './parsers/spotify_parser';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
 import { bandlab_parse_track } from './parsers/bandlab_parser';
@@ -61,8 +51,7 @@ export async function musi_get_playlist(url: string): Promise<MusicServicePlayli
 	};
 }
 
-// the first playlist page yields the new lockup layout's ContinuationItemViewModel, continuation pages the old Continuation shape
-interface YouTubePlaylistContinuation { ytcfg: YT_YTCFG.YTCFG; continuation: YT_CONTINUATION.Continuation | ContinuationItemViewModel }
+interface YouTubePlaylistContinuation { continuation: string }
 export async function youtube_get_playlist(url: string, fetch_opts?: RoZFetchRequestInit): Promise<MusicServicePlaylist> {
 	const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
 	const playlist_response = await Origin.YouTube.get_playlist({
@@ -70,110 +59,41 @@ export async function youtube_get_playlist(url: string, fetch_opts?: RoZFetchReq
 		fetch_opts: fetch_opts ?? (Origin.YouTubeMusic.playlist_type(url) === 'ALBUM' ? album_fetch_opts : undefined)
 	}, url);
 	if ('error' in playlist_response) return default_playlist(playlist_response);
-	if (playlist_response.data.playlist_data === undefined) return default_playlist(generror('YouTube playlist_data is undefined', 'MEDIUM', { url }));
 	return {
-		...youtube_parse_playlist_header(playlist_response.data.playlist_data),
+		...youtube_parse_playlist_header(playlist_response.data.header),
 		tracks: youtube_parse_videos(playlist_response.data.tracks),
-		continuation: playlist_response.data.continuation === null ? null : { ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation } as YouTubePlaylistContinuation
+		continuation: playlist_response.continuation === null ? null : { continuation: playlist_response.continuation } as YouTubePlaylistContinuation
 	};
 }
 export async function youtube_get_playlist_continuation(opts: YouTubePlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
 	const cookie_jar = Prefs.get_pref('youtube_cookie_jar');
-	const playlist_response = await Origin.YouTube.get_continuation({ cookie_jar }, opts.ytcfg, opts.continuation);
+	const playlist_response = await Origin.YouTube.get_continuation({ cookie_jar }, opts.continuation);
 	if ('error' in playlist_response) return { tracks: [], continuation: null, error: playlist_response };
-	const parsed_playlist = parse_playlist_continuation_contents(playlist_response);
-	return { tracks: youtube_parse_videos(parsed_playlist.tracks), continuation: parsed_playlist.continuation === null ? null : { ytcfg: opts.ytcfg, continuation: parsed_playlist.continuation } as YouTubePlaylistContinuation };
+	const data = playlist_response.data as YTPlaylistResult;
+	return { tracks: youtube_parse_videos(data.tracks), continuation: playlist_response.continuation === null ? null : { continuation: playlist_response.continuation } as YouTubePlaylistContinuation };
 }
 
-interface YouTubeMusicPlaylistContinuation { url: string; ytcfg: YTMUSIC_YTCFG.YTCFG; continuation: YTMUSIC_CONTINUATION.Continuation | YTMUSIC_CONTINUATION_RENDERER.ContinuationItemRenderer; type: 'ALBUM' | 'PLAYLIST'; artist?: Runs; album?: Runs; artwork_url?: string }
+interface YouTubeMusicPlaylistContinuation { continuation: string }
 export async function youtube_music_get_playlist(url: string, fetch_opts?: RoZFetchRequestInit): Promise<MusicServicePlaylist> {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-	const playlist_type = Origin.YouTubeMusic.playlist_type(url);
-	const playlist_response = await Origin.YouTubeMusic.get_playlist({
-		cookie_jar,
-		fetch_opts: fetch_opts ?? (playlist_type === 'ALBUM' ? album_fetch_opts : undefined)
-	}, url);
+	const is_album = Origin.YouTubeMusic.playlist_type(url) === 'ALBUM';
+	const playlist_response = await Origin.YouTubeMusic.get_playlist({ cookie_jar, fetch_opts: fetch_opts ?? (is_album ? album_fetch_opts : undefined) }, url);
 	if ('error' in playlist_response) return { title: '', tracks: [], continuation: null, error: playlist_response };
-	if (playlist_type === 'ALBUM') { // Album
-		const artwork_url = best_thumbnail(playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
-		return {
-			title: parse_runs(playlist_response.data.playlist_data.title.runs),
-			creator: youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
-			artwork_url: artwork_url,
-			date: date_from({ year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text) }).toISOString() as ISOString,
-			tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs, Origin.YouTubeMusic.playlist_urlid(url), artwork_url)),
-			continuation: playlist_response.data.continuation === null ? null : { url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: 'ALBUM', artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs, artwork_url } as YouTubeMusicPlaylistContinuation
-		};
-	}
-	try {
-		const artwork_url = best_thumbnail(playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
-		return { // Playlist
-			title: parse_runs(playlist_response.data.playlist_data.title.runs),
-			creator: youtube_music_split_artists(playlist_response.data.playlist_data?.subtitle?.runs as Runs),
-			artwork_url: artwork_url,
-			date: date_from({ year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text) }).toISOString() as ISOString,
-			tracks: playlist_response.data.tracks.filter(item => item !== undefined).map(parse_youtube_music_playlist_track).filter(item => item !== undefined),
-			continuation: playlist_response.data.continuation === null ? null : { url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: 'PLAYLIST' } as YouTubeMusicPlaylistContinuation
-		};
-	} catch (_) {
-		const artwork_url = best_thumbnail(playlist_response.data.playlist_data.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
-		return {
-			title: parse_runs(playlist_response.data.playlist_data.title.runs),
-			creator: youtube_music_split_artists(playlist_response.data.playlist_data.straplineTextOne.runs as Runs),
-			artwork_url: artwork_url,
-			date: date_from({ year: parseInt(playlist_response.data.playlist_data.subtitle.runs[2].text) }).toISOString() as ISOString,
-			tracks: playlist_response.data.tracks.map(track => parse_youtube_music_album_track(track, playlist_response.data.playlist_data.straplineTextOne.runs, playlist_response.data.playlist_data.title.runs as Runs, Origin.YouTubeMusic.playlist_urlid(url), artwork_url)),
-			continuation: playlist_response.data.continuation === null ? null : { url: url, ytcfg: playlist_response.icfg.ytcfg, continuation: playlist_response.data.continuation, type: 'ALBUM', artist: playlist_response.data.playlist_data.straplineTextOne.runs, album: playlist_response.data.playlist_data.title.runs, artwork_url } as YouTubeMusicPlaylistContinuation
-		};
-	}
+	return {
+		title: playlist_response.data.header.title,
+		creator: playlist_response.data.header.artists.map(ytm_named),
+		artwork_url: best_thumbnail(playlist_response.data.header.thumbnails)?.url,
+		description: playlist_response.data.header.description,
+		tracks: playlist_response.data.tracks.map(ytm_track),
+		continuation: playlist_response.continuation === null ? null : { continuation: playlist_response.continuation } as YouTubeMusicPlaylistContinuation
+	};
 }
 export async function youtube_music_get_playlist_continuation(opts: YouTubeMusicPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-	const playlist_response = await Origin.YouTubeMusic.get_continuation({ cookie_jar }, opts.ytcfg, opts.continuation);
+	const playlist_response = await Origin.YouTubeMusic.get_continuation({ cookie_jar }, opts.continuation);
 	if ('error' in playlist_response) return { tracks: [], continuation: null, error: playlist_response };
-	const parsed_playlist = playlist_response as unknown as PlaylistResults_1 | PlaylistResults_3;
-	if ('continuationContents' in parsed_playlist) {
-		if (parsed_playlist?.continuationContents?.musicPlaylistShelfContinuation === undefined) return { tracks: [], continuation: null };
-		return {
-			tracks: parsed_playlist.continuationContents.musicPlaylistShelfContinuation.contents.filter(item => item !== undefined).map(track =>
-				opts.type === 'PLAYLIST'
-					? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack)
-					: parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs, Origin.YouTubeMusic.playlist_urlid(opts.url), opts.artwork_url)
-			).filter(item => item !== undefined),
-			continuation: {
-				ytcfg: opts.ytcfg,
-				continuation: parsed_playlist.continuationContents?.musicPlaylistShelfContinuation?.continuations === undefined
-					? null
-					: parsed_playlist.continuationContents?.musicPlaylistShelfContinuation.continuations,
-				type: opts.type,
-				artist: opts.artist,
-				album: opts.album
-			} as YouTubeMusicPlaylistContinuation
-		};
-	} else {
-		if (parsed_playlist?.onResponseReceivedActions?.[0] === undefined) return { tracks: [], continuation: null };
-		const contents = parsed_playlist.onResponseReceivedActions[0]?.appendContinuationItemsAction?.continuationItems;
-		if (contents === undefined) return { tracks: [], continuation: null };
-		const next_continuation = contents.find(item => 'continuationItemRenderer' in item);
-		return {
-			tracks: contents.filter(item => item !== undefined).map(track =>
-				opts.type === 'PLAYLIST'
-					? parse_youtube_music_playlist_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack)
-					: parse_youtube_music_album_track(track.musicResponsiveListItemRenderer as unknown as YouTubeMusicPlaylistTrack, opts.artist as Runs, opts.album as Runs, Origin.YouTubeMusic.playlist_urlid(opts.url), opts.artwork_url)
-			).filter(item => item !== undefined),
-			continuation: next_continuation === undefined
-				? null
-				: {
-						ytcfg: opts.ytcfg,
-						continuation: next_continuation.continuationItemRenderer === undefined
-							? null
-							: next_continuation.continuationItemRenderer,
-						type: opts.type,
-						artist: opts.artist,
-						album: opts.album
-					} as YouTubeMusicPlaylistContinuation
-		};
-	}
+	const data = playlist_response.data as YTMPlaylistResult;
+	return { tracks: data.tracks.map(ytm_track), continuation: playlist_response.continuation === null ? null : { continuation: playlist_response.continuation } as YouTubeMusicPlaylistContinuation };
 }
 
 interface SpotifyPlaylistContinuation { client: Origin.Spotify.Client; id: string; current: number; total: number; limit: number; type: 'ALBUM' | 'PLAYLIST' | 'COLLECTION' }
