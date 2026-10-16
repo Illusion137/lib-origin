@@ -1,50 +1,74 @@
 import * as Parser from '@origin/youtube/parser';
-import type { YTMAlbum, YTMArtist, YTMArtistResult, YTMHistorySection, YTMLyrics, YTMPlaylistResult, YTMRelatedSection, YTMSearchResult, YTMTrack } from '@origin/youtube/parser';
+import type { YTMAlbum, YTMArtist, YTMArtistRef, YTMArtistResult, YTMHistorySection, YTMLyrics, YTMPlaylistResult, YTMRelatedSection, YTMSearchResult, YTMTrack } from '@origin/youtube/parser';
 import { YouTubeSession } from '@origin/youtube/session';
+import { YouTubeShared } from '@origin/youtube/shared';
 import type { PromiseResult } from '@common/types';
-import { gen_uuid, is_empty, milliseconds_of, urlid } from '@common/utils/util';
+import { is_empty, urlid } from '@common/utils/util';
 import { generror, generror_catch } from '@common/utils/error_util';
+import { reinterpret_cast } from '@common/cast';
 import { YTNodes } from 'youtubei.js';
-import type { YTMusic, Helpers } from 'youtubei.js';
+import type Innertube from 'youtubei.js';
+import type { YTMusic, Helpers, Misc, IBrowseResponse } from 'youtubei.js';
 
 type YTNode = Helpers.YTNode;
+interface MusicHeaderLike {
+	title?: Misc.Text;
+	subtitle?: Misc.Text;
+	strapline_text_one?: Misc.Text;
+	author?: { name?: string; channel_id?: string };
+	thumbnail?: { contents?: Misc.Thumbnail[] } | null;
+	thumbnails?: Misc.Thumbnail[];
+	description?: { description?: Misc.Text; text?: string };
+	subscribers?: Misc.Text;
+}
 
 export namespace YouTubeMusic {
 	type Opts = YouTubeSession.Opts;
 	type Privacy = 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
 
-	export interface Page<T> { data: T; continuation: string | null }
-
-	interface CachedContinuation { next: () => Promise<Page<unknown>>; created_at: number }
-	const continuations = new Map<string, CachedContinuation>();
-	const CONTINUATION_TTL_MS = milliseconds_of({ minutes: 30 });
-
-	function prune_continuations() {
-		const now = Date.now();
-		for (const [id, entry] of continuations) {
-			if (now - entry.created_at > CONTINUATION_TTL_MS) continuations.delete(id);
-		}
-	}
-
-	function register_continuation<F extends { has_continuation?: boolean; getContinuation: () => Promise<F> }, T>(feed: F, parse: (feed: F) => T): string | null {
-		if (!('has_continuation' in feed) || feed.has_continuation !== true) return null;
-		prune_continuations();
-		const id = gen_uuid();
-		continuations.set(id, { created_at: Date.now(), next: async () => make_page(await feed.getContinuation(), parse) });
-		return id;
-	}
-
-	function make_page<F extends { has_continuation?: boolean; getContinuation: () => Promise<F> }, T>(feed: F, parse: (feed: F) => T): Page<T> {
-		return { data: parse(feed), continuation: register_continuation(feed, parse) };
-	}
+	export type Page<T> = YouTubeShared.Page<T>;
+	const make_page = YouTubeShared.make_page;
+	const register_more = YouTubeShared.register_more;
 
 	export async function get_continuation(_opts: Opts, continuation_id: string): PromiseResult<Page<unknown>> {
-		const entry = continuations.get(continuation_id);
-		if (entry === undefined) return generror('Unknown or expired YouTube Music continuation', 'LOW', { continuation_id });
-		continuations.delete(continuation_id);
-		try {
-			return await entry.next();
-		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music continuation', 'MEDIUM', { continuation_id }); }
+		return await YouTubeShared.get_continuation(continuation_id);
+	}
+
+	function browse_continuation_token(page: IBrowseResponse): string | null {
+		const grid_token = page.contents_memo?.getType(YTNodes.Grid)?.[0]?.continuation ?? page.continuation_contents_memo?.getType(YTNodes.Grid)?.[0]?.continuation;
+		if (grid_token !== undefined && grid_token !== null) return grid_token;
+		const cc = page.continuation_contents;
+		return cc !== null && cc !== undefined && 'continuation' in cc && typeof cc.continuation === 'string' ? cc.continuation : null;
+	}
+
+	async function fetch_grid<T>(session: Innertube, call: () => Promise<IBrowseResponse>, parse: (item: YTNodes.MusicTwoRowItem) => T): Promise<Page<T[]>> {
+		const page = await call();
+		const memo = page.contents_memo ?? page.continuation_contents_memo;
+		const data = (memo?.getType(YTNodes.MusicTwoRowItem) ?? []).map(parse);
+		const token = browse_continuation_token(page);
+		const continuation = token === null ? null : register_more(() => fetch_grid(session, () => session.actions.execute('/browse', { continuation: token, client: 'YTMUSIC', parse: true }), parse));
+		return { data, continuation };
+	}
+
+	function register_grid<T>(session: Innertube, endpoint: YTNodes.NavigationEndpoint | null | undefined, parse: (item: YTNodes.MusicTwoRowItem) => T): string | null {
+		if (endpoint === null || endpoint === undefined) return null;
+		const payload = endpoint.payload as { browseId?: string; params?: string };
+		return register_more(() => fetch_grid(session, () => session.actions.execute('/browse', { browseId: payload.browseId, params: payload.params, client: 'YTMUSIC', parse: true }), parse));
+	}
+
+	async function fetch_songs(session: Innertube, call: () => Promise<{ contents?: YTNode[]; continuation?: string | null } | undefined>): Promise<Page<YTMTrack[]>> {
+		const shelf = await call();
+		const tracks = (shelf?.contents ?? []).filter(item => item.is(YTNodes.MusicResponsiveListItem)).map(item => Parser.parse_ytm_track(item.as(YTNodes.MusicResponsiveListItem)));
+		const token = shelf?.continuation ?? null;
+		const continuation = token === null
+			? null
+			: register_more(() => fetch_songs(session, async () => {
+					const page = await session.actions.execute('/browse', { continuation: token, client: 'YTMUSIC', parse: true });
+					const cc = page.continuation_contents;
+					const next = cc !== null && cc !== undefined && 'continuation' in cc && typeof cc.continuation === 'string' ? cc.continuation : null;
+					return { contents: page.continuation_contents_memo?.getType(YTNodes.MusicResponsiveListItem) ?? [], continuation: next };
+				}));
+		return { data: tracks, continuation };
 	}
 
 	export type PlaylistType = 'DEFAULT_PLAYLIST' | 'PLAYLIST' | 'ALBUM' | 'MOODS' | 'YTMUSIC_PLAYLIST' | 'BROWSE_ID';
@@ -98,16 +122,22 @@ export namespace YouTubeMusic {
 		return result;
 	}
 
-	function playlist_header(header: YTNode | undefined): YTMPlaylistResult['header'] {
-		const h = header as any;
-		const strapline = h?.strapline_text_one;
-		const artists = strapline?.text ? [{ name: strapline.text as string, browse_id: (strapline.endpoint?.payload)?.browseId }] : (h?.author ? [{ name: h.author.name as string, browse_id: h.author.channel_id }] : []);
-		const thumbnails = h?.thumbnail?.contents ?? h?.thumbnails ?? [];
+	function header_thumbnails(header: MusicHeaderLike | undefined): Misc.Thumbnail[] {
+		return header?.thumbnail?.contents ?? header?.thumbnails ?? [];
+	}
+
+	function playlist_header(header_node: YTNode | undefined): YTMPlaylistResult['header'] {
+		const header = reinterpret_cast<MusicHeaderLike | undefined>(header_node);
+		const strapline = header?.strapline_text_one;
+		const strapline_browse = (strapline?.endpoint?.payload as { browseId?: string } | undefined)?.browseId;
+		const artists: YTMArtistRef[] = strapline?.text
+			? [{ name: strapline.text, browse_id: strapline_browse }]
+			: (header?.author ? [{ name: header.author.name ?? '', browse_id: header.author.channel_id }] : []);
 		return {
-			title: h?.title?.text ?? '',
+			title: header?.title?.text ?? '',
 			artists,
-			description: h?.description?.description?.text ?? h?.description?.text,
-			thumbnails: thumbnails.map((t: any) => ({ url: t.url, width: t.width, height: t.height }))
+			description: header?.description?.description?.text ?? header?.description?.text,
+			thumbnails: header_thumbnails(header).map(t => ({ url: t.url, width: t.width, height: t.height }))
 		};
 	}
 
@@ -167,39 +197,68 @@ export namespace YouTubeMusic {
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music album', 'MEDIUM', { album_id }); }
 	}
 
-	function parse_artist(artist: YTMusic.Artist, artist_id: string): YTMArtistResult {
-		const header = artist.header as any;
+	type CarouselKind = 'albums' | 'singles' | 'videos' | 'playlists' | 'appears_on' | 'similar' | 'unknown';
+	function carousel_kind(carousel: YTNodes.MusicCarouselShelf, title: string): CarouselKind {
+		const first = carousel.contents.find(item => item.is(YTNodes.MusicTwoRowItem))?.as(YTNodes.MusicTwoRowItem);
+		switch (first?.item_type) {
+			case 'artist': return 'similar';
+			case 'video': return 'videos';
+			case 'playlist': return (title.includes('featured') || title.includes('appears')) ? 'appears_on' : 'playlists';
+			case 'album': return (title.includes('single') || title.includes('ep')) ? 'singles' : 'albums';
+			default: return 'unknown';
+		}
+	}
+
+	function parse_artist(session: Innertube, artist: YTMusic.Artist, artist_id: string): YTMArtistResult {
+		const header = reinterpret_cast<MusicHeaderLike | undefined>(artist.header);
 		const result: YTMArtistResult = {
 			artist: {
 				browse_id: artist_id,
 				name: header?.title?.text ?? '',
-				thumbnails: (header?.thumbnail?.contents ?? header?.thumbnails ?? []).map((t: any) => ({ url: t.url, width: t.width, height: t.height })),
+				thumbnails: header_thumbnails(header).map(t => ({ url: t.url, width: t.width, height: t.height })),
 				subscribers: header?.subscribers?.text
 			},
 			top_tracks: [],
 			albums: [],
 			singles: [],
-			similar_artists: []
+			videos: [],
+			playlists: [],
+			appears_on: [],
+			similar_artists: [],
+			albums_continuation: null,
+			singles_continuation: null,
+			tracks_continuation: null,
+			similar_artists_continuation: null
 		};
 		for (const section of artist.sections ?? []) {
 			if (section.is(YTNodes.MusicShelf)) {
 				for (const item of section.as(YTNodes.MusicShelf).contents) result.top_tracks.push(Parser.parse_ytm_track(item));
-			} else if (section.is(YTNodes.MusicCarouselShelf)) {
-				const carousel = section.as(YTNodes.MusicCarouselShelf);
-				const title = (carousel.header?.title?.text ?? '').toLowerCase();
-				for (const item of carousel.contents) {
-					if (item.is(YTNodes.MusicTwoRowItem)) {
-						const two_row = item.as(YTNodes.MusicTwoRowItem);
-						if (title.includes('single')) result.singles.push(Parser.parse_ytm_two_row_album(two_row));
-						else if (title.includes('album')) result.albums.push(Parser.parse_ytm_two_row_album(two_row));
-						else if (two_row.item_type === 'artist' || title.includes('like') || title.includes('similar') || title.includes('fans')) result.similar_artists.push(Parser.parse_ytm_two_row_artist(two_row));
-						else result.albums.push(Parser.parse_ytm_two_row_album(two_row));
-					} else if (item.is(YTNodes.MusicResponsiveListItem)) {
-						result.top_tracks.push(Parser.parse_ytm_track(item.as(YTNodes.MusicResponsiveListItem)));
-					}
+				continue;
+			}
+			if (!section.is(YTNodes.MusicCarouselShelf)) continue;
+			const carousel = section.as(YTNodes.MusicCarouselShelf);
+			const title = (carousel.header?.title?.text ?? '').toLowerCase();
+			const kind = carousel_kind(carousel, title);
+			const more_endpoint = carousel.header?.more_content?.endpoint;
+			for (const item of carousel.contents) {
+				if (item.is(YTNodes.MusicResponsiveListItem)) { result.top_tracks.push(Parser.parse_ytm_track(item.as(YTNodes.MusicResponsiveListItem))); continue; }
+				if (!item.is(YTNodes.MusicTwoRowItem)) continue;
+				const two_row = item.as(YTNodes.MusicTwoRowItem);
+				switch (kind) {
+					case 'albums': result.albums.push(Parser.parse_ytm_two_row_album(two_row)); break;
+					case 'singles': result.singles.push(Parser.parse_ytm_two_row_album(two_row)); break;
+					case 'videos': result.videos.push(Parser.parse_ytm_two_row_video(two_row)); break;
+					case 'playlists': result.playlists.push(Parser.parse_ytm_two_row_album(two_row)); break;
+					case 'appears_on': result.appears_on.push(Parser.parse_ytm_two_row_album(two_row)); break;
+					case 'similar': result.similar_artists.push(Parser.parse_ytm_two_row_artist(two_row)); break;
+					default: break;
 				}
 			}
+			if (kind === 'albums') result.albums_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_album);
+			else if (kind === 'singles') result.singles_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_album);
+			else if (kind === 'similar') result.similar_artists_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_artist);
 		}
+		if (result.top_tracks.length > 0) result.tracks_continuation = register_more(() => fetch_songs(session, () => artist.getAllSongs()));
 		return result;
 	}
 
@@ -208,7 +267,7 @@ export namespace YouTubeMusic {
 			const session = await YouTubeSession.get(opts);
 			const id = await YouTubeSession.resolve_channel_id(opts, artist_id);
 			const artist = await session.music.getArtist(id);
-			return parse_artist(artist, id);
+			return parse_artist(session, artist, id);
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music artist', 'MEDIUM', { artist_id }); }
 	}
 
@@ -216,11 +275,9 @@ export namespace YouTubeMusic {
 		try {
 			const explore = await (await YouTubeSession.get(opts)).music.getExplore();
 			const albums: YTMAlbum[] = [];
-			for (const section of (explore as any).sections ?? []) {
-				if (section.is?.(YTNodes.MusicCarouselShelf)) {
-					for (const item of section.as(YTNodes.MusicCarouselShelf).contents) {
-						if (item.is(YTNodes.MusicTwoRowItem)) albums.push(Parser.parse_ytm_two_row_album(item.as(YTNodes.MusicTwoRowItem)));
-					}
+			for (const section of explore.sections) {
+				for (const item of section.contents) {
+					if (item.is(YTNodes.MusicTwoRowItem)) albums.push(Parser.parse_ytm_two_row_album(item.as(YTNodes.MusicTwoRowItem)));
 				}
 			}
 			return albums;
@@ -266,11 +323,10 @@ export namespace YouTubeMusic {
 		try {
 			const library = await (await YouTubeSession.get(opts)).music.getLibrary();
 			const playlists: YTMAlbum[] = [];
-			for (const section of (library as any).contents ?? []) {
-				const items = section?.contents ?? (section?.is?.(YTNodes.MusicShelf) ? section.as(YTNodes.MusicShelf).contents : []);
-				for (const item of items ?? []) {
-					if (item?.is?.(YTNodes.MusicResponsiveListItem)) playlists.push(Parser.parse_ytm_album(item.as(YTNodes.MusicResponsiveListItem)));
-					else if (item?.is?.(YTNodes.MusicTwoRowItem)) playlists.push(Parser.parse_ytm_two_row_album(item.as(YTNodes.MusicTwoRowItem)));
+			for (const section of library.contents ?? []) {
+				for (const item of section.contents) {
+					if (item.is(YTNodes.MusicResponsiveListItem)) playlists.push(Parser.parse_ytm_album(item.as(YTNodes.MusicResponsiveListItem)));
+					else if (item.is(YTNodes.MusicTwoRowItem)) playlists.push(Parser.parse_ytm_two_row_album(item.as(YTNodes.MusicTwoRowItem)));
 				}
 			}
 			return { data: playlists, continuation: null };
@@ -331,39 +387,23 @@ export namespace YouTubeMusic {
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music related', 'MEDIUM', { video_id }); }
 	}
 
-	export async function like_track(opts: Opts, video_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).interact.like(video_id)).success; } catch { return false; }
-	}
-	export async function dislike_track(opts: Opts, video_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).interact.dislike(video_id)).success; } catch { return false; }
-	}
-	export async function unlike_track(opts: Opts, video_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).interact.removeRating(video_id)).success; } catch { return false; }
-	}
+	export async function like_track(opts: Opts, video_id: string): Promise<boolean> { return await YouTubeShared.like_track(opts, video_id); }
+	export async function dislike_track(opts: Opts, video_id: string): Promise<boolean> { return await YouTubeShared.dislike_track(opts, video_id); }
+	export async function unlike_track(opts: Opts, video_id: string): Promise<boolean> { return await YouTubeShared.remove_rating(opts, video_id); }
 
 	export async function create_playlist(opts: Opts, title: string, _privacy: Privacy) {
-		try {
-			const created = await (await YouTubeSession.get(opts)).playlist.create(title, []);
-			if (!created.success) return generror('Failed to create YouTube Music playlist', 'LOW', { title });
-			return { playlistId: created.playlist_id };
-		} catch (error) { return generror_catch(error, 'Failed to create YouTube Music playlist', 'MEDIUM', { title }); }
+		return await YouTubeShared.create_playlist(opts, title, 'YouTube Music');
 	}
 	export async function delete_playlist(opts: Opts, playlist_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).playlist.delete(playlist_urlid(playlist_id))).success; } catch { return false; }
+		return await YouTubeShared.delete_playlist(opts, playlist_urlid(playlist_id));
 	}
 	export async function add_tracks_to_playlist(opts: Opts, playlist_id: string, video_ids: string[]): Promise<boolean> {
-		try { await (await YouTubeSession.get(opts)).playlist.addVideos(playlist_urlid(playlist_id), video_ids); return true; } catch { return false; }
+		return await YouTubeShared.add_tracks_to_playlist(opts, playlist_urlid(playlist_id), video_ids);
 	}
 	export async function remove_tracks_to_playlist(opts: Opts, playlist_id: string, set_video_ids: string[]): Promise<boolean> {
-		try { await (await YouTubeSession.get(opts)).playlist.removeVideos(playlist_urlid(playlist_id), set_video_ids, true); return true; } catch { return false; }
+		return await YouTubeShared.remove_tracks_from_playlist(opts, playlist_urlid(playlist_id), set_video_ids, true);
 	}
 	export async function edit_playlist_data(opts: Opts, playlist_id: string, playlist_data: { name: string; description: string; privacy: Privacy }): Promise<boolean> {
-		try {
-			const session = await YouTubeSession.get(opts);
-			const id = playlist_urlid(playlist_id);
-			await session.playlist.setName(id, playlist_data.name);
-			await session.playlist.setDescription(id, playlist_data.description);
-			return true;
-		} catch { return false; }
+		return await YouTubeShared.edit_playlist_data(opts, playlist_urlid(playlist_id), playlist_data.name, playlist_data.description);
 	}
 }

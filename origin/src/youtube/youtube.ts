@@ -1,52 +1,42 @@
 import * as Parser from '@origin/youtube/parser';
-import type { YTPlaylistResult, YTSearchResult, YTTrack, YTLibraryPlaylist, YTChannelResult } from '@origin/youtube/parser';
+import type { YTArtistResult, YTChannelResult, YTCompactPlaylist, YTLibraryPlaylist, YTPlaylistResult, YTSearchResult, YTTrack } from '@origin/youtube/parser';
 import { YouTubeSession } from '@origin/youtube/session';
+import { YouTubeShared } from '@origin/youtube/shared';
 import type { PromiseResult } from '@common/types';
-import { gen_uuid, milliseconds_of, urlid } from '@common/utils/util';
+import { urlid } from '@common/utils/util';
 import { generror, generror_catch } from '@common/utils/error_util';
 import { YTNodes } from 'youtubei.js';
-import type { YT } from 'youtubei.js';
+import type { YT, Helpers } from 'youtubei.js';
+
+type YTNode = Helpers.YTNode;
+interface ChannelFeed {
+	has_continuation: boolean;
+	getContinuation: () => Promise<ChannelFeed>;
+	videos: Helpers.ObservedArray;
+	playlists: Helpers.ObservedArray;
+	channels: Helpers.ObservedArray;
+}
 
 export namespace YouTube {
 	type Opts = YouTubeSession.Opts;
 	type Privacy = 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
 
-	export interface Page<T> { data: T; continuation: string | null }
-
-	interface CachedContinuation { next: () => Promise<Page<unknown>>; created_at: number }
-	const continuations = new Map<string, CachedContinuation>();
-	const CONTINUATION_TTL_MS = milliseconds_of({ minutes: 30 });
-
-	function prune_continuations() {
-		const now = Date.now();
-		for (const [id, entry] of continuations) {
-			if (now - entry.created_at > CONTINUATION_TTL_MS) continuations.delete(id);
-		}
-	}
-
-	function has_continuation(feed: { has_continuation?: boolean }): boolean {
-		return 'has_continuation' in feed ? feed.has_continuation === true : false;
-	}
-
-	function register_continuation<F extends { has_continuation?: boolean; getContinuation: () => Promise<F> }, T>(feed: F, parse: (feed: F) => T): string | null {
-		if (!has_continuation(feed)) return null;
-		prune_continuations();
-		const id = gen_uuid();
-		continuations.set(id, { created_at: Date.now(), next: async () => make_page(await feed.getContinuation(), parse) });
-		return id;
-	}
-
-	function make_page<F extends { has_continuation?: boolean; getContinuation: () => Promise<F> }, T>(feed: F, parse: (feed: F) => T): Page<T> {
-		return { data: parse(feed), continuation: register_continuation(feed, parse) };
-	}
+	export type Page<T> = YouTubeShared.Page<T>;
+	const make_page = YouTubeShared.make_page;
 
 	export async function get_continuation(_opts: Opts, continuation_id: string): PromiseResult<Page<unknown>> {
-		const entry = continuations.get(continuation_id);
-		if (entry === undefined) return generror('Unknown or expired YouTube continuation', 'LOW', { continuation_id });
-		continuations.delete(continuation_id);
-		try {
-			return await entry.next();
-		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube continuation', 'MEDIUM', { continuation_id }); }
+		return await YouTubeShared.get_continuation(continuation_id);
+	}
+
+	function channel_feed_page<T>(feed: ChannelFeed, select: (feed: ChannelFeed) => YTNode[], parse: (node: YTNode) => T | undefined): Page<T[]> {
+		const data = select(feed).map(parse).filter((item): item is T => item !== undefined);
+		const continuation = feed.has_continuation ? YouTubeShared.register_more(async () => channel_feed_page(await feed.getContinuation(), select, parse)) : null;
+		return { data, continuation };
+	}
+
+	function register_channel_tab<T>(channel: YT.Channel, get_tab: (channel: YT.Channel) => Promise<ChannelFeed>, select: (feed: ChannelFeed) => YTNode[], parse: (node: YTNode) => T | undefined, enabled: boolean): string | null {
+		if (!enabled) return null;
+		return YouTubeShared.register_more(async () => channel_feed_page(await get_tab(channel), select, parse));
 	}
 
 	export function playlist_urlid(playlist_url: string) {
@@ -104,15 +94,26 @@ export namespace YouTube {
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube playlist', 'MEDIUM', { playlist_id }); }
 	}
 
-	export async function get_artist(opts: Opts, artist_id: string): PromiseResult<YTChannelResult> {
+	export async function get_artist(opts: Opts, artist_id: string): PromiseResult<YTArtistResult> {
 		try {
 			const session = await YouTubeSession.get(opts);
 			const channel_id = await YouTubeSession.resolve_channel_id(opts, artist_id);
 			const channel = await session.getChannel(channel_id);
-			return {
+			const artist: YTChannelResult = {
 				channel_id: channel.metadata.external_id ?? channel_id,
 				name: channel.metadata.title ?? '',
 				thumbnails: (channel.metadata.thumbnail ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }))
+			};
+			return {
+				artist,
+				tracks: channel.videos.map(Parser.parse_track_node).filter((t): t is YTTrack => t !== undefined),
+				albums: [],
+				playlists: channel.playlists.map(Parser.parse_playlist_node).filter((p): p is YTCompactPlaylist => p !== undefined),
+				similar_artists: channel.channels.map(c => c.is(YTNodes.Channel) ? Parser.parse_channel(c.as(YTNodes.Channel)) : undefined).filter((a): a is YTChannelResult => a !== undefined),
+				tracks_continuation: register_channel_tab(channel, ch => ch.getVideos(), f => f.videos, Parser.parse_track_node, channel.has_videos),
+				albums_continuation: register_channel_tab(channel, ch => ch.getReleases(), f => f.playlists, Parser.parse_playlist_node, channel.has_releases),
+				playlists_continuation: register_channel_tab(channel, ch => ch.getPlaylists(), f => f.playlists, Parser.parse_playlist_node, channel.has_playlists),
+				similar_artists_continuation: null
 			};
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube channel', 'MEDIUM', { artist_id }); }
 	}
@@ -145,40 +146,23 @@ export namespace YouTube {
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube library', 'MEDIUM'); }
 	}
 
-	export async function like_track(opts: Opts, video_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).interact.like(video_id)).success; } catch { return false; }
-	}
-	export async function dislike_track(opts: Opts, video_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).interact.dislike(video_id)).success; } catch { return false; }
-	}
-	export async function unlike_track(opts: Opts, video_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).interact.removeRating(video_id)).success; } catch { return false; }
-	}
+	export async function like_track(opts: Opts, video_id: string): Promise<boolean> { return await YouTubeShared.like_track(opts, video_id); }
+	export async function dislike_track(opts: Opts, video_id: string): Promise<boolean> { return await YouTubeShared.dislike_track(opts, video_id); }
+	export async function unlike_track(opts: Opts, video_id: string): Promise<boolean> { return await YouTubeShared.remove_rating(opts, video_id); }
 
 	export async function create_playlist(opts: Opts, title: string, _privacy: Privacy) {
-		try {
-			const session = await YouTubeSession.get(opts);
-			const created = await session.playlist.create(title, []);
-			if (!created.success) return generror('Failed to create YouTube playlist', 'LOW', { title });
-			return { playlistId: created.playlist_id };
-		} catch (error) { return generror_catch(error, 'Failed to create YouTube playlist', 'MEDIUM', { title }); }
+		return await YouTubeShared.create_playlist(opts, title, 'YouTube');
 	}
 	export async function delete_playlist(opts: Opts, playlist_id: string): Promise<boolean> {
-		try { return (await (await YouTubeSession.get(opts)).playlist.delete(playlist_urlid(playlist_id))).success; } catch { return false; }
+		return await YouTubeShared.delete_playlist(opts, playlist_urlid(playlist_id));
 	}
 	export async function add_tracks_to_playlist(opts: Opts, playlist_id: string, video_ids: string[]): Promise<boolean> {
-		try { await (await YouTubeSession.get(opts)).playlist.addVideos(playlist_urlid(playlist_id), video_ids); return true; } catch { return false; }
+		return await YouTubeShared.add_tracks_to_playlist(opts, playlist_urlid(playlist_id), video_ids);
 	}
 	export async function remove_tracks_to_playlist(opts: Opts, playlist_id: string, video_ids: string[]): Promise<boolean> {
-		try { await (await YouTubeSession.get(opts)).playlist.removeVideos(playlist_urlid(playlist_id), video_ids); return true; } catch { return false; }
+		return await YouTubeShared.remove_tracks_from_playlist(opts, playlist_urlid(playlist_id), video_ids);
 	}
 	export async function edit_playlist_data(opts: Opts, playlist_id: string, playlist_data: { name: string; description: string; privacy: Privacy }): Promise<boolean> {
-		try {
-			const session = await YouTubeSession.get(opts);
-			const id = playlist_urlid(playlist_id);
-			await session.playlist.setName(id, playlist_data.name);
-			await session.playlist.setDescription(id, playlist_data.description);
-			return true;
-		} catch { return false; }
+		return await YouTubeShared.edit_playlist_data(opts, playlist_urlid(playlist_id), playlist_data.name, playlist_data.description);
 	}
 }

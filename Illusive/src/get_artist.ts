@@ -1,17 +1,18 @@
-import { AppleMusic, SoundCloud, Spotify, YouTubeMusic } from '@origin/index';
+import { AppleMusic, SoundCloud, Spotify, YouTube, YouTubeMusic } from '@origin/index';
 import { CookieJar } from '@common/utils/cookie_util';
 import type { ResponseError } from '@common/types';
 import { urlid } from '@common/utils/util';
 import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from '@illusive/parsers/apple_music_parser';
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from '@illusive/parsers/soundcloud_parser';
-import { parse_youtube_music_artist_album, parse_youtube_music_artist_similar_artist, parse_youtube_music_artist_track, parse_youtube_music_artist_tracks_track } from '@illusive/parsers/youtube_music_parser';
+import { ytm_album, ytm_artist, ytm_track } from '@illusive/parsers/youtube_music_parser';
+import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { best_thumbnail, create_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import type { ArtistOpts, MusicServiceArtist, NamedUUID } from '@illusive/types';
-import { parse_runs } from '@common/utils/parse_util';
+import type { ArtistOpts, CompactArtist, CompactPlaylist, MusicServiceArtist, NamedUUID, Track } from '@illusive/types';
+import type { YTChannelResult, YTCompactPlaylist, YTMAlbum, YTMArtist, YTMTrack, YTTrack } from '@origin/youtube/parser';
 import { Constants } from './constants';
 import { GLOBALS } from './globals';
-import { is_empty } from '../../common/utils/util';
+import { is_empty } from '@common/utils/util';
 import { SQLArtists } from './sql/sql_artists';
 import { reinterpret_cast } from '@common/cast';
 import { parse_spotify_artist_album, parse_spotify_artist_appears_on, parse_spotify_artist_track, parse_spotify_similar_artist } from './parsers/spotify_parser';
@@ -43,27 +44,31 @@ function default_artist(error?: ResponseError): MusicServiceArtist {
 	};
 }
 
-export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
-	const artist_response = await YouTubeMusic.get_artist({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, id);
+function ytm_artist_continuation<O, R>(token: string | null, map: (item: O) => R): (() => Promise<R[]>) | undefined {
+	if (token === null) return undefined;
+	return async () => {
+		const items: R[] = [];
+		const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
+		let next: string | null = token;
+		while (next !== null) {
+			const page = await YouTubeMusic.get_continuation({ cookie_jar }, next);
+			if ('error' in page) break;
+			items.push(...(page.data as O[]).map(map));
+			next = page.continuation;
+		}
+		return items;
+	};
+}
+
+export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): Promise<MusicServiceArtist> {
+	const artist_response = await YouTubeMusic.get_artist({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, id);
 	if ('error' in artist_response) return default_artist(artist_response);
 
-	const artist_info: NamedUUID = { name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs), uri: create_uri('youtubemusic', artist_response.data.artist_id ?? id) };
-
-	const artist_albums_response_promise = YouTubeMusic.get_only_artist_albums({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response.icfg.ytcfg, artist_response.data.artist_id ?? id);
-	const artist_tracks_response_promise = YouTubeMusic.get_only_artist_tracks({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response);
-
-	const [artist_albums_response, artist_tracks_response] = await Promise.all([artist_albums_response_promise, artist_tracks_response_promise]);
-
-	const potential_all_albums_singles = 'error' in artist_albums_response ? [] : artist_albums_response.data.map(item => parse_youtube_music_artist_album({ musicTwoRowItemRenderer: item }, artist_info, 'ALBUM'));
-	const potential_all_albums = potential_all_albums_singles.filter(item => item.album_type === 'ALBUM');
-	const potential_all_single_eps = potential_all_albums_singles.filter(item => item.album_type === 'SINGLE' || item.album_type === 'EP' || item.album_type === 'SINGLE/EP');
-
-	const name = parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs);
-	const background_thumbnail = best_thumbnail(artist_response.data.header?.musicImmersiveHeaderRenderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails)?.url;
-
-	const similar_artists = artist_response.data.shelfs
-		.find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes('might also like') || parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer.title.runs).toLowerCase().includes('similar'))
-		?.contents.map(parse_youtube_music_artist_similar_artist) ?? [];
+	const name = artist_response.artist.name;
+	const background_thumbnail = best_thumbnail(artist_response.artist.thumbnails)?.url;
+	const albums = artist_response.albums.map(album => ytm_album(album, 'ALBUM'));
+	const singles_eps = artist_response.singles.map(single => ytm_album(single, 'ALBUM'));
+	const similar_artists = artist_response.similar_artists.map(ytm_artist);
 
 	if (background_thumbnail) {
 		SQLArtists.insert_sql_artists({
@@ -82,22 +87,70 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
 
 	return {
 		name: name,
-		albums: potential_all_albums.length === 0
-			? artist_response.data.shelfs
-				.find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs) === 'Albums')
-				?.contents.map(item => parse_youtube_music_artist_album(item, artist_info, 'ALBUM')) ?? []
-			: potential_all_albums,
-		singles_eps: potential_all_single_eps.length === 0
-			? artist_response.data.shelfs
-				.find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).includes('Single'))
-				?.contents.map(item => parse_youtube_music_artist_album(item, artist_info, 'ALBUM')) ?? []
-			: potential_all_single_eps,
-		playlists: artist_response.data.shelfs
-			.find(shelf => parse_runs(shelf.header.musicCarouselShelfBasicHeaderRenderer?.title?.runs).toLowerCase().includes('playlists'))
-			?.contents.map(item => parse_youtube_music_artist_album(item, artist_info, 'PLAYLIST')) ?? [],
-		latest_release: !('error' in artist_albums_response) && artist_albums_response.data?.[0] !== undefined ? parse_youtube_music_artist_album({ musicTwoRowItemRenderer: artist_albums_response.data?.[0] }, artist_info, 'PLAYLIST') : undefined,
+		albums: albums,
+		singles_eps: singles_eps,
+		playlists: artist_response.playlists.map(playlist => ytm_album(playlist, 'PLAYLIST')),
+		appears_on: artist_response.appears_on.map(album => ytm_album(album, 'ALBUM')),
+		latest_release: albums[0] ?? singles_eps[0],
 		similar_artists: similar_artists,
-		tracks: !('error' in artist_tracks_response) ? (artist_tracks_response.data.tracks).map(parse_youtube_music_artist_tracks_track).filter(item => item !== undefined) : (artist_response.data?.top_shelf?.contents?.map(parse_youtube_music_artist_track) ?? []),
+		tracks: artist_response.top_tracks.map(ytm_track),
+		albums_continuation: ytm_artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.albums_continuation, album => ytm_album(album, 'ALBUM')),
+		singles_eps_continuation: ytm_artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.singles_continuation, single => ytm_album(single, 'ALBUM')),
+		tracks_continuation: ytm_artist_continuation<YTMTrack, Track>(artist_response.tracks_continuation, ytm_track),
+		similar_artists_continuation: ytm_artist_continuation<YTMArtist, CompactArtist>(artist_response.similar_artists_continuation, ytm_artist),
+		background_artwork_url: background_thumbnail,
+		profile_artwork_url: undefined,
+		is_following: undefined,
+		follow: empty_async_call,
+		unfollow: empty_async_call
+	};
+}
+
+function youtube_artist_continuation<O, R>(token: string | null, map: (items: O[]) => R[]): (() => Promise<R[]>) | undefined {
+	if (token === null) return undefined;
+	return async () => {
+		const items: R[] = [];
+		const cookie_jar = get_cookie_jar('youtube_cookie_jar');
+		let next: string | null = token;
+		while (next !== null) {
+			const page = await YouTube.get_continuation({ cookie_jar }, next);
+			if ('error' in page) break;
+			items.push(...map(page.data as O[]));
+			next = page.continuation;
+		}
+		return items;
+	};
+}
+
+export async function youtube_get_artist(id: string, _opts?: ArtistOpts): Promise<MusicServiceArtist> {
+	const artist_response = await YouTube.get_artist({ cookie_jar: get_cookie_jar('youtube_cookie_jar') }, id);
+	if ('error' in artist_response) return default_artist(artist_response);
+
+	const name = artist_response.artist.name;
+	const background_thumbnail = best_thumbnail(artist_response.artist.thumbnails)?.url;
+	const albums = youtube_parse_playlists(artist_response.albums);
+	const tracks = youtube_parse_videos(artist_response.tracks);
+	const similar_artists = youtube_parse_channels(artist_response.similar_artists);
+
+	if (background_thumbnail) {
+		SQLArtists.insert_sql_artists({
+			artwork_url: background_thumbnail,
+			name: name,
+			uri: create_uri('youtube', artist_response.artist.channel_id)
+		}).catch(catch_log);
+	}
+
+	return {
+		name: name,
+		albums: albums,
+		singles_eps: [],
+		playlists: youtube_parse_playlists(artist_response.playlists),
+		latest_release: albums[0],
+		similar_artists: similar_artists,
+		tracks: tracks,
+		albums_continuation: youtube_artist_continuation<YTCompactPlaylist, CompactPlaylist>(artist_response.albums_continuation, youtube_parse_playlists),
+		tracks_continuation: youtube_artist_continuation<YTTrack, Track>(artist_response.tracks_continuation, youtube_parse_videos),
+		similar_artists_continuation: youtube_artist_continuation<YTChannelResult, CompactArtist>(artist_response.similar_artists_continuation, youtube_parse_channels),
 		background_artwork_url: background_thumbnail,
 		profile_artwork_url: undefined,
 		is_following: undefined,

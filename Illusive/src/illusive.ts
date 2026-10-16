@@ -4,7 +4,7 @@ import { extract_string_from_pattern, is_empty, json_catch, random_of, shuffle_a
 import { amazon_music_add_tracks_to_playlist, amazon_music_delete_tracks_from_playlist, apple_music_add_tracks_to_playlist, apple_music_delete_tracks_from_playlist, illusi_add_tracks_to_playlist, illusi_delete_tracks_from_playlist, soundcloud_add_tracks_to_playlist, soundcloud_delete_tracks_from_playlist, spotify_add_tracks_to_playlist, spotify_delete_tracks_from_playlist, youtube_add_tracks_to_playlist, youtube_delete_tracks_from_playlist, youtube_music_add_tracks_to_playlist, youtube_music_delete_tracks_from_playlist } from '@illusive/add_delete_tracks_from_playlist';
 import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music_create_playlist, apple_music_delete_playlist, illusi_create_playlist, illusi_delete_playlist, soundcloud_create_playlist, soundcloud_delete_playlist, spotify_create_playlist, spotify_delete_playlist, youtube_create_playlist, youtube_delete_playlist, youtube_music_create_playlist, youtube_music_delete_playlist } from '@illusive/create_delete_playlist';
 import { audiomack_download_from_id, bandlab_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from '@illusive/download_from_id';
-import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
+import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
 import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, audiomack_get_playlist, bandlab_get_playlist, bandlab_get_playlist_continuation, deezer_get_playlist, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, pandora_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, tidal_get_playlist, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from '@illusive/get_playlist';
 import { get_soundcloud_track_mix, get_youtube_music_track_mix, get_youtube_track_mix } from '@illusive/get_track_mix';
@@ -81,7 +81,7 @@ export namespace Illusive {
 			get_track_mix: get_youtube_track_mix,
 			get_related: youtube_music_get_related,
 			downloadable: { download_from_id: youtube_download_from_id, id_field: 'youtube_id' },
-			get_artist: youtube_music_get_artist,
+			get_artist: youtube_get_artist,
 			get_latest_releases: youtube_music_get_latest_releases
 		});
 	const youtube_music = new MusicService(

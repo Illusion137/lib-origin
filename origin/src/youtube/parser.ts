@@ -45,6 +45,17 @@ export interface YTLibraryPlaylist {
 	title: string;
 	thumbnails: YTThumbnail[];
 }
+export interface YTArtistResult {
+	artist: YTChannelResult;
+	tracks: YTTrack[];
+	albums: YTCompactPlaylist[];
+	playlists: YTCompactPlaylist[];
+	similar_artists: YTChannelResult[];
+	tracks_continuation: string | null;
+	albums_continuation: string | null;
+	playlists_continuation: string | null;
+	similar_artists_continuation: string | null;
+}
 
 function thumbs(list?: Misc.Thumbnail[]): YTThumbnail[] {
 	return (list ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }));
@@ -118,14 +129,17 @@ function lockup_thumbnails(node: YTNodes.LockupView): YTThumbnail[] {
 	return [];
 }
 function lockup_subtitle(node: YTNodes.LockupView): string {
-	const rows = (node.metadata?.metadata as any)?.metadata_rows;
-	return rows?.[0]?.metadata_parts?.[0]?.text?.text ?? '';
+	return node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.text ?? '';
 }
 function lockup_subtitle_endpoint(node: YTNodes.LockupView): string | undefined {
-	const parts = (node.metadata?.metadata as any)?.metadata_rows?.[0]?.metadata_parts;
+	const parts = node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts;
 	for (const part of parts ?? []) {
-		const browse_id = part?.text?.endpoint?.payload?.browseId ?? part?.text?.runs?.[0]?.endpoint?.payload?.browseId;
-		if (browse_id) return browse_id;
+		const text = part.text;
+		if (text === null) continue;
+		const run = text.runs?.[0];
+		const endpoint = text.endpoint ?? (run !== undefined && 'endpoint' in run ? run.endpoint : undefined);
+		const browse_id = (endpoint?.payload as { browseId?: string } | undefined)?.browseId;
+		if (browse_id !== undefined) return browse_id;
 	}
 	return undefined;
 }
@@ -230,7 +244,14 @@ export interface YTMArtistResult {
 	top_tracks: YTMTrack[];
 	albums: YTMAlbum[];
 	singles: YTMAlbum[];
+	videos: YTMTrack[];
+	playlists: YTMAlbum[];
+	appears_on: YTMAlbum[];
 	similar_artists: YTMArtist[];
+	albums_continuation: string | null;
+	singles_continuation: string | null;
+	tracks_continuation: string | null;
+	similar_artists_continuation: string | null;
 }
 export interface YTMRelatedSection { title: string; tracks: YTMTrack[]; playlists: YTMAlbum[] }
 export interface YTMHistorySection { title: string; tracks: YTMTrack[] }
@@ -297,6 +318,16 @@ export function parse_ytm_two_row_album(item: YTNodes.MusicTwoRowItem): YTMAlbum
 		album_type: album_type_of(item.item_type)
 	};
 }
+export function parse_ytm_two_row_video(item: YTNodes.MusicTwoRowItem): YTMTrack {
+	return {
+		video_id: (item.endpoint?.payload)?.videoId ?? item.id,
+		title: text_of(item.title),
+		artists: artist_refs(item.artists ?? (item.author ? [item.author] : [])),
+		views: views_number(item.views),
+		explicit: has_explicit(item.badges?.array?.() ?? undefined),
+		thumbnails: thumbs(item.thumbnail)
+	};
+}
 export function parse_ytm_two_row_artist(item: YTNodes.MusicTwoRowItem): YTMArtist {
 	return {
 		browse_id: item.id ?? (item.endpoint?.payload)?.browseId,
@@ -320,14 +351,17 @@ export function parse_ytm_panel_video(item: YTNodes.PlaylistPanelVideo): YTMTrac
 
 function subtitle_artist_refs(subtitle?: Misc.Text): YTMArtistRef[] {
 	return (subtitle?.runs ?? [])
-		.map(run => ({ run, browse_id: ((run as any).endpoint?.payload)?.browseId as string | undefined }))
-		.filter(entry => entry.browse_id !== undefined && (entry.browse_id.startsWith('UC') || entry.browse_id.startsWith('MPAD')))
-		.map(entry => ({ name: entry.run.text, browse_id: entry.browse_id }));
+		.map((run) => {
+			const endpoint = 'endpoint' in run ? run.endpoint : undefined;
+			const browse_id = (endpoint?.payload as { browseId?: string } | undefined)?.browseId;
+			return { name: run.text, browse_id };
+		})
+		.filter(ref => ref.browse_id !== undefined && (ref.browse_id.startsWith('UC') || ref.browse_id.startsWith('MPAD')));
 }
 
 export function parse_ytm_card_top_result(card: YTNodes.MusicCardShelf): YTMTopResult | undefined {
 	const type_label = (card.subtitle?.runs?.[0]?.text ?? card.subtitle?.text ?? '').trim();
-	const payload = card.on_tap?.payload;
+	const payload = card.on_tap?.payload as { browseId?: string; videoId?: string } | undefined;
 	if (type_label === 'Artist') {
 		return { type: 'ARTIST', artist: { browse_id: payload?.browseId, name: text_of(card.title), thumbnails: music_thumbs(card.thumbnail) } };
 	}
@@ -335,7 +369,9 @@ export function parse_ytm_card_top_result(card: YTNodes.MusicCardShelf): YTMTopR
 		return { type: 'ALBUM', album: { browse_id: payload?.browseId, title: text_of(card.title), artists: subtitle_artist_refs(card.subtitle), thumbnails: music_thumbs(card.thumbnail), explicit: has_explicit(card.subtitle_badges), album_type: album_type_of(type_label) } };
 	}
 	if (type_label === 'Playlist') return undefined;
-	const video_id = payload?.videoId ?? (card.title?.runs?.[0] as any)?.endpoint?.payload?.videoId;
+	const title_run = card.title?.runs?.[0];
+	const run_endpoint = title_run !== undefined && 'endpoint' in title_run ? title_run.endpoint : undefined;
+	const video_id = payload?.videoId ?? (run_endpoint?.payload as { videoId?: string } | undefined)?.videoId;
 	if (video_id === undefined) return undefined;
 	return { type: 'TRACK', track: { video_id, title: text_of(card.title), artists: subtitle_artist_refs(card.subtitle), duration_seconds: undefined, explicit: has_explicit(card.subtitle_badges), thumbnails: music_thumbs(card.thumbnail) } };
 }

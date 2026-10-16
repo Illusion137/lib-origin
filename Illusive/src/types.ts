@@ -405,7 +405,10 @@ export interface MusicServiceArtist {
 	name: string;
 	latest_release?: CompactPlaylist;
 	tracks: Track[];
-	tracks_continuation?: () => Track[];
+	tracks_continuation?: () => Promise<Track[]>;
+	albums_continuation?: () => Promise<CompactPlaylist[]>;
+	singles_eps_continuation?: () => Promise<CompactPlaylist[]>;
+	similar_artists_continuation?: () => Promise<CompactArtist[]>;
 	playlists: CompactPlaylist[];
 	albums: CompactPlaylist[];
 	singles_eps: CompactPlaylist[];

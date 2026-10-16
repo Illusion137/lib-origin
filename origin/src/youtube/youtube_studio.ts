@@ -191,7 +191,7 @@ export namespace YouTubeStudio {
 	}
 
 	export async function upload_video(file_path: string, details: Partial<UploadVideoDetails> = {}, on_scotty_progress?: (written_bytes: number, total_bytes: number) => void,
-		on_initial_create_video?: (full_created: { created: unknown; feedback_token: string | null }) => any): PromiseResult<UploadVideoSuccessfulResult> {
+		on_initial_create_video?: (full_created: { created: unknown; feedback_token: string | null }) => unknown): PromiseResult<UploadVideoSuccessfulResult> {
 		try {
 			const studio_web = await get_studio_web();
 			if ('error' in studio_web) return studio_web;
