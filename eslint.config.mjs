@@ -33,7 +33,6 @@ export default tseslint.config(
 			"translate_m/**",
 			"vendor/**",
 			"scratch*",
-			"gen_changelog.ts",
 			"origin/src/youtube_dl/PATCH/sax/sax.js",
 			"origin/src/manga_reader/deob.js",
 			"origin/src/manga_reader/deob2.js",

@@ -4,7 +4,7 @@ import type { CookieJar } from '@common/utils/cookie_util';
 import { get_native_platform } from '@native/native_mode';
 
 export namespace Logger {
-	let enabled = get_native_platform() === 'NODE';
+	let enabled = false;
 	export function enable() { enabled = true; }
 	export function disable() { enabled = false; }
 	export function is_enabled() { return enabled; }
