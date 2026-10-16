@@ -22,7 +22,7 @@ async function download(video_id: string, po_token: PoToken){
     await load_native_potoken();
     await load_native_sabr_downloader();
 
-    YouTubeDL.inject_potoken(video_id, po_token.po_token);
+    // TODO implement a version of po_token injection
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
         async () => await YouTubeDL.resolve_sabr_info(video_id)
