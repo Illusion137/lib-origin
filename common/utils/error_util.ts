@@ -78,6 +78,11 @@ function handle_error(error: ResponseError, severity: ErrorSeverity, ignore = fa
 	return error;
 }
 
+export function catch_error_log(e: Error) {
+	SEVERITY_HANDLER_MAP.MEDIUM({ error: e });
+	console.log(e);
+}
+
 export function generror_catch(e: unknown, msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
 	if (is_error_instance(e)) {
 		e.message = generror_base_msg(msg, e.message, args);

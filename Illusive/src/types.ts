@@ -7,8 +7,7 @@ import type { Prefs } from '@illusive/prefs';
 import { remove } from '@common/utils/clean_util';
 import type { BasePref } from '@native/mmkv/mmkv_utils';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
-import type { YouTubeDL } from '@origin/youtube/youtube_dl';
-import type { SabrTokenCallbackReason } from '@native/sabr_downloader/sabr_downloader.base';
+import type { ExtendedSabrStreamConfig, YouTubeDL } from '@origin/youtube/youtube_dl';
 
 type ArtworkCacheType = 'force-cache';
 
@@ -432,18 +431,8 @@ export interface DownloadFromIdResult {
 		chapters: YouTubeDL.Chapter[];
 		songs?: YTDescriptionSong[];
 	};
-	// SABR streaming params (YouTube server-adaptive bitrate)
-	content_binding?: string;
-	isSabr?: true;
 	duration?: number;
-	sabrServerUrl?: string;
-	sabrUstreamerConfig?: string;
-	sabrFormats?: YouTubeDL.SabrFormat[];
-	placeholder_po_token?: string;
-	clientInfo?: YouTubeDL.SabrClientInfo;
-	cookie?: string;
-	on_refresh_po_token?: (_reason: SabrTokenCallbackReason) => Promise<string>;
-	on_reload_player_response?: (ctx: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
+	sabr_params?: ExtendedSabrStreamConfig;
 }
 
 export interface IllusiveExplore {

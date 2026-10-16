@@ -10,9 +10,8 @@ import { Utils } from '@illusicord/player/utils';
 import type { Player } from '@illusicord/player/player';
 import { catch_ignore } from '@common/utils/error_util';
 import path from 'path-browserify';
-import { SabrStream, type ReloadResponse } from 'googlevideo/sabr-stream';
+import { SabrStream } from 'googlevideo/sabr-stream';
 import { Readable } from 'stream';
-import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { EnabledTrackTypes } from 'googlevideo/utils';
 
 interface PreparedStream { stream_input: Readable | string; input_type: StreamType }
@@ -207,46 +206,14 @@ export class Queue<T = unknown> {
 	private async prepare_stream(download_url: DownloadUrlResult): Promise<PreparedStream> {
 		const origin_dir = process.env.LORIGIN ?? '/lib-origin';
 
-		if (!('error' in download_url) && download_url.isSabr) {
-			const sabr = new SabrStream({
-				clientInfo: download_url.clientInfo!,
-				serverAbrStreamingUrl: download_url.sabrServerUrl!,
-				formats: download_url.sabrFormats ?? [],
-				videoPlaybackUstreamerConfig: download_url.sabrUstreamerConfig!,
-				// ? Assuming video_id is content_binding
-				videoId: download_url.content_binding!,
-				poToken: download_url.placeholder_po_token,
-				callbacks: {
-					onReloadPlayerResponse: async (ctx): Promise<ReloadResponse> => {
-						const BAD = {
-							serverAbrStreamingUrl: '',
-							videoPlaybackUstreamerConfig: ''
-						};
-						if (!download_url.on_reload_player_response) return BAD;
-						try {
-							const updated = await download_url.on_reload_player_response(ctx);
-							if (updated) {
-								return {
-									serverAbrStreamingUrl: updated.sabrServerUrl,
-									videoPlaybackUstreamerConfig: updated.sabrUstreamerConfig
-								};
-							}
-						} catch (e) {
-							console.error('[SABR] Failed to reload player response:', e);
-						}
-						return BAD;
-					},
-
-					onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(download_url.content_binding!)
-				}
-			});
+		if (!('error' in download_url) && download_url.sabr_params) {
+			const sabr = new SabrStream(download_url.sabr_params);
 
 			sabr.on('abort', () => console.error('[SABR] aborted.'));
 
 			const { audioStream } = sabr.start({
 				isPostLiveDvr: false,
 				enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
-				// videoPreferences: { container: 'webm' },
 				audioPreferences: { preferredAudioCodec: 'opus', dynamicRangeCompression: false, voiceBoost: false }
 			});
 
@@ -273,7 +240,7 @@ export class Queue<T = unknown> {
 			return;
 		const promise = (async (): Promise<PreparedStream | null> => {
 			const download_url = await Illusive.get_download_url('', track, (this.options.yt_quality ?? '18') as string, undefined, true);
-			if ('error' in download_url || !download_url.isSabr)
+			if ('error' in download_url || !download_url.sabr_params)
 				return null;
 			return await this.prepare_stream(download_url);
 		})().catch((err) => {

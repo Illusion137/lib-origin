@@ -39,40 +39,10 @@ function get_or_start_track(video_id: string): TrackBuffer {
         try {
             // IMPORTANT: tryna use MUSIC client here will break PoToken generation
             await YouTubeDL.get_innertube_client();
-            const sabr_info = await YouTubeDL.resolve_sabr_info(video_id);
-            if ("error" in sabr_info) throw new Error(sabr_info.error.message);
+            const sabr_params = await YouTubeDL.resolve_sabr_info(video_id);
+            if ("error" in sabr_params) throw new Error(sabr_params.error.message);
 
-            const sabr_stream = new SabrStream({
-                clientInfo: sabr_info.clientInfo!,
-                serverAbrStreamingUrl: sabr_info.sabrServerUrl,
-                formats: sabr_info.sabrFormats ?? [],
-                videoPlaybackUstreamerConfig: sabr_info.sabrUstreamerConfig,
-                // ? Assuming video_id is content_binding
-                videoId: sabr_info.content_binding,
-                poToken: sabr_info.placeholder_po_token,
-                callbacks: {
-                    onReloadPlayerResponse: async (ctx): Promise<ReloadResponse> => {
-                        const BAD = {
-                            serverAbrStreamingUrl: '',
-                            videoPlaybackUstreamerConfig: ''
-                        };
-                        if (!sabr_info.on_reload_player_response) return BAD;
-                        try {
-                            const updated = await sabr_info.on_reload_player_response(ctx);
-                            if (updated) {
-                                return {
-                                    serverAbrStreamingUrl: updated.sabrServerUrl,
-                                    videoPlaybackUstreamerConfig: updated.sabrUstreamerConfig
-                                }
-                            }
-                        } catch (e) {
-                            console.error('[SABR] Failed to reload player response:', e);
-                        }
-                        return BAD;
-                    },
-                    onMintPoToken: async () => await YouTubeDL.fetch_potoken_bytes(sabr_info.content_binding)
-                },
-            });
+            const sabr_stream = new SabrStream(sabr_params);
 
             sabr_stream.on('abort', () => console.error('[SABR] aborted'));
 

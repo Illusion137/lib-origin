@@ -303,13 +303,13 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 			: 'asset',
 		has_thumbnail_uri: !is_empty(track.thumbnail_uri)
 	});
-	if (url_data.isSabr && url_data.content_binding) {
-		sabr_content_binding_by_uid.set(track.uid, url_data.content_binding);
+	if (url_data.sabr_params?.videoId) {
+		sabr_content_binding_by_uid.set(track.uid, url_data.sabr_params.videoId);
 	}
-	if (url_data.isSabr) {
+	if (url_data.sabr_params) {
 		sabr_status_by_uid.set(track.uid, {
-			content_binding: url_data.content_binding,
-			po_token: url_data.placeholder_po_token,
+			content_binding: url_data.sabr_params.videoId,
+			po_token: url_data.sabr_params.poToken,
 			is_placeholder: true
 		});
 	}
@@ -325,12 +325,12 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 		headers: {},
 		contentType: 'audio/mp4',
 		userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-		...(url_data.isSabr && {
-			isSabr: url_data.isSabr,
-			sabrServerUrl: url_data.sabrServerUrl,
-			sabrUstreamerConfig: url_data.sabrUstreamerConfig,
-			sabrFormats: (url_data.sabrFormats ?? []) as unknown as Record<string, unknown>[],
-			poToken: url_data.placeholder_po_token
+		...(url_data.sabr_params && {
+			isSabr: url_data.sabr_params,
+			sabrServerUrl: url_data.sabr_params.serverAbrStreamingUrl,
+			sabrUstreamerConfig: url_data.sabr_params.videoPlaybackUstreamerConfig,
+			sabrFormats: (url_data.sabr_params.formats ?? []) as unknown as Record<string, unknown>[],
+			poToken: url_data.sabr_params.poToken
 		})
 	};
 }

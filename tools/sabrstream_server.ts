@@ -2,7 +2,7 @@ import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import express from 'express';
 import "dotenv/config";
 import type { ResponseError } from '@common/types';
-import type { PoTokenResult } from '@native/potoken/potoken.base';
+import type { PoTokenResult } from '@origin/youtube/potoken';
 
 const app = express();
 const port = 3000;

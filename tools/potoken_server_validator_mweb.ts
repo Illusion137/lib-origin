@@ -6,7 +6,6 @@ import path from 'path';
 import { YouTubeDL } from "@origin/youtube/youtube_dl";
 import { ffmpeg, load_native_ffmpeg } from "@native/ffmpeg/ffmpeg";
 import { gen_uuid, milliseconds_of } from "@common/utils/util";
-import { load_native_potoken } from '@native/potoken/potoken';
 import express from 'express';
 import { wait } from '@common/utils/timed_util';
 import { ClientType } from 'youtubei.js';
@@ -20,7 +19,6 @@ const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/y
 interface PoToken {po_token: string, placeholder_po_token: string};
 
 async function download(video_id: string, po_token: PoToken){
-    await load_native_potoken();
     await load_native_ffmpeg();
 
     const client = await YouTubeDL.get_innertube_client(ClientType.MWEB);

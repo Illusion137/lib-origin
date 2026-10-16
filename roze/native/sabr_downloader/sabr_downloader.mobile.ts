@@ -7,22 +7,19 @@ export const mobile_sabr_downloader: SabrDownloader = {
 		let unsub: { remove: () => void } | undefined;
 		let unsub_reload: { remove: () => void } | undefined;
 		if (on_progress) {
-			// SabrDownloadProgress = 'sabr-download-progress' (RNTPvE extension)
 			unsub = TrackPlayer.addEventListener(Event.SabrDownloadProgress, (event: { outputPath: string; progress: number }) => {
 				if (event.outputPath === output_path) on_progress(event.progress);
 			});
 		}
-		if (params.on_reload_player_response) {
+		if (params.callbacks?.onReloadPlayerResponse) {
 			unsub_reload = TrackPlayer.addEventListener(Event.SabrReloadPlayerResponse, async (event: { outputPath: string; token: string | null }) => {
 				if (event.outputPath !== output_path) return;
 				try {
-					const result = await params.on_reload_player_response!(event.token);
+					const result = await params.callbacks?.onReloadPlayerResponse!({ reloadPlaybackParams: { token: event.token ?? '' } });
 					if (result) {
-						await TrackPlayer.updateSabrStream(output_path, result.sabrServerUrl, result.sabrUstreamerConfig);
+						await TrackPlayer.updateSabrStream(output_path, result.serverAbrStreamingUrl, result.videoPlaybackUstreamerConfig);
 					}
-				} catch {
-					// ignore errors in reload handler — download will time out naturally
-				}
+				} catch { }
 			});
 		}
 		let token_refresh_in_flight = false;
@@ -31,17 +28,24 @@ export const mobile_sabr_downloader: SabrDownloader = {
 			if (token_refresh_in_flight) return;
 			token_refresh_in_flight = true;
 			try {
-				const token = await YouTubeDL.fetch_potoken(params.content_binding);
+				const token = await YouTubeDL.fetch_potoken(params.videoId);
 				if ('error' in token) throw token.error;
 				await TrackPlayer.updateSabrPoToken(output_path, token.po_token);
-			} catch {
-				// ignore — stream will fail naturally if token can't be refreshed
-			} finally {
+			} catch { } finally {
 				token_refresh_in_flight = false;
 			}
 		});
 		try {
-			await TrackPlayer.downloadSabr(params as Parameters<typeof TrackPlayer.downloadSabr>[0], output_path);
+			await TrackPlayer.downloadSabr({
+				sabrServerUrl: params.serverAbrStreamingUrl,
+				sabrUstreamerConfig: params.videoPlaybackUstreamerConfig,
+				clientInfo: params.clientInfo,
+				cookie: params.cookie,
+				duration: params.duration,
+				placeholder_po_token: params.poToken,
+				preferOpus: true,
+				sabrFormats: params.formats as Record<string, any>[]
+			}, output_path);
 		} finally {
 			unsub?.remove();
 			unsub_reload?.remove();

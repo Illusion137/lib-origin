@@ -114,8 +114,6 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 	if (!('error' in nt_handle)) downloading.track = nt_handle;
 	else return nt_handle;
 
-	const using_sabr = 'isSabr' in download_uri && download_uri.isSabr;
-
 	const intermediate_media_uri = downloading.track.uid + '.webm';
 	const media_uri = downloading.track.uid + '.m4a';
 	const new_intermediate_uri = SQLfs.cache_directory(intermediate_media_uri);
@@ -123,19 +121,9 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 
 	let retcode = 1;
 	let logs = '';
-	if (using_sabr) {
+	if (download_uri.sabr_params) {
 		await sabr_downloader().download_sabr(
-			{
-				content_binding: download_uri.content_binding!,
-				sabrServerUrl: download_uri.sabrServerUrl!,
-				sabrUstreamerConfig: download_uri.sabrUstreamerConfig!,
-				sabrFormats: download_uri.sabrFormats,
-				placeholder_po_token: download_uri.placeholder_po_token,
-				clientInfo: download_uri.clientInfo,
-				cookie: download_uri.cookie,
-				on_reload_player_response: download_uri.on_reload_player_response,
-				preferOpus: true
-			},
+			download_uri.sabr_params,
 			new_intermediate_uri,
 			progress => track_downloader.update_key(downloading.uid, { ...downloading, progress: progress / 2.0 })
 		);
