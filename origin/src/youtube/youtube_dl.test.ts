@@ -1,5 +1,5 @@
 import { test, describe, beforeEach } from 'vitest';
-import { YouTubeDL } from '@origin/youtube_dl/index';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { expect_error, expect_no_error } from '@common/testing.test';
 import 'dotenv/config';
 
@@ -16,8 +16,6 @@ const video_url = 'yMxOQSh6gGk';
 
 describe('YouTube DL', () => {
 	test('get_innertube_client', async () => bail_no_error(await YouTubeDL.get_innertube_client()));
-
-	test('get_info', async () => bail_no_error(await YouTubeDL.get_info(video_url)));
 
 	test('resolve_sabr_info', async () => bail_no_error(await YouTubeDL.resolve_sabr_info(video_url)));
 });

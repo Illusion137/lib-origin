@@ -1,24 +1,19 @@
-import {
-	catch_log,
-	generror,
-	generror_catch
-} from '@common/utils/error_util';
+import { catch_log, generror, generror_catch } from '@common/utils/error_util';
 import { parse_runs } from '@common/utils/parse_util';
-import Innertube, { Constants, Log, Platform, YT, YTNodes, type ClientType, type IPlayerResponse, type Types } from 'youtubei.js';
+import type Innertube from 'youtubei.js';
+import { Constants, Platform, YT, YTNodes, type ClientType, type IPlayerResponse, type Types } from 'youtubei.js';
 import { buildSabrFormat } from 'googlevideo/utils';
 import type { PromiseResult, ResponseError } from '@common/types';
-import {
-	fs,
-	load_native_fs
-} from '@native/fs/fs';
-import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
 import { retry_result } from '@common/utils/retry_util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { jseval, load_native_jseval } from '@native/jseval/jseval';
-import { RCache } from './rcache';
-import type { PoTokenResult } from '@native/potoken/potoken.base';
 import { createColdStartToken } from 'bgutils-js/webpo';
+import { PoToken, type PoTokenResult } from './potoken';
+import type { SabrFormat } from 'googlevideo/shared-types';
+import { YouTubeSession } from '@origin/youtube/session';
+import type { CookieJar } from '@common/utils/cookie_util';
+import { reinterpret_cast } from '@common/cast';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -28,25 +23,22 @@ Platform.shim.eval = async (data: Types.BuildScriptResult, _: Record<string, Typ
 
 export namespace YouTubeDL {
 	export interface Chapter { title: string; start_time: number }
-	let innertube_client: Innertube;
 	let preloaded_cookies: string | undefined;
 
 	export function preload_cookies(cookie?: string) {
-		preloaded_cookies = cookie ?? process ? process?.env?.YOUTUBE_COOKIE_JAR : undefined;
+		preloaded_cookies = cookie ?? (typeof process !== 'undefined' ? process?.env?.YOUTUBE_COOKIE_JAR : undefined);
+		YouTubeSession.preload_cookies(cookie);
+	}
+
+	function session_opts(cookie?: string): YouTubeSession.Opts {
+		const resolved = cookie ?? preloaded_cookies;
+		if (resolved === undefined) return {};
+		return { cookie_jar: reinterpret_cast<CookieJar>({ toString: () => resolved }) };
 	}
 
 	export async function get_innertube_client(client_type?: ClientType, cookie?: string): Promise<Innertube> {
-		Log.setLevel(Log.Level.NONE);
-		if (innertube_client) return innertube_client;
-		await load_native_fs();
-		await load_native_potoken();
 		await load_native_jseval();
-		innertube_client = await Innertube.create({
-			client_type: client_type,
-			cache: new RCache(true, await fs().temp_directory()),
-			cookie: preloaded_cookies ?? cookie
-		});
-		return innertube_client;
+		return await YouTubeSession.get(session_opts(cookie), client_type, { retrieve_player: true });
 	}
 
 	export function get_chapters(info: VideoInfo) {
@@ -61,27 +53,6 @@ export namespace YouTubeDL {
 		})) ?? []) as Chapter[];
 	}
 
-	export async function get_info(link: string) {
-		try {
-			const client = await get_innertube_client();
-			const info = await client.getShortsVideoInfo(link, 'ANDROID');
-			return info as unknown;
-		} catch (error) {
-			return generror_catch(error, 'YTDL Failed', 'MEDIUM', { link });
-		}
-	}
-
-	export interface SabrFormat {
-		itag: number;
-		mimeType?: string;
-		bitrate: number;
-		approxDurationMs: number;
-		audioQuality?: string;
-		lastModified: string;
-		contentLength?: number;
-		averageBitrate?: number;
-	}
-
 	export interface SabrClientInfo {
 		clientName?: number;
 		clientVersion?: string;
@@ -89,9 +60,7 @@ export namespace YouTubeDL {
 
 	export interface SabrTrackParams {
 		content_binding: string;
-		/** The SABR server URL — used as the track url and passed to the native SABR engine. */
 		url: string;
-		/** Flag consumed by the native player to activate SABR mode. */
 		isSabr: true;
 		sabrServerUrl: string;
 		sabrUstreamerConfig: string;
@@ -104,40 +73,15 @@ export namespace YouTubeDL {
 		on_reload_player_response: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
 	}
 
-	type PoTokenStatusResultSent = ['sent', PromiseResult<PoTokenResult>];
-	type PoTokenStatusResultRecieved = ['recieved', PoTokenResult];
-	type PoTokenContentBindingStatusMap = Record<string, PoTokenStatusResultSent | PoTokenStatusResultRecieved>;
-	const content_binding_status_map: PoTokenContentBindingStatusMap = {};
 	export async function fetch_potoken(content_binding: string): PromiseResult<PoTokenResult> {
-		if (content_binding_status_map?.[content_binding]?.[0] === 'recieved') return content_binding_status_map[content_binding][1];
-		if (content_binding_status_map?.[content_binding]?.[0] === 'sent') {
-			const recieved = await content_binding_status_map[content_binding][1];
-			if ('error' in recieved) delete content_binding_status_map[content_binding];
-			else content_binding_status_map[content_binding] = ['recieved', recieved];
-			return recieved;
-		}
-		const sent_token = potoken().generate_potoken(innertube_client, content_binding);
-		content_binding_status_map[content_binding] = [
-			'sent',
-			sent_token
-		];
-		const result = await sent_token;
-		if ('error' in result) delete content_binding_status_map[content_binding];
-		else content_binding_status_map[content_binding] = ['recieved', result];
-		return result;
+		const client = await get_innertube_client();
+		return PoToken.generate_potoken(client.botguard, content_binding);
 	}
 	export async function fetch_potoken_bytes(content_binding: string): Promise<Uint8Array> {
-		const po_token = await potoken().generate_potoken_bytes(innertube_client, content_binding);
+		const client = await get_innertube_client();
+		const po_token = await PoToken.generate_potoken_bytes(client.botguard, content_binding);
 		if ('error' in po_token) return new Uint8Array();
-
 		return po_token;
-	}
-
-	export function inject_potoken(content_binding: string, po_token: string) {
-		content_binding_status_map[content_binding] = ['recieved', {
-			identifier: content_binding,
-			po_token
-		}];
 	}
 
 	export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {

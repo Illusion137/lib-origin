@@ -6,6 +6,7 @@ import { fs, load_native_fs } from '@native/fs/fs';
 
 export namespace YouTubeSession {
 	export interface Opts { cookie_jar?: CookieJar; fetch_opts?: RoZFetchRequestInit }
+	export interface Config { retrieve_player?: boolean }
 
 	let preloaded_cookies: string | undefined;
 	const session_cache = new Map<string, Promise<Innertube>>();
@@ -19,11 +20,11 @@ export namespace YouTubeSession {
 		return jar !== undefined && jar !== '' ? jar : preloaded_cookies;
 	}
 
-	function cache_key(cookie: string | undefined, client_type: ClientType): string {
-		return `${client_type}|${cookie ?? ''}`;
+	function cache_key(cookie: string | undefined, client_type: ClientType, retrieve_player: boolean): string {
+		return `${client_type}|${retrieve_player ? 'p' : ''}|${cookie ?? ''}`;
 	}
 
-	async function create_session(opts: Opts, client_type: ClientType): Promise<Innertube> {
+	async function create_session(opts: Opts, client_type: ClientType, retrieve_player: boolean): Promise<Innertube> {
 		Log.setLevel(Log.Level.NONE);
 		await load_native_fs();
 		const cookie = resolve_cookie(opts);
@@ -31,15 +32,16 @@ export namespace YouTubeSession {
 			client_type,
 			cache: new RCache(true, await fs().temp_directory()),
 			cookie,
-			retrieve_player: false
+			retrieve_player
 		});
 	}
 
-	export async function get(opts: Opts, client_type: ClientType = ClientType.WEB): Promise<Innertube> {
-		const key = cache_key(resolve_cookie(opts), client_type);
+	export async function get(opts: Opts, client_type: ClientType = ClientType.WEB, config: Config = {}): Promise<Innertube> {
+		const retrieve_player = config.retrieve_player ?? false;
+		const key = cache_key(resolve_cookie(opts), client_type, retrieve_player);
 		let session = session_cache.get(key);
 		if (session === undefined) {
-			session = create_session(opts, client_type);
+			session = create_session(opts, client_type, retrieve_player);
 			session_cache.set(key, session);
 			session.catch(() => session_cache.delete(key));
 		}
@@ -60,8 +62,8 @@ export namespace YouTubeSession {
 		return trimmed;
 	}
 
-	export function refresh(opts: Opts, client_type: ClientType = ClientType.WEB) {
-		session_cache.delete(cache_key(resolve_cookie(opts), client_type));
+	export function refresh(opts: Opts, client_type: ClientType = ClientType.WEB, config: Config = {}) {
+		session_cache.delete(cache_key(resolve_cookie(opts), client_type, config.retrieve_player ?? false));
 	}
 
 	export function clear() {
