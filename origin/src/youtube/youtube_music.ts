@@ -1,5 +1,5 @@
 import * as Parser from '@origin/youtube/parser';
-import type { YTMAlbum, YTMArtistResult, YTMHistorySection, YTMLyrics, YTMPlaylistResult, YTMRelatedSection, YTMSearchResult, YTMTrack } from '@origin/youtube/parser';
+import type { YTMAlbum, YTMArtist, YTMArtistResult, YTMHistorySection, YTMLyrics, YTMPlaylistResult, YTMRelatedSection, YTMSearchResult, YTMTrack } from '@origin/youtube/parser';
 import { YouTubeSession } from '@origin/youtube/session';
 import type { PromiseResult } from '@common/types';
 import { gen_uuid, is_empty, milliseconds_of, urlid } from '@common/utils/util';
@@ -227,15 +227,35 @@ export namespace YouTubeMusic {
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music new releases', 'MEDIUM'); }
 	}
 
-	export async function search_suggestions(opts: Opts, search_query: string): Promise<(string | YTMTrack)[]> {
+	function parse_suggestion_item(item: YTNodes.MusicResponsiveListItem): YTMTrack | YTMAlbum | YTMArtist | undefined {
+		switch (item.item_type) {
+			case 'song':
+			case 'video':
+			case 'non_music_track':
+				return Parser.parse_ytm_track(item);
+			case 'album':
+			case 'playlist':
+				return Parser.parse_ytm_album(item);
+			case 'artist':
+			case 'library_artist':
+				return Parser.parse_ytm_artist(item);
+			default: return undefined;
+		}
+	}
+
+	export async function search_suggestions(opts: Opts, search_query: string): Promise<(string | YTMTrack | YTMAlbum | YTMArtist)[]> {
 		if (is_empty(search_query)) return [];
 		try {
 			const sections = await (await YouTubeSession.get(opts)).music.getSearchSuggestions(search_query);
-			const suggestions: (string | YTMTrack)[] = [];
+			const suggestions: (string | YTMTrack | YTMAlbum | YTMArtist)[] = [];
 			for (const section of sections) {
 				for (const item of section.contents) {
-					if (item.is(YTNodes.SearchSuggestion)) suggestions.push(item.as(YTNodes.SearchSuggestion).suggestion.text ?? '');
-					else if (item.is(YTNodes.MusicResponsiveListItem)) suggestions.push(Parser.parse_ytm_track(item.as(YTNodes.MusicResponsiveListItem)));
+					if (item.is(YTNodes.SearchSuggestion)) {
+						suggestions.push(item.as(YTNodes.SearchSuggestion).suggestion.text ?? '');
+					} else if (item.is(YTNodes.MusicResponsiveListItem)) {
+						const parsed = parse_suggestion_item(item.as(YTNodes.MusicResponsiveListItem));
+						if (parsed !== undefined) suggestions.push(parsed);
+					}
 				}
 			}
 			return suggestions;
