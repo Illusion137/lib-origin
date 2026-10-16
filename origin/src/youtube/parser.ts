@@ -233,6 +233,7 @@ export interface YTMArtistResult {
 	similar_artists: YTMArtist[];
 }
 export interface YTMRelatedSection { title: string; tracks: YTMTrack[]; playlists: YTMAlbum[] }
+export interface YTMHistorySection { title: string; tracks: YTMTrack[] }
 export interface YTMLyrics { lyrics: string; source?: string }
 
 function music_thumbs(thumbnail?: YTNodes.MusicThumbnail | null): YTThumbnail[] {
