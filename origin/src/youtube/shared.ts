@@ -3,6 +3,7 @@ import type { PromiseResult } from '@common/types';
 import { gen_uuid, milliseconds_of } from '@common/utils/util';
 import { generror, generror_catch } from '@common/utils/error_util';
 
+// TODO Update ytbi to inlcude better playlist creation and editing
 export namespace YouTubeShared {
 	type Opts = YouTubeSession.Opts;
 
