@@ -1,4 +1,4 @@
-import { extract_string_from_pattern, random_between } from '@common/utils/util';
+import { extract_string_from_pattern, random_between, random_of } from '@common/utils/util';
 import type { Children, LyricsPreloadedState } from '@origin/genius/types/Lyrics';
 import type { Result, Search } from '@origin/genius/types/Search';
 import { generror, generror_catch } from '@common/utils/error_util';
@@ -11,8 +11,42 @@ export namespace Genius {
 	interface Opts { fetch_opts?: RoZFetchRequestInit }
 
 	const first_impression = random_between(1723098160164, Date.now());
-	// TODO random mp_77967c52dc38186cc1aadebdd19e2a82_mixpanel
-	const cookie_jar = CookieJar.fromString(`_genius_ab_test_cohort=57; _ab_tests_identifier=a6c83eb7-958b-409a-b099-6c60682babfc; _genius_ab_test_tonefuse_cohort=22; _genius_ab_test_tonefuse_interstitial_cohort=53; genius_outbrain_rollout_percentage=89; genius_first_impression=${first_impression}; mp_mixpanel__c=3; mp_77967c52dc38186cc1aadebdd19e2a82_mixpanel=%7B%22%24search_engine%22%3A%20%22google%22%2C%22%24initial_referrer%22%3A%20%22https%3A%2F%2Fwww.google.com%2F%22%2C%22%24initial_referring_domain%22%3A%20%22www.google.com%22%2C%22AMP%22%3A%20false%2C%22genius_platform%22%3A%20%22web%22%2C%22Logged%20In%22%3A%20false%2C%22Mobile%20Site%22%3A%20false%2C%22Tag%22%3A%20%22rap%22%2C%22user_agent%22%3A%20%22Mozilla%2F5.0%20(Windows%20NT%2010.0%3B%20Win64%3B%20x64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F127.0.0.0%20Safari%2F537.36%22%2C%22assembly_uid%22%3A%20%22d81ac3d8-a309-42b2-939e-a5232ff3e9a9%22%7D`);
+	const random_values = {
+		search_engines: [
+			{ name: 'google', referrer: 'https://www.google.com/', domain: 'www.google.com' },
+			{ name: 'bing', referrer: 'https://www.bing.com/', domain: 'www.bing.com' },
+			{ name: 'duckduckgo', referrer: 'https://duckduckgo.com/', domain: 'duckduckgo.com' }
+		],
+		tags: ['rap', 'rock', 'pop', 'rb', 'country'],
+		user_agents: [
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
+		],
+		assembly_uids: [
+			'd81ac3d8-a309-42b2-939e-a5232ff3e9a9',
+			'3f6c1a52-7b0e-4d8a-9c14-5e2b8a7d6f01',
+			'a2b9e4c7-1d35-4f60-8e72-c0d9b3a15f48'
+		]
+	};
+	function random_mp(): string {
+		const search_engine = random_of(random_values.search_engines);
+		const mp = {
+			'$search_engine': search_engine.name,
+			'$initial_referrer': search_engine.referrer,
+			'$initial_referring_domain': search_engine.domain,
+			'AMP': false,
+			'genius_platform': 'web',
+			'Logged In': false,
+			'Mobile Site': false,
+			'Tag': random_of(random_values.tags),
+			'user_agent': random_of(random_values.user_agents),
+			'assembly_uid': random_of(random_values.assembly_uids)
+		};
+		return encodeURIComponent(JSON.stringify(mp));
+	}
+
+	const cookie_jar = CookieJar.fromString(`_genius_ab_test_cohort=57; _ab_tests_identifier=a6c83eb7-958b-409a-b099-6c60682babfc; _genius_ab_test_tonefuse_cohort=22; _genius_ab_test_tonefuse_interstitial_cohort=53; genius_outbrain_rollout_percentage=89; genius_first_impression=${first_impression}; mp_mixpanel__c=3; mp_77967c52dc38186cc1aadebdd19e2a82_mixpanel=${random_mp()}`);
 
 	export async function setup_session() {
 		const response = await rozfetch('https://genius.com', {
