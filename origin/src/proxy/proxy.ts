@@ -1,14 +1,11 @@
 import type { AxiosProxyConfig } from 'axios';
 import type { ResponseError } from '@common/types';
 import rozfetch from '@common/rozfetch';
+import { random_of } from '@common/utils/util';
 
 export namespace Proxy {
 	export interface Proxy { ip: string; port: number }
 	export interface MoreProxy { ip: string; port: number; code: string; country: string; anonymity: string; google?: boolean; https: boolean; last_checked: string }
-
-	function get_random_index(max: number) {
-		return Math.floor(Math.random() * (Math.floor(max) - 0) + 0); // The maximum is exclusive and the minimum is inclusive
-	}
 
 	const ip_regex = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$/;
 
@@ -69,6 +66,6 @@ export namespace Proxy {
 		return proxies.map(p => ({ host: p.ip, port: p.port }));
 	}
 	export function get_random_proxy(proxies: Proxy[]) {
-		return proxies[get_random_index(proxies.length)];
+		return random_of(proxies);
 	}
 }
