@@ -11,7 +11,7 @@ async function bail_no_error(value: unknown) {
 }
 
 const soundcloud_cookie_jar = CookieJar.fromString(process.env.SOUNDCLOUD_COOKIE_JAR);
-const permalink = 'https://soundcloud.com/illusi/zayboy-loveish';
+const permalink = 'https://soundcloud.com/169krollo/somethingaboutusmix';
 
 SoundCloudDL.enable_cache(false);
 

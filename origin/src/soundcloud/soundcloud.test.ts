@@ -2,6 +2,7 @@ import { test, describe, beforeEach } from 'vitest';
 import { CookieJar } from '@common/utils/cookie_util';
 import { SoundCloud } from '@origin/soundcloud/soundcloud';
 import { expect_error, expect_no_error } from '@common/testing.test';
+import 'dotenv/config';
 
 let failed = false;
 beforeEach(() => { if (failed) throw new Error('Prior test failed — bailing'); });
@@ -17,7 +18,7 @@ const soundcloud_mock = {
 };
 const search_query = 'Lelo new detroit';
 const artist_permalink = 'https://soundcloud.com/637iso637';
-const playlist_path = '/illusi/sets/zayboy-loveish';
+const playlist_path = '/sumi137/sets/transfer';
 
 SoundCloud.enable_cache(false);
 

@@ -422,10 +422,12 @@ export namespace SoundCloud {
 		return await resolve<ResolvedStation>({ ...opts, url: opts.station_url });
 	}
 	export async function listening_history(opts: Opts & { limit?: number; offset?: number }) {
-		return await apiget<HistoryTrack>({ ...opts, path: `me/play-history/tracks`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0 } });
+		return await apiget<HistoryTrack>({ ...opts, path: `me/play-history/tracks`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0, requires_cookies: true } });
 	}
 	export async function liked_music(opts: Opts & { limit?: number; offset?: number }) {
-		return await apiget<LikedTrack>({ ...opts, path: `users/${get_self_user_id(opts.cookie_jar!)}/track_likes`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0 } });
+		const has_cookies = requires_cookies(opts);
+		if ('error' in has_cookies) return has_cookies;
+		return await apiget<LikedTrack>({ ...opts, path: `users/${get_self_user_id(opts.cookie_jar!)}/track_likes`, params: { limit: opts.limit ?? 50, offset: opts.offset ?? 0, require_cookies: true } });
 	}
 	export async function artists_shortcuts(opts: Opts & { limit?: number; offset?: number }) {
 		return await apiget<ArtistShortcut>({ ...opts, path: `me/artist-shortcuts`, params: { limit: opts.limit ?? 1000, offset: opts.offset ?? 0, requires_cookies: true } });
