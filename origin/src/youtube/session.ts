@@ -10,6 +10,7 @@ export namespace YouTubeSession {
 
 	let preloaded_cookies: string | undefined;
 	const session_cache = new Map<string, Promise<Innertube>>();
+	const botguard_cache = new Map<string, Innertube['botguard']>();
 
 	export function preload_cookies(cookie?: string) {
 		preloaded_cookies = cookie ?? (typeof process !== 'undefined' ? process?.env?.YOUTUBE_COOKIE_JAR : undefined);
@@ -43,9 +44,20 @@ export namespace YouTubeSession {
 		if (session === undefined) {
 			session = create_session(opts, client_type, retrieve_player);
 			session_cache.set(key, session);
-			session.catch(() => session_cache.delete(key));
 		}
+		botguard_cache.set(key, (await session).botguard);
 		return await session;
+	}
+
+	export async function get_botguard(opts: Opts, client_type: ClientType = ClientType.WEB, config: Config = {}): Promise<Innertube['botguard']> {
+		const retrieve_player = config.retrieve_player ?? false;
+		const key = cache_key(resolve_cookie(opts), client_type, retrieve_player);
+		let botguard = botguard_cache.get(key);
+		if (!botguard) {
+			await get(opts, client_type, config);
+			botguard = botguard_cache.get(key);
+		}
+		return botguard!;
 	}
 
 	export async function resolve_channel_id(opts: Opts, input: string): Promise<string> {
