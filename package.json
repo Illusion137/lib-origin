@@ -153,7 +153,6 @@
     "stream-browserify": "^1.0.0",
     "text-encoding-polyfill": "^0.6.7",
     "timers-browserify": "^1.4.2",
-    "tough-cookie": "^5.1.2",
     "tty-browserify": "^0.0.0",
     "undici": "^8.10.0",
     "url": "^0.10.3",
