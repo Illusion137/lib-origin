@@ -16,6 +16,6 @@ const video_url = 'yMxOQSh6gGk';
 
 describe('YouTube DL', () => {
 	test('get_innertube_client', async () => bail_no_error(await YouTubeDL.get_innertube_client()));
-
 	test('resolve_sabr_info', async () => bail_no_error(await YouTubeDL.resolve_sabr_info(video_url)));
+	test('fetch_potoken', async () => bail_no_error(await YouTubeDL.fetch_potoken(video_url)));
 });
