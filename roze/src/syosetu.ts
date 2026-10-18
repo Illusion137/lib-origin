@@ -1,4 +1,3 @@
-import type { CookieJar } from 'tough-cookie';
 import { jsdom_document, map_html_collection } from '@common/jsdom';
 import type { PromiseResult, ResponseError } from '@common/types';
 import { extract_string_from_pattern, gen_uuid, is_empty, is_number, milliseconds_of } from '@common/utils/util';
@@ -9,6 +8,7 @@ import { generror, generror_catch } from '@common/utils/error_util';
 import { reinterpret_cast } from '@common/cast';
 import type Roz from '@roze/types/roz';
 import { remove } from '@common/utils/clean_util';
+import type { CookieJar } from '@common/utils/cookie_util';
 
 export namespace Syosetu {
 	export interface Opts { cookie_jar?: CookieJar; fetch_opts?: RoZFetchRequestInit }
