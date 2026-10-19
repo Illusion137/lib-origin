@@ -18,7 +18,7 @@ import { reinterpret_cast } from '@common/cast';
 import { fs, load_native_fs } from '@native/fs/fs';
 import pathlib from 'path-browserify';
 import { FSCache } from '@common/fs_cache';
-import { BotGuard } from './botguard_solver';
+import { load_native_botguard } from '@native/botguard_solver/botguard_solver';
 
 type StudioWebClient = ReturnType<Innertube['studioWeb']>;
 type UploadFeedbackItem = Awaited<ReturnType<StudioWebClient['uploadFeedback']>> extends { contents: infer C } ? C : unknown;
@@ -79,7 +79,7 @@ export namespace YouTubeStudio {
 			const cached = studio_web_cache.get(channel_id);
 			if (cached !== undefined) return cached;
 			const client = await get_session(cookie);
-			const studio_web = client.studioWeb(BotGuard.botguard_solver, channel_id);
+			const studio_web = client.studioWeb(await load_native_botguard(), channel_id);
 			studio_web.setAutoRetrying(auto_retry);
 			studio_web_cache.set(channel_id, studio_web);
 			return studio_web;

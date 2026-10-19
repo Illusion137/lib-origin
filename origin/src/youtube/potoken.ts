@@ -5,9 +5,10 @@ import { generror } from '@common/utils/error_util';
 import type { PromiseResult } from '@common/types';
 import { TimedCacheValue } from '@common/types';
 import { milliseconds_of } from '@common/utils/util';
-import { BotGuard, type BotGuardWebPo } from './botguard_solver';
 import { block_fetch_item, delete_block_fetch_item, get_block_fetch_item } from '@common/utils/timed_util';
 import { buildURL, getHeaders } from 'bgutils-js/utils';
+import type { BotGuardWebPo } from '@native/botguard_solver/botguard_solver.base';
+import { load_native_botguard } from '@native/botguard_solver/botguard_solver';
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
@@ -30,7 +31,7 @@ interface BotGuardResponse {
 export namespace PoToken {
 	// * REQUIRES COOKIES in Innertube
 	export async function potato_token_integrity_data(botguard_manager: BotGuardManager, botguard_response: BotGuardResponse): PromiseResult<TokenIntegrityData> {
-		const integrity_token_response = await botguard_manager.fetchIntegrityToken(BotGuard.botguard_solver, botguard_response.challenge);
+		const integrity_token_response = await botguard_manager.fetchIntegrityToken(await load_native_botguard(), botguard_response.challenge);
 
 		if (typeof integrity_token_response.integrity_token !== 'object') {
 			return generror('Could not get integrity token', 'CRITICAL', { integrity_token_response });
@@ -75,7 +76,7 @@ export namespace PoToken {
 
 		const web_po_signal_output: WebPoSignalOutput = [];
 
-		const botguard_response = await botguard_manager.run<BotGuardWebPo>(BotGuard.botguard_solver, {
+		const botguard_response = await botguard_manager.run<BotGuardWebPo>(await load_native_botguard(), {
 			content_binding: () => ({ webPoSignalOutput: web_po_signal_output }),
 			atn_page_url: 'https://www.youtube.com',
 			engagement_type: 'ENGAGEMENT_TYPE_UNKNOWN',

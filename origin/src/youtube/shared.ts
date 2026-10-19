@@ -3,7 +3,7 @@ import type { PromiseResult } from '@common/types';
 import { gen_uuid, milliseconds_of } from '@common/utils/util';
 import { generror, generror_catch } from '@common/utils/error_util';
 import { type ApiResponse, Parser, YTNodes } from 'youtubei.js';
-import { BotGuard } from './botguard_solver';
+import { load_native_botguard } from '@native/botguard_solver/botguard_solver';
 
 type ApiData = ApiResponse['data'];
 // TODO Update ytbi to inlcude better playlist creation and editing
@@ -27,7 +27,7 @@ export namespace YouTubeShared {
 
 		const botguard = await YouTubeSession.get_botguard(opts);
 
-		await botguard.log(BotGuard.botguard_solver, { run_attestation_command: attestation_command, atn_page_url: ATN_PAGE_URL });
+		await botguard.log(await load_native_botguard(), { run_attestation_command: attestation_command, atn_page_url: ATN_PAGE_URL });
 		return true;
 	}
 	async function with_attestation<T extends { data: ApiData } | { action_result: ApiData['actions'] }>(res: Promise<T>, opts: Opts): Promise<T> {
