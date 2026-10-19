@@ -14,6 +14,8 @@ import { SQLBackpack } from '@illusive/sql/sql_backpack';
 import { SQLfs } from '@illusive/sql/sql_fs';
 import { catch_ignore } from '@common/utils/error_util';
 
+// TODO needs a full rework
+
 export async function get_proxies(sample_length: number) {
 	const proxies: Origin.Proxy.Proxy[] = [];
 	if (Prefs.get_pref('fastpack') && sample_length > 4) {

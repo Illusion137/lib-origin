@@ -3,6 +3,8 @@ import { FutsalShuffle } from './futsal_shuffle';
 import { sum } from './illusive_utils';
 import type { Track } from './types';
 
+// TODO full rework
+
 export namespace KeepDelete {
 	const base_time = 1665298800000; // new Date("October 9, 2022").getTime();
 	export function track_days_since_last_played(track: Track): number {

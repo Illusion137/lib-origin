@@ -8,8 +8,6 @@ import type { BottomAlertType, CompactPlaylist, Downloading, DownloadTrackResult
 const downloading: Downloading[] = [];
 
 const global_var = {
-	// Backed by track_store so reads stay reactive; do not mutate the returned array
-	// in place — go through SQLGlobal/track_store actions.
 	get sql_tracks() { return track_store.getState().tracks; },
 	set sql_tracks(tracks: Track[]) { track_store.getState().set_tracks(tracks); },
 	is_playing: false,

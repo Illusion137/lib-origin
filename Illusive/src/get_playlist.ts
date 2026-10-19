@@ -13,7 +13,7 @@ import { ytm_named, ytm_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_playlist_header, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { best_thumbnail, create_uri, spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import { parse_amazon_music_playlist_track } from '@illusive/track_parser';
+import { parse_amazon_music_playlist_track } from '@illusive/parsers/track_parser';
 import type { ISOString, MusicServicePlaylist, MusicServicePlaylistContinuation, NamedUUID } from '@illusive/types';
 import { Constants } from '@illusive/constants';
 import { generror } from '@common/utils/error_util';
@@ -25,7 +25,6 @@ import { deezer_parse_track } from './parsers/deezer_parser';
 import { pandora_parse_track } from './parsers/pandora_parser';
 import { tidal_parse_track, tidal_cover_url } from './parsers/tidal_parser';
 import rozfetch from '@common/rozfetch';
-import { get_local_illusi_playlist } from './gen/illusi_playlists_links';
 import { supabase } from './db/supabase';
 
 export const album_fetch_opts: RoZFetchRequestInit = {
@@ -322,10 +321,6 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
 
 interface IllusiPlaylistContinuation { uuid: string; offset: number }
 export async function illusi_get_playlist(uuid: string): Promise<MusicServicePlaylist> {
-	const cleaned_url = urlid(uuid, '.json');
-	const local_illusi_playlist = get_local_illusi_playlist(cleaned_url);
-	if (local_illusi_playlist !== undefined) return local_illusi_playlist;
-
 	uuid = urlid(uuid);
 	const { data: { session } } = await supabase().auth.getSession();
 	if (session?.access_token === undefined) return default_playlist(generror('User not authenticated', 'LOW', { url: uuid }));

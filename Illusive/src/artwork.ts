@@ -1,8 +1,9 @@
 import type { Artwork, ImageArtwork } from './types';
 import { reinterpret_cast } from '@common/cast';
 import { get_native_platform } from '@native/native_mode';
-import { illusi_icons_icon_map } from './illusi_icons';
 import { Illusive } from './illusive';
+
+export const illusi_icons_icon_map: unknown[] = [];
 
 export function resolved_artwork(artwork?: Artwork | null): ImageArtwork {
 	switch (get_native_platform()) {

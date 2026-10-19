@@ -12,7 +12,7 @@ import { ytm_album, ytm_artist, ytm_track } from '@illusive/parsers/youtube_musi
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { spotify_uri_to_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import { parse_amazon_music_search_track } from '@illusive/track_parser';
+import { parse_amazon_music_search_track } from '@illusive/parsers/track_parser';
 import type { CompactArtist, CompactPlaylist, MusicSearchResponse, SearchOpts } from '@illusive/types';
 import type * as IllusiveTypes from '@illusive/types';
 import { parse_spotify_search_album, parse_spotify_search_track, parse_spotify_similar_artist } from './parsers/spotify_parser';

@@ -4,6 +4,8 @@ import type { Track } from './types';
 import { GLOBALS } from './globals';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 
+// TODO needs a full rework
+
 export namespace FutsalShuffle {
 	export const icache = {
 		cache_built: false,

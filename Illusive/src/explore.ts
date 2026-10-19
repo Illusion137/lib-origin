@@ -19,6 +19,8 @@ import { FSCache } from '@common/fs_cache';
 import type { SelectionItem } from '@origin/soundcloud/types/MixedSelection';
 import type { ArtistRecommendation } from '@origin/soundcloud/types/Search';
 
+// TODO slight rework
+
 export namespace Explore {
 	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = 'PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI';
 	const FORGOTTEN_FAVORITES_SLICE = 50;

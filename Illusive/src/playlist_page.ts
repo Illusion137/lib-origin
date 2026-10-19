@@ -1,6 +1,5 @@
 import { gen_uuid, is_empty, json_catch } from '@common/utils/util';
 import type { MusicServicePlaylist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from './types';
-import { ExampleObj } from './example_objs';
 import { SQLPlaylists } from './sql/sql_playlists';
 import type { ResponseError } from '@common/types';
 import { Illusive } from './illusive';
@@ -23,9 +22,11 @@ export namespace PlaylistPage {
 		return {
 			initial_tracks: [],
 			continuation: null,
-			playlist_data: Object.assign({
-				...ExampleObj.playlist_example0
-			}, { title: default_playlist_title, creator: [{ name: Constants.import_uri_id, uri: create_uri('illusi', Constants.import_uri_id) }] })
+			playlist_data: {
+				uuid: gen_uuid(),
+				title: default_playlist_title,
+				creator: [{ name: Constants.import_uri_id, uri: create_uri('illusi', Constants.import_uri_id) }]
+			}
 		};
 	}
 
@@ -72,13 +73,13 @@ export namespace PlaylistPage {
 			return playlist_data;
 		}
 		const playlist = reinterpret_cast<MusicServicePlaylist>(playlist_or_error);
-		const id_playlist_data = { ...ExampleObj.playlist_example0, ...playlist, title: playlist.title, description: playlist.description ?? '', thumbnail_uri: await Illusive.get_highest_quality_service_thumbnail_uri(thumbnail_url ?? playlist.artwork_url ?? playlist_data.playlist_data.thumbnail_uri ?? ''), creator: playlist.creator, date: playlist.date };
+		const id_playlist_data: Playlist & { creator: NamedUUID[] } = { uuid: gen_uuid(), ...playlist, title: playlist.title, description: playlist.description ?? '', thumbnail_uri: await Illusive.get_highest_quality_service_thumbnail_uri(thumbnail_url ?? playlist.artwork_url ?? playlist_data.playlist_data.thumbnail_uri ?? ''), creator: playlist.creator ?? [], date: playlist.date };
 		const id_tracks = SQLTracks.add_playback_saved_data_to_tracks(playlist.tracks);
 		const first_album_uri = id_tracks?.[0]?.album?.uri;
 		if (id_tracks.every(track => track.album?.uri && first_album_uri && track.album.name === id_playlist_data.title && track.album.uri === first_album_uri)) {
 			for (const track of id_tracks) {
 				if (!track.playback) continue;
-				track.playback.artwork = id_playlist_data.thumbnail_uri;
+				track.playback.artwork = id_playlist_data.thumbnail_uri ?? 0;
 			}
 		}
 
