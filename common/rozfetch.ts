@@ -3,7 +3,6 @@ import { ItemTimedCache, type FetchMethod, type PromiseResult, type ResponseErro
 import MD5 from 'crypto-js/md5';
 
 import { fs, load_native_fs } from '@native/fs/fs';
-import { load_native_scrapefetch, scrapefetch } from '@native/scrapefetch/scrapefetch';
 import { load_native_proxyfetch, proxyfetch } from '@native/proxyfetch/proxyfetch';
 import { try_json_parse } from '@common/utils/parse_util';
 import { generror_catch, generror_fetch, is_timeout_error } from '@common/utils/error_util';
@@ -157,11 +156,7 @@ async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestIni
 		if (cached_response !== undefined) return cached_response;
 
 		let transport: typeof fetch = fetch;
-		if (init?.impersonate) {
-			await load_native_scrapefetch();
-			const sf = scrapefetch();
-			if (sf) transport = sf as typeof fetch;
-		} else if (init?.proxy) {
+		if (init?.proxy) {
 			await load_native_proxyfetch();
 			const pf = proxyfetch();
 			if (pf) transport = pf as typeof fetch;
