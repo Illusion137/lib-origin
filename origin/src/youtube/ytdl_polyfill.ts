@@ -63,3 +63,6 @@ class CustomEvent extends Event {
 global.CustomEvent = CustomEvent as any;
 
 import 'youtubei.js/react-native';
+import { Platform } from 'youtubei.js';
+
+Platform.shim.server = true;
