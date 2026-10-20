@@ -15,17 +15,17 @@ async function youtube_download_from_id_retry(old_error: ResponseError, retry_tr
 	if ('error' in search_result && search_result.error) return search_result.error;
 	const new_track = search_result.tracks.find(track => number_epsilon_distance(track.duration, retry_track.duration, 10));
 	if (!new_track?.youtube_id) return old_error;
-	return youtube_download_from_id(new_track?.youtube_id, '18', undefined);
+	return youtube_download_from_id(new_track?.youtube_id, undefined);
 }
 
-export async function soundcloud_download_from_id(permalink: string, _: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
+export async function soundcloud_download_from_id(permalink: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
 	const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
 	const url = await Origin.SoundCloudDL.get_download_info_from_permalink(permalink, cookie_jar);
 	// fallback as YouTube
 	if (typeof url === 'object') return await youtube_download_from_id_retry(url, retry_track);
 	return { url: url };
 }
-export async function youtube_download_from_id(video_id: string, quality: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
+export async function youtube_download_from_id(video_id: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
 	try {
 		const sabr_params = await Origin.YouTubeDL.resolve_sabr_info(video_id);
 		if ('error' in sabr_params) return youtube_download_from_id_retry(sabr_params, retry_track);
@@ -34,16 +34,16 @@ export async function youtube_download_from_id(video_id: string, quality: string
 			duration: sabr_params.duration,
 			sabr_params
 		};
-	} catch (error) { return generror_catch(error, 'Couldn\'t Download YouTube Video', 'MEDIUM', { video_id, quality }); }
+	} catch (error) { return generror_catch(error, 'Couldn\'t Download YouTube Video', 'MEDIUM', { video_id }); }
 }
 
-export async function audiomack_download_from_id(track_id: string, _: string): Promise<DownloadFromIdResult | ResponseError> {
+export async function audiomack_download_from_id(track_id: string): Promise<DownloadFromIdResult | ResponseError> {
 	const url = await Origin.AudiomackDL.get_stream_url({ track_id });
 	if (typeof url === 'object') return url;
 	return { url };
 }
 
-export async function bandlab_download_from_id(song_id: string, _: string): Promise<DownloadFromIdResult | ResponseError> {
+export async function bandlab_download_from_id(song_id: string): Promise<DownloadFromIdResult | ResponseError> {
 	const cookie_jar = Prefs.get_pref('bandlab_cookie_jar');
 	const url_response = await Origin.BandLab.get_download_url(song_id, {
 		cookie_jar: cookie_jar, fetch_opts: {

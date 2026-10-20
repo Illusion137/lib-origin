@@ -245,7 +245,7 @@ export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>
 
 export type DownloadableMusicServiceTrackField = 'youtube_id' | 'soundcloud_permalink' | 'bandlab_id' | 'audiomack_id';
 export interface DownloadableMusicService {
-	download_from_id: (id: string, quality: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>;
+	download_from_id: (id: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>;
 	id_field: DownloadableMusicServiceTrackField;
 }
 
