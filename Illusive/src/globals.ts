@@ -11,8 +11,6 @@ const global_var = {
 	get sql_tracks() { return track_store.getState().tracks; },
 	set sql_tracks(tracks: Track[]) { track_store.getState().set_tracks(tracks); },
 	is_playing: false,
-	playing_tracks: [] as Track[],
-	playing_track_index: 0,
 	past_playing_tracks: [] as Track[],
 	past_track_index: 0,
 	playing_queue: [] as string[],

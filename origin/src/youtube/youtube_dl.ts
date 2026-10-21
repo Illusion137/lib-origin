@@ -20,6 +20,7 @@ export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 export interface ExtendedSabrStreamConfig extends SabrStreamConfig {
 	cookie?: string;
 	duration: number;
+	poToken: string;
 }
 
 Platform.shim.eval = async (data: Types.BuildScriptResult, _: Record<string, Types.VMPrimative>) => {

@@ -100,7 +100,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 		downloading.track = { ...downloading.track, youtube_id: '' };
 		if (!is_empty(downloading.track.media_uri)) await SQLTracks.mark_track_undownloaded(downloading.track.uid, downloading.track.media_uri!);
 	}
-	const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), downloading.track, 'highestaudio', downloading.redownload);
+	const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), downloading.track, downloading.redownload);
 	if ('error' in download_uri) {
 		if (download_uri.error.message.toLowerCase().includes('unavailable'))
 			await SQLBackpack.add_to_backpack(downloading.track.uid);

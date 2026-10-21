@@ -5,7 +5,7 @@ import { Illusive } from '@illusive/illusive';
 import { Prefs } from '@illusive/prefs';
 import type { Track } from '@illusive/types';
 import { alert_error } from '@illusive/illusi/src/alert';
-import { insert_track_into_player_queue, on_modify_track_player_queue } from '@illusive/track_player_service';
+import { insert_track_into_player_queue, upcoming_track_count, wait_for_active_track } from '@illusive/track_player_service';
 import { default_playlists } from '@illusive/default_playlists';
 import { GLOBALS } from '@illusive/globals';
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
@@ -47,12 +47,13 @@ export async function play_track_next(track_data: Track) {
 	await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 export async function sprinkle_into_queue(tracks: Track[]) {
-	tracks = shuffle_array(tracks);
-	let i = 0;
-	const min_length = Math.min(GLOBALS.global_var.playing_tracks.length, tracks.length);
-	while ((i += random_of([1, 1, 2, 2, 2, 3])) < min_length) {
-		const insert_track = tracks[i];
-		await insert_track_into_player_queue(insert_track, i);
+	let position = 0;
+	let upcoming = upcoming_track_count();
+	for (const insert_track of shuffle_array(tracks)) {
+		position += random_of([1, 1, 2, 2, 2, 3]) + 1;
+		if (position > upcoming) break;
+		if (!await insert_track_into_player_queue(insert_track, position, false)) break;
+		upcoming++;
 	}
 	await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
@@ -68,10 +69,12 @@ export async function play_mix(track_data: Track, from: string) {
 			alert_error(track_mix);
 			return;
 		}
-		track_mix.tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks);
-		GLOBALS.global_var.playing_tracks.push(...track_mix.tracks.slice(1));
-		await on_modify_track_player_queue();
-	})().catch(catch_ignore);
+		const mix_tracks = SQLTracks.add_playback_saved_data_to_tracks(track_mix.tracks).filter(track => track.uid !== track_data.uid);
+		if (!await wait_for_active_track(track_data.uid)) return;
+		for (const mix_track of mix_tracks) {
+			if (!await insert_track_into_player_queue(mix_track, upcoming_track_count() + 1, false)) break;
+		}
+	})().catch(error => alert_error({ error: error as Error }));
 }
 export async function play(track_data: Track, from: string, track_callback: () => Track[], force_order?: boolean) {
 	if (from === Constants.illusi_mix_from) await play_mix(track_data, from);

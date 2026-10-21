@@ -183,7 +183,7 @@ export class Queue<T = unknown> {
 			}
 
 			if (!prepared) {
-				const download_url = await Illusive.get_download_url('', play_track, (this.options.yt_quality ?? '18') as string, undefined, true);
+				const download_url = await Illusive.get_download_url('', play_track, undefined, true);
 				if ('error' in download_url) {
 					console.error(download_url);
 				}
@@ -239,7 +239,7 @@ export class Queue<T = unknown> {
 		if (!track || this.destroyed || !track.youtube_id || this.preloaded_tracks.has(track))
 			return;
 		const promise = (async (): Promise<PreparedStream | null> => {
-			const download_url = await Illusive.get_download_url('', track, (this.options.yt_quality ?? '18') as string, undefined, true);
+			const download_url = await Illusive.get_download_url('', track, undefined, true);
 			if ('error' in download_url || !download_url.sabr_params)
 				return null;
 			return await this.prepare_stream(download_url);

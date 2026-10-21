@@ -124,7 +124,7 @@ export async function sample_tracks_meta(sample_tracks: Track[]) {
 	for (const track of sample_tracks) {
 		try {
 			if (track.imported_id) continue;
-			const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), track, 'highestaudio', true);
+			const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), track, true);
 			let unavailable = false;
 			if ('error' in download_uri && download_uri.error.message.toLowerCase().includes('unavailable')) {
 				if (is_empty(track.media_uri)) {

@@ -1446,6 +1446,11 @@
   resolved "https://registry.yarnpkg.com/@bufbuild/protobuf/-/protobuf-2.10.2.tgz#d7c063301f2a33095fc202f06bf3cce0c138dfcd"
   integrity sha512-uFsRXwIGyu+r6AMdz+XijIIZJYpoWeYzILt5yZ2d3mCjQrWUTVpVD9WL/jZAbvp+Ed04rOhrsk7FiTcEDseB5A==
 
+"@bufbuild/protobuf@^2.16.0":
+  version "2.16.0"
+  resolved "https://registry.yarnpkg.com/@bufbuild/protobuf/-/protobuf-2.16.0.tgz#130eff69a232f29fb4e2b3f8ebbb0b3e0adf5a36"
+  integrity sha512-FWa0sPlqYGJgpTs6OxBRcL/AW4JT0OIO+W1ajerluoTVh8CV0B7XM1qsNCRgnkSCkRCgOICKHRQlY17jrsm0+Q==
+
 "@craftzdog/react-native-buffer@^6.1.2":
   version "6.1.2"
   resolved "https://registry.yarnpkg.com/@craftzdog/react-native-buffer/-/react-native-buffer-6.1.2.tgz#c4ac28ef7064f77abb7ef597648fdf653011f260"
@@ -9523,6 +9528,13 @@ react-native-crypto@^2.2.0:
     public-encrypt "^4.0.0"
     randomfill "^1.0.3"
 
+"react-native-everything-player@https://github.com/Illusion137/everything-player":
+  version "0.1.0"
+  resolved "https://github.com/Illusion137/everything-player#bf2144563157fce96e808d27830a25b192a49c32"
+  dependencies:
+    "@bufbuild/protobuf" "^2.16.0"
+    shaka-player "^5.3.1"
+
 react-native-ios-context-menu@^3.1.0-0:
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/react-native-ios-context-menu/-/react-native-ios-context-menu-3.2.1.tgz#52465fd5cf225e48745c12beee6ebff26b499394"
@@ -9632,10 +9644,6 @@ react-native-text-size@^4.0.0-rc.1:
   version "4.0.0-rc.1"
   resolved "https://registry.yarnpkg.com/react-native-text-size/-/react-native-text-size-4.0.0-rc.1.tgz#1e048d345dd6a5a8e1269e0585c1a5948c478da5"
   integrity sha512-CysqjU2jK6Yc+a+kEI222pUyTY2ywcU2HqbFqf1KHymW6OPTdvBBHqbEJKL0QiLhQaFYDbqicM+h990s9TP00g==
-
-"react-native-track-player@https://github.com/Illusion137/RNTPvE#2c0a04c05b85f515057495e8020129bc5a435700":
-  version "6.0.0"
-  resolved "https://github.com/Illusion137/RNTPvE#2c0a04c05b85f515057495e8020129bc5a435700"
 
 react-native-udp@^2.7.0:
   version "2.7.0"
@@ -10274,6 +10282,11 @@ sha.js@^2.4.0, sha.js@^2.4.12, sha.js@^2.4.8:
     inherits "^2.0.4"
     safe-buffer "^5.2.1"
     to-buffer "^1.2.0"
+
+shaka-player@^5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/shaka-player/-/shaka-player-5.3.1.tgz#68f0819c65c626a66d3f33bca2f99d0da089ee34"
+  integrity sha512-nlhxDfgQKXfc+ecNQos/l1epXILup8C3n7CrQSm43M47vAY1WDlpIAq448YDXTRHK5vZ/4JGiDfxOVkv7vwegg==
 
 shallow-clone@^3.0.0:
   version "3.0.1"
