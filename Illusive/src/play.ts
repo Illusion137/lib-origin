@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import { alerts } from '@native/alerts/alerts';
 import { is_empty, random_of, shuffle_array } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
@@ -10,7 +10,7 @@ import { default_playlists } from '@illusive/default_playlists';
 import { GLOBALS } from '@illusive/globals';
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
-import { catch_ignore } from '@common/utils/error_util';
+import { catch_log } from '@common/utils/error_util';
 
 export async function filter_play_tracks(start_track: Track, tracks: Track[], playlist_name: string, force_order?: boolean) {
 	if (tracks.length === 0) return [];
@@ -29,7 +29,7 @@ export async function filter_play_tracks(start_track: Track, tracks: Track[], pl
 		GLOBALS.global_var.can_play_again_mutex = false;
 		return tracks;
 	} else {
-		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(catch_ignore);
+		alerts().haptic_notification('WARNING').catch(catch_log);
 		return [];
 	}
 }
@@ -40,11 +40,11 @@ export async function play_shuffle(tracks: Track[], from: string) {
 }
 export async function push_track_to_playing_queue(track_data: Track) {
 	await insert_track_into_player_queue(track_data, 1 + GLOBALS.global_var.playing_queue.length);
-	await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+	await alerts().haptic_notification('SUCCESS');
 }
 export async function play_track_next(track_data: Track) {
 	await insert_track_into_player_queue(track_data, 1);
-	await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+	await alerts().haptic_notification('SUCCESS');
 }
 export async function sprinkle_into_queue(tracks: Track[]) {
 	let position = 0;
@@ -55,7 +55,7 @@ export async function sprinkle_into_queue(tracks: Track[]) {
 		if (!await insert_track_into_player_queue(insert_track, position, false)) break;
 		upcoming++;
 	}
-	await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+	await alerts().haptic_notification('SUCCESS');
 }
 export async function play_mix(track_data: Track, from: string) {
 	if (is_empty(from)) {

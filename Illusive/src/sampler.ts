@@ -3,16 +3,14 @@ import { is_empty, random_of, shuffle_array } from '@common/utils/util';
 import { Illusive } from '@illusive/illusive';
 import { Prefs } from '@illusive/prefs';
 import type { DownloadFromIdResult, ISOString, MusicServiceType, Promises, Track, TrackMetaData } from '@illusive/types';
-import { Logger } from '@illusive/illusi/src/logger';
 import { alert_error } from '@illusive/illusi/src/alert';
-import { Wifi } from '@illusive/illusi/src/wifi_utils';
+import { Wifi } from '@illusive/wifi_utils';
 import { Constants } from '@illusive/constants';
 import { GLOBALS } from '@illusive/globals';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { track_exists } from '@illusive/illusive_utils';
 import { SQLBackpack } from '@illusive/sql/sql_backpack';
 import { SQLfs } from '@illusive/sql/sql_fs';
-import { catch_ignore } from '@common/utils/error_util';
 
 // TODO needs a full rework
 
@@ -80,7 +78,7 @@ export async function sample_tracks_service(sample_tracks: Track[], to: MusicSer
 		if (track.imported_id) continue;
 		const conversion_track = await Illusive.convert_track(track, { to_music_service: to, proxies, possible_services: [to] });
 		if ('error' in conversion_track) {
-			Logger.log_error(conversion_track).catch(catch_ignore);
+			console.error(conversion_track);
 			continue;
 		}
 		updated_tracks.push(await SQLTracks.update_track_with_new_track_data(track, conversion_track.track!));
@@ -140,7 +138,7 @@ export async function sample_tracks_meta(sample_tracks: Track[]) {
 			}
 			(SQLTracks.add_playback_saved_data_to_track(track));
 		} catch (error: any) {
-			Logger.log_error(error).catch(catch_ignore);
+			console.error(error);
 			continue;
 		}
 	}

@@ -16,7 +16,7 @@ import { SQLfs } from '@illusive/sql/sql_fs';
 import { resolved_artwork } from '@illusive/artwork';
 import { default_compact_playlists } from '@illusive/default_playlists';
 import { artist_string } from '@illusive/illusive_utils';
-import { play, play_shuffle, sprinkle_into_queue } from '@illusive/illusi/src/play';
+import { play, play_shuffle, sprinkle_into_queue } from '@illusive/play';
 import type { Artwork, CompactPlaylistData, Track } from '@illusive/types';
 
 type PlayMode = 'shuffle' | 'in_order' | 'mix_queue';

@@ -5,8 +5,7 @@ import { Illusive } from '@illusive/illusive';
 import { Prefs } from '@illusive/prefs';
 import type { MusicServiceType, Track } from '@illusive/types';
 import { alert_error } from '@illusive/illusi/src/alert';
-import { Logger } from '@illusive/illusi/src/logger';
-import { Wifi } from '@illusive/illusi/src/wifi_utils';
+import { Wifi } from '@illusive/wifi_utils';
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 
 export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track[]> {
@@ -22,7 +21,7 @@ export async function unzip_backpack(unavailable_tracks: Track[]): Promise<Track
 		const fetched_proxies = await Origin.Proxy.get_new_proxy_list(proxy => proxy.https);
 		if (!('error' in fetched_proxies)) {
 			proxies = fetched_proxies;
-		} else await Logger.log_error(fetched_proxies);
+		} else console.error(fetched_proxies);
 		for (const utrack of unavailable_tracks)
 			promise_tracks.push(Illusive.convert_track(utrack, { to_music_service: to_service, proxies, deep_convert: true }));
 		const resolved_tracks = await Promise.all(promise_tracks);

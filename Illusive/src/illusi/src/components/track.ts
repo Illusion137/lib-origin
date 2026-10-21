@@ -6,7 +6,7 @@ import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { SQLGlobal } from '@illusive/sql/sql_global';
 import { GLOBALS } from '@illusive/globals';
 import { SQLPlaylists } from '@illusive/sql/sql_playlists';
-import * as Haptics from 'expo-haptics';
+import { alerts } from '@native/alerts/alerts';
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 
@@ -17,13 +17,13 @@ export async function download_track(track_data: Track, redownload: boolean, is_
 	if (!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex(item => item.uid === track_data.uid) === -1))) {
 		const result = await GLOBALS.global_var.download_track(track_data, redownload);
 		if (typeof result === 'object') {
-			await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+			await alerts().haptic_notification('ERROR');
 			set_is_downloaded(false);
 			alert_error(result);
 		} else if (result === 'EXISTS') {
-			await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+			await alerts().haptic_notification('WARNING');
 		} else {
-			await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			await alerts().haptic_notification('SUCCESS');
 		}
 	}
 }

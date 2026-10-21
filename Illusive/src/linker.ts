@@ -1,11 +1,26 @@
 import { music_service_uri_to_music_service, split_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import type { LinkerLink } from '@illusive/types';
-import { Wifi } from '@illusive/illusi/src/wifi_utils';
+import { Wifi } from '@illusive/wifi_utils';
 import { convert_playlist } from '@illusive/playlist_converter';
 import { get_playlist_tracks_with_error } from '@illusive/playlist_utils';
 import { GLOBALS } from '@illusive/globals';
 import type { ResponseError } from '@common/types';
+
+export async function save_link(link: LinkerLink) {
+	const new_links = Prefs.get_pref('linker_links').concat(link);
+	await Prefs.save_pref('linker_links', new_links);
+}
+export async function update_link(link: LinkerLink) {
+	const new_links = Prefs.get_pref('linker_links');
+	const index = new_links.findIndex(l => l.link_uuid === link.link_uuid);
+	new_links[index] = link;
+	await Prefs.save_pref('linker_links', new_links);
+}
+export async function delete_link(link: LinkerLink) {
+	const new_links = Prefs.get_pref('linker_links').filter(l => l.link_uuid !== link.link_uuid);
+	await Prefs.save_pref('linker_links', new_links);
+}
 
 export async function run_link(link: LinkerLink) {
 	const illusi_playlist_tracks = await get_playlist_tracks_with_error(link.illusi_uuid, GLOBALS.global_var.sql_tracks, true);

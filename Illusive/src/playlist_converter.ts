@@ -7,7 +7,7 @@ import { mutilate_to_service_playlist, playlist_tracks_differences_actions, type
 import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { SQLGlobal } from '@illusive/sql/sql_global';
 import { Prefs } from '@illusive/prefs';
-import { Wifi } from '@illusive/illusi/src/wifi_utils';
+import { Wifi } from '@illusive/wifi_utils';
 import { sample_tracks_meta, sample_tracks_service, speed_sample_unavailable_tracks } from '@illusive/sampler';
 
 export async function mutilate_to_illusi_playlist(convert_opts: ConvertTo, incoming_tracks: Track[], mode: MutilatePlaylistMode): MutilatePlaylistResponse {
