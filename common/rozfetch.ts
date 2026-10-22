@@ -6,7 +6,6 @@ import { fs, load_native_fs } from '@native/fs/fs';
 import { load_native_proxyfetch, proxyfetch } from '@native/proxyfetch/proxyfetch';
 import { try_json_parse } from '@common/utils/parse_util';
 import { generror_catch, generror_fetch, is_timeout_error } from '@common/utils/error_util';
-import { retry_result, type RetryResultOptions } from '@common/utils/retry_util';
 import pathlib from 'path-browserify';
 import { reinterpret_cast } from './cast';
 import { status_codes_descriptions } from './status_codes';
@@ -36,7 +35,6 @@ export interface RoZFetchRequestInit extends RequestInit {
 	method?: FetchMethod | (string & {});
 	ignore_fail_request?: boolean;
 	impersonate?: boolean;
-	retry?: RetryResultOptions | false;
 }
 type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
@@ -148,7 +146,7 @@ function sanitize_headers(headers: HeadersInit | undefined): HeadersInit | undef
 }
 
 export const ABORT_MESSAGE = '[ABORTED_ROZFETCH]';
-async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
+export default async function rozfetch<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
 	try {
 		await load_native_fs();
 		const cache_key = rozfetch_cache_key(input, init);
@@ -184,9 +182,4 @@ async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestIni
 		if ((e as Error).message.includes('Network request failed')) return generror_catch(e, 'rozfetch failed', 'INFO', { input, init: error_context_init(init) });
 		return generror_catch(e, 'rozfetch failed', 'MEDIUM', { input, init: error_context_init(init) });
 	}
-}
-
-export default async function rozfetch<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
-	if (init?.retry === false) return rozfetch_once<T>(input, init);
-	return retry_result<RoZFetchResponse<T>>(async () => await rozfetch_once<T>(input, init), { wait_for_network: true, ...init?.retry });
 }
