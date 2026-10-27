@@ -1,5 +1,5 @@
 import { extract_string_from_pattern, random_between, random_of } from '@common/utils/util';
-import type { Children, LyricsPreloadedState } from '@origin/genius/types/Lyrics';
+import type { Body, Children, LyricsPreloadedState } from '@origin/genius/types/Lyrics';
 import type { Result, Search } from '@origin/genius/types/Search';
 import { generror, generror_catch } from '@common/utils/error_util';
 import { base_get_headers } from '@common/headers_base';
@@ -122,10 +122,19 @@ export namespace Genius {
 			return generror_catch(e, lyrics_no_continue_fail_message, 'MEDIUM', {});
 		}
 	}
-	function parse_preloaded_state_lyrics(preloaded_state: LyricsPreloadedState) {
+	export function parse_preloaded_state_lyrics(preloaded_state: LyricsPreloadedState) {
+		try {
+			return parse_lyrics_body(preloaded_state.songPage.lyricsData.body);
+		} catch (e) {
+			return generror_catch(e, 'Error in parsing Genius preloaded state', 'CRITICAL');
+		}
+	}
+	export function parse_lyrics_body(body: Body | string | undefined | null) {
 		try {
 			const all_strings: string[][] = [];
-			const initial_children: Children[] = preloaded_state.songPage.lyricsData.body.children as unknown as Children[];
+			const parsed_body = typeof body === 'string' ? try_json_parse<Body>(body) : body;
+			if (parsed_body !== undefined && parsed_body !== null && 'error' in parsed_body) return parsed_body;
+			const initial_children: Children[] = parsed_body?.children as unknown as Children[];
 			if (initial_children === undefined) return generror('Genius preloaded state is empty; likely no lyrics for this track', 'INFO');
 			function recursive_parse(child: Children | string, collected: string[]): string[] {
 				if (typeof child === 'string') return collected.concat([child]);
