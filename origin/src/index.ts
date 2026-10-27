@@ -8,7 +8,9 @@ import { ITunes } from '@origin/itunes/itunes';
 import { Google } from '@origin/google/google';
 import { ProIP } from '@origin/musi/ip';
 import { Musi } from '@origin/musi/musi';
-// import { Musixmatch } from "./musixmatch/musixmatch"
+import { Musixmatch } from '@origin/musixmatch/musixmatch';
+import { GoLyrics } from '@origin/golyrics/golyrics';
+import { BiniLyrics } from '@origin/binilyrics/binilyrics';
 import { Pandora } from '@origin/pandora/pandora';
 import { Proxy } from '@origin/proxy/proxy';
 import { SoundCloudDL } from '@origin/soundcloud/scdl';
@@ -19,9 +21,9 @@ import { YouTube } from '@origin/youtube/youtube';
 import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { YouTubeMusic } from '@origin/youtube/youtube_music';
 import { YouTubeStudio } from '@origin/youtube/youtube_studio';
-import { Illusi } from './illusi/illusi';
+import { Illusi } from '@origin/illusi/illusi';
 import { BandLab } from '@origin/bandlab/bandlab';
 import { LRCLib } from './lrclib/lrclib';
 import { Elscione } from '@origin/elscione/elscione';
 
-export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, YouTubeStudio, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, ITunes, Google, BandLab, Illusi, LRCLib, Audiomack, AudiomackDL, Deezer, Pandora, Tidal, Elscione };
+export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, YouTubeStudio, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, ITunes, Google, BandLab, Illusi, LRCLib, Musixmatch, BiniLyrics, GoLyrics, Audiomack, AudiomackDL, Deezer, Pandora, Tidal, Elscione };
