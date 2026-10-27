@@ -3,37 +3,52 @@ import path from 'path-browserify';
 import { log_error } from '@common/log';
 const cwd = process.argv[2];
 
-const ignore_sources: string[] = [
-    "node_modules",
+const ignore_top_level_prefixes: string[] = [
     "admin",
     "bin",
     "tests",
     "tools",
-    ".env",
-    "package",
     "scratch",
-    "tsconfig",
-    "babel",
-    "jest",
     "LICENSE",
-    "gitignore",
-    ".git",
-    ".history",
     "translate_m",
-    "python",
-    "ignore",
+    "illusicord",
+    "dist-roze-native",
+    "SillyTest",
+];
+// Any path segment equal to one of these (at any depth)
+const ignore_segments: string[] = [
+    "node_modules",
+    ".history",
     ".venv",
     ".vscode",
     ".claude",
     ".husky",
-    "dist-roze-native",
-    "illusicord",
-    ".epub",
-    "SillyTest",
+    "python",
 ];
-function keep_file(src: string): boolean {
-    for (const ignore_source of ignore_sources)
-        if (src.includes(ignore_source)) return false;
+// Any file/dir (at any depth) whose name starts with one of these
+const ignore_name_prefixes: string[] = [
+    ".git", // .git, .github, .gitignore, .gitattributes, ...
+    ".env",
+    "package",
+    "tsconfig",
+    "babel",
+    "jest",
+];
+// Any file/dir (at any depth) whose name ends with one of these
+const ignore_name_suffixes: string[] = [
+    "ignore", // .gitignore, .eslintignore, ...
+    ".epub",
+];
+function keep_file(src: string, root: string): boolean {
+    const relative = path.relative(root, src);
+    if (relative === "") return true;
+    const segments = relative.split(/[\\/]/).filter(segment => segment.length !== 0);
+    if (ignore_top_level_prefixes.some(prefix => segments[0].startsWith(prefix))) return false;
+    for (const segment of segments) {
+        if (ignore_segments.includes(segment)) return false;
+        if (ignore_name_prefixes.some(prefix => segment.startsWith(prefix))) return false;
+        if (ignore_name_suffixes.some(suffix => segment.endsWith(suffix))) return false;
+    }
     return true;
 }
 
@@ -45,7 +60,7 @@ try {
     }
     fs.rm(joined, { recursive: true, maxRetries: 0 }, () => {
         fs.mkdir(joined, () => {
-            fs.cpSync(process.env.LORIGIN, joined, { recursive: true, filter: (src, _) => keep_file(src) });
+            fs.cpSync(process.env.LORIGIN, joined, { recursive: true, filter: (src, _) => keep_file(src, process.env.LORIGIN!) });
         });
 
     });
