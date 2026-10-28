@@ -400,8 +400,8 @@ export namespace YouTubeMusic {
 	export async function add_tracks_to_playlist(opts: Opts, playlist_id: string, video_ids: string[]): Promise<boolean> {
 		return await YouTubeShared.add_tracks_to_playlist(opts, playlist_urlid(playlist_id), video_ids);
 	}
-	export async function remove_tracks_to_playlist(opts: Opts, playlist_id: string, set_video_ids: string[]): Promise<boolean> {
-		return await YouTubeShared.remove_tracks_from_playlist(opts, playlist_urlid(playlist_id), set_video_ids, true);
+	export async function remove_tracks_to_playlist(opts: Opts, playlist_id: string, video_ids: string[]): Promise<boolean> {
+		return await YouTubeShared.remove_tracks_from_playlist(opts, playlist_urlid(playlist_id), video_ids, true);
 	}
 	export async function edit_playlist_data(opts: Opts, playlist_id: string, playlist_data: { name: string; description: string; privacy: Privacy }): Promise<boolean> {
 		return await YouTubeShared.edit_playlist_data(opts, playlist_urlid(playlist_id), playlist_data.name, playlist_data.description);
