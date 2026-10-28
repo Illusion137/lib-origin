@@ -1,11 +1,12 @@
 import type { WebPoSignalOutputFunction } from 'bgutils-js/shared-types';
 import type { BotGuardSolver } from './botguard_solver.base';
 import nodejs from 'nodejs-mobile-react-native';
+import { milliseconds_of } from '@common/utils/util';
 
 const WEB_RESPONSE_CHANNEL = 'BOTGUARD_WEB_RESPONSE';
 const WEB_PO_SIGNAL_OUTPUT_CHANNEL = 'BOTGUARD_WEB_PO_SIGNAL_OUTPUT';
 const WEB_PO_MINT_CHANNEL = 'BOTGUARD_WEB_PO_MINT';
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = milliseconds_of({ seconds: 30 });
 
 interface ChannelResponse {
 	request_id: number;
