@@ -66,9 +66,9 @@ export async function youtube_music_add_tracks_to_playlist(tracks: Track[], play
 }
 export async function youtube_music_delete_tracks_from_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
-	tracks = tracks.filter(track => !is_empty(track.youtubemusic_id));
-	const set_video_ids = tracks.map(track => track.youtubemusic_id as string);
-	return await Origin.YouTubeMusic.remove_tracks_to_playlist({ cookie_jar: cookie_jar }, playlist_url, set_video_ids);
+	tracks = tracks.filter(track => !is_empty(track.youtube_id));
+	const video_ids = tracks.map(track => track.youtube_id as string);
+	return await Origin.YouTubeMusic.remove_tracks_to_playlist({ cookie_jar: cookie_jar }, playlist_url, video_ids);
 }
 export async function apple_music_add_tracks_to_playlist(tracks: Track[], playlist_url: string) {
 	const cookie_jar = Prefs.get_pref('apple_music_cookie_jar');
