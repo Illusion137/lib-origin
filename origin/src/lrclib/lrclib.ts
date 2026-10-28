@@ -6,6 +6,7 @@ import type { FlagParams, GetParams, LRCLibApiError, LRCLibOpts, PublishParams, 
 import crypto from 'react-native-quick-crypto';
 import BufferRN from 'buffer/';
 import { wait } from '@common/utils/timed_util';
+import { milliseconds_of } from '@common/utils/util';
 
 const Buffer = BufferRN.Buffer;
 export namespace LRCLib {
@@ -27,8 +28,8 @@ export namespace LRCLib {
 	}
 
 	const MAX_RETRIES = 3;
-	const DEFAULT_RETRY_AFTER_MS = 1000;
-	const MAX_RETRY_AFTER_MS = 60_000;
+	const DEFAULT_RETRY_AFTER_MS = milliseconds_of({ seconds: 1 });
+	const MAX_RETRY_AFTER_MS = milliseconds_of({ minutes: 1 });
 	const RETRY_STATUS_CODES = [429, 503];
 	let blocked_until_ms = 0;
 
