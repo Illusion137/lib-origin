@@ -201,6 +201,20 @@ export type LyricsResponse = WithActions & { track_id: IllusiId } & (
 	| { lyrics: null; instrumental: true }
 	| { lyrics: null; instrumental?: never }
 );
+export interface VocalSegment { start_ms: number; end_ms: number }
+export interface TrackVocals extends Redirected {
+	track_id: IllusiId;
+	resource_id: string;
+	model: string;
+	hop_ms: number;
+	window_ms: number;
+	duration_ms: number;
+	/** Voice probability (0-1) of the window `[i * hop_ms, i * hop_ms + window_ms)`; best read at the window's centre. */
+	voice: number[];
+	/** Voiced spans derived from `voice`, accurate to about half a second. */
+	segments: VocalSegment[];
+	analyzed_at: ISODateString;
+}
 export type BestLyrics
 	= | { instrumental: true }
 		| { instrumental?: false; service: LyricsService; sync_type: LyricsSyncType; lyrics: ParsedLyrics };
@@ -859,7 +873,10 @@ export interface SearchSuggestionsQuery {
 export interface SuggestionTrack {
 	id: IllusiId;
 	title: string;
-	artists: string[];
+	artists: ArtistRef[];
+	album: { id: IllusiId; name: string } | null;
+	duration_ms: number | null;
+	explicit: boolean | null;
 	thumbnail: Thumbnail | null;
 	in_library: boolean;
 }
@@ -872,7 +889,11 @@ export interface SuggestionArtist {
 export interface SuggestionAlbum {
 	id: IllusiId;
 	name: string;
-	artists: string[];
+	artists: ArtistRef[];
+	album_type: AlbumType | null;
+	release_date: ISODateString | null;
+	track_count: number | null;
+	explicit: boolean | null;
 	thumbnail: Thumbnail | null;
 	in_library: boolean;
 }

@@ -13,7 +13,7 @@ import type {
 	ReviewApplyBody, ReviewApplyResult, ReviewDismissResult, ReviewList, ReviewListQuery, SearchQuery, SearchResponse, SearchSuggestions,
 	SearchSuggestionsQuery, SearchType,
 	SharedEntityTable, SimilarQuery, SoundCloudIngestBody, SoundCloudIngestItem, TempRef, TokenPair, TrackBatchBody, TrackBatchResponse,
-	TrackResearchBody, TrackResearchResult, TrackView, UnavailableReportBody, UnavailableReportResult, UUID, YouTubeMusicLyricsIngestBody,
+	TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, UUID, YouTubeMusicLyricsIngestBody,
 	YouTubeMusicLyricsPayload
 } from '@origin/illusi/types';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
@@ -84,6 +84,7 @@ export namespace Illusi {
 		'POST /tracks/batch': { body: TrackBatchBody; response: TrackBatchResponse };
 		'GET /tracks/:id/similar': { query: SimilarQuery; response: { items: TrackView[] } };
 		'GET /tracks/:id/lyrics': { response: LyricsResponse };
+		'GET /tracks/:id/vocals': { response: TrackVocals };
 		'GET /albums/:id': { response: AlbumDetail };
 		'GET /artists/:id': { response: ArtistView };
 		'GET /artists/:id/albums': { query: ArtistAlbumsQuery; response: Page<AlbumView> };
@@ -417,6 +418,10 @@ export namespace Illusi {
 		}
 		export async function lyrics(track_id: IllusiId) {
 			return call('GET /tracks/:id/lyrics', { params: { id: track_id } });
+		}
+		/** 404 until the track has uploaded media that the analyzer has processed. */
+		export async function vocals(track_id: IllusiId) {
+			return call('GET /tracks/:id/vocals', { params: { id: track_id } });
 		}
 	}
 
