@@ -219,7 +219,7 @@ export function track_to_illusive_uri(track: Track): IllusiveURI {
 		explicit: 'illusi',
 		unreleased: 'illusi',
 		album: 'illusi',
-		plays: 'illusi',
+		service_plays: 'illusi',
 		imported_id: 'illusi',
 		illusi_id: 'illusi',
 		youtube_id: 'youtube',

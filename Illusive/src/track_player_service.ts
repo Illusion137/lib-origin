@@ -1,4 +1,4 @@
-import { is_empty, recreate } from '@common/utils/util';
+import { is_empty, milliseconds_of, recreate } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Illusive } from '@illusive/illusive';
 import type { ISOString, Track } from '@illusive/types';
@@ -16,7 +16,6 @@ import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { reinterpret_cast } from '@common/cast';
-import { VibesSampler } from './vibes_sampler';
 import type { Track as EPTrack, SabrStreamingInfo } from 'react-native-everything-player';
 import EverythingPlayer, { AppKilledPlaybackBehavior, Capability, Event, RepeatMode, State } from 'react-native-everything-player';
 
@@ -150,7 +149,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 	if ('error' in url_data) {
 		GLOBALS.global_var.bottom_alert('Failed to convert track to Illusive track', 'WARN', url_data);
 		if (url_data.error.message.includes('Video unavailable'))
-			await SQLBackpack.add_to_backpack(track.uid);
+			await SQLBackpack.report_unavailable(track);
 		return 'skip';
 	}
 	if ('duration' in url_data && url_data.duration && !isNaN(url_data.duration) && is_empty(track.duration)) {
@@ -159,7 +158,6 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 	const nt_response = await handle_new_track_data(track, url_data);
 	if (!('error' in nt_response)) track = nt_response;
 	const artwork = resolved_artwork(track.playback!.artwork);
-	VibesSampler.predict_track_save_result(track).catch(catch_log);
 	const artwork_payload = typeof artwork === 'number' ? artwork : artwork.uri;
 	return {
 		id: track.uid,
@@ -262,8 +260,8 @@ async function replace_native_track(index: number, react_native_track: EPTrack) 
 	});
 }
 
-const PLAYBACK_RECOVERY_TIMEOUT_MS = 8_000;
-const PLAYBACK_RECOVERY_POLL_MS = 500;
+const PLAYBACK_RECOVERY_TIMEOUT_MS = milliseconds_of({ seconds: 8 });
+const PLAYBACK_RECOVERY_POLL_MS = milliseconds_of({ milliseconds: 500 });
 
 async function wait_for_playback_recovery(): Promise<boolean> {
 	const deadline = Date.now() + PLAYBACK_RECOVERY_TIMEOUT_MS;
