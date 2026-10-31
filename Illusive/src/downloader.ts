@@ -103,7 +103,8 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 	const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), downloading.track, downloading.redownload);
 	if ('error' in download_uri) {
 		if (download_uri.error.message.toLowerCase().includes('unavailable'))
-			await SQLBackpack.add_to_backpack(downloading.track.uid);
+			// TODO use more methods of error checking for unavailable tracks
+			await SQLBackpack.report_unavailable(downloading.track);
 		return download_uri;
 	}
 	if ('url' in download_uri && download_uri.url.includes('file://')) {
