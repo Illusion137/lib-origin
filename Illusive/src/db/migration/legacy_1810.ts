@@ -1,5 +1,5 @@
 import type { RawSQLiteConnection, SQLiteRow } from '@native/sqlite/sqlite.base';
-import type { InheritedPlaylist, InheritedSearch, NamedUUID, SortType, Track, TrackMetaData } from '@illusive/types';
+import type { InheritedPlaylist, InheritedSearch, ISOString, NamedUUID, SortType, Track, TrackMetaData } from '@illusive/types';
 import { TrackAnalysis } from '@illusive/track_analysis';
 import { producers_from_names } from '@illusive/parsers/title_parser';
 
@@ -81,6 +81,17 @@ function json<T>(value: unknown, fallback: T): T {
 	}
 }
 const bool = (value: unknown) => value === 1 || value === true || value === '1';
+const valid_time = (iso: string | undefined) => (iso ? new Date(iso).getTime() : NaN) > 0;
+
+/**
+ * A bug saved some 1810 added dates as new Date(0). Those take the download date instead (or the row's creation when
+ * the track was never downloaded), the closest record of when the track was added.
+ */
+function repaired_added_date(meta: TrackMetaData, created_at: number): ISOString {
+	if (valid_time(meta.added_date)) return meta.added_date;
+	if (valid_time(meta.downloaded_date)) return meta.downloaded_date!;
+	return new Date(created_at).toISOString() as ISOString;
+}
 
 export interface LegacyTrackRow { id: number; track: Track; deleted: boolean; created_at: number; modified_at: number }
 
@@ -116,9 +127,11 @@ export function parse_track_row(row: SQLiteRow): LegacyTrackRow {
 		synced_lyrics_uri: row.synced_lyrics_uri ?? '',
 		meta: json<TrackMetaData>(row.meta, { plays: 0, added_date: new Date(Number(row.created_at) || 0).toISOString(), last_played_date: new Date(0).toISOString() } as TrackMetaData)
 	};
+	const created_at = Number(row.created_at) || 0;
+	track.meta = { ...track.meta!, added_date: repaired_added_date(track.meta!, created_at) };
 	const analysis = TrackAnalysis.from_values(row);
 	if (analysis !== undefined) track.analysis = analysis;
-	return { id: Number(row.id), track, deleted: bool(row.deleted), created_at: Number(row.created_at) || 0, modified_at: Number(row.modified_at) || 0 };
+	return { id: Number(row.id), track, deleted: bool(row.deleted), created_at, modified_at: Number(row.modified_at) || 0 };
 }
 
 export interface LegacyPlaylistRow {

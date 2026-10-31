@@ -114,6 +114,28 @@ describe('LegacyMigration', () => {
 		expect(legacy.client.prepare('SELECT name FROM sqlite_master WHERE type = \'trigger\' AND name LIKE \'__v2_%\'').all()).toHaveLength(0);
 	});
 
+	it('replaces added dates saved as new Date(0) with the download date', async () => {
+		const dir = temp_dir();
+		const legacy = connect(path.join(dir, 'legacy.sqlite3'), LEGACY_MIGRATIONS);
+		const v2 = connect(path.join(dir, 'v2.sqlite3'), V2_MIGRATIONS);
+		const epoch = new Date(0).toISOString();
+		const downloaded = new Date(1_650_000_000_000).toISOString();
+		const meta = (extra: object) => ({ added_date: epoch, last_played_date: epoch, plays: 0, ...extra }) as Track['meta'] & object;
+		const tracks = [
+			legacy_track({ meta: meta({ downloaded_date: downloaded }) }),
+			legacy_track({ meta: meta({}), created_at: 1_600_000_000_000 }),
+			legacy_track()
+		];
+		await legacy.db.insert(legacy_schema.tracks_table).values(tracks);
+
+		Store.set_mode('legacy');
+		await new LegacyMigration(legacy.db, v2.db).run(swap_opts);
+		const added = new Map((await read_tracks(v2.db, 'library')).map(t => [t.uid, t.meta?.added_date]));
+		expect(added.get(tracks[0].uid!)).toBe(downloaded);
+		expect(added.get(tracks[1].uid!)).toBe(new Date(1_600_000_000_000).toISOString());
+		expect(added.get(tracks[2].uid!)).toBe(tracks[2].meta!.added_date);
+	});
+
 	it('resumes after the app closes mid-copy, keeping writes made in between', async () => {
 		const dir = temp_dir();
 		const legacy_file = path.join(dir, 'legacy.sqlite3');
