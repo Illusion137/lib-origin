@@ -1,6 +1,5 @@
 import fuzzysort from 'fuzzysort';
-import { artist_string, clean_track_info, number_epsilon_distance, small_track } from './illusive_utils';
-import * as Origin from '@origin/index';
+import { small_track } from './illusive_utils';
 import { generror } from '@common/utils/error_util';
 import type { Track } from './types';
 import type { PromiseResult, ResponseError } from '@common/types';
@@ -10,6 +9,12 @@ import { reinterpret_cast } from '../../common/cast';
 import { fs } from '@native/fs/fs';
 import { SQLfs } from './sql/sql_fs';
 import { Translate } from '@roze/translate';
+import { Illusi } from '@origin/illusi/illusi';
+import type { Action, LyricsResponse, ParsedLyrics } from '@origin/illusi/types';
+import { IllusiActions } from './db/sync/illusi_actions';
+import { server_service_ids, track_graph } from './db/sync/push';
+import { deterministic_uuid } from './db/v2/keys';
+import { encode_track } from './db/v2/track_codec';
 
 export namespace Lyrics {
 	export interface LyricsResult {
@@ -27,98 +32,64 @@ export namespace Lyrics {
 		type: 'LRCLIB';
 		lyrics: SyncedLyric[];
 	}
-	const LRCLIB_HIT_DURATION_EPSILON = 7;
-	async function lrclib_lyrics_try_good_result(track: Track, search_query: string): PromiseResult<LyricsResult> {
-		const track_title_split = track.title.split(' - ');
-		if (track_title_split.length === 2) {
-			const search_response = await Origin.LRCLib.search({ q: search_query });
-			if ('error' in search_response) return search_response;
-			const best_result = search_response.find((hit) => {
-				const title_result = fuzzysort.single(
-					clean_track_info(hit.trackName).trim(),
-					clean_track_info(track.title).trim()
-				);
-				const artist_result = fuzzysort.single(
-					clean_track_info(hit.artistName).trim(),
-					clean_track_info(artist_string(track)).trim()
-				);
-				return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5 && number_epsilon_distance(hit.duration, track.duration, LRCLIB_HIT_DURATION_EPSILON);
-			});
-			if (best_result === undefined) return generror('Unable to find a good lyrics result', 'INFO', { track: small_track(track), search_query });
-			return { plain: best_result.plainLyrics, synced: typeof best_result.syncedLyrics !== 'string' ? undefined : best_result.syncedLyrics };
-		} else {
-			const lrclib_result = await Origin.LRCLib.get({
-				track_name: track.title,
-				artist_name: remove_topic(track.artists?.[0]?.name) ?? '',
-				album_name: track.album?.name ?? '',
-				duration: track.duration
-			});
-			if ('error' in lrclib_result) {
-				if (clean_track_info(track.title) !== track.title) {
-					const cleaned_title_lrclib_result = await Origin.LRCLib.get({
-						track_name: clean_track_info(track.title),
-						artist_name: remove_topic(track.artists?.[0]?.name) ?? '',
-						album_name: track.album?.name ?? '',
-						duration: track.duration
-					});
-					if ('error' in cleaned_title_lrclib_result) return cleaned_title_lrclib_result;
-					return { plain: cleaned_title_lrclib_result.plainLyrics, synced: typeof cleaned_title_lrclib_result.syncedLyrics !== 'string' ? undefined : cleaned_title_lrclib_result.syncedLyrics };
-				}
-				return lrclib_result;
-			}
-			return { plain: lrclib_result.plainLyrics, synced: typeof lrclib_result.syncedLyrics !== 'string' ? undefined : lrclib_result.syncedLyrics };
-		}
+	function lrc_time(ms: number): string {
+		const total_cs = Math.max(0, Math.round(ms / 10));
+		const minutes = Math.floor(total_cs / 6000);
+		const seconds = Math.floor(total_cs / 100) % 60;
+		const centis = total_cs % 100;
+		return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
 	}
-	async function genius_lyrics_try_good_result(track: Track, search_query: string): PromiseResult<LyricsResult> {
-		const search_response = await Origin.Genius.search_songs(search_query, {});
-		if ('error' in search_response) return search_response;
-		const best_result = search_response.find((hit) => {
-			const title_result = fuzzysort.single(
-				clean_track_info(hit.result.title).trim(),
-				clean_track_info(track.title).trim()
-			);
-			const artist_result = fuzzysort.single(
-				clean_track_info(hit.result.artist_names).trim(),
-				clean_track_info(artist_string(track)).trim()
-			);
-			return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5;
-		});
-		if (best_result === undefined) return generror('Unable to find a good lyrics result', 'INFO', { track: small_track(track), search_query });
-		const lyrics_response = await Origin.Genius.get_lyrics(best_result.result, {});
-		if ('error' in lyrics_response) return lyrics_response;
-		if (typeof lyrics_response.lyrics === 'object') return lyrics_response.lyrics;
-		return { plain: lyrics_response.lyrics, synced: undefined };
+	/** The server's parsed lyrics as plain text plus, when timed, LRC */
+	export function from_illusi(lyrics: ParsedLyrics): LyricsResult {
+		const plain = lyrics.lines.map(line => line.text).join('\n');
+		const timed = lyrics.sync_type !== 'NONE' && lyrics.lines.some(line => line.start_ms !== null);
+		const synced = timed
+			? lyrics.lines.filter(line => line.start_ms !== null).map(line => `[${lrc_time(line.start_ms!)}] ${line.text}`).join('\n')
+			: undefined;
+		return { plain, synced };
 	}
-	async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
-		// LRCLib pass
-		for (const search_query of search_queries) {
-			const result = await lrclib_lyrics_try_good_result(track, search_query);
-			if ('error' in result) continue;
-			return result;
-		}
-		// Genius pass
-		for (const search_query of search_queries) {
-			const result = await genius_lyrics_try_good_result(track, search_query);
-			if ('error' in result) continue;
-			return result;
-		}
-		return generror('Unable to find a good lyrics result', 'INFO', { track: small_track(track), search_queries });
+	/** The track's illusi_id: its own, else the server's match for it, contributing the track when there is none */
+	async function server_track_id(track: Track): PromiseResult<string> {
+		if (track.illusi_id) return track.illusi_id;
+		const row = encode_track(track, { now: Date.now(), title_is_catalog: true });
+		const artist = row.track.artists[0]?.name;
+		const resolved = await Illusi.resolve([{
+			ref: track.uid,
+			type: 'track',
+			service_ids: server_service_ids(row.track),
+			title: row.track.title,
+			artist: artist === undefined ? null : remove_topic(artist),
+			album: row.track.album?.name ?? null,
+			duration_ms: row.track.duration_ms
+		}]);
+		if (Illusi.is_error(resolved)) return resolved;
+		const match = resolved[track.uid];
+		if (match) return match;
+		// The same id on a retry, so the server applies the contribution once
+		const contributed = await Illusi.contribute(track_graph([row]), deterministic_uuid(`lyrics:${track.uid}`));
+		if (Illusi.is_error(contributed)) return contributed;
+		return contributed.refs[track.uid] ?? generror('The server didn\'t accept the track', 'LOW', { track: small_track(track), rejected: contributed.rejected });
 	}
+
 	export async function get_track_lyrics(track: Track): PromiseResult<LyricsResult> {
-		const artist_name = track.artists[0].name === 'Various Artists' || track.artists[0].name.includes('Release') ? '' : track.artists[0].name;
-
-		const base_query = `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`;
-		const base_query_clean = `${remove_topic(artist_name)} ${clean_track_info(track.title.replace(`${artist_name} - `, ''))}`;
-
-		const track_title_split = track.title.split(' - ');
-		const best_result = await lyrics_get_first_good_result(track, [
-			track_title_split.length === 2 ? `${clean_track_info(track_title_split[0])} ${clean_track_info(track_title_split[1])}` : undefined,
-			track_title_split.length === 2 ? `${clean_track_info(track_title_split[1])} ${remove_topic(artist_name)}` : undefined,
-			base_query,
-			base_query_clean !== base_query ? base_query_clean : undefined
-		].filter(s => s !== undefined));
-		if ('error' in best_result) return best_result;
-		return best_result;
+		if (Illusi.get_session() === null) return generror('Log in to Illusi to get lyrics', 'INFO', { track: small_track(track) });
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return id;
+		let response: LyricsResponse | ResponseError = await Illusi.Tracks.lyrics(id);
+		if (Illusi.is_error(response)) return response;
+		const pending: Action[] = [];
+		for (const action of response.actions ?? []) {
+			if (response.lyrics !== null || response.instrumental === true || (action.type !== 'CHECK_GENIUS' && action.type !== 'CHECK_YOUTUBE_MUSIC')) {
+				pending.push(action);
+				continue;
+			}
+			const answered = action.type === 'CHECK_GENIUS' ? await IllusiActions.check_genius(action) : await IllusiActions.check_youtube_music(action);
+			if (answered !== null) response = answered;
+		}
+		IllusiActions.handle(pending);
+		if (response.lyrics !== null) return from_illusi(response.lyrics);
+		if (response.instrumental === true) return { plain: '', synced: undefined };
+		return generror('No lyrics found', 'INFO', { track: small_track(track) });
 	}
 	function parse_lrclib_synced_line(line: string): SyncedLyric | ResponseError {
 		const pattern = /\[(\d+):(\d+)\.(\d+)\] ?(.*?)$/g;
