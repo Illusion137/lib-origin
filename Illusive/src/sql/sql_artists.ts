@@ -1,10 +1,13 @@
 import { remove_topic } from '@common/utils/clean_util';
 import { Constants } from '@illusive/constants';
-import { artists_table, type SQLArtist, type SQLArtistInsert } from '@illusive/db/schema';
+import { db } from '@illusive/db/database';
+import { artist_artwork_table } from '@illusive/db/schema';
+import { Store } from '@illusive/db/store';
 import { create_uri } from '@illusive/illusive_utils';
+import { db as legacy_db } from '@illusive/legacy/1810/database';
+import { artists_table as legacy_artists_table, type SQLArtist, type SQLArtistInsert } from '@illusive/legacy/1810/schema';
 import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from '@illusive/types';
 import { and, eq } from 'drizzle-orm';
-import { db } from '@illusive/db/database';
 
 export namespace SQLArtists {
 	export const default_profile_picture_url = 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg';
@@ -18,7 +21,7 @@ export namespace SQLArtists {
 		artists_artwork_memo[create_uri('illusi', Constants.import_uri_id)] = Constants.sudo_profile_picture_index;
 		artists_artwork_memo[create_uri('illusi', Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
 
-		const artists: SQLArtist[] = await db.select().from(artists_table).where(eq(artists_table.deleted, false));
+		const artists = await load_artists();
 		for (const artist of artists) {
 			artists_artwork_memo[artist.uri] = artist.artwork_url;
 			artists_memo[artist.uri] = artist;
@@ -28,11 +31,7 @@ export namespace SQLArtists {
 	}
 
 	export async function get_sql_artist_artwork_uri(uri: string): Promise<string | number | undefined> {
-		const result = artists_artwork_memo[uri]
-			?? (await db.select({ artwork_url: artists_table.artwork_url })
-				.from(artists_table)
-				.where(and(eq(artists_table.deleted, false), eq(artists_table.uri, uri)))
-				.get())?.artwork_url;
+		const result = artists_artwork_memo[uri] ?? (await load_artists(uri))[0]?.artwork_url;
 		artists_artwork_memo[uri] = result;
 		return result;
 	}
@@ -40,25 +39,45 @@ export namespace SQLArtists {
 	export async function insert_sql_artists(sql_artist: SQLArtistInsert) {
 		artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
 		artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
-		await db.insert(artists_table).values(sql_artist).onConflictDoUpdate({ set: sql_artist, target: artists_table.uri });
-		// await ChangeTracker.log_change('artists', 'insert', sql_artist.uri, sql_artist);
+		await save_artists([sql_artist]);
 	}
 
 	export async function insert_all_into_sql_artists(sql_artists: SQLArtistInsert[]) {
 		for (const sql_artist of sql_artists) {
 			artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
 			artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
-			// await ChangeTracker.log_change('artists', 'insert', sql_artist.uri, sql_artist);
 		}
-		await db.insert(artists_table).values(sql_artists);
+		await save_artists(sql_artists);
 	}
 
 	export async function clear_all_sql_artists() {
-		// const artists_to_delete = await db.select({ uri: artists_table.uri }).from(artists_table);
-		// for (const artist of artists_to_delete) {
-		// await ChangeTracker.log_change('artists', 'delete', artist.uri, { uri: artist.uri });
-		// }
-		await db.delete(artists_table);
+		if (Store.legacy()) await legacy_db.delete(legacy_artists_table);
+		else await db.delete(artist_artwork_table);
+	}
+
+	// Artwork is cached on the 1810 artists table, or on v2's artist_artwork (matched by the uri tracks reference).
+	async function load_artists(uri?: string): Promise<SQLArtist[]> {
+		if (Store.legacy()) {
+			return legacy_db.select().from(legacy_artists_table)
+				.where(and(eq(legacy_artists_table.deleted, false), uri === undefined ? undefined : eq(legacy_artists_table.uri, uri)));
+		}
+		const rows = await db.select().from(artist_artwork_table).where(uri === undefined ? undefined : eq(artist_artwork_table.uri, uri));
+		return rows.map(row => ({ ...row, deleted: false }));
+	}
+	async function save_artists(sql_artists: SQLArtistInsert[]) {
+		if (sql_artists.length === 0) return;
+		if (Store.legacy()) {
+			for (const sql_artist of sql_artists) {
+				await legacy_db.insert(legacy_artists_table).values(sql_artist).onConflictDoUpdate({ set: sql_artist, target: legacy_artists_table.uri });
+			}
+			return;
+		}
+		const now = Date.now();
+		for (const sql_artist of sql_artists) {
+			await db.insert(artist_artwork_table)
+				.values({ uri: sql_artist.uri, name: sql_artist.name, artwork_url: sql_artist.artwork_url, created_at: now, modified_at: now })
+				.onConflictDoUpdate({ target: artist_artwork_table.uri, set: { name: sql_artist.name, artwork_url: sql_artist.artwork_url, modified_at: now } });
+		}
 	}
 
 	export function sort_compact_artists(mode: ArtistSortMode, artists: NamedUUID[], global_tracks: Track[]): CompactArtist[] {

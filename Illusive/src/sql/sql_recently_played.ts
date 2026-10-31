@@ -1,35 +1,22 @@
 import { is_empty } from '@common/utils/util';
-import { db } from '@illusive/db/database';
-import { recently_played_tracks_table } from '@illusive/db/schema';
+import { Store } from '@illusive/db/store';
 import { GLOBALS } from '@illusive/globals';
 import { Prefs } from '@illusive/prefs';
 import type { Track } from '@illusive/types';
-import { desc, eq } from 'drizzle-orm';
-import { sqlite } from '@native/sqlite/sqlite';
 import { SQLTracks } from './sql_tracks';
 
 export namespace SQLRecentlyPlayed {
-	export async function insert_recently_played_track(t: Track) {
-		const { id, ...track } = t as any;
-		id;
-		await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
-		await db.insert(recently_played_tracks_table).values({
-			...track,
-			duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration
-		});
-		db.$client.flushPendingReactiveQueries?.();
+	export async function insert_recently_played_track(track: Track) {
+		await Store.write(async repos => repos.recently_played.insert(track));
 	}
 	export async function delete_recently_played_track(track: Track) {
-		await db.delete(recently_played_tracks_table).where(eq(recently_played_tracks_table.uid, track.uid));
+		await Store.write(async repos => repos.recently_played.remove(track.uid));
 	}
 	export async function clear_recently_played_tracks() {
-		await db.delete(recently_played_tracks_table);
+		await Store.write(async repos => repos.recently_played.clear());
 	}
 	export async function recently_played_tracks(limit?: number): Promise<Track[]> {
-		const recently_played_sql_tracks: Track[] = limit
-			? await db.select().from(recently_played_tracks_table).limit(limit).orderBy(desc(recently_played_tracks_table.id))
-			: await db.select().from(recently_played_tracks_table).orderBy(desc(recently_played_tracks_table.id));
-		const mapped_recently_played_tracks = SQLTracks.sql_tracks_to_tracks(recently_played_sql_tracks);
+		const mapped_recently_played_tracks = SQLTracks.sql_tracks_to_tracks(await Store.get().recently_played.list(limit));
 		const global_tracks_uuid_set = new Set<string>(GLOBALS.global_var.sql_tracks.map(({ uid }) => uid));
 		const global_tracks_uuid_track_map = new Map<string, Track>(GLOBALS.global_var.sql_tracks.map(track => [track.uid, track]));
 		for (let i = 0; i < mapped_recently_played_tracks.length; i++) {
@@ -40,10 +27,6 @@ export namespace SQLRecentlyPlayed {
 		return mapped_recently_played_tracks;
 	}
 	export async function cleanup_recently_played() {
-		const recently_played_max_size = Prefs.get_pref('recently_played_max_size');
-		await sqlite().wrap_client(db.$client).execute_statement(
-			'DELETE FROM recently_played_tracks WHERE id NOT IN (SELECT id FROM recently_played_tracks ORDER BY id DESC LIMIT ?)',
-			[recently_played_max_size]
-		);
+		await Store.write(async repos => repos.recently_played.trim(Prefs.get_pref('recently_played_max_size')));
 	}
 }

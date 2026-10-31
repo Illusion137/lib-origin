@@ -1,77 +1,29 @@
-import { gen_uuid, groupby, is_empty } from '@common/utils/util';
-import { db } from '@illusive/db/database';
-import { playlists_table, playlists_tracks_table, tracks_table } from '@illusive/db/schema';
+import { gen_uuid, is_empty } from '@common/utils/util';
+import { Store } from '@illusive/db/store';
 import { default_playlists } from '@illusive/default_playlists';
 import { GLOBALS } from '@illusive/globals';
-import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from '@illusive/illusive_utils';
+import { track_query_filter } from '@illusive/illusive_utils';
+import { apply_inherited_mode, sort_playlist_tracks as pure_sort_playlist_tracks } from '@illusive/playlist_resolution';
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, SortType, SQLPlaylist, Track } from '@illusive/types';
-import { and, eq, inArray, sql } from 'drizzle-orm';
 import { SQLTracks } from './sql_tracks';
-import { reinterpret_cast } from '@common/cast';
 import { catch_ignore } from '@common/utils/error_util';
 import { force_json_parse_array } from '@common/utils/parse_util';
-import { ChangeTracker } from '@illusive/db/sync/change_tracker';
 import { track_store } from '@illusive/stores/track_store';
-import { sqlite } from '@native/sqlite/sqlite';
 
 export namespace SQLPlaylists {
-	function date_time(date?: string): number {
-		if (date) return new Date(date).getTime();
-		return 0;
-	}
-	export function sort_playlist_tracks(sort_mode: SortType, tracks: Track[]): Track[] {
-		switch (sort_mode) {
-			case undefined:
-			case 'OLDEST': return tracks;
-			case 'NEWEST': return tracks.slice().reverse();
-			case 'ALPHABETICAL': return tracks.sort((a, b) => a.title.localeCompare(b.title));
-			case 'ALPHABETICAL_REVERSE': return tracks.sort((a, b) => b.title.localeCompare(a.title));
-			case 'DURATION_HILOW': return tracks.sort((a, b) => b.duration - a.duration);
-			case 'DURATION_LOWHI': return tracks.sort((a, b) => a.duration - b.duration);
-			case 'PLAYS_HILOW': return tracks.sort((a, b) => (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0));
-			case 'PLAYS_LOWHI': return tracks.sort((a, b) => (a.meta?.plays ?? 0) - (b.meta?.plays ?? 0));
-			case 'VIEWS_HILOW': return tracks.sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0));
-			case 'VIEWS_LOWHI': return tracks.sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0));
-			case 'ADDED_DATE_HILOW': return tracks.sort((a, b) => date_time(b.meta?.added_date) - date_time(a.meta?.added_date));
-			case 'ADDED_DATE_LOWHI': return tracks.sort((a, b) => date_time(a.meta?.added_date) - date_time(b.meta?.added_date));
-			case 'DOWNLOAD_DATE_HILOW': return tracks.sort((a, b) => date_time(b.meta?.downloaded_date) - date_time(a.meta?.downloaded_date));
-			case 'DOWNLOAD_DATE_LOWHI': return tracks.sort((a, b) => date_time(a.meta?.downloaded_date) - date_time(b.meta?.downloaded_date));
-			case 'LAST_PLAYED_DATE_HILOW': return tracks.sort((a, b) => date_time(b.meta?.last_played_date) - date_time(a.meta?.last_played_date));
-			case 'LAST_PLAYED_DATE_LOWHI': return tracks.sort((a, b) => date_time(a.meta?.last_played_date) - date_time(b.meta?.last_played_date));
-			case 'LAST_SAMPLED_DATE_HILOW': return tracks.sort((a, b) => date_time(b.meta?.last_sampled_date) - date_time(a.meta?.last_sampled_date));
-			case 'LAST_SAMPLED_DATE_LOWHI': return tracks.sort((a, b) => date_time(a.meta?.last_sampled_date) - date_time(b.meta?.last_sampled_date));
-			case 'LONGEST_PLAYED_HILOW': return tracks.sort((a, b) => (b.duration * (b.meta?.plays ?? 0)) - (a.duration * (a.meta?.plays ?? 0)));
-			case 'LONGEST_PLAYED_LOWHI': return tracks.sort((a, b) => (a.duration * (a.meta?.plays ?? 0)) - (b.duration * (b.meta?.plays ?? 0)));
-			default: return tracks;
-		}
-	}
+	export const sort_playlist_tracks = pure_sort_playlist_tracks;
 
 	export async function track_exists_in_playlist(playlist_track: PlaylistsTracks) {
-		return await db
-			.$count(playlists_tracks_table,
-				and(
-					eq(playlists_tracks_table.deleted, false),
-					eq(playlists_tracks_table.uuid, playlist_track.uuid),
-					eq(playlists_tracks_table.track_uid, playlist_track.track_uid)
-				)
-			) !== 0;
+		return Store.get().playlists.has_track(playlist_track.uuid, playlist_track.track_uid);
 	}
 	export async function playlists_count() {
-		return await db.$count(playlists_table, eq(playlists_table.deleted, false)) ?? 0;
+		return Store.get().playlists.count();
 	}
 	export async function playlists_containing_track(track_uid: PlaylistsTracks['track_uid']): Promise<Set<string>> {
-		const rows = await db
-			.select({ uuid: playlists_tracks_table.uuid })
-			.from(playlists_tracks_table)
-			.where(and(eq(playlists_tracks_table.deleted, false), eq(playlists_tracks_table.track_uid, track_uid)));
-		return new Set<string>(rows.map(row => row.uuid));
+		return Store.get().playlists.containing_track(track_uid);
 	}
 	export async function playlist_track_uid_set(playlist_uuid: string): Promise<Set<string>> {
-		const saved_rows = await db
-			.select({ track_uid: playlists_tracks_table.track_uid })
-			.from(playlists_tracks_table)
-			.where(and(eq(playlists_tracks_table.deleted, false), eq(playlists_tracks_table.uuid, playlist_uuid)));
-		return new Set<string>(saved_rows.map(row => row.track_uid));
+		return Store.get().playlists.track_uid_set(playlist_uuid);
 	}
 	export async function add_saved_data_to_write_playlist_tracks(playlist_uuid: string, tracks: Track[]): Promise<void> {
 		const saved_track_uids = await playlist_track_uid_set(playlist_uuid);
@@ -92,11 +44,7 @@ export namespace SQLPlaylists {
 		};
 	}
 	export async function raw_playlist_tracks() {
-		return (await db
-			.select()
-			.from(playlists_tracks_table)
-			.where(eq(playlists_tracks_table.deleted, false))
-		);
+		return Store.get().playlists.raw_tracks();
 	}
 	export async function unique_playlist_uuids_from_playlist_tracks() {
 		const unique_uuids = new Set<string>((await raw_playlist_tracks()).map(p => p.uuid));
@@ -112,40 +60,14 @@ export namespace SQLPlaylists {
 
 	async function hydrated_playlist_tracks(playlist_uuid: string): Promise<Track[]> {
 		const tracks_by_uid = track_store.getState().tracks_by_uid;
-		if (tracks_by_uid.size === 0) {
-			const playlist = await db
-				.select()
-				.from(tracks_table)
-				.innerJoin(playlists_tracks_table,
-					and(
-						eq(playlists_tracks_table.track_uid, tracks_table.uid),
-						eq(playlists_tracks_table.uuid, playlist_uuid)
-					)
-				)
-				.where(and(eq(tracks_table.deleted, false), eq(playlists_tracks_table.deleted, false)))
-				.orderBy(playlists_tracks_table.id);
-			return playlist.map(p => reinterpret_cast<Track>(SQLTracks.sql_track_to_track(p.tracks))).filter(track => !('error' in track));
-		}
-		const rows = await sqlite().wrap_client(db.$client).execute_async(
-			'SELECT track_uid FROM playlists_tracks WHERE uuid = ? AND deleted = 0 ORDER BY id',
-			[playlist_uuid]
-		);
+		const track_uids = await Store.get().playlists.ordered_track_uids(playlist_uuid);
+		if (tracks_by_uid.size === 0) return SQLTracks.sql_tracks_to_tracks(await Store.get().tracks.by_uids(track_uids));
 		const tracks: Track[] = [];
-		for (const row of rows) {
-			const track = tracks_by_uid.get(reinterpret_cast<{ track_uid: string }>(row).track_uid);
+		for (const track_uid of track_uids) {
+			const track = tracks_by_uid.get(track_uid);
 			if (track !== undefined) tracks.push(track);
 		}
 		return tracks;
-	}
-
-	function apply_inherited_mode(mode: InheritedPlaylist['mode'], tracks: Track[], inherited_tracks: Track[]): Track[] {
-		switch (mode) {
-			case 'INCLUDE' : return tracks_include(tracks, inherited_tracks);
-			case 'EXCLUDE' : return tracks_exclude(tracks, inherited_tracks);
-			case 'MASK' : return tracks_mask(tracks, inherited_tracks);
-			case 'INTERSECTION': return tracks_intersection(tracks, inherited_tracks);
-			default : return tracks;
-		}
 	}
 
 	const playlist_tracks_cache = new Map<string, { tracks: Track[]; cached_at: number }>();
@@ -227,7 +149,7 @@ export namespace SQLPlaylists {
 		all_playlist_data_memo = await Promise.all(all_playlist_data_memo.map(async playlist => ({ ...playlist, visual_data: { ...playlist.visual_data ?? {}, four_track: await Promise.resolve(playlist.visual_data!.four_track ?? []) } })));
 	}
 	export async function all_playlists_data(ignore_tracks?: IgnoreTracks) {
-		const playlists = await db.select().from(playlists_table).where(eq(playlists_table.deleted, false));
+		const playlists = await Store.get().playlists.all();
 		// One shared session — the whole batch resolves the inheritance DAG in a single pass.
 		const session = create_resolution_session();
 		all_playlist_data_memo = await Promise.all(playlists.map(async playlist => sql_playlist_to_playlist(playlist, ignore_tracks ?? 'PROMISE', playlist.archived ?? false, session)));
@@ -261,52 +183,9 @@ export namespace SQLPlaylists {
 		return tracks.map(track => SQLTracks.track_exist_in_other(ptracks, track));
 	}
 
-	const playlist_tracks_chunk_size = 400;
 	export async function insert_all_tracks_playlist(many_playlist_tracks: PlaylistsTracks[]) {
 		if (many_playlist_tracks.length === 0) return;
-		const to_insert: PlaylistsTracks[] = [];
-		const to_revive: { id: number; uuid: string; track_uid: string }[] = [];
-		const grouped = groupby(many_playlist_tracks, playlist_track => playlist_track.uuid);
-		for (const [uuid, group] of Object.entries(grouped)) {
-			const existing_by_track_uid = new Map<string, { id: number; deleted: boolean }>();
-			for (let i = 0; i < group.length; i += playlist_tracks_chunk_size) {
-				const chunk = group.slice(i, i + playlist_tracks_chunk_size);
-				const existing_rows = await db
-					.select({ id: playlists_tracks_table.id, track_uid: playlists_tracks_table.track_uid, deleted: playlists_tracks_table.deleted })
-					.from(playlists_tracks_table)
-					.where(and(
-						eq(playlists_tracks_table.uuid, uuid),
-						inArray(playlists_tracks_table.track_uid, chunk.map(playlist_track => playlist_track.track_uid))
-					));
-				for (const row of existing_rows) {
-					const prev = existing_by_track_uid.get(row.track_uid);
-					if (prev === undefined || (prev.deleted && !row.deleted)) existing_by_track_uid.set(row.track_uid, { id: row.id, deleted: row.deleted });
-				}
-			}
-			for (const playlist_track of group) {
-				const existing = existing_by_track_uid.get(playlist_track.track_uid);
-				if (existing === undefined) to_insert.push(playlist_track);
-				else if (existing.deleted) to_revive.push({ id: existing.id, uuid, track_uid: playlist_track.track_uid });
-			}
-		}
-		if (to_insert.length === 0 && to_revive.length === 0) return;
-		await db.transaction(async (tx) => {
-			if (to_revive.length > 0) {
-				const max_row = await tx.select({ max_id: sql<number>`MAX(${playlists_tracks_table.id})` }).from(playlists_tracks_table).get();
-				let next_id = (max_row?.max_id ?? 0) + 1;
-				for (const revive of to_revive) {
-					await tx.update(playlists_tracks_table).set({ deleted: false, id: next_id }).where(eq(playlists_tracks_table.id, revive.id));
-					next_id += 1;
-				}
-			}
-			for (let i = 0; i < to_insert.length; i += playlist_tracks_chunk_size) {
-				await tx.insert(playlists_tracks_table).values(to_insert.slice(i, i + playlist_tracks_chunk_size));
-			}
-		});
-		await ChangeTracker.log_changes('playlists_tracks', 'insert', [
-			...to_revive.map(revive => `${revive.uuid}:${revive.track_uid}`),
-			...to_insert.map(playlist_track => `${playlist_track.uuid}:${playlist_track.track_uid}`)
-		]);
+		await Store.write(async repos => repos.playlists.add_tracks(many_playlist_tracks));
 		invalidate_playlist_tracks_cache();
 	}
 	export async function insert_track_playlist(playlist_track: PlaylistsTracks) {
@@ -315,47 +194,18 @@ export namespace SQLPlaylists {
 
 	export async function delete_all_tracks_playlist(many_playlist_tracks: PlaylistsTracks[]) {
 		if (many_playlist_tracks.length === 0) return;
-		const grouped = groupby(many_playlist_tracks, playlist_track => playlist_track.uuid);
-		await db.transaction(async (tx) => {
-			for (const [uuid, group] of Object.entries(grouped)) {
-				for (let i = 0; i < group.length; i += playlist_tracks_chunk_size) {
-					const chunk = group.slice(i, i + playlist_tracks_chunk_size);
-					await tx.update(playlists_tracks_table).set({ deleted: true }).where(and(
-						eq(playlists_tracks_table.uuid, uuid),
-						inArray(playlists_tracks_table.track_uid, chunk.map(playlist_track => playlist_track.track_uid))
-					));
-				}
-			}
-		});
-		await ChangeTracker.log_changes('playlists_tracks', 'delete', many_playlist_tracks.map(playlist_track => `${playlist_track.uuid}:${playlist_track.track_uid}`));
+		await Store.write(async repos => repos.playlists.remove_tracks(many_playlist_tracks));
 		invalidate_playlist_tracks_cache();
 	}
 	export async function delete_track_playlist(playlist_track: PlaylistsTracks) {
-		await db
-			.update(playlists_tracks_table)
-			.set({ deleted: true })
-			.where(
-				and(
-					eq(playlists_tracks_table.uuid, playlist_track.uuid),
-					eq(playlists_tracks_table.track_uid, playlist_track.track_uid)
-				)
-			);
-		await ChangeTracker.log_change('playlists_tracks', 'delete', `${playlist_track.uuid}:${playlist_track.track_uid}`, playlist_track);
-		invalidate_playlist_tracks_cache();
+		await delete_all_tracks_playlist([playlist_track]);
 	}
 	export async function delete_track_from_all_playlists(track_uid: PlaylistsTracks['track_uid']) {
-		const tracks_to_delete = await db.select({ uuid: playlists_tracks_table.uuid }).from(playlists_tracks_table).where(and(eq(playlists_tracks_table.deleted, false), eq(playlists_tracks_table.track_uid, track_uid)));
-		await db
-			.update(playlists_tracks_table)
-			.set({ deleted: true })
-			.where(
-				eq(playlists_tracks_table.track_uid, track_uid)
-			);
-		await ChangeTracker.log_changes('playlists_tracks', 'delete', tracks_to_delete.map(row => `${row.uuid}:${track_uid}`));
+		await Store.write(async repos => repos.playlists.remove_track_everywhere(track_uid));
 		invalidate_playlist_tracks_cache();
 	}
 	export async function all_playlists_names(): Promise<{ title: string }[]> {
-		return await db.select({ title: playlists_table.title }).from(playlists_table);
+		return Store.get().playlists.titles();
 	}
 	const playlist_name_memo: Record<string, string> = {};
 	export function get_playlist_name_sync(playlist_uuid: Playlist['uuid']) {
@@ -366,7 +216,7 @@ export namespace SQLPlaylists {
 		const found_playlist = all_playlist_data_memo.find(playlist => playlist.uuid === playlist_uuid);
 		if (found_playlist) return found_playlist.title;
 
-		db.select({ title: playlists_table.title }).from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get().then((result) => {
+		Store.get().playlists.get(playlist_uuid).then((result) => {
 			if (result) playlist_name_memo[playlist_uuid] = result.title;
 		}).catch(catch_ignore);
 
@@ -376,14 +226,12 @@ export namespace SQLPlaylists {
 		const found = all_playlist_data_memo.find(playlist => playlist.uuid === playlist_uuid);
 		if (found) return found;
 
-		const playlist = await db.select().from(playlists_table).where(eq(playlists_table.uuid, playlist_uuid)).get();
+		const playlist = await Store.get().playlists.get(playlist_uuid);
 		if (!playlist) return undefined;
 		return await sql_playlist_to_playlist(playlist, ignore_tracks);
 	}
 	export async function update_playlist(playlist_uuid: Playlist['uuid'], new_playlist: Playlist) {
-		await db.update(playlists_table).set(new_playlist).where(eq(playlists_table.uuid, playlist_uuid));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, new_playlist);
-		invalidate_playlist_tracks_cache();
+		await set_fields(playlist_uuid, new_playlist);
 	}
 	export async function create_playlist(title: string, cuuid?: string): Promise<string> {
 		const playlist_names = await all_playlists_names();
@@ -395,66 +243,48 @@ export namespace SQLPlaylists {
 				title = `${title} ${count}`;
 		}
 		const playlist_uuid = cuuid ?? gen_uuid();
-		const new_playlist = { uuid: playlist_uuid, title };
-		await db.insert(playlists_table).values(new_playlist);
-		await ChangeTracker.log_change('playlists', 'insert', playlist_uuid, new_playlist);
+		await Store.write(async repos => repos.playlists.create(playlist_uuid, title));
 		invalidate_playlist_tracks_cache();
 		return playlist_uuid;
 	}
 	export async function delete_playlist(playlist_uuid: string) {
-		const rows = await db.select({ track_uid: playlists_tracks_table.track_uid }).from(playlists_tracks_table).where(eq(playlists_tracks_table.uuid, playlist_uuid));
-		await delete_all_tracks_playlist(rows.map(row => ({ track_uid: row.track_uid, uuid: playlist_uuid })));
-		await db.transaction(async (tx) => {
-			await tx.update(playlists_table).set({ deleted: true }).where(eq(playlists_table.uuid, playlist_uuid));
-		});
-		await ChangeTracker.log_change('playlists', 'delete', playlist_uuid, { uuid: playlist_uuid });
+		await Store.write(async repos => repos.playlists.remove(playlist_uuid));
 		invalidate_playlist_tracks_cache();
 	}
 	export async function delete_all_playlists() {
 		const playlists = await all_playlists_data();
 		await Promise.all(playlists.map(async playlist => delete_playlist(playlist.uuid)));
 	}
+	async function set_fields(playlist_uuid: string, fields: Partial<Playlist>) {
+		await Store.write(async repos => repos.playlists.update(playlist_uuid, fields));
+		invalidate_playlist_tracks_cache();
+	}
 	export async function pin_unpin_playlist(playlist_uuid: string, pin: boolean) {
-		(await db.update(playlists_table).set({ pinned: pin }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { pinned: pin });
+		await set_fields(playlist_uuid, { pinned: pin });
 	}
 	export async function public_private_playlist(playlist_uuid: string, is_public: boolean) {
-		(await db.update(playlists_table).set({ public: is_public }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { public: is_public });
+		await set_fields(playlist_uuid, { public: is_public });
 	}
 	export async function archive_playlist(playlist_uuid: string, archive: boolean) {
-		(await db.update(playlists_table).set({ archived: archive }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { archived: archive });
+		await set_fields(playlist_uuid, { archived: archive });
 	}
 	export async function is_playlist_pinned(playlist_uuid: string): Promise<boolean> {
-		const pinned_result = await db.select({ pinned: playlists_table.pinned })
-			.from(playlists_table)
-			.where(eq(playlists_table.uuid, playlist_uuid))
-			.get();
-		return Boolean(pinned_result?.pinned);
+		return Boolean((await Store.get().playlists.get(playlist_uuid))?.pinned);
 	}
 	export async function update_playlist_title(playlist_uuid: string, title: string) {
-		(await db.update(playlists_table).set({ title: title }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { title: title });
+		await set_fields(playlist_uuid, { title });
 	}
 	export async function update_playlist_description(playlist_uuid: string, description: string) {
-		(await db.update(playlists_table).set({ description: description }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { description: description });
+		await set_fields(playlist_uuid, { description });
 	}
 	export async function update_playlist_sort_mode(playlist_uuid: string, sort_mode: SortType) {
-		(await db.update(playlists_table).set({ sort: sort_mode }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { sort: sort_mode });
-		invalidate_playlist_tracks_cache();
+		await set_fields(playlist_uuid, { sort: sort_mode });
 	}
 	export async function update_playlist_inherited_playlists(playlist_uuid: string, inherited_playlists: InheritedPlaylist[]) {
-		(await db.update(playlists_table).set({ inherited_playlists: inherited_playlists }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { inherited_playlists: inherited_playlists });
-		invalidate_playlist_tracks_cache();
+		await set_fields(playlist_uuid, { inherited_playlists });
 	}
 	export async function update_playlist_inherited_searchs(playlist_uuid: string, inherited_searchs: InheritedSearch[]) {
-		(await db.update(playlists_table).set({ inherited_searchs: inherited_searchs }).where(eq(playlists_table.uuid, playlist_uuid)));
-		await ChangeTracker.log_change('playlists', 'update', playlist_uuid, { inherited_searchs: inherited_searchs });
-		invalidate_playlist_tracks_cache();
+		await set_fields(playlist_uuid, { inherited_searchs });
 	}
 	export function inherited_playlists_action(inherited_playlists: InheritedPlaylist[], new_iplaylist: InheritedPlaylist, action: 'ADD' | 'REMOVE'): InheritedPlaylist[] {
 		if (action === 'ADD') return inherited_playlists.concat(new_iplaylist);
