@@ -194,26 +194,47 @@ export interface TrackMetaData {
 	songs?: YTDescriptionSong[];
 	unavailable?: boolean;
 }
-// Regex
-// \s+.+?: (.+?)\n
-interface Basic_Track<T, U, V, X> {
+
+export interface TrackAnalysisData {
+	genre?: string;
+	/** The server analyzer's mood label, e.g. "Energetic" */
+	mood?: string;
+	// BPM
+	tempo?: number;
+	/** e.g. "C# major", "A minor" */
+	key?: string;
+	// 0-1 scores
+	acousticness?: number;
+	danceability?: number;
+	energy?: number;
+	instrumentalness?: number;
+	liveness?: number;
+	speechiness?: number;
+	valence?: number;
+	arousal?: number;
+	brightness?: number;
+}
+
+export interface TrackProducer {
+	name: string;
+	producer_id?: number;
+}
+
+export interface Track {
 	id?: number;
 	uid: string;
 	title: string;
 	alt_title?: string;
-	artists: T;
+	artists: NamedUUID[];
 	duration: number;
-	prods?: string;
-	genre?: string;
-	tags?: X;
+	prods?: TrackProducer[];
 	explicit?: ExplicitMode;
 	unreleased?: boolean;
-	album?: V;
-	plays?: number;
+	album?: NamedUUID;
+	service_plays?: number;
 	imported_id?: string;
 	illusi_id?: string;
 	youtube_id?: string;
-	youtubemusic_id?: string;
 	soundcloud_id?: number;
 	soundcloud_permalink?: string;
 	spotify_id?: string;
@@ -229,19 +250,11 @@ interface Basic_Track<T, U, V, X> {
 	media_uri?: string;
 	lyrics_uri?: string;
 	synced_lyrics_uri?: string;
-	meta?: U;
+	meta?: TrackMetaData;
 	playback?: TrackPlaybackData;
 	downloading_data?: TrackDownloadingData;
-	acousticness?: number;
-	danceability?: number;
-	energy?: number;
-	instrumentalness?: number;
-	liveness?: number;
-	speechiness?: number;
-	valence?: number;
+	analysis?: TrackAnalysisData;
 }
-
-export type Track = Basic_Track<NamedUUID[], TrackMetaData, NamedUUID, string[]>;
 
 export type DownloadableMusicServiceTrackField = 'youtube_id' | 'soundcloud_permalink' | 'bandlab_id' | 'audiomack_id';
 export interface DownloadableMusicService {

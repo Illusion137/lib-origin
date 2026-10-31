@@ -1,7 +1,7 @@
 import { reinterpret_cast } from '@common/cast';
 import { DrizzleUtils } from '@common/utils/drizzle_utils';
 import { force_json_parse, force_json_parse_array } from '@common/utils/parse_util';
-import { groupby } from '@common/utils/util';
+import { chunkify, groupby } from '@common/utils/util';
 import type { BackpackRepo, PlaylistsRepo, PlayRange, PlayRow, RecentlyPlayedRepo, Repos, TrackPlaysRepo, TracksRepo } from '@illusive/db/repos';
 import type { NamedUUID, Playlist, PlaylistsTracks, Track, TrackMetaData } from '@illusive/types';
 import { producers_from_names } from '@illusive/parsers/title_parser';
@@ -63,7 +63,7 @@ function sanitize(track: Track) {
 	return {
 		...to_columns(track),
 		duration: isNaN(track.duration) || track.duration <= 0 ? 0 : track.duration,
-		plays: isNaN(track.plays as number) ? 0 : (track.plays ?? 0)
+		plays: isNaN(track.service_plays as number) ? 0 : (track.service_plays ?? 0)
 	};
 }
 
@@ -97,8 +97,8 @@ const tracks: TracksRepo = {
 	async insert(new_tracks) {
 		if (new_tracks.length === 0) return;
 		await db.transaction(async (tx) => {
-			for (let i = 0; i < new_tracks.length; i += insert_chunk_size)
-				await tx.insert(tracks_table).values(new_tracks.slice(i, i + insert_chunk_size).map(sanitize));
+			for (const chunk of chunkify(new_tracks, insert_chunk_size))
+				await tx.insert(tracks_table).values(chunk.map(sanitize));
 		});
 		await ChangeTracker.log_changes('tracks', 'insert', new_tracks.map(track => track.uid));
 	},
@@ -179,8 +179,7 @@ const playlists: PlaylistsRepo = {
 		const grouped = groupby([...many_playlist_tracks], playlist_track => playlist_track.uuid);
 		for (const [uuid, group] of Object.entries(grouped)) {
 			const existing_by_track_uid = new Map<string, { id: number; deleted: boolean }>();
-			for (let i = 0; i < group.length; i += playlist_tracks_chunk_size) {
-				const chunk = group.slice(i, i + playlist_tracks_chunk_size);
+			for (const chunk of chunkify(group, playlist_tracks_chunk_size)) {
 				const existing_rows = await db
 					.select({ id: playlists_tracks_table.id, track_uid: playlists_tracks_table.track_uid, deleted: playlists_tracks_table.deleted })
 					.from(playlists_tracks_table)
@@ -206,8 +205,8 @@ const playlists: PlaylistsRepo = {
 					next_id += 1;
 				}
 			}
-			for (let i = 0; i < to_insert.length; i += playlist_tracks_chunk_size) {
-				await tx.insert(playlists_tracks_table).values(to_insert.slice(i, i + playlist_tracks_chunk_size));
+			for (const chunk of chunkify(to_insert, playlist_tracks_chunk_size)) {
+				await tx.insert(playlists_tracks_table).values(chunk);
 			}
 		});
 		await ChangeTracker.log_changes('playlists_tracks', 'insert', [
@@ -220,8 +219,7 @@ const playlists: PlaylistsRepo = {
 		const grouped = groupby([...many_playlist_tracks], playlist_track => playlist_track.uuid);
 		await db.transaction(async (tx) => {
 			for (const [uuid, group] of Object.entries(grouped)) {
-				for (let i = 0; i < group.length; i += playlist_tracks_chunk_size) {
-					const chunk = group.slice(i, i + playlist_tracks_chunk_size);
+				for (const chunk of chunkify(group, playlist_tracks_chunk_size)) {
 					await tx.update(playlists_tracks_table).set({ deleted: true }).where(and(
 						eq(playlists_tracks_table.uuid, uuid),
 						inArray(playlists_tracks_table.track_uid, chunk.map(playlist_track => playlist_track.track_uid))
