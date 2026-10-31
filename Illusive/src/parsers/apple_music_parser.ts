@@ -5,6 +5,7 @@ import type { AppleTrack } from '@origin/apple_music/types/TrackListSection';
 import type { AppleUserPlaylistTrack } from '@origin/apple_music/types/UserPlaylist';
 import { generate_new_uid, is_empty, safe_date_iso, urlid } from '@common/utils/util';
 import { create_uri } from '@illusive/illusive_utils';
+import { producers_from_names } from './title_parser';
 import type { CompactArtist, CompactPlaylist, ISOString, NamedUUID, Track } from '@illusive/types';
 import { remove } from '@common/utils/clean_util';
 
@@ -28,7 +29,7 @@ export function parse_apple_music_playlist_track(track: AppleTrack): Track {
 		}),
 		album: track.tertiaryLinks?.[0] !== undefined ? { name: clean_album_title(track.tertiaryLinks[0].title), uri: create_uri('applemusic', track.tertiaryLinks[0].segue.destination.contentDescriptor.url) } : undefined,
 		duration: Math.floor(track.duration / 1000),
-		prods: track.composer,
+		prods: producers_from_names(track.composer),
 		explicit: track.showExplicitBadge ? 'EXPLICIT' : 'NONE',
 		artwork_url: parse_apple_music_artwork(track.artwork.dictionary.url),
 		applemusic_id: track.id
@@ -55,7 +56,7 @@ export function parse_apple_music_search_track(track: SearchSong): Track {
 		artists: [{ name: track.attributes.artistName, uri: null }],
 		album: { name: clean_album_title(track.attributes.albumName), uri: null },
 		duration: Math.floor(track.attributes.durationInMillis / 1000),
-		prods: track.attributes?.composerName,
+		prods: producers_from_names(track.attributes?.composerName),
 		explicit: track.attributes.contentRating !== undefined && track.attributes.contentRating === 'explicit' ? 'EXPLICIT' : 'NONE',
 		artwork_url: parse_apple_music_artwork(track.attributes.artwork.url),
 		applemusic_id: track.id
@@ -94,7 +95,7 @@ export function parse_apple_music_album_track(track: AlbumItem, album: NamedUUID
 		artists: [artist],
 		album: album,
 		duration: Math.floor((track?.duration ?? NaN) / 1000),
-		prods: track.composer,
+		prods: producers_from_names(track.composer),
 		explicit: track.showExplicitBadge ? 'EXPLICIT' : 'NONE',
 		artwork_url: artwork_url,
 		applemusic_id: track.id
@@ -108,7 +109,7 @@ export function parse_apple_music_artist_track(track: ArtistSectionItem, artist:
 		artists: [artist],
 		album: track.tertiaryLinks?.[0] !== undefined ? { name: clean_album_title(track.tertiaryLinks[0].title), uri: create_uri('applemusic', track.tertiaryLinks[0].segue.destination.contentDescriptor.url) } : undefined,
 		duration: track.duration === undefined ? NaN : Math.floor(track.duration / 1000),
-		prods: track.composer,
+		prods: producers_from_names(track.composer),
 		explicit: track.showExplicitBadge ? 'EXPLICIT' : 'NONE',
 		artwork_url: parse_apple_music_artwork(track.artwork!.dictionary.url),
 		applemusic_id: track.id

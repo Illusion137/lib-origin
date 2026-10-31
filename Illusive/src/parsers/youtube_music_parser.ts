@@ -16,7 +16,6 @@ export function ytm_track(track: YTMTrack): Track {
 		album: track.album === undefined ? undefined : ytm_named(track.album),
 		duration: track.duration_seconds ?? NaN,
 		youtube_id: track.video_id,
-		youtubemusic_id: track.playlist_set_video_id,
 		artwork_url: best_thumbnail(track.thumbnails)?.url,
 		explicit: track.explicit ? 'EXPLICIT' : 'NONE',
 		plays: track.views ?? 0

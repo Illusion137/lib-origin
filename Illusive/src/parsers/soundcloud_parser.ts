@@ -9,6 +9,7 @@ import type { SnippetedTrack } from '@origin/soundcloud/types/ArtistStories';
 import type { SystemPlaylist } from '@origin/soundcloud/types/MixedSelection';
 import * as Origin from '@origin/index';
 import { generror } from '@common/utils/error_util';
+import { IllusiIngest } from '@illusive/db/sync/illusi_ingest';
 
 export function sc_highest_artwork(artwork_url: string) {
 	return artwork_url?.replace('t200x200', 't500x500')?.replace('large', 't500x500');
@@ -27,6 +28,7 @@ export function soundcloud_parse_track_snippet(track: SnippetedTrack): IllusiveT
 }
 
 export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
+	IllusiIngest.soundcloud(track);
 	return parse_track_title_artist({
 		uid: generate_new_uid(track.title),
 		title: track.title,
@@ -39,6 +41,7 @@ export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
 	});
 }
 export function soundcloud_parse_user(user: User): IllusiveTypes.CompactArtist {
+	IllusiIngest.soundcloud(user);
 	return {
 		name: { name: user.username, uri: create_uri('soundcloud', user.permalink_url) },
 		profile_artwork_url: user.avatar_url,
@@ -46,6 +49,7 @@ export function soundcloud_parse_user(user: User): IllusiveTypes.CompactArtist {
 	};
 }
 export function soundcloud_parse_playlist(playlist: Playlist) {
+	IllusiIngest.soundcloud(playlist);
 	return {
 		title: { name: playlist.title, uri: create_uri('soundcloud', playlist.permalink_url) },
 		artist: Array.isArray(playlist.user)

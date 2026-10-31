@@ -1,7 +1,7 @@
 import { extract_all_strings_from_pattern, is_empty } from '@common/utils/util';
 import { remove_topic } from '@common/utils/clean_util';
 import { GLOBALS } from '@illusive/globals';
-import type { NamedUUID, Track } from '@illusive/types';
+import type { NamedUUID, Track, TrackProducer } from '@illusive/types';
 
 const FEAT_WORD = '(?:ft|feat(?:uring)?)';
 // stop a bare (un-bracketed) segment at the next spaced dash, pipe, bracket or end of title
@@ -95,6 +95,11 @@ export function known_sql_artists(): Map<string, NamedUUID> {
 		known_artists_cache = { source: sql_tracks, size: sql_tracks.length, map };
 	}
 	return known_artists_cache.map;
+}
+
+export function producers_from_names(names: string | undefined): TrackProducer[] | undefined {
+	const split = names === undefined ? [] : dedup_strings(split_artist_names(names));
+	return split.length === 0 ? undefined : split.map(name => ({ name }));
 }
 
 export function split_artist_names(names: string): string[] {
@@ -252,6 +257,6 @@ export function parse_track_title_artist(track: Track): Track {
 				? 'CLEAN'
 				: track.explicit ?? 'NONE',
 		unreleased: info.unreleased || track.unreleased,
-		prods: prods.length > 0 ? prods.join(', ') : track.prods
+		prods: prods.length > 0 ? prods.map(name => ({ name })) : track.prods
 	};
 }

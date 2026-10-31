@@ -110,17 +110,17 @@ describe('parse_track_title_artist', () => {
 	it('extracts producers into prods, not artists', () => {
 		const track = parse_track_title_artist(yt('Knots (prod. Metro Boomin)'));
 		expect(track.title).toBe('Knots');
-		expect(track.prods).toBe('Metro Boomin');
+		expect(track.prods).toEqual([{ name: 'Metro Boomin' }]);
 		expect(artist_names(track)).toEqual(['Random Uploads']);
 	});
 	it('extracts \'p.producer\' producers', () => {
 		const track = parse_track_title_artist(yt('Knots p.CashMoney'));
 		expect(track.title).toBe('Knots');
-		expect(track.prods).toBe('CashMoney');
+		expect(track.prods).toEqual([{ name: 'CashMoney' }]);
 	});
 	it('extracts multiple producers', () => {
 		const track = parse_track_title_artist(yt('Knots (Prod by JUUG & Mooktoven)'));
-		expect(track.prods).toBe('JUUG, Mooktoven');
+		expect(track.prods).toEqual([{ name: 'JUUG' }, { name: 'Mooktoven' }]);
 	});
 	it('handles combined artist, junk, feat and quality tags', () => {
 		const track = parse_track_title_artist(yt('Juice WRLD - Bar Song (Official Music Video) ft. Gunna [HD]'));
