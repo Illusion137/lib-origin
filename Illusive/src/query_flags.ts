@@ -94,11 +94,6 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
 		description: 'Has a YouTube ID'
 	},
 	{
-		flag: '@ym',
-		condition: track => !is_empty(track.youtubemusic_id),
-		description: 'Has a YouTube Music ID'
-	},
-	{
 		flag: '@am',
 		condition: track => !is_empty(track.amazonmusic_id),
 		description: 'Has a Amazon Music ID'
@@ -239,13 +234,13 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
 	},
 	{
 		flag: '@vwg',
-		condition: (track, args) => (track.plays ?? 0) >= get_word_num(args, 0),
+		condition: (track, args) => (track.service_plays ?? 0) >= get_word_num(args, 0),
 		description: 'Global views greater than or equal to [x]',
 		args: 1
 	},
 	{
 		flag: '@vwl',
-		condition: (track, args) => (track.plays ?? 0) <= get_word_num(args, 0),
+		condition: (track, args) => (track.service_plays ?? 0) <= get_word_num(args, 0),
 		description: 'Global views less than or equal to [x]',
 		args: 1
 	},
@@ -311,85 +306,85 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
 	},
 	{
 		flag: '@acl',
-		condition: (track, args) => (track.acousticness ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.acousticness ?? 0) <= get_word_float(args, 0),
 		description: 'Acousticness confidence less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@acg',
-		condition: (track, args) => (track.acousticness ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.acousticness ?? 0) >= get_word_float(args, 0),
 		description: 'Acousticness confidence greater than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@isl',
-		condition: (track, args) => (track.instrumentalness ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.instrumentalness ?? 0) <= get_word_float(args, 0),
 		description: 'Instrumentalness confidence less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@isg',
-		condition: (track, args) => (track.instrumentalness ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.instrumentalness ?? 0) >= get_word_float(args, 0),
 		description: 'Instrumentalness confidence greater than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@lvl',
-		condition: (track, args) => (track.liveness ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.liveness ?? 0) <= get_word_float(args, 0),
 		description: 'Liveness confidence less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@lvg',
-		condition: (track, args) => (track.liveness ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.liveness ?? 0) >= get_word_float(args, 0),
 		description: 'Liveness confidence greater than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@dcl',
-		condition: (track, args) => (track.danceability ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.danceability ?? 0) <= get_word_float(args, 0),
 		description: 'Danceability percentage less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@dcg',
-		condition: (track, args) => (track.danceability ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.danceability ?? 0) >= get_word_float(args, 0),
 		description: 'Danceability percentage greater than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@egl',
-		condition: (track, args) => (track.energy ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.energy ?? 0) <= get_word_float(args, 0),
 		description: 'Energy percentage less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@egg',
-		condition: (track, args) => (track.energy ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.energy ?? 0) >= get_word_float(args, 0),
 		description: 'Energy percentage greater than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@vll',
-		condition: (track, args) => (track.valence ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.valence ?? 0) <= get_word_float(args, 0),
 		description: 'Valence percentage less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@vlg',
-		condition: (track, args) => (track.valence ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.valence ?? 0) >= get_word_float(args, 0),
 		description: 'Valence percentage greater than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@spl',
-		condition: (track, args) => (track.speechiness ?? 0) <= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.speechiness ?? 0) <= get_word_float(args, 0),
 		description: 'Speechiness percentage less than or equal to [x](0-1)',
 		args: 1
 	},
 	{
 		flag: '@spg',
-		condition: (track, args) => (track.speechiness ?? 0) >= get_word_float(args, 0),
+		condition: (track, args) => (track.analysis?.speechiness ?? 0) >= get_word_float(args, 0),
 		description: 'Speechiness percentage greater than or equal to [x](0-1)',
 		args: 1
 	},
@@ -400,12 +395,12 @@ export const TRACK_QUERY_FLAGS: QueryFlag<Track>[] = [
 	},
 	{
 		flag: '@prod',
-		condition: track => !is_empty(track.prods),
+		condition: track => (track.prods?.length ?? 0) > 0,
 		description: 'Has a known prod'
 	},
 	{
 		flag: '@prodby',
-		condition: (track, args) => (track.prods ?? '').toLowerCase().includes(args?.[0]),
+		condition: (track, args) => (track.prods ?? []).some(prod => prod.name.toLowerCase().includes(args?.[0])),
 		description: 'Search for [x] prod'
 	}
 ];

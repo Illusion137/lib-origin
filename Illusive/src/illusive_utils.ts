@@ -3,11 +3,14 @@ import { remove, remove_topic } from '@common/utils/clean_util';
 import { groupby, is_empty, milliseconds_of, seeded_random_of, urlid } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { Prefs } from '@illusive/prefs';
-import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, extract_query_flags, PLAYLIST_QUERY_FLAGS, TRACK_QUERY_FLAGS } from '@illusive/query_flags';
-import type { AlbumSortMode, Artwork, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, QueryFlag, Track } from '@illusive/types';
+import { COMPACT_ARTIST_QUERY_FLAGS, COMPACT_PLAYLIST_QUERY_FLAGS, PLAYLIST_QUERY_FLAGS } from '@illusive/query_flags';
+import { artist_string, best_thumbnail, filter_with_query_flags, track_query_filter as pure_track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from '@illusive/playlist_resolution';
+import type { AlbumSortMode, Artwork, CompactArtist, CompactPlaylist, CompactPlaylistType, GroupSection, HexColor, IllusiveThumbnail, IllusiveURI, MusicServiceType, MusicServiceURI, NamedUUID, ParsedUri, Playlist, PrefEntry, Track } from '@illusive/types';
 import fuzzysort from 'fuzzysort';
 import { reinterpret_cast } from '../../common/cast';
 import type { BasePref } from '@native/mmkv/mmkv_utils';
+
+export { artist_string, best_thumbnail, tracks_exclude, tracks_include, tracks_intersection, tracks_mask };
 
 export function duration_to_string(track_duration: number): string {
 	if (isNaN(track_duration) || track_duration <= 0) return '';
@@ -29,20 +32,6 @@ export function playlist_duration_to_string(playlist_duration: number): string {
 }
 export function create_thumbnails(url: string, width = NaN, height = NaN): IllusiveThumbnail[] {
 	return [{ url: url, width: width, height: height }];
-}
-export function best_thumbnail(thumbnails: IllusiveThumbnail[] | undefined) {
-	if (thumbnails === undefined || thumbnails === null) return undefined;
-	interface Max {
-		index: number;
-		value: number;
-	}
-	let best: Max = { index: 0, value: 0 };
-	for (let i = 0; i < thumbnails.length; i++) {
-		const dimension = thumbnails[i].width * thumbnails[i].height;
-		const current: Max = { index: i, value: isNaN(dimension) ? 1 : dimension };
-		if (current.value > best.value) best = current;
-	}
-	return thumbnails[best.index];
 }
 
 export function date_from(date: { year?: number; month?: number; day?: number; hour?: number; minute?: number; second?: number; ms?: number }) {
@@ -149,57 +138,9 @@ export function track_section_map(tracks: Track[], queried: boolean): { char_dat
 	return { char_data: section_chars, section_map: [...sections] };
 }
 
-function times_played_multiplier(plays: number, max_plays: number): number {
-	return Math.max(plays / max_plays + 1, 1);
-}
-function time_since_last_played_multiplier(date: Date): number {
-	const time_difference = Date.now() - date.getTime();
-	const days_difference = time_difference / (1000 * 60 * 60 * 24);
-	return Math.max((7 - days_difference) / 2, 1);
-}
-
-function filter_with_query_flags<T>(query: string, obj: T[], query_flags: QueryFlag<T>[]) {
-	const extracted_query_flags = extract_query_flags<T>(query, query_flags);
-
-	query = extracted_query_flags.new_query;
-
-	return {
-		filtered_data: obj.filter((track) => {
-			if (is_empty(query) && extracted_query_flags.extracted_query_flags.length === 0) return false;
-			const matches_any_flag = extracted_query_flags.extracted_query_flags.every(([flag, args, anti]) => (anti ? !flag.condition(track, args) : flag.condition(track, args)));
-			return matches_any_flag;
-		}),
-		new_query: query
-	};
-}
-
-const QUERY_SPLIT_OR = ' OR ';
+/** Same as playlist_resolution's track_query_filter, using the `fuzzy_search_threshold` pref */
 export function track_query_filter(tracks: Track[], query?: string): Track[] {
-	if (is_empty(query)) return tracks;
-
-	if (query!.includes(QUERY_SPLIT_OR)) {
-		return query!.split(QUERY_SPLIT_OR)
-			.map(split_query => track_query_filter(tracks, split_query))
-			.reduce((tracks_a, tracks_b) => tracks_include(tracks_a, tracks_b));
-	}
-
-	const max_plays = Math.max(...tracks.map(t => t.meta?.plays ?? 0));
-
-	const queried_result = filter_with_query_flags(query!, tracks, TRACK_QUERY_FLAGS);
-
-	query = queried_result.new_query;
-	tracks = queried_result.filtered_data;
-
-	if (is_empty(query)) return tracks;
-
-	return fuzzysort
-		.go(query, tracks, {
-			all: false,
-			keys: ['title', obj => artist_string(obj), obj => obj.album?.name ?? '---------'],
-			threshold: Prefs.get_pref('fuzzy_search_threshold') / 100,
-			scoreFn: r => r.score * times_played_multiplier(r.obj.meta?.plays ?? 0, max_plays) * time_since_last_played_multiplier(r.obj.meta?.last_played_date ? new Date(r.obj.meta.last_played_date) : new Date())
-		})
-		.map(r => r.obj);
+	return pure_track_query_filter(tracks, query, Prefs.get_pref('fuzzy_search_threshold'));
 }
 export function playlist_query_filter(playlists: Playlist[], query?: string) {
 	if (is_empty(query)) return playlists;
@@ -275,8 +216,6 @@ export function track_to_illusive_uri(track: Track): IllusiveURI {
 		artists: 'illusi',
 		duration: 'illusi',
 		prods: 'illusi',
-		genre: 'illusi',
-		tags: 'illusi',
 		explicit: 'illusi',
 		unreleased: 'illusi',
 		album: 'illusi',
@@ -284,7 +223,6 @@ export function track_to_illusive_uri(track: Track): IllusiveURI {
 		imported_id: 'illusi',
 		illusi_id: 'illusi',
 		youtube_id: 'youtube',
-		youtubemusic_id: 'youtubemusic',
 		soundcloud_id: 'soundcloud',
 		soundcloud_permalink: 'soundcloud',
 		spotify_id: 'spotify',
@@ -303,13 +241,7 @@ export function track_to_illusive_uri(track: Track): IllusiveURI {
 		meta: 'illusi',
 		playback: 'illusi',
 		downloading_data: 'illusi',
-		acousticness: 'illusi',
-		danceability: 'illusi',
-		energy: 'illusi',
-		instrumentalness: 'illusi',
-		liveness: 'illusi',
-		speechiness: 'illusi',
-		valence: 'illusi'
+		analysis: 'illusi'
 	};
 	const primary_key = track_primary_key(track);
 	const music_service_uri = primary_key_to_music_service_uri[primary_key];
@@ -414,25 +346,6 @@ export function is_duration_string(str: string | undefined) {
 }
 export function is_number(str: string) {
 	return !isNaN(parseFloat(str));
-}
-export function tracks_include(original: Track[], incoming: Track[]): Track[] {
-	const original_seen_uid_set = new Set(original.map(({ uid }) => uid));
-	return [...original, ...incoming.filter(({ uid }) => !original_seen_uid_set.has(uid))];
-}
-export function tracks_exclude(original: Track[], incoming: Track[]): Track[] {
-	const incoming_seen_uid_set = new Set(incoming.map(({ uid }) => uid));
-	return original.filter(({ uid }) => !incoming_seen_uid_set.has(uid));
-}
-export function tracks_mask(original: Track[], incoming: Track[]): Track[] {
-	const original_seen_uid_set = new Set(original.map(({ uid }) => uid));
-	const incoming_seen_uid_set = new Set(incoming.map(({ uid }) => uid));
-	const to_add = incoming.filter(({ uid }) => !original_seen_uid_set.has(uid));
-	const to_remove = new Set(original.filter(({ uid }) => incoming_seen_uid_set.has(uid)).map(({ uid }) => uid));
-	return [...original.filter(({ uid }) => !to_remove.has(uid)), ...to_add];
-}
-export function tracks_intersection(original: Track[], incoming: Track[]): Track[] {
-	const incoming_seen_uid_set = new Set(incoming.map(({ uid }) => uid));
-	return original.filter(({ uid }) => incoming_seen_uid_set.has(uid));
 }
 export function array_include<T>(a: T[], b: T[], compare_same: (a: T, b: T) => boolean) {
 	const array: T[] = [...a];
@@ -542,7 +455,6 @@ export function track_primary_key(track: Track): keyof Track {
 	if (!is_empty(track.soundcloud_id)) return 'soundcloud_id';
 	if (!is_empty(track.spotify_id)) return 'spotify_id';
 	if (!is_empty(track.applemusic_id)) return 'applemusic_id';
-	if (!is_empty(track.youtubemusic_id)) return 'youtube_id';
 	if (!is_empty(track.amazonmusic_id)) return 'amazonmusic_id';
 	if (!is_empty(track.imported_id)) return 'imported_id';
 	return 'illusi_id';
@@ -568,18 +480,6 @@ export function prefs_settings_groupby_filter(show_in_type_check: BasePref<any>[
 	const entries = (Object.entries(Prefs.prefs) as PrefEntry[]).filter(item => (item[1].visible ?? false) && item[1].show_type === show_in_type_check);
 	const groups = groupby(entries, item => item[1].section ?? 'Other');
 	return Object.keys(groups).map((key: string) => ({ title: key, data: groups[key] }));
-}
-
-export function artist_string(track_or_compact_playlist_or_artist: NamedUUID | Track | CompactPlaylist): string {
-	if (is_empty(track_or_compact_playlist_or_artist)) return '';
-	if ('name' in track_or_compact_playlist_or_artist) return remove_topic(track_or_compact_playlist_or_artist.name).trim();
-
-	const artists = 'artist' in track_or_compact_playlist_or_artist ? track_or_compact_playlist_or_artist.artist : track_or_compact_playlist_or_artist.artists;
-	if (artists.length === 0) return '';
-	if (artists.length <= 1) return remove_topic(artists?.[0].name ?? '').trim();
-	const names = artists.map(artist => remove_topic(artist?.name ?? '').trim());
-	const final_name = names.pop()!;
-	return names.length ? names.join(', ') + ' & ' + final_name : final_name;
 }
 
 export function tracks_with_artist(tracks: Track[], artist_name: string) {
