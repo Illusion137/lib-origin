@@ -6,7 +6,8 @@ import {
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { backfill_play_client_id, inherited_local_id, play_client_id } from '../v2/keys';
 import { Outbox } from '../v2/outbox';
-import { chunks, raw, ROWS_PER_STATEMENT, transaction } from '../v2/sqlite';
+import { raw, ROWS_PER_STATEMENT, transaction } from '../v2/sqlite';
+import { chunkify } from '@common/utils/util';
 import { encode_track, unavailable_service } from '../v2/track_codec';
 import { read_user_tracks, write_user_tracks } from '../v2/tracks';
 import {
@@ -169,7 +170,7 @@ export class LegacyMigration {
 	}
 
 	private async recopy(ex: DrizzleDB, table: LegacyTable, keys: string[]) {
-		for (const chunk of chunks(keys, 400)) {
+		for (const chunk of chunkify(keys, 400)) {
 			const rows = await read_rows_by_key(this.legacy, table, chunk);
 			switch (table) {
 				case 'tracks': {
@@ -190,7 +191,7 @@ export class LegacyMigration {
 					await this.copy_playlists(ex, rows);
 					const found = new Set(rows.map(row => row.uuid as string));
 					const gone = chunk.filter(uuid => !found.has(uuid));
-					for (const part of chunks(gone, 400)) await ex.update(playlists_table).set({ deleted: true }).where(inArray(playlists_table.uuid, part));
+					for (const part of chunkify(gone, 400)) await ex.update(playlists_table).set({ deleted: true }).where(inArray(playlists_table.uuid, part));
 					break;
 				}
 				case 'playlists_tracks': {
@@ -211,7 +212,7 @@ export class LegacyMigration {
 					await this.copy_recently_played(ex, parsed);
 					const found = new Set(parsed.map(row => row.track.uid));
 					const gone = chunk.filter(uid => !found.has(uid));
-					for (const part of chunks(gone, 400)) await ex.delete(recently_played_table).where(inArray(recently_played_table.uid, part));
+					for (const part of chunkify(gone, 400)) await ex.delete(recently_played_table).where(inArray(recently_played_table.uid, part));
 					break;
 				}
 			}
@@ -251,7 +252,7 @@ export class LegacyMigration {
 		const has_plays_table = (await this.existing_tables()).includes('track_plays');
 		const recorded = new Map<string, number>();
 		if (has_plays_table) {
-			for (const part of chunks(rows.map(row => row.track.uid), 400)) {
+			for (const part of chunkify(rows.map(row => row.track.uid), 400)) {
 				for (const [uid, plays] of await recorded_plays(this.legacy, part)) recorded.set(uid, plays);
 			}
 		}
@@ -266,8 +267,8 @@ export class LegacyMigration {
 			// A re-copy after plays were recorded during the migration needs fewer backfilled plays
 			for (let i = missing; i < total; i++) stale.push(backfill_play_client_id(uid, i));
 		}
-		for (const part of chunks(plays, ROWS_PER_STATEMENT * 5)) await ex.insert(track_plays_table).values(part).onConflictDoNothing();
-		for (const part of chunks(stale, 400)) await ex.delete(track_plays_table).where(inArray(track_plays_table.client_id, part));
+		for (const part of chunkify(plays, ROWS_PER_STATEMENT * 5)) await ex.insert(track_plays_table).values(part).onConflictDoNothing();
+		for (const part of chunkify(stale, 400)) await ex.delete(track_plays_table).where(inArray(track_plays_table.client_id, part));
 	}
 
 	private async copy_backpack(ex: DrizzleDB, rows: LegacyTrackRow[]) {
@@ -292,13 +293,13 @@ export class LegacyMigration {
 	}
 
 	private async set_library_deleted(ex: DrizzleDB, uids: string[]) {
-		for (const part of chunks(uids, 400)) await ex.update(user_tracks_table).set({ deleted: true }).where(inArray(user_tracks_table.uid, part));
+		for (const part of chunkify(uids, 400)) await ex.update(user_tracks_table).set({ deleted: true }).where(inArray(user_tracks_table.uid, part));
 	}
 
 	private async copy_playlists(ex: DrizzleDB, raw_rows: SQLiteRow[]) {
 		const rows = raw_rows.map(parse_playlist_row);
 		if (rows.length === 0) return;
-		for (const part of chunks(rows, ROWS_PER_STATEMENT)) {
+		for (const part of chunkify(rows, ROWS_PER_STATEMENT)) {
 			await ex.insert(playlists_table).values(part.map(row => ({
 				uuid: row.uuid,
 				title: row.title,
@@ -367,7 +368,7 @@ export class LegacyMigration {
 			const count = Math.max(row.count, 1);
 			for (let i = 0; i < count; i++) plays.push({ client_id: play_client_id(row.id, row.track_uid, row.created_at, i), track_uid: row.track_uid, created_at: row.created_at });
 		}
-		for (const part of chunks(plays, ROWS_PER_STATEMENT * 5)) await ex.insert(track_plays_table).values(part).onConflictDoNothing();
+		for (const part of chunkify(plays, ROWS_PER_STATEMENT * 5)) await ex.insert(track_plays_table).values(part).onConflictDoNothing();
 	}
 
 	private async copy_recently_played(ex: DrizzleDB, rows: LegacyTrackRow[]) {

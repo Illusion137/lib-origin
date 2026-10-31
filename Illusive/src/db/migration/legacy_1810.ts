@@ -96,7 +96,6 @@ export function parse_track_row(row: SQLiteRow): LegacyTrackRow {
 		explicit: row.explicit ?? 'NONE',
 		unreleased: bool(row.unreleased),
 		album: json<NamedUUID>(row.album, { name: '', uri: null }),
-		plays: Number(row.plays) || 0,
 		imported_id: row.imported_id ?? '',
 		illusi_id: '',
 		youtube_id: row.youtube_id ?? '',
