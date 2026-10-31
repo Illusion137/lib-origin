@@ -29,6 +29,7 @@ import { FutsalShuffle } from './futsal_shuffle';
 import { fs, load_native_fs } from '@native/fs/fs';
 import bpath from 'path-browserify';
 import { run_startup_links } from './linker';
+import { Explore } from './explore';
 import { load_native_mmkv } from '@native/mmkv/mmkv';
 import { load_native_sqlite } from '@native/sqlite/sqlite';
 import { breadcrumb } from '@common/sentry_error_handler';
@@ -133,6 +134,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
 		} else {
 			await Prefs.save_pref('recent_rejected_ota_update', '');
 			await Prefs.save_pref('past_queue', { index: 0, tracks: [] });
+			await Explore.clear_new_releases();
 			(async () => {
 				const tmp_dir = await fs().temp_directory();
 				const tmp_dir_file_list = await fs().read_directory(tmp_dir);
