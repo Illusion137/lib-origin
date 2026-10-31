@@ -4,7 +4,7 @@ import type {
 } from '@origin/illusi/types';
 import {
 	playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table,
-	type OutboxKind, type OutboxRow
+	type OutboxKind, type OutboxRow, type TrackSnapshot, type UserTrackInsert
 } from '@illusive/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { split_playlist_track_key } from '../v2/keys';
@@ -49,9 +49,18 @@ async function by_keys<T>(keys: readonly string[], query: (chunk: string[]) => P
 	return result;
 }
 
-/** Tracks the server doesn't know yet go along as entities, keyed by their local uid as the temp ref */
-async function entity_graph(ex: DrizzleDB, uids: readonly string[]): Promise<ContributionGraph> {
-	const rows = await read_rows(ex, uids);
+/** The service ids in a snapshot the server accepts */
+export function server_service_ids(snapshot: TrackSnapshot): ServiceIds {
+	const service_ids: ServiceIds = {};
+	for (const column of SERVER_ID_COLUMNS) {
+		const value = snapshot.service_ids[column];
+		if (value !== null && value !== undefined && value !== '') (service_ids as Record<string, unknown>)[column] = value;
+	}
+	return service_ids;
+}
+
+/** A contribution of tracks the server doesn't know yet, keyed by their local uid as the temp ref */
+export function track_graph(rows: readonly Pick<UserTrackInsert, 'uid' | 'title' | 'track'>[]): ContributionGraph {
 	const artists = new Map<string, ContributedArtist>();
 	const albums = new Map<string, ContributedAlbum>();
 	const tracks: ContributedTrack[] = [];
@@ -71,11 +80,7 @@ async function entity_graph(ex: DrizzleDB, uids: readonly string[]): Promise<Con
 				albums.set(ref_of_album, { ref: ref_of_album, name: snapshot.album.name, artist_ref: artist_refs[0] ?? null });
 			}
 		}
-		const service_ids: ServiceIds = {};
-		for (const column of SERVER_ID_COLUMNS) {
-			const value = snapshot.service_ids[column];
-			if (value !== null && value !== undefined && value !== '') (service_ids as Record<string, unknown>)[column] = value;
-		}
+		const service_ids = server_service_ids(snapshot);
 		tracks.push({
 			ref: row.uid,
 			title: snapshot.title.trim() === '' ? (row.title ?? 'Untitled') : snapshot.title,
@@ -90,6 +95,10 @@ async function entity_graph(ex: DrizzleDB, uids: readonly string[]): Promise<Con
 		if (ref_of_album !== null) album_tracks.push({ album_ref: ref_of_album, track_ref: row.uid });
 	}
 	return { artists: [...artists.values()], albums: [...albums.values()], tracks, relations: { tracks_artists, album_tracks } };
+}
+
+async function entity_graph(ex: DrizzleDB, uids: readonly string[]): Promise<ContributionGraph> {
+	return track_graph(await read_rows(ex, uids));
 }
 
 /**
