@@ -390,6 +390,14 @@ export function escape_regexpresion(str: string) {
 export function track_durations(tracks: Track[]) {
 	return tracks.map(({ duration }) => duration);
 }
+export function track_time_ms(date?: string | Date) {
+	const time = date ? new Date(date).getTime() : 0;
+	return isNaN(time) ? 0 : Math.max(time, 0);
+}
+export function track_unplayed_since_ms(track: Track) {
+	const last_played_ms = track_time_ms(track.meta?.last_played_date);
+	return last_played_ms > 0 ? last_played_ms : track_time_ms(track.meta?.added_date);
+}
 export function sum(nums: number[]) {
 	return nums.reduce((prev, cur) => prev + cur, 0);
 }
