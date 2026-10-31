@@ -16,7 +16,7 @@ export function sc_highest_artwork(artwork_url: string) {
 }
 
 export function soundcloud_parse_track_snippet(track: SnippetedTrack): IllusiveTypes.Track {
-	return parse_track_title_artist({
+	return IllusiIngest.track('soundcloud', parse_track_title_artist({
 		uid: generate_new_uid(track.title),
 		title: track.title,
 		artists: [{ name: track.user.username, uri: create_uri('soundcloud', track.user.permalink) }],
@@ -24,29 +24,29 @@ export function soundcloud_parse_track_snippet(track: SnippetedTrack): IllusiveT
 		soundcloud_id: track.id,
 		soundcloud_permalink: track.permalink_url,
 		artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
-	});
+	}));
 }
 
 export function soundcloud_parse_track(track: Track): IllusiveTypes.Track {
 	IllusiIngest.soundcloud(track);
-	return parse_track_title_artist({
+	return IllusiIngest.track('soundcloud', parse_track_title_artist({
 		uid: generate_new_uid(track.title),
 		title: track.title,
 		artists: [{ name: track.user.username, uri: create_uri('soundcloud', track.user.permalink) }],
-		plays: track.playback_count ?? 0,
+		service_plays: track.playback_count ?? 0,
 		duration: Math.floor(track.duration / 1000),
 		soundcloud_id: track.id,
 		soundcloud_permalink: track.permalink_url,
 		artwork_url: track.artwork_url ? sc_highest_artwork(track.artwork_url) : sc_highest_artwork(track.user.avatar_url)
-	});
+	}));
 }
 export function soundcloud_parse_user(user: User): IllusiveTypes.CompactArtist {
 	IllusiIngest.soundcloud(user);
-	return {
+	return IllusiIngest.artist('soundcloud', {
 		name: { name: user.username, uri: create_uri('soundcloud', user.permalink_url) },
 		profile_artwork_url: user.avatar_url,
 		is_official_artist_channel: user.verified
-	};
+	});
 }
 export function soundcloud_parse_playlist(playlist: Playlist) {
 	IllusiIngest.soundcloud(playlist);

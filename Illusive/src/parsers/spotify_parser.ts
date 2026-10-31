@@ -8,9 +8,10 @@ import type { CollectionItem } from '@origin/spotify/types/Collection';
 import type { SpotifyArtist } from '@origin/spotify/types/Query';
 import type { SpotifyCompactArtist, SpotifySearchAlbum, SpotifySearchTrack } from '@origin/spotify/types/SearchResult';
 import type { ContentItem } from '@origin/spotify/types/UserPlaylist';
+import { IllusiIngest } from '@illusive/db/sync/illusi_ingest';
 
 export function parse_spotify_playlist_track(track: ContentItem): Track {
-	return {
+	return IllusiIngest.track('spotify', {
 		uid: generate_new_uid(track.itemV2.data.name),
 		title: track.itemV2.data.name,
 		artists: track.itemV2.data.artists.items.map((artist) => {
@@ -22,10 +23,10 @@ export function parse_spotify_playlist_track(track: ContentItem): Track {
 		explicit: track.itemV2.data.contentRating.label === 'EXPLICIT' ? 'EXPLICIT' : 'NONE',
 		spotify_id: track.itemV2.data.uri,
 		artwork_url: best_thumbnail(track.itemV2.data.albumOfTrack.coverArt.sources)?.url
-	};
+	}, track);
 }
 export function parse_spotify_album_track(track: Item4, album: { name: string; uri: string }, service_thumbnail?: string): Track {
-	return {
+	return IllusiIngest.track('spotify', {
 		uid: generate_new_uid(track.track.name),
 		title: track.track.name,
 		artists: track.track.artists.items.map((artist) => {
@@ -37,10 +38,10 @@ export function parse_spotify_album_track(track: Item4, album: { name: string; u
 		explicit: track.track.contentRating.label === 'EXPLICIT' ? 'EXPLICIT' : 'NONE',
 		spotify_id: track.track.uri,
 		artwork_url: service_thumbnail
-	};
+	}, track);
 }
 export function parse_spotify_collection_track(track: CollectionItem): Track {
-	return {
+	return IllusiIngest.track('spotify', {
 		uid: generate_new_uid(track.track.data.name),
 		title: track.track.data.name,
 		artists: track.track.data.artists.items.map((artist) => {
@@ -51,19 +52,19 @@ export function parse_spotify_collection_track(track: CollectionItem): Track {
 		explicit: track.track.data.contentRating.label === 'EXPLICIT' ? 'EXPLICIT' : 'NONE',
 		spotify_id: track.track._uri,
 		artwork_url: best_thumbnail(track.track.data.albumOfTrack.coverArt.sources)?.url
-	};
+	}, track);
 }
 
 export function parse_spotify_search_artist(artist: SpotifyArtist): CompactArtist {
-	return {
+	return IllusiIngest.artist('spotify', {
 		name: { name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri) },
 		profile_artwork_url: best_thumbnail(artist.visuals.avatarImage?.sources)?.url,
 		is_official_artist_channel: true
-	};
+	}, artist);
 }
 
 export function parse_spotify_search_track(track: SpotifySearchTrack): Track {
-	return {
+	return IllusiIngest.track('spotify', {
 		uid: generate_new_uid(track.item.data.name),
 		title: track.item.data.name,
 		artists: track.item.data.artists.items.map((artist) => {
@@ -74,61 +75,64 @@ export function parse_spotify_search_track(track: SpotifySearchTrack): Track {
 		explicit: track.item.data.contentRating.label === 'EXPLICIT' ? 'EXPLICIT' : 'NONE',
 		artwork_url: best_thumbnail(track.item.data.albumOfTrack.coverArt.sources)?.url,
 		spotify_id: track.item.data.uri
-	};
+	}, track);
 }
 export function parse_spotify_search_album(album: SpotifySearchAlbum): CompactPlaylist {
 	const date = new Date(0);
 	date.setFullYear(album.data.date.year);
-	return {
+	return IllusiIngest.album('spotify', {
 		title: { name: album.data.name, uri: spotify_uri_to_uri(album.data.uri) },
 		artist: album.data.artists.items.map(artist => ({ name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri) })),
 		artwork_thumbnails: album.data.coverArt.sources,
 		album_type: album.data.type === 'SINGLE' ? 'SINGLE' : album.data.type === 'EP' ? 'EP' : 'ALBUM',
 		date: reinterpret_cast<ISOString>(date.toISOString()),
 		type: 'ALBUM'
-	};
+	}, album);
 }
 export function parse_spotify_artist_track(track: SpotifyArtistTrack): Track {
-	return {
+	const parsed: Track = {
 		uid: generate_new_uid(track.track.name),
 		title: track.track.name,
 		artists: track.track.artists.items.map(artist => ({ name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri) })),
-		album: { name: track.track.name, uri: spotify_uri_to_uri(track.track.albumOfTrack.uri) },
+		album: { name: track.track.albumOfTrack.name ?? track.track.name, uri: spotify_uri_to_uri(track.track.albumOfTrack.uri) },
 		duration: Math.floor(track.track.duration.totalMilliseconds / 1000),
 		explicit: track.track.contentRating.label === 'EXPLICIT' ? 'EXPLICIT' : 'NONE',
 		artwork_url: best_thumbnail(track.track.albumOfTrack.coverArt.sources.map(source => ({ ...source, height: 0, width: 0 })))?.url,
 		spotify_id: track.track.uri,
-		plays: track.track.playcount ? Number(track.track.playcount) : 0
+		service_plays: track.track.playcount ? Number(track.track.playcount) : 0
 	};
+	// Without an album name the one above is the track's, so the shared copy leaves the album out
+	IllusiIngest.track('spotify', track.track.albumOfTrack.name === undefined ? { ...parsed, album: undefined } : parsed, track);
+	return parsed;
 }
 export function parse_spotify_artist_album(album: SpotifyArtistAlbum, artist: NamedUUID): CompactPlaylist {
 	const date = new Date(0);
 	date.setFullYear(album.date.year);
-	return {
+	return IllusiIngest.album('spotify', {
 		title: { name: album.name, uri: spotify_uri_to_uri(album.uri) },
 		artist: [artist],
 		artwork_thumbnails: album.coverArt.sources,
 		album_type: album.type === 'SINGLE' ? 'SINGLE' : album.type === 'EP' ? 'EP' : 'ALBUM',
 		date: reinterpret_cast<ISOString>(date.toISOString()),
 		type: 'ALBUM'
-	};
+	}, album);
 }
 export function parse_spotify_artist_appears_on(album: SpotifyArtistApearsOn): CompactPlaylist {
 	const date = new Date(0);
 	date.setFullYear(album.date.year);
-	return {
+	return IllusiIngest.album('spotify', {
 		title: { name: album.name, uri: spotify_uri_to_uri(album.uri) },
 		artist: album.artists.items.map(artist => ({ name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri) })),
 		artwork_thumbnails: album.coverArt.sources,
 		album_type: album.type === 'SINGLE' ? 'SINGLE' : album.type === 'EP' ? 'EP' : 'ALBUM',
 		date: reinterpret_cast<ISOString>(date.toISOString()),
 		type: 'ALBUM'
-	};
+	}, album);
 }
 export function parse_spotify_similar_artist(artist: SpotifySimliarArtist | SpotifyCompactArtist): CompactArtist {
-	return {
+	return IllusiIngest.artist('spotify', {
 		name: { name: artist.profile.name, uri: spotify_uri_to_uri(artist.uri) },
 		profile_artwork_url: best_thumbnail(artist.visuals.avatarImage?.sources)?.url,
 		is_official_artist_channel: true
-	};
+	}, artist);
 }

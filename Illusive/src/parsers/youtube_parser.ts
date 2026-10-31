@@ -5,6 +5,7 @@ import type { CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicService
 import type { YTChannelResult, YTCompactPlaylist, YTNamed, YTPlaylistHeader, YTTrack } from '@origin/youtube/parser';
 import { YTNodes } from 'youtubei.js/agnostic';
 import { YouTubeDL, type VideoInfo } from '@origin/youtube/youtube_dl';
+import { IllusiIngest } from '@illusive/db/sync/illusi_ingest';
 
 function youtube_named(named: YTNamed): NamedUUID {
 	return { name: named.name, uri: named.channel_id === undefined ? null : create_uri('youtube', named.channel_id) };
@@ -41,15 +42,15 @@ export function youtube_info_metadata(info: VideoInfo): DownloadFromIdResult['me
 }
 
 export function youtube_parse_track(track: YTTrack): Track {
-	return parse_track_title_artist({
+	return IllusiIngest.track('youtube', parse_track_title_artist({
 		uid: generate_new_uid(track.title),
 		title: track.title,
 		artists: track.artists.map(youtube_named),
 		duration: track.duration_seconds ?? NaN,
 		youtube_id: track.video_id,
-		plays: track.views ?? 0,
+		service_plays: track.views ?? 0,
 		artwork_url: best_thumbnail(track.thumbnails)?.url
-	} as Track);
+	} as Track));
 }
 
 export function youtube_parse_videos(tracks: YTTrack[]): Track[] {
@@ -66,7 +67,7 @@ export function youtube_parse_playlists(playlists: YTCompactPlaylist[]): Compact
 }
 
 export function youtube_parse_channels(channels: YTChannelResult[]): CompactArtist[] {
-	return channels.map(channel => ({
+	return channels.map(channel => IllusiIngest.artist('youtube', {
 		name: { name: channel.name, uri: create_uri('youtube', channel.channel_id) },
 		profile_artwork_url: best_thumbnail(channel.thumbnails)?.url,
 		is_official_artist_channel: true

@@ -5,10 +5,11 @@ import { extract_string_from_pattern, generate_new_uid, is_empty } from '@common
 import { create_uri } from '@illusive/illusive_utils';
 import type { Track } from '@illusive/types';
 import { parse_time } from '@common/utils/parse_util';
+import { IllusiIngest } from '@illusive/db/sync/illusi_ingest';
 
 export function parse_amazon_music_playlist_track(track: AmazonTrack): Track {
 	const album_regex = /([a-zA-Z?><{}|!@#$%^&*]+\s?[a-zA-Z?><{}|!@#$%^&*])+/;
-	return {
+	return IllusiIngest.track('amazonmusic', {
 		uid: generate_new_uid(track.primaryText),
 		title: track.primaryText,
 		artists: [{ name: track.secondaryText1, uri: create_uri('amazonmusic', extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)\/.+/, 'MEDIUM') as string) }],
@@ -16,17 +17,17 @@ export function parse_amazon_music_playlist_track(track: AmazonTrack): Track {
 		album: { name: extract_string_from_pattern(track.secondaryText2, album_regex, 'MEDIUM') as string, uri: create_uri('amazonmusic', extract_string_from_pattern(track.secondaryText1Link.deeplink, /\/.+?\/(.+)/, 'MEDIUM') as string) },
 		explicit: track.secondaryText2.includes('[Explicit]') ? 'EXPLICIT' : 'NONE',
 		amazonmusic_id: Origin.AmazonMusic.get_track_id(track)
-	};
+	}, track);
 }
 export function parse_amazon_music_search_track(track: AmazonSearchTrack): Track {
 	// const album_regex = /([a-zA-Z?><{}|!@#$%^&*]+\s?[a-zA-Z?><{}|!@#$%^&*])+/;
 	const title = typeof track.primaryText === 'object' ? track.primaryText.text : track.primaryText;
-	return {
+	return IllusiIngest.track('amazonmusic', {
 		uid: generate_new_uid(title),
 		title: title,
 		artists: [{ name: is_empty(track.secondaryText) ? '' : track.secondaryText!, uri: track.secondaryLink?.deeplink === undefined ? null : create_uri('amazonmusic', extract_string_from_pattern(track.secondaryLink.deeplink, /\/.+?\/(.+)\/.+/, 'MEDIUM') as string) }],
 		duration: NaN,
 		explicit: track.tags.includes('E') ? 'EXPLICIT' : 'NONE',
 		amazonmusic_id: Origin.AmazonMusic.get_track_id(track)
-	};
+	}, track);
 }

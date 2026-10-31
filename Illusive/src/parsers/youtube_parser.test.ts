@@ -20,7 +20,7 @@ describe('youtube_parse_videos', () => {
 		expect(track.title).toBe('Nun But Drums');
 		expect(track.youtube_id).toBe('TOshH9f9l90');
 		expect(track.duration).toBe(136);
-		expect(track.plays).toBe(255000);
+		expect(track.service_plays).toBe(255000);
 		expect(track.artists).toEqual([
 			{ name: 'Nino Paid', uri: 'youtube:UC2hFKZgVRe1b2CpULVgaCDA' },
 			{ name: 'VonOff1700', uri: 'youtube:UC023sB-A8vI7F3ByKMF9BGA' }
