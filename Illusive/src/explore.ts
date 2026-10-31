@@ -1,20 +1,21 @@
 import { milliseconds_of } from '@common/utils/util';
 import { GLOBALS } from './globals';
-import type { CompactArtist, CompactPlaylist, FullPlaylist, MusicServiceType, Track } from './types';
+import type { CompactArtist, CompactPlaylist, FullPlaylist, MusicServiceType, NamedUUID, Track } from './types';
 import { FutsalShuffle } from './futsal_shuffle';
 import { reinterpret_cast } from '@common/cast';
 import { Illusive } from './illusive';
 import { SQLfs } from './sql/sql_fs';
 import { SQLTracks } from './sql/sql_tracks';
-import { catch_log, generror, generror_catch } from '@common/utils/error_util';
-import type { ResponseError } from '@common/types';
-import { SQLNewReleases } from './sql/sql_new_releases';
-import { create_uri, should_automatic_refresh } from './illusive_utils';
+import { generror, generror_catch } from '@common/utils/error_util';
+import { should_automatic_refresh } from './illusive_utils';
 import { Prefs } from './prefs';
-import { timeout_call } from '@common/utils/timed_util';
+import { wait } from '@common/utils/timed_util';
+import { remove_topic } from '@common/utils/clean_util';
 import * as Origin from '@origin/index';
 import { soundcloud_parse_system_playlist, soundcloud_parse_user } from './parsers/soundcloud_parser';
-import { supabase } from './db/supabase';
+import { Illusi } from '@origin/illusi/illusi';
+import { IllusiAccount } from './db/sync/illusi_account';
+import { IllusiViews } from './illusi_views';
 import { FSCache } from '@common/fs_cache';
 import type { SelectionItem } from '@origin/soundcloud/types/MixedSelection';
 import type { ArtistRecommendation } from '@origin/soundcloud/types/Search';
@@ -25,51 +26,74 @@ export namespace Explore {
 	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = 'PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI';
 	const FORGOTTEN_FAVORITES_SLICE = 50;
 
-	function alert_new_releases(new_releases_length: number, updated_new_releases_length: number, old_persistant: CompactPlaylist[], new_persistant: CompactPlaylist[]) {
-		if (updated_new_releases_length - new_releases_length !== 0) {
-			const total_added = updated_new_releases_length - new_releases_length;
-			const total_new = new_persistant.length - old_persistant.length;
-			const hidden = total_added - total_new;
-			GLOBALS.global_var.bottom_alert(`Refreshed New Releases`, 'INFO', `${total_new} Added, ${hidden} Hidden`);
-		}
-	}
+	const NEW_RELEASE_SERVICES: MusicServiceType[] = ['Illusi', 'YouTube Music', 'SoundCloud'];
+	const NEW_RELEASES_SERVICE_TIMEOUT_MS = milliseconds_of({ seconds: 8 });
 
-	type GetPersistantNewReleases = (refreshed?: boolean) => Promise<CompactPlaylist[]>;
-	export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
-		const new_releases_length = await SQLNewReleases.new_releases_count();
-		const old_persistant = await get_persistant_new_releases(true);
-		const updated_new_releases_length = await SQLNewReleases.new_releases_count();
-		const persistant = await get_persistant_new_releases(true);
-		alert_new_releases(new_releases_length, updated_new_releases_length, old_persistant, persistant);
-		return persistant;
-	}
+	const artist_keys = (artist: NamedUUID) => [artist.uri ?? '', remove_topic(artist.name).trim().toLowerCase()].filter(key => key !== '');
+	const release_key = (release: CompactPlaylist) => `${release.title.name.trim().toLowerCase()}\u0000${remove_topic(release.artist[0]?.name ?? '').trim().toLowerCase()}`;
 
-	export async function refresh_service_new_releases(music_service_type: MusicServiceType, get_persistant_new_releases: GetPersistantNewReleases, set_is_loading: (value: boolean) => any) {
-		const music_service = Illusive.music_service.get(music_service_type)!;
-		if (music_service.get_new_releases === undefined) {
-			console.warn(generror('Trying to grab new releases of bad Music Service (likely not supported)', 'MEDIUM', { music_service_type }));
-			return;
-		}
-		const old_persistant = await get_persistant_new_releases(true);
-		const external_new_releases = await music_service.get_new_releases();
-		const new_releases_length = await SQLNewReleases.new_releases_count();
-		await SQLNewReleases.insert_all_into_new_releases(external_new_releases);
-		const updated_new_releases_length = await SQLNewReleases.new_releases_count();
-		const persistant = await get_persistant_new_releases(true);
-		alert_new_releases(new_releases_length, updated_new_releases_length, old_persistant, persistant);
-		set_is_loading(false);
-	}
-
-	export async function refresh_all_services_new_releases(get_persistant_new_releases: GetPersistantNewReleases, set_is_loading: (value: boolean) => any) {
-		const service_types: MusicServiceType[] = ['YouTube Music', 'SoundCloud'];
-		for (const type of service_types) {
-			const music_service = Illusive.music_service.get(type)!;
-			const should_service_refresh_new_releases = music_service.has_credentials() && should_automatic_refresh(Prefs.get_pref('automatic_new_releases_last_refreshed'));
-			if (should_service_refresh_new_releases) {
-				timeout_call(async () => await refresh_service_new_releases(type, get_persistant_new_releases, set_is_loading), milliseconds_of({ seconds: 8 })).catch(catch_log);
+	function artist_affinity(tracks: Track[]): Map<string, number> {
+		const affinity = new Map<string, number>();
+		for (const track of tracks) {
+			const weight = 1 + (track.meta?.plays ?? 0);
+			for (const artist of track.artists) {
+				for (const key of artist_keys(artist)) affinity.set(key, (affinity.get(key) ?? 0) + weight);
 			}
 		}
-		await Prefs.save_pref('automatic_new_releases_last_refreshed', new Date());
+		return affinity;
+	}
+
+	export function rank_new_releases(releases: CompactPlaylist[], tracks: Track[], hide_unknowns: boolean): CompactPlaylist[] {
+		const affinity = artist_affinity(tracks);
+		const seen = new Set<string>();
+		const scored: { release: CompactPlaylist; score: number; date: number }[] = [];
+		for (const release of releases) {
+			const key = release_key(release);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const score = Math.max(0, ...release.artist.flatMap(artist => artist_keys(artist).map(artist_key => affinity.get(artist_key) ?? 0)));
+			if (hide_unknowns && score === 0 && !release.song_track) continue;
+			scored.push({ release, score, date: new Date(release.date ?? 0).getTime() || 0 });
+		}
+		return scored.sort((a, b) => b.score - a.score || b.date - a.date).map(({ release }) => release);
+	}
+
+	export function get_new_releases(): CompactPlaylist[] {
+		const ranked = rank_new_releases(Prefs.get_pref('new_releases'), GLOBALS.global_var.sql_tracks, Prefs.get_pref('new_releases_hide_unknowns'));
+		return ranked.map(release => release.song_track ? { ...release, song_track: SQLTracks.add_playback_saved_data_to_track(release.song_track) } : release);
+	}
+
+	export function new_releases_stale(): boolean {
+		return Prefs.get_pref('new_releases').length === 0 || should_automatic_refresh(Prefs.get_pref('new_releases_last_refreshed'));
+	}
+
+	async function service_new_releases(type: MusicServiceType): Promise<CompactPlaylist[]> {
+		const music_service = Illusive.music_service.get(type);
+		if (music_service?.get_new_releases === undefined || !music_service.has_credentials()) return [];
+		const timed_out = wait(NEW_RELEASES_SERVICE_TIMEOUT_MS).then(() => [] as CompactPlaylist[]);
+		return Promise.race([music_service.get_new_releases(), timed_out]).catch((error: unknown) => {
+			console.warn(generror_catch(error, 'Failed to get new releases', 'MEDIUM', { type }));
+			return [];
+		});
+	}
+
+	export async function refresh_new_releases(): Promise<CompactPlaylist[]> {
+		const releases = (await Promise.all(NEW_RELEASE_SERVICES.map(service_new_releases))).flat();
+		if (releases.length === 0) return get_new_releases();
+		const old_keys = new Set(Prefs.get_pref('new_releases').map(release_key));
+		await Promise.all([
+			Prefs.save_pref('new_releases', releases),
+			Prefs.save_pref('new_releases_last_refreshed', new Date())
+		]);
+		const ranked = get_new_releases();
+		const total_new = old_keys.size === 0 ? 0 : ranked.filter(release => !old_keys.has(release_key(release))).length;
+		if (total_new !== 0) GLOBALS.global_var.bottom_alert('Refreshed New Releases', 'INFO', `${total_new} Added`);
+		return ranked;
+	}
+
+	export async function clear_new_releases() {
+		await Prefs.save_pref('new_releases', []);
+		await Prefs.save_pref('new_releases_last_refreshed', new Date(0));
 	}
 
 	export function get_forgotten_favorites(): CompactPlaylist[] {
@@ -150,21 +174,12 @@ export namespace Explore {
 	}
 
 	export async function get_illusi_public_playlists(): Promise<CompactPlaylist[]> {
-		const { data: { session } } = await supabase().auth.getSession();
-		if (session?.access_token === undefined) {
-			console.warn(generror('User not authenticated', 'LOW', {}));
-			return [];
-		}
-		const result = await Origin.Illusi.get_public_playlists({ jwt: session.access_token });
-		if ('error' in result) {
+		if (!IllusiAccount.is_logged_in()) return [];
+		const result = await Illusi.Playlists.public_list({ limit: 50 });
+		if (Illusi.is_error(result)) {
 			console.warn(generror('Failed to get Illusi public playlists', 'MEDIUM', { result }));
 			return [];
 		}
-		return result.map(playlist => ({
-			title: { name: playlist.title, uri: create_uri('illusi', playlist.uuid) },
-			artist: [{ name: 'Sumi!', uri: null }],
-			artwork_url: playlist.artwork_path ? Origin.Illusi.artwork_public_url(playlist.artwork_path) : undefined,
-			artwork_index: 0
-		}));
+		return result.items.map(IllusiViews.playlist);
 	}
 }
