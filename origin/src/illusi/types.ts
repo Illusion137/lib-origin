@@ -535,6 +535,31 @@ export type ResolveResponse = Record<string, IllusiId | null>;
 
 export type SoundCloudIngestItem = SoundCloudUser | SoundCloudTrack | SoundCloudPlaylist | LikedTrack | HistoryTrack;
 export interface SoundCloudIngestBody { items: (SoundCloudIngestItem | { collection: SoundCloudIngestItem[] })[] }
+export type CatalogService = 'spotify' | 'applemusic' | 'amazonmusic' | 'deezer' | 'tidal' | 'pandora' | 'bandlab' | 'audiomack';
+interface CatalogItemBase {
+	service: CatalogService;
+	/** The service's own id, as the service uses it */
+	id: string | number;
+	/** The service's response object for it; dropped by the server past 64 KB */
+	raw?: unknown;
+}
+export type CatalogItem
+	= | (CatalogItemBase & { kind: 'artist'; name: string; artwork_url?: string | null; verified?: boolean | null; description?: string | null; followers_count?: number | null })
+		| (CatalogItemBase & {
+			kind: 'album'; title: string; artist_names?: string[] | null; artist_ids?: (string | number)[] | null; album_type?: string | null;
+			release_date?: TimeInput | null; explicit?: boolean | null; track_count?: number | null; artwork_url?: string | null;
+		})
+		| (CatalogItemBase & {
+			kind: 'track'; title: string; alt_title?: string | null; artist_names?: string[] | null; artist_ids?: (string | number)[] | null;
+			album_title?: string | null; album_id?: string | number | null; duration_ms?: number | null; explicit?: boolean | null;
+			plays?: number | null; isrc?: string | null; artwork_url?: string | null;
+		});
+export interface CatalogIngestBody { items: CatalogItem[] }
+export interface CatalogIngestResult {
+	accepted: number;
+	rejected: { index: number; reason: string }[];
+}
+
 export interface IngestAccepted {
 	accepted: number;
 	rejected: number;

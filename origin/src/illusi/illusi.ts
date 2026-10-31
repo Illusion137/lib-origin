@@ -6,7 +6,7 @@ import { encode_params } from '@common/utils/fetch_util';
 import type {
 	Action, ActionOf, ActionType, AlbumDetail, AlbumView, ApiErrorBody, ArtistAlbumsQuery, ArtistTracksQuery, ArtistView, ArtworkFile,
 	ArtworkResult, BackpackRequestsQuery, ContributionGraph, ContributionPayload, ContributionResult, CopiedPlaylist, Cursor, DeleteAccountBody,
-	EntityPatchBody, EntityPatchResult, ExportJob, GeniusIngestBody, IllusiId, IngestAccepted, LibraryQuery, LinkedPlaylist, LoginBody, LyricsResponse, Me, MediaFile,
+	CatalogIngestBody, CatalogIngestResult, CatalogItem, EntityPatchBody, EntityPatchResult, ExportJob, GeniusIngestBody, IllusiId, IngestAccepted, LibraryQuery, LinkedPlaylist, LoginBody, LyricsResponse, Me, MediaFile,
 	MediaRequestsQuery, MediaUploadOpts, MediaUploadResult, MyPlaylistsQuery, NewReleases, NewReleasesIngestBody, NewReleasesIngestResult,
 	NewReleasesQuery, Page, PageQuery, PlaylistView, PlayView, PublicPlaylistsQuery, PullBody, PullResponse, PushBody, PushChanges,
 	PushResponse, RecentSearch, RefreshBody, RegisterBody, ReleaseService, ResearchService, ResolveBody, ResolveItem, ResolveResponse,
@@ -98,6 +98,7 @@ export namespace Illusi {
 		'GET /new-releases/me': { query: NewReleasesQuery; response: NewReleases };
 
 		'POST /ingest/soundcloud': { body: SoundCloudIngestBody; response: IngestAccepted };
+		'POST /ingest/service': { body: CatalogIngestBody; response: CatalogIngestResult };
 		'POST /ingest/genius': { body: GeniusIngestBody; response: LyricsResponse };
 		'POST /ingest/youtube_music_lyrics': { body: YouTubeMusicLyricsIngestBody; response: LyricsResponse };
 		'POST /ingest/new_releases': { body: NewReleasesIngestBody; response: NewReleasesIngestResult };
@@ -469,6 +470,9 @@ export namespace Illusi {
 	export namespace Ingest {
 		export async function soundcloud(items: SoundCloudIngestItem[]) {
 			return call('POST /ingest/soundcloud', { body: { items } });
+		}
+		export async function service(items: CatalogItem[]) {
+			return call('POST /ingest/service', { body: { items } });
 		}
 		export async function genius(action: ActionOf<'CHECK_GENIUS'>, preloaded_state: LyricsPreloadedState) {
 			return call('POST /ingest/genius', { body: { token: action.token, track_id: action.track_id, preloaded_state } });
