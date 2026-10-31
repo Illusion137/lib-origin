@@ -1,16 +1,16 @@
 import { CookieJar } from '@common/utils/cookie_util';
-import type { HexColor, LinkerLink, Track } from '@illusive/types';
+import type { CompactPlaylist, HexColor, LinkerLink, Track } from '@illusive/types';
 import { gen_uuid, generate_new_uid } from '@common/utils/util';
 import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref, type BasePrefLoadMap, type BasePrefSaveMap, type BasePrefTypes } from '@native/mmkv/mmkv_utils';
 import { fs } from '@native/fs/fs';
 import type { MMKVModule } from '@native/mmkv/mmkv.base';
 import { Constants } from './constants';
 import { load_native_mmkv, mmkv } from '@native/mmkv/mmkv';
-import { force_json_parse_array } from '@common/utils/parse_util';
+import { force_json_parse, force_json_parse_array } from '@common/utils/parse_util';
 import { get_native_platform } from '@native/native_mode';
 
 export namespace Prefs {
-	export type OtherPrefTypes = 'BIAS' | 'LINKER_LINKS' | 'PAST_QUEUE';
+	export type OtherPrefTypes = 'BIAS' | 'LINKER_LINKS' | 'PAST_QUEUE' | 'NEW_RELEASES';
 
 	export type PossibleThemes = keyof typeof themes;
 
@@ -148,6 +148,7 @@ export namespace Prefs {
 		equalizer_preset: { default_value: 'Default', current_value: 'Default', type: 'STRING' } as BasePref<EqualizerPreset, OtherPrefTypes>,
 		crossfade: { default_value: 0, current_value: 0, type: 'NUMBER' } as BasePref<number, OtherPrefTypes>,
 		past_queue: { default_value: { index: 0, tracks: [] }, current_value: { index: 0, tracks: [] }, type: 'PAST_QUEUE' } as BasePref<PastQueue, OtherPrefTypes>,
+		new_releases: { default_value: [], current_value: [], type: 'NEW_RELEASES' } as BasePref<CompactPlaylist[], OtherPrefTypes>,
 		last_sleep_timer_ms: { default_value: 0, current_value: 0, type: 'NUMBER' } as BasePref<number, OtherPrefTypes>,
 		linker_links: { default_value: [], current_value: [], type: 'LINKER_LINKS' } as BasePref<LinkerLink[], OtherPrefTypes>,
 		primary_color: { default_value: '#7400fe', current_value: '#7400fe', type: 'STRING' } as BasePref<HexColor, OtherPrefTypes>,
@@ -156,6 +157,11 @@ export namespace Prefs {
 		carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: 'STRING' } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
 		p2p_name: { default_value: `sumi!-${generate_new_uid('')}`, current_value: `sumi!-${generate_new_uid('')}`, type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 		recent_rejected_ota_update: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		illusi_session: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		/** The first account that signed in; the default database holds its library */
+		illusi_owner_account: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		/** Database file the app opens at startup; empty is the default one */
+		illusi_active_db: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 
 		default_playlist_max_size: { default_value: 200, current_value: 200, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,
 		recently_played_max_size: { default_value: 100, current_value: 100, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,
@@ -185,7 +191,7 @@ export namespace Prefs {
 		use_cookies_on_download: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
 		use_cookies_on_search: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
 		use_cookies_on_artist: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
-		disable_supabase: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Other', description: '(Modification may require restart)' } as BasePref<boolean, OtherPrefTypes>,
+		illusi_api_url: { default_value: '', current_value: '', type: 'STRING', visible: true, section: 'Other', description: 'Illusi server used for accounts and sync (Modification may require restart)' } as BasePref<string, OtherPrefTypes>,
 		dev_mode: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Other', description: '(Modification may require restart)' } as BasePref<boolean, OtherPrefTypes>,
 
 		audiobook_player_display_mode: { default_value: 'cover_only', current_value: 'cover_only', type: 'STRING', visible: true, section: 'Audiobooks', description: 'What the audiobook player shows while listening: cover art, inline book images, or scrolling reader' } as BasePref<'cover_only' | 'book_images' | 'reader_follow_along', OtherPrefTypes>,
@@ -203,13 +209,15 @@ export namespace Prefs {
 	export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
 		...base_load_map,
 		LINKER_LINKS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '[]'),
-		PAST_QUEUE: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
+		PAST_QUEUE: async (mod: MMKVModule, pref_key: string) => force_json_parse(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
+		NEW_RELEASES: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '[]'),
 		BIAS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias))
 	};
 	export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
 		...base_save_map,
 		LINKER_LINKS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
 		PAST_QUEUE: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue)),
+		NEW_RELEASES: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as CompactPlaylist[])),
 		BIAS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as Bias))
 	};
 
@@ -566,7 +574,12 @@ export namespace Prefs {
 		await save_pref('recent_searches', recent_searches);
 		return recent_searches;
 	}
+	let recent_search_listener: ((query: string) => void) | undefined;
+	export function on_recent_search(listener: ((query: string) => void) | undefined) {
+		recent_search_listener = listener;
+	}
 	export async function add_to_recent_searches(query: string) {
+		recent_search_listener?.(query);
 		let recent_searches = await try_remove_from_recent_searches(query);
 		recent_searches.unshift(query);
 		recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
