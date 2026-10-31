@@ -2,7 +2,10 @@ import * as Origin from '@origin/index';
 import { ytm_album } from '@illusive/parsers/youtube_music_parser';
 import { Prefs } from '@illusive/prefs';
 import type { ISOString, CompactPlaylist } from '@illusive/types';
-import { supabase } from '@illusive/db/supabase';
+import { Illusi } from '@origin/illusi/illusi';
+import { IllusiAccount } from '@illusive/db/sync/illusi_account';
+import { IllusiActions } from '@illusive/db/sync/illusi_actions';
+import { IllusiViews } from '@illusive/illusi_views';
 import { sc_highest_artwork, soundcloud_parse_track } from './parsers/soundcloud_parser';
 import { reinterpret_cast } from '@common/cast';
 import { create_uri } from './illusive_utils';
@@ -54,9 +57,12 @@ export async function soundcloud_get_new_releases(): Promise<CompactPlaylist[]> 
 }
 
 export async function illusi_get_new_releases(): Promise<CompactPlaylist[]> {
-	const { data: { session } } = await supabase().auth.getSession();
-	if (!session) return [];
-	const result = await Origin.Illusi.get_new_releases({ jwt: session.access_token });
-	if ('error' in result) return [];
-	return result;
+	if (!IllusiAccount.is_logged_in()) return [];
+	const result = await Illusi.NewReleasesApi.mine(IllusiActions.release_services());
+	if (Illusi.is_error(result)) return [];
+	IllusiActions.handle(result.actions);
+	return [
+		...result.albums.map(IllusiViews.album),
+		...result.soundcloud_tracks.map(IllusiViews.soundcloud_release).filter(release => release !== null)
+	].sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
 }
