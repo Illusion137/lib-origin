@@ -10,7 +10,7 @@ import { fs } from '@native/fs/fs';
 import { SQLfs } from './sql/sql_fs';
 import { Translate } from '@roze/translate';
 import { Illusi } from '@origin/illusi/illusi';
-import type { Action, LyricsResponse, ParsedLyrics } from '@origin/illusi/types';
+import type { Action, LyricsLine, LyricsResponse, ParsedLyrics } from '@origin/illusi/types';
 import { IllusiActions } from './db/sync/illusi_actions';
 import { server_service_ids, track_graph } from './db/sync/push';
 import { deterministic_uuid } from './db/v2/keys';
@@ -151,23 +151,43 @@ export namespace Lyrics {
 	}
 
 	// Illusi in an natively English app; so we'll assume that English is primary language
-	// TODO maybe add better support with franc but it seems iffy right now so ignore for a bit
+	type LyricsLanguage = 'ja' | 'ko' | 'zh';
+	const LYRICS_LANGUAGE_PATTERNS: [LyricsLanguage, RegExp][] = [
+		['ja', /[\u3040-\u30ff]/],
+		['ko', /[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]/],
+		['zh', /[\u4e00-\u9fff]/]
+	];
+
+	export function detect_lyrics_language(lyrics: string): LyricsLanguage | null {
+		return LYRICS_LANGUAGE_PATTERNS.find(([, pattern]) => pattern.test(lyrics))?.[0] ?? null;
+	}
+
 	export function should_translate(lyrics: string) {
-		// only checking japanese right now
-		const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
-		return jp_regex.test(lyrics);
+		return detect_lyrics_language(lyrics) !== null;
+	}
+
+	async function translate_lines(lines: string[]): PromiseResult<string[]> {
+		const lang_from = detect_lyrics_language(lines.join('\n'));
+		if (lang_from === null) return generror('No translatable language detected in lyrics', 'LOW');
+		return Translate.google_translate_html(lines, { lang_from, lang_to: 'en' });
 	}
 
 	export async function translate_plain_lyrics(lyrics: string): PromiseResult<[string, string][]> {
 		const lyrics_lines = lyrics.split('\n');
-		const translation_result = await Translate.google_translate_html(lyrics_lines, { lang_from: 'ja', lang_to: 'en' });
+		const translation_result = await translate_lines(lyrics_lines);
 		if ('error' in translation_result) return translation_result;
 		return lyrics_lines.map((line, i) => [line, translation_result[i]]);
 	}
-	export async function translate_synced_lyrics(lyrics: SyncedLyric[]): PromiseResult<[SyncedLyric, string][]> {
+	export async function translate_line_synced_lyrics(lyrics: SyncedLyric[]): PromiseResult<[SyncedLyric, string][]> {
 		const lyrics_lines = lyrics.map(lyric => lyric.text);
-		const translation_result = await Translate.google_translate_html(lyrics_lines, { lang_from: 'ja', lang_to: 'en' });
+		const translation_result = await translate_lines(lyrics_lines);
 		if ('error' in translation_result) return translation_result;
 		return lyrics.map((lyric, i) => [lyric, translation_result[i]]);
+	}
+	export async function translate_word_synced_lyrics(lines: LyricsLine[]): PromiseResult<[LyricsLine, string][]> {
+		const lyrics_lines = lines.map(line => line.segments?.map(segment => segment.text).join('').trim() || line.text);
+		const translation_result = await translate_lines(lyrics_lines);
+		if ('error' in translation_result) return translation_result;
+		return lines.map((line, i) => [line, translation_result[i]]);
 	}
 }
