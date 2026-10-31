@@ -17,6 +17,9 @@ import { SQLArtists } from './sql/sql_artists';
 import { reinterpret_cast } from '@common/cast';
 import { parse_spotify_artist_album, parse_spotify_artist_appears_on, parse_spotify_artist_track, parse_spotify_similar_artist } from './parsers/spotify_parser';
 import { catch_log } from '@common/utils/error_util';
+import { Illusi } from '@origin/illusi/illusi';
+import { IllusiAccount } from './db/sync/illusi_account';
+import { IllusiViews } from './illusi_views';
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
 	return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
@@ -322,5 +325,34 @@ export async function illusi_get_artist(id: string): Promise<MusicServiceArtist>
 			unfollow: empty_async_call
 		};
 	}
-	return default_artist();
+	return illusi_get_server_artist(id);
+}
+
+async function illusi_get_server_artist(id: string): Promise<MusicServiceArtist> {
+	if (!IllusiAccount.is_logged_in()) return default_artist();
+	const [artist, tracks, albums, singles_eps, similar] = await Promise.all([
+		Illusi.Artists.get(id),
+		Illusi.Artists.tracks(id, { sort: 'popular', limit: 50 }),
+		Illusi.Artists.albums(id, { album_type: 'ALBUM', limit: 50 }),
+		Illusi.Artists.albums(id, { limit: 100 }),
+		Illusi.Artists.similar(id, 20)
+	]);
+	if (Illusi.is_error(artist)) return default_artist(artist);
+	const album_items = Illusi.is_error(albums) ? [] : albums.items;
+	const other_items = Illusi.is_error(singles_eps) ? [] : singles_eps.items.filter(album => album.album_type !== 'ALBUM');
+	const newest = [...album_items, ...other_items].sort((a, b) => new Date(b.release_date ?? 0).getTime() - new Date(a.release_date ?? 0).getTime())[0];
+	const compact = IllusiViews.artist(artist);
+	return {
+		name: artist.name,
+		tracks: Illusi.is_error(tracks) ? [] : IllusiViews.prefer_local(tracks.items.map(IllusiViews.track), GLOBALS.global_var.sql_tracks),
+		albums: album_items.map(IllusiViews.album),
+		singles_eps: other_items.map(IllusiViews.album),
+		playlists: [],
+		...(newest === undefined ? {} : { latest_release: IllusiViews.album(newest) }),
+		similar_artists: Illusi.is_error(similar) ? [] : similar.items.map(IllusiViews.artist),
+		...(compact.profile_artwork_url === undefined ? {} : { profile_artwork_url: compact.profile_artwork_url }),
+		is_following: undefined,
+		follow: empty_async_call,
+		unfollow: empty_async_call
+	};
 }

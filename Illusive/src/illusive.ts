@@ -555,7 +555,7 @@ export namespace Illusive {
 				? search_tracks.error!
 				: convert_track(track, { ...opts, to_music_service: opts.possible_services[0] });
 		}
-		search_tracks.tracks.sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0));
+		search_tracks.tracks.sort((a, b) => (a.service_plays ?? 0) - (b.service_plays ?? 0));
 		for (let i = 0; i < search_tracks.tracks.length; i++) {
 			const score = conversion_score(i, track, search_tracks.tracks[i], opts.to_music_service);
 

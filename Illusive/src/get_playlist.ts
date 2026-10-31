@@ -25,7 +25,11 @@ import { deezer_parse_track } from './parsers/deezer_parser';
 import { pandora_parse_track } from './parsers/pandora_parser';
 import { tidal_parse_track, tidal_cover_url } from './parsers/tidal_parser';
 import rozfetch from '@common/rozfetch';
-import { supabase } from './db/supabase';
+import { Illusi } from '@origin/illusi/illusi';
+import type { TrackView } from '@origin/illusi/types';
+import { IllusiAccount } from './db/sync/illusi_account';
+import { IllusiViews } from './illusi_views';
+import { GLOBALS } from './globals';
 
 export const album_fetch_opts: RoZFetchRequestInit = {
 	cache_opts: {
@@ -319,30 +323,54 @@ export async function apple_music_get_playlist_continuation(opts: AppleMusicPlay
 	};
 }
 
-interface IllusiPlaylistContinuation { uuid: string; offset: number }
-export async function illusi_get_playlist(uuid: string): Promise<MusicServicePlaylist> {
-	uuid = urlid(uuid);
-	const { data: { session } } = await supabase().auth.getSession();
-	if (session?.access_token === undefined) return default_playlist(generror('User not authenticated', 'LOW', { url: uuid }));
-	const playlist = await Origin.Illusi.get_playlist(uuid, { jwt: session.access_token });
-	if ('error' in playlist) return default_playlist(playlist);
+interface IllusiPlaylistContinuation { uuid: string; cursor: string }
+const ILLUSI_PAGE_LIMIT = 100;
+
+function illusi_library_tracks(tracks: TrackView[]) {
+	return IllusiViews.prefer_local(tracks.map(IllusiViews.track), GLOBALS.global_var.sql_tracks);
+}
+/** A playlist uuid or `album.<id>`, from an `illusi:` uri, a bare id or an illusi.dev/playlist link */
+function illusi_playlist_id(url: string): string {
+	const id = urlid(url);
+	return id.slice(id.lastIndexOf('/') + 1);
+}
+export async function illusi_get_playlist(url: string): Promise<MusicServicePlaylist> {
+	const id = illusi_playlist_id(url);
+	if (!IllusiAccount.is_logged_in()) return default_playlist(generror('User not authenticated', 'LOW', { url }));
+	const album_id = IllusiViews.album_id_of(id);
+	if (album_id !== null) {
+		const detail = await Illusi.Albums.get(album_id);
+		if (Illusi.is_error(detail)) return default_playlist(detail);
+		const compact = IllusiViews.album(detail.album);
+		return {
+			title: detail.album.name,
+			creator: compact.artist,
+			tracks: illusi_library_tracks(detail.tracks),
+			artwork_url: IllusiViews.best_thumbnail_url(detail.album.thumbnails) || undefined,
+			...(compact.date ? { date: compact.date } : {}),
+			continuation: null
+		};
+	}
+	const [playlist, page] = await Promise.all([Illusi.Playlists.get(id), Illusi.Playlists.tracks(id, { limit: ILLUSI_PAGE_LIMIT })]);
+	if (Illusi.is_error(playlist)) return default_playlist(playlist);
+	if (Illusi.is_error(page)) return default_playlist(page);
 	return {
 		title: playlist.title,
-		tracks: playlist.tracks,
-		description: playlist.description,
-		artwork_url: playlist.artwork_path ? Origin.Illusi.artwork_public_url(playlist.artwork_path) : undefined,
-		date: new Date(playlist.created_at).toISOString() as ISOString,
-		continuation: playlist.tracks.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid, offset: playlist.tracks.length } as IllusiPlaylistContinuation
+		creator: [{ name: playlist.owner.username, uri: null }],
+		tracks: illusi_library_tracks(page.items),
+		...(playlist.description ? { description: playlist.description } : {}),
+		artwork_url: IllusiViews.best_thumbnail_url(playlist.thumbnails) || undefined,
+		date: playlist.created_at as ISOString,
+		continuation: page.next_cursor === null ? null : { uuid: id, cursor: page.next_cursor } as IllusiPlaylistContinuation
 	};
 }
 export async function illusi_get_playlist_continuation(opts: IllusiPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
-	const { data: { session } } = await supabase().auth.getSession();
-	if (session?.access_token === undefined) return default_playlist(generror('User not authenticated', 'LOW', { opts }));
-	const playlist = await Origin.Illusi.get_playlist_continuation(opts.uuid, opts.offset, { jwt: session.access_token });
-	if ('error' in playlist) return default_playlist(playlist);
+	if (!IllusiAccount.is_logged_in()) return default_playlist(generror('User not authenticated', 'LOW', { opts }));
+	const page = await Illusi.Playlists.tracks(opts.uuid, { cursor: opts.cursor, limit: ILLUSI_PAGE_LIMIT });
+	if (Illusi.is_error(page)) return default_playlist(page);
 	return {
-		tracks: playlist,
-		continuation: playlist.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid: opts.uuid, offset: opts.offset + playlist.length } as IllusiPlaylistContinuation
+		tracks: illusi_library_tracks(page.items),
+		continuation: page.next_cursor === null ? null : { uuid: opts.uuid, cursor: page.next_cursor } as IllusiPlaylistContinuation
 	};
 }
 
