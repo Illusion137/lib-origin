@@ -87,13 +87,13 @@ export namespace FutsalShuffle {
 				? 0
 				: Math.max(30 - weeks_of({ milliseconds: icache.most_recent_added_ms - new Date(track.meta.added_date).getTime() }), 0),
 			total_plays: 100 * ((track.meta?.plays ?? 0) / icache.max_plays_in_library),
-			acousticness: !is_empty(track.acousticness) ? track.acousticness! - 0.5 : 0,
-			danceability: !is_empty(track.danceability) ? track.danceability! - 0.5 : 0,
-			energy: !is_empty(track.energy) ? track.energy! - 0.5 : 0,
-			instrumentalness: !is_empty(track.instrumentalness) ? track.instrumentalness! - 0.5 : 0,
-			liveness: !is_empty(track.liveness) ? track.liveness! - 0.5 : 0,
-			speechiness: !is_empty(track.speechiness) ? track.speechiness! - 0.5 : 0,
-			valence: !is_empty(track.valence) ? track.valence! - 0.5 : 0
+			acousticness: !is_empty(track.analysis?.acousticness) ? track.analysis!.acousticness! - 0.5 : 0,
+			danceability: !is_empty(track.analysis?.danceability) ? track.analysis!.danceability! - 0.5 : 0,
+			energy: !is_empty(track.analysis?.energy) ? track.analysis!.energy! - 0.5 : 0,
+			instrumentalness: !is_empty(track.analysis?.instrumentalness) ? track.analysis!.instrumentalness! - 0.5 : 0,
+			liveness: !is_empty(track.analysis?.liveness) ? track.analysis!.liveness! - 0.5 : 0,
+			speechiness: !is_empty(track.analysis?.speechiness) ? track.analysis!.speechiness! - 0.5 : 0,
+			valence: !is_empty(track.analysis?.valence) ? track.analysis!.valence! - 0.5 : 0
 		};
 	}
 
