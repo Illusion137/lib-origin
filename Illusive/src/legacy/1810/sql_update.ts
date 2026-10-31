@@ -1,16 +1,15 @@
-import { extract_string_from_pattern, version_greater_equal_to } from '@common/utils/util';
-import { SQLTracks } from './sql_tracks';
+import { extract_string_from_pattern, is_empty, version_greater_equal_to } from '@common/utils/util';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
 import type { ISOString, Promises, Track } from '@illusive/types';
 import { Constants } from '@illusive/constants';
 import { create_uri } from '@illusive/illusive_utils';
-import { is_empty } from '../../../common/utils/util';
 import { GLOBALS } from '@illusive/globals';
 import { generror_catch } from '@common/utils/error_util';
 import { Prefs } from '@illusive/prefs';
 import {
 	db,
 	load_legacy_1720_database
-} from '@illusive/db/database';
+} from './database';
 import { DrizzleUtils } from '@common/utils/drizzle_utils';
 import type { LT1720 } from '@illusive/legacy/1720/legacy_types';
 import {
@@ -22,11 +21,11 @@ import {
 	playlists_tracks_table,
 	sync_metadata_table,
 	tracks_table
-} from '@illusive/db/schema';
+} from './schema';
 import { LSQLParser } from '@illusive/legacy/1720/legacy_sql_parser';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { fs } from '@native/fs/fs';
-import { ChangeTracker } from '@illusive/db/sync/change_tracker';
+import { ChangeTracker } from './change_tracker';
 import { Illusive } from '@illusive/illusive';
 import { and, eq, ne } from 'drizzle-orm';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
@@ -68,7 +67,6 @@ export namespace SQLUpdate {
 						const new_track: Track = {
 							...track,
 							youtube_id: '',
-							youtubemusic_id: '',
 							artists: [{ name: Constants.import_uri_id, uri: create_uri('illusi', Constants.import_uri_id) }]
 						};
 						promises.push(SQLTracks.update_track(track.uid, new_track));
@@ -102,7 +100,7 @@ export namespace SQLUpdate {
 			const legacy_backpack = LSQLParser.sql_tracks_to_tracks(await $.get_all_async<LT1720.SQLTrack>('SELECT * FROM backpack'));
 			const legacy_new_releases = await Promise.all((await $.get_all_async<LT1720.SQLCompactPlaylist>('SELECT * FROM new_releases')).map(LSQLParser.sql_compact_playlist_to_compact_playlist));
 
-			const should_redownload_artwork = (t: Track) => {
+			const should_redownload_artwork = (t: Pick<Track, 'artwork_url' | 'youtube_id' | 'spotify_id' | 'amazonmusic_id' | 'applemusic_id' | 'soundcloud_id'>) => {
 				if (!t.artwork_url) return false;
 				if (!t.youtube_id) return false;
 				if (t.spotify_id || t.amazonmusic_id || t.applemusic_id || t.soundcloud_id) return false;
@@ -163,7 +161,8 @@ export namespace SQLUpdate {
 					await ChangeTracker.log_change('backpack', 'insert', inserted_backpack_track[0].uid, inserted_backpack_track[0]);
 				}
 				for (const new_release of legacy_new_releases) {
-					const inserted_new_releases = await tx.insert(new_releases_table).values(new_release).returning().catch(e => fail_callback(e, tx));
+					// 1720 song tracks go in as they were stored; 1810 reads them like its own rows
+					const inserted_new_releases = await tx.insert(new_releases_table).values(new_release as unknown as typeof new_releases_table.$inferInsert).returning().catch(e => fail_callback(e, tx));
 					const nr_title = typeof inserted_new_releases[0].title === 'string' ? JSON.parse(inserted_new_releases[0].title) : inserted_new_releases[0].title;
 					await ChangeTracker.log_change('new_releases', 'insert', nr_title?.uri ?? `nr_${inserted_new_releases[0].id}`, inserted_new_releases[0]);
 				}
