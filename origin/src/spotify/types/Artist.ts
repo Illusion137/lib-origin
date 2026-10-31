@@ -306,8 +306,16 @@ export interface Track {
 }
 
 export interface AlbumOfTrack {
+	artists?: {
+		items: { profile: { name: string }; uri: string }[];
+	};
 	coverArt: CoverArt5;
+	date?: {
+		isoString: string;
+		precision: 'DAY';
+	};
 	uri: string;
+	name?: string;
 }
 
 export interface CoverArt5 {
