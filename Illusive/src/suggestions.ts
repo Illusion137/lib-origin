@@ -2,11 +2,12 @@ import type { CompactArtist, CompactPlaylist, MusicServiceType, Track } from './
 import * as Origin from '@origin/index';
 import { ytm_album, ytm_artist, ytm_track } from './parsers/youtube_music_parser';
 import { Prefs } from './prefs';
-import { supabase } from './db/supabase';
 import { parse_spotify_search_album, parse_spotify_search_artist, parse_spotify_search_track } from './parsers/spotify_parser';
 import type { SpotifySearchTrack } from '@origin/spotify/types/SearchResult';
 import { reinterpret_cast } from '@common/cast';
 import { generror_catch } from '@common/utils/error_util';
+import { Illusi } from '@origin/illusi/illusi';
+import { IllusiViews } from './illusi_views';
 
 export namespace Suggestions {
 	export type SuggestionItem = (string | Track | CompactPlaylist | CompactArtist);
@@ -54,12 +55,12 @@ export namespace Suggestions {
 			}
 		}).filter(item => item !== undefined);
 	}
+
 	export async function get_illusi_suggestions(query: string): Promise<SuggestionItem[]> {
-		const { data: { session } } = await supabase().auth.getSession();
-		if (session?.access_token === undefined) return [];
-		const suggestions = await Origin.Illusi.get_search_suggestions(query, { jwt: session.access_token });
-		if ('error' in suggestions) return [];
-		return suggestions;
+		if (Illusi.get_session() === null) return [];
+		const suggestions = await Illusi.search_suggestions(query);
+		if (Illusi.is_error(suggestions)) return [];
+		return IllusiViews.suggestions(suggestions);
 	}
 	export async function get_music_service_suggestions(query: string, music_service_type: MusicServiceType) {
 		switch (music_service_type) {

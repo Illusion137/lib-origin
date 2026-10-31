@@ -3,8 +3,10 @@ import type { ClientSearchOf, Playlist, Track, User } from '@origin/soundcloud/t
 import { CookieJar } from '@common/utils/cookie_util';
 import type { ResponseError } from '@common/types';
 import { is_empty } from '@common/utils/util';
-import { supabase } from '@illusive/db/supabase';
-import type { ISOString, TrackMetaData } from '@illusive/types';
+import { Illusi } from '@origin/illusi/illusi';
+import { IllusiAccount } from '@illusive/db/sync/illusi_account';
+import { IllusiViews } from '@illusive/illusi_views';
+import { GLOBALS } from '@illusive/globals';
 import type { YTSearchResult } from '@origin/youtube/parser';
 import { parse_apple_music_search_album, parse_apple_music_search_artist, parse_apple_music_search_playlist, parse_apple_music_search_track } from '@illusive/parsers/apple_music_parser';
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_user } from '@illusive/parsers/soundcloud_parser';
@@ -145,59 +147,14 @@ export async function soundcloud_search_continuation(opts: SoundcloudSearchConti
 }
 
 export async function illusi_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
-	const { data: { session } } = await supabase().auth.getSession();
-	if (!session) return default_search();
-
-	const result = await Origin.Illusi.search_tracks(query, opts?.limit ?? 50, { jwt: session.access_token });
-	if ('error' in result) return default_search();
-
-	const default_meta: TrackMetaData = {
-		added_date: new Date().toISOString() as ISOString,
-		last_played_date: new Date().toISOString() as ISOString,
-		plays: 0
-	};
-
+	if (!IllusiAccount.is_logged_in()) return default_search();
+	const result = await Illusi.search(query, { limit: Math.min(opts?.limit ?? 50, 200) });
+	if (Illusi.is_error(result)) return default_search(result);
 	return {
-		tracks: result.map(t => ({
-			uid: t.uid,
-			title: t.title,
-			alt_title: t.alt_title,
-			artists: t.artists,
-			duration: t.duration,
-			prods: t.prods,
-			genre: t.genre,
-			tags: t.tags,
-			explicit: t.explicit,
-			unreleased: t.unreleased,
-			album: t.album,
-			illusi_id: t.illusi_id,
-			imported_id: t.imported_id,
-			youtube_id: t.youtube_id,
-			youtubemusic_id: t.youtubemusic_id,
-			soundcloud_id: t.soundcloud_id,
-			soundcloud_permalink: t.soundcloud_permalink,
-			spotify_id: t.spotify_id,
-			amazonmusic_id: t.amazonmusic_id,
-			applemusic_id: t.applemusic_id,
-			bandlab_id: t.bandlab_id,
-			audiomack_id: t.audiomack_id,
-			deezer_id: t.deezer_id,
-			tidal_id: t.tidal_id,
-			pandora_id: t.pandora_id,
-			artwork_url: t.artwork_url,
-			acousticness: t.acousticness,
-			danceability: t.danceability,
-			energy: t.energy,
-			instrumentalness: t.instrumentalness,
-			liveness: t.liveness,
-			speechiness: t.speechiness,
-			valence: t.valence,
-			plays: 0,
-			meta: default_meta
-		})),
-		playlists: [],
-		albums: [],
-		artists: [],
+		tracks: IllusiViews.prefer_local((result.tracks?.items ?? []).map(IllusiViews.track), GLOBALS.global_var.sql_tracks),
+		playlists: (result.playlists?.items ?? []).map(IllusiViews.playlist),
+		albums: (result.albums?.items ?? []).map(IllusiViews.album),
+		artists: (result.artists?.items ?? []).map(IllusiViews.artist),
 		continuation: null
 	};
 }
