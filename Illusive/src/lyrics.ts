@@ -1,202 +1,173 @@
-import fuzzysort from "fuzzysort";
-import { artist_string, clean_track_info, number_epsilon_distance, small_track } from "./illusive_utils";
-import * as Origin from '@origin/index';
-import { generror } from "@common/utils/error_util";
-import type { Track } from "./types";
-import type { PromiseResult, ResponseError } from "@common/types";
-import { remove_topic } from "@common/utils/clean_util";
-import { extract_strings_from_pattern, is_empty, seconds_of } from "@common/utils/util";
+import fuzzysort from 'fuzzysort';
+import { small_track } from './illusive_utils';
+import { generror } from '@common/utils/error_util';
+import type { Track } from './types';
+import type { PromiseResult, ResponseError } from '@common/types';
+import { remove_topic } from '@common/utils/clean_util';
+import { extract_strings_from_pattern, is_empty, seconds_of } from '@common/utils/util';
 import { reinterpret_cast } from '../../common/cast';
-import { fs } from "@native/fs/fs";
-import { SQLfs } from "./sql/sql_fs";
-import { Translate } from "@roze/translate";
+import { fs } from '@native/fs/fs';
+import { SQLfs } from './sql/sql_fs';
+import { Translate } from '@roze/translate';
+import { Illusi } from '@origin/illusi/illusi';
+import type { Action, LyricsResponse, ParsedLyrics } from '@origin/illusi/types';
+import { IllusiActions } from './db/sync/illusi_actions';
+import { server_service_ids, track_graph } from './db/sync/push';
+import { deterministic_uuid } from './db/v2/keys';
+import { encode_track } from './db/v2/track_codec';
 
 export namespace Lyrics {
-    export interface LyricsResult {
-        plain: string;
-        synced: string | undefined;
-    }
-    export interface LyricsInterval {
-        from: number;
-    }
-    export interface SyncedLyric {
-        text: string;
-        interval: LyricsInterval;
-    }
-    export interface LRCLibSyncedLyrics {
-        type: "LRCLIB";
-        lyrics: SyncedLyric[];
-    }
-    const LRCLIB_HIT_DURATION_EPSILON = 7;
-    async function lrclib_lyrics_try_good_result(track: Track, search_query: string): PromiseResult<LyricsResult> {
-        const track_title_split = track.title.split(' - ');
-        if(track_title_split.length === 2) {
-            const search_response = await Origin.LRCLib.search({q: search_query});
-            if ("error" in search_response) return search_response;
-            const best_result = search_response.find(hit => {
-                const title_result = fuzzysort.single(
-                    clean_track_info(hit.trackName).trim(),
-                    clean_track_info(track.title).trim(),
-                );
-                const artist_result = fuzzysort.single(
-                    clean_track_info(hit.artistName).trim(),
-                    clean_track_info(artist_string(track)).trim(),
-                );
-                return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5 && number_epsilon_distance(hit.duration, track.duration, LRCLIB_HIT_DURATION_EPSILON);
-            });
-            if (best_result === undefined) return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_query });
-            return { plain: best_result.plainLyrics, synced: typeof best_result.syncedLyrics !== "string" ? undefined : best_result.syncedLyrics };
-        }
-        else {
-            const lrclib_result = await Origin.LRCLib.get({
-                track_name: track.title, 
-                artist_name: remove_topic(track.artists?.[0]?.name) ?? "", 
-                album_name: track.album?.name ?? "",
-                duration: track.duration
-            });
-            if("error" in lrclib_result) {
-                if(clean_track_info(track.title) !== track.title) {
-                    const cleaned_title_lrclib_result = await Origin.LRCLib.get({
-                        track_name: clean_track_info(track.title), 
-                        artist_name: remove_topic(track.artists?.[0]?.name) ?? "", 
-                        album_name: track.album?.name ?? "",
-                        duration: track.duration
-                    });
-                    if("error" in cleaned_title_lrclib_result) return cleaned_title_lrclib_result;
-                    return { plain: cleaned_title_lrclib_result.plainLyrics, synced: typeof cleaned_title_lrclib_result.syncedLyrics !== "string" ? undefined : cleaned_title_lrclib_result.syncedLyrics };
-                }
-                return lrclib_result;
-            }
-            return { plain: lrclib_result.plainLyrics, synced: typeof lrclib_result.syncedLyrics !== "string" ? undefined : lrclib_result.syncedLyrics };
-        }
-    }
-    async function genius_lyrics_try_good_result(track: Track, search_query: string): PromiseResult<LyricsResult> {
-        const search_response = await Origin.Genius.search_songs(search_query, {});
-        if ("error" in search_response) return search_response;
-        const best_result = search_response.find(hit => {
-            const title_result = fuzzysort.single(
-                clean_track_info(hit.result.title).trim(),
-                clean_track_info(track.title).trim(),
-            );
-            const artist_result = fuzzysort.single(
-                clean_track_info(hit.result.artist_names).trim(),
-                clean_track_info(artist_string(track)).trim(),
-            );
-            return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5
-        });
-        if (best_result === undefined) return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_query });
-        const lyrics_response = await Origin.Genius.get_lyrics(best_result.result, {});
-        if (typeof lyrics_response === "object") return lyrics_response;
-        return { plain: lyrics_response, synced: undefined };
-    }
-    async function lyrics_get_first_good_result(track: Track, search_queries: string[]) {
-        // LRCLib pass
-        for (const search_query of search_queries) {
-            const result = await lrclib_lyrics_try_good_result(track, search_query);
-            if ("error" in result) continue;
-            return result;
-        }
-        // Genius pass
-        for (const search_query of search_queries) {
-            const result = await genius_lyrics_try_good_result(track, search_query);
-            if ("error" in result) continue;
-            return result;
-        }
-        return generror("Unable to find a good lyrics result", "INFO", { track: small_track(track), search_queries });
-    }
-    export async function get_track_lyrics(track: Track): PromiseResult<LyricsResult> {
-        const artist_name = track.artists[0].name === "Various Artists" || track.artists[0].name.includes("Release") ? "" : track.artists[0].name;
+	export interface LyricsResult {
+		plain: string;
+		synced: string | undefined;
+	}
+	export interface LyricsInterval {
+		from: number;
+	}
+	export interface SyncedLyric {
+		text: string;
+		interval: LyricsInterval;
+	}
+	export interface LRCLibSyncedLyrics {
+		type: 'LRCLIB';
+		lyrics: SyncedLyric[];
+	}
+	function lrc_time(ms: number): string {
+		const total_cs = Math.max(0, Math.round(ms / 10));
+		const minutes = Math.floor(total_cs / 6000);
+		const seconds = Math.floor(total_cs / 100) % 60;
+		const centis = total_cs % 100;
+		return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
+	}
+	/** The server's parsed lyrics as plain text plus, when timed, LRC */
+	export function from_illusi(lyrics: ParsedLyrics): LyricsResult {
+		const plain = lyrics.lines.map(line => line.text).join('\n');
+		const timed = lyrics.sync_type !== 'NONE' && lyrics.lines.some(line => line.start_ms !== null);
+		const synced = timed
+			? lyrics.lines.filter(line => line.start_ms !== null).map(line => `[${lrc_time(line.start_ms!)}] ${line.text}`).join('\n')
+			: undefined;
+		return { plain, synced };
+	}
+	/** The track's illusi_id: its own, else the server's match for it, contributing the track when there is none */
+	async function server_track_id(track: Track): PromiseResult<string> {
+		if (track.illusi_id) return track.illusi_id;
+		const row = encode_track(track, { now: Date.now(), title_is_catalog: true });
+		const artist = row.track.artists[0]?.name;
+		const resolved = await Illusi.resolve([{
+			ref: track.uid,
+			type: 'track',
+			service_ids: server_service_ids(row.track),
+			title: row.track.title,
+			artist: artist === undefined ? null : remove_topic(artist),
+			album: row.track.album?.name ?? null,
+			duration_ms: row.track.duration_ms
+		}]);
+		if (Illusi.is_error(resolved)) return resolved;
+		const match = resolved[track.uid];
+		if (match) return match;
+		// The same id on a retry, so the server applies the contribution once
+		const contributed = await Illusi.contribute(track_graph([row]), deterministic_uuid(`lyrics:${track.uid}`));
+		if (Illusi.is_error(contributed)) return contributed;
+		return contributed.refs[track.uid] ?? generror('The server didn\'t accept the track', 'LOW', { track: small_track(track), rejected: contributed.rejected });
+	}
 
-        const base_query = `${remove_topic(artist_name)} ${track.title.replace(`${artist_name} - `, '')}`;
-        const base_query_clean = `${remove_topic(artist_name)} ${clean_track_info(track.title.replace(`${artist_name} - `, ''))}`;
+	export async function get_track_lyrics(track: Track): PromiseResult<LyricsResult> {
+		if (Illusi.get_session() === null) return generror('Log in to Illusi to get lyrics', 'INFO', { track: small_track(track) });
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return id;
+		let response: LyricsResponse | ResponseError = await Illusi.Tracks.lyrics(id);
+		if (Illusi.is_error(response)) return response;
+		const pending: Action[] = [];
+		for (const action of response.actions ?? []) {
+			if (response.lyrics !== null || response.instrumental === true || (action.type !== 'CHECK_GENIUS' && action.type !== 'CHECK_YOUTUBE_MUSIC')) {
+				pending.push(action);
+				continue;
+			}
+			const answered = action.type === 'CHECK_GENIUS' ? await IllusiActions.check_genius(action) : await IllusiActions.check_youtube_music(action);
+			if (answered !== null) response = answered;
+		}
+		IllusiActions.handle(pending);
+		if (response.lyrics !== null) return from_illusi(response.lyrics);
+		if (response.instrumental === true) return { plain: '', synced: undefined };
+		return generror('No lyrics found', 'INFO', { track: small_track(track) });
+	}
+	function parse_lrclib_synced_line(line: string): SyncedLyric | ResponseError {
+		const pattern = /\[(\d+):(\d+)\.(\d+)\] ?(.*?)$/g;
+		const extracted = extract_strings_from_pattern(line, pattern);
+		if (extracted.length < 4) return generror('Couldn\'t extract the lyrics pattern', 'LOW', { line });
+		const [minute, second, millisecond, text] = extracted;
+		const seconds = seconds_of({
+			milliseconds: parseFloat(millisecond),
+			seconds: parseFloat(second),
+			minutes: parseFloat(minute)
+		});
+		return { text: text, interval: { from: seconds } };
+	}
+	export function lrclib_synced_lyrics_to_json(synced_lyrics_text: string): LRCLibSyncedLyrics | ResponseError {
+		const synced_lyrics = synced_lyrics_text.split('\n').filter(line => !is_empty(line)).map(parse_lrclib_synced_line);
+		const first_error = synced_lyrics.find(item => 'error' in item);
+		if (first_error !== undefined) return first_error;
+		return {
+			type: 'LRCLIB',
+			lyrics: reinterpret_cast<SyncedLyric[]>(synced_lyrics)
+		};
+	}
 
-        const track_title_split = track.title.split(' - ');
-        const best_result = await lyrics_get_first_good_result(track, [
-            track_title_split.length === 2 ? `${clean_track_info(track_title_split[0])} ${clean_track_info(track_title_split[1])}` : undefined,
-            track_title_split.length === 2 ? `${clean_track_info(track_title_split[1])} ${remove_topic(artist_name)}` : undefined,
-            base_query,
-            base_query_clean !== base_query ? base_query_clean : undefined
-        ].filter(s => s !== undefined));
-        if ("error" in best_result) return best_result;
-        return best_result;
-    }
-    function parse_lrclib_synced_line(line: string): SyncedLyric | ResponseError {
-        const pattern = /\[(\d+):(\d+)\.(\d+)\] ?(.*?)$/g;
-        const extracted = extract_strings_from_pattern(line, pattern);
-        if (extracted.length < 4) return generror("Couldn't extract the lyrics pattern", "LOW", { line });
-        const [minute, second, millisecond, text] = extracted;
-        const seconds = seconds_of({
-            milliseconds: parseFloat(millisecond),
-            seconds: parseFloat(second),
-            minutes: parseFloat(minute)
-        })
-        return { text: text, interval: { from: seconds } };
-    }
-    export function lrclib_synced_lyrics_to_json(synced_lyrics_text: string): LRCLibSyncedLyrics | ResponseError {
-        const synced_lyrics = synced_lyrics_text.split('\n').filter(line => !is_empty(line)).map(parse_lrclib_synced_line);
-        const first_error = synced_lyrics.find(item => "error" in item);
-        if (first_error !== undefined) return first_error;
-        return {
-            type: "LRCLIB",
-            lyrics: reinterpret_cast<SyncedLyric[]>(synced_lyrics)
-        }
-    }
+	interface LyricsFileEntry {
+		filename: string;
+		path: string;
+		content: string;
+	}
 
-    interface LyricsFileEntry {
-        filename: string;
-        path: string;
-        content: string;
-    };
+	let loaded_fuzzy_lyrics: LyricsFileEntry[] = [];
+	export async function load_lyrics_into_fuzzy_memory(tracks: Track[]) {
+		loaded_fuzzy_lyrics = await Promise.all<LyricsFileEntry>(
+			tracks.filter(track => !is_empty(track.lyrics_uri))
+				.map(async (track) => {
+					const path = SQLfs.lyrics_directory(track.lyrics_uri!);
+					const content = await fs().read_as_string(path, { encoding: 'utf8' });
+					return {
+						filename: path.split('/').pop() ?? path,
+						path,
+						content: typeof content === 'object' ? '' : content
+					};
+				})
+		);
+	}
+	export async function fuzzy_search_lyrics(query: string) {
+		const prepared = loaded_fuzzy_lyrics.map(f => ({
+			...f,
+			_filename: fuzzysort.prepare(f.filename),
+			_content: fuzzysort.prepare(f.content)
+		}));
 
-    let loaded_fuzzy_lyrics: LyricsFileEntry[] = [];
-    export async function load_lyrics_into_fuzzy_memory(tracks: Track[]) {
-        loaded_fuzzy_lyrics = await Promise.all<LyricsFileEntry>(
-            tracks.filter(track => !is_empty(track.lyrics_uri))
-                .map(async (track) => {
-                    const path = SQLfs.lyrics_directory(track.lyrics_uri!);
-                    const content = await fs().read_as_string(path, { encoding: "utf8" });
-                    return {
-                        filename: path.split('/').pop() ?? path,
-                        path,
-                        content: typeof content === "object" ? "" : content,
-                    };
-                })
-        );
-    }
-    export async function fuzzy_search_lyrics(query: string) {
-        const prepared = loaded_fuzzy_lyrics.map(f => ({
-            ...f,
-            _filename: fuzzysort.prepare(f.filename),
-            _content: fuzzysort.prepare(f.content),
-        }));
+		const results = fuzzysort.go(query, prepared, {
+			keys: ['_filename', '_content'],
+			limit: 50,
+			threshold: -10000
+		});
 
-        const results = fuzzysort.go(query, prepared, {
-            keys: ['_filename', '_content'],
-            limit: 50,
-            threshold: -10000,
-        });
+		return results;
+	}
 
-        return results;
-    }
+	// Illusi in an natively English app; so we'll assume that English is primary language
+	// TODO maybe add better support with franc but it seems iffy right now so ignore for a bit
+	export function should_translate(lyrics: string) {
+		// only checking japanese right now
+		const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
+		return jp_regex.test(lyrics);
+	}
 
-    // Illusi in an natively English app; so we'll assume that English is primary language
-    // TODO maybe add better support with franc but it seems iffy right now so ignore for a bit
-    export function should_translate(lyrics: string) {
-        // only checking japanese right now
-        const jp_regex = /[一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+/gi;
-        return jp_regex.test(lyrics);
-    }
-
-    export async function translate_plain_lyrics(lyrics: string): PromiseResult<[string, string][]> {
-        const lyrics_lines = lyrics.split('\n');
-        const translation_result = await Translate.google_translate_html(lyrics_lines, {lang_from: "ja", lang_to: "en"});
-        if("error" in translation_result) return translation_result;
-        return lyrics_lines.map((line, i) => [line, translation_result[i]]);
-    }
-    export async function translate_synced_lyrics(lyrics: SyncedLyric[]): PromiseResult<[SyncedLyric, string][]> {
-        const lyrics_lines = lyrics.map(lyric => lyric.text);
-        const translation_result = await Translate.google_translate_html(lyrics_lines, {lang_from: "ja", lang_to: "en"});
-        if("error" in translation_result) return translation_result;
-        return lyrics.map((lyric, i) => [lyric, translation_result[i]])
-    }
+	export async function translate_plain_lyrics(lyrics: string): PromiseResult<[string, string][]> {
+		const lyrics_lines = lyrics.split('\n');
+		const translation_result = await Translate.google_translate_html(lyrics_lines, { lang_from: 'ja', lang_to: 'en' });
+		if ('error' in translation_result) return translation_result;
+		return lyrics_lines.map((line, i) => [line, translation_result[i]]);
+	}
+	export async function translate_synced_lyrics(lyrics: SyncedLyric[]): PromiseResult<[SyncedLyric, string][]> {
+		const lyrics_lines = lyrics.map(lyric => lyric.text);
+		const translation_result = await Translate.google_translate_html(lyrics_lines, { lang_from: 'ja', lang_to: 'en' });
+		if ('error' in translation_result) return translation_result;
+		return lyrics.map((lyric, i) => [lyric, translation_result[i]]);
+	}
 }

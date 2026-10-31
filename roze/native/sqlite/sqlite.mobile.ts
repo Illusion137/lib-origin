@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { SQLiteModule, RawSQLiteConnection } from '@native/sqlite/sqlite.base';
 import { open } from '@op-engineering/op-sqlite';
 import { drizzle } from 'drizzle-orm/op-sqlite';
@@ -13,7 +12,7 @@ function wrap_op_sqlite_client(client: any): RawSQLiteConnection {
 			if (params !== undefined) await client.execute(sql, params);
 			else await client.execute(sql);
 		},
-		execute_transaction: (fn) => client.transaction(fn),
+		execute_transaction: fn => client.transaction(fn)
 	};
 }
 
@@ -26,5 +25,5 @@ export const mobile_sqlite: SQLiteModule = {
 		const conn = open({ name, location });
 		return wrap_op_sqlite_client(conn);
 	},
-	wrap_client: (client) => wrap_op_sqlite_client(client),
+	wrap_client: client => wrap_op_sqlite_client(client)
 };

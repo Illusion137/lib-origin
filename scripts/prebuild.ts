@@ -125,7 +125,7 @@ async function prebuild_main() {
 
         await update_env();
         await genv();
-        await generate_illusi_playlists_links();
+        //  await generate_illusi_playlists_links();
         await generate_illusive_prefs_themes_css();
         
         update_spotify_secrets;

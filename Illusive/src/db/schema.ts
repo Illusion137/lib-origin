@@ -1,212 +1,206 @@
-import { gen_uuid, generate_new_uid } from '@common/utils/util';
-import type { CompactPlaylistAlbumType, CompactPlaylistType, ExplicitMode, IllusiveThumbnail, InheritedPlaylist, InheritedSearch, ISOString, LinkedPlaylist, NamedUUID, SortType, Track, TrackMetaData } from "@illusive/types";
-import { index, int, sqliteTable, text, numeric } from "drizzle-orm/sqlite-core";
+import type { InheritanceMode, SortType as ApiSortType } from '@origin/illusi/types';
+import type { TrackAnalysisData, TrackMetaData, TrackProducer } from '@illusive/types';
+import { index, int, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
-const tracks_config = {
-    id: int().primaryKey({autoIncrement: true}).notNull(),
-    uid: text().notNull().$defaultFn(() => generate_new_uid("")),
-    title: text().notNull().default(""),
-    alt_title: text().notNull().default(""),
-    artists: text({mode: 'json'}).notNull().$type<NamedUUID[]>().default([]),
-    duration: int().notNull().default(0),
-    prods: text().notNull().default(""),
-    genre: text().notNull().default(""),
-    tags: text({mode: 'json'}).notNull().$type<string[]>().default([]),
-    explicit: text().notNull().$type<ExplicitMode>().default("NONE"),
-    unreleased: int({ mode: 'boolean' }).notNull().default(false),
-    album: text({mode: 'json'}).notNull().$type<NamedUUID>().default({name: "", uri: null}),
-    plays: int().notNull().default(0),
-    imported_id: text().notNull().default(""),
-    illusi_id: text().notNull().$defaultFn(gen_uuid),
-    youtube_id: text().notNull().default(""),
-    youtubemusic_id: text().notNull().default(""),
-    soundcloud_id: int().notNull().default(0),
-    soundcloud_permalink: text().notNull().default(""),
-    spotify_id: text().notNull().default(""),
-    amazonmusic_id: text().notNull().default(""),
-    applemusic_id: text().notNull().default(""),
-    bandlab_id: text().notNull().default(""),
-    audiomack_id: text().notNull().default(""),
-    deezer_id: text().notNull().default(""),
-    pandora_id: text().notNull().default(""),
-    tidal_id: text().notNull().default(""),
-    artwork_url: text().notNull().default(""),
-    thumbnail_uri: text().notNull().default(""),
-    media_uri: text().notNull().default(""),
-    lyrics_uri: text().notNull().default(""),
-    synced_lyrics_uri: text().notNull().default(""),
-    meta: text({mode: 'json'}).notNull().$type<TrackMetaData>().$defaultFn(() => ({
-        added_date: new Date().toISOString() as ISOString,
-        last_played_date: new Date().toISOString() as ISOString,
-        plays: 0,
-    })),
-    acousticness: numeric({mode: "number"}).notNull().default(0),
-    danceability: numeric({mode: "number"}).notNull().default(0),
-    energy: numeric({mode: "number"}).notNull().default(0),
-    instrumentalness: numeric({mode: "number"}).notNull().default(0),
-    liveness: numeric({mode: "number"}).notNull().default(0),
-    speechiness: numeric({mode: "number"}).notNull().default(0),
-    valence: numeric({mode: "number"}).notNull().default(0),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now()),
-    sync_error: text(),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+// Columns marked local are never synced.
 
-const playlists_config = {
-    id: int().primaryKey({autoIncrement: true}),
-    uuid: text().notNull().$defaultFn(gen_uuid),
-    title: text().notNull().default(""),
-    description: text().notNull().default(""),
-    pinned: int({mode: 'boolean'}).notNull().default(false),
-    archived: int({mode: 'boolean'}).notNull().default(false),
-    thumbnail_uri: text().notNull().default(""),
-    artwork_path: text(),
-    sort: text().notNull().$type<SortType>().default("OLDEST"),
-    public: int({mode: 'boolean'}).notNull().default(false),
-    public_uuid: text().notNull().$defaultFn(gen_uuid),
-    inherited_playlists: text({mode: 'json'}).notNull().$type<InheritedPlaylist[]>().default([]),
-    inherited_searchs: text({mode: 'json'}).notNull().$type<InheritedSearch[]>().default([]),
-    linked_playlists: text({mode: 'json'}).notNull().$type<LinkedPlaylist[]>().default([]),
-    date: text().notNull().$defaultFn(() => new Date().toISOString()),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now()),
-    sync_error: text(),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-const playlists_tracks_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    uuid: text().notNull(),
-    track_uid: text().notNull(),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now()),
-    sync_error: text(),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-const new_releases_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    title: text({mode: 'json'}).unique().notNull().$type<NamedUUID>().default({name: '', uri: null}),
-    artist: text({mode: 'json'}).notNull().$type<NamedUUID[]>().default([]),
-    artwork_url: text().notNull().default(""),
-    artwork_thumbnails: text({mode: 'json'}).notNull().$type<IllusiveThumbnail[]>().default([]),
-    explicit: text().notNull().$type<ExplicitMode>().default("NONE"),
-    album_type: text().notNull().$type<CompactPlaylistAlbumType>().default("SINGLE"),
-    type: text().notNull().$type<CompactPlaylistType>().default("ALBUM"), // ?? for legacy support IG
-    date: text().notNull().$type<ISOString>().default(new Date(0).toISOString() as ISOString),
-    song_track: text({mode: 'json'}).$type<Track>(),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now()),
-    sync_error: text(),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-const artists_config = {
-    uri: text().primaryKey().notNull(),
-    name: text().notNull(),
-    artwork_url: text().notNull(),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now())
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-const track_plays_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    count: int().notNull().default(0),
-    track_uid: text().notNull(),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    modified_at: int().notNull().$defaultFn(() => Date.now())
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-export const tracks_table                   = sqliteTable("tracks", tracks_config, (table) => ([index("tracks_uuid_idx").on(table.uid), index("tracks_modified_at_idx").on(table.modified_at)]));
-export type SQLTrack = typeof tracks_table.$inferSelect;
-export const tracks_deleted_table           = sqliteTable("tracks_deleted", tracks_config);
-export const recently_played_tracks_table   = sqliteTable("recently_played_tracks", tracks_config, (table) => ([index("recently_played_tracks_uuid_idx").on(table.uid)]));
-export const backpack_table                 = sqliteTable("backpack", tracks_config, (table) => ([index("backpack_uuid_idx").on(table.uid)]));
-export const backpack_deleted_table         = sqliteTable("backpack_deleted", tracks_config);
-export const playlists_table                = sqliteTable("playlists", playlists_config, (table) => ([index("playlists_uuid_idx").on(table.uuid)]));
-export type SQLPlaylist = typeof playlists_table.$inferSelect;
-export const playlists_deleted_table        = sqliteTable("playlists_deleted", playlists_config);
-export const playlists_tracks_table         = sqliteTable("playlists_tracks", playlists_tracks_config, (table) => ([index("playlists_tracks_uuid_track_uid_idx").on(table.uuid, table.track_uid), index("playlists_tracks_track_uid_idx").on(table.track_uid), index("playlists_tracks_modified_at_idx").on(table.modified_at)]));
-export type SQLPlaylistTrack = typeof playlists_tracks_table.$inferSelect;
-export const playlists_tracks_deleted_table = sqliteTable("playlists_tracks_deleted", playlists_tracks_config);
-export const new_releases_table             = sqliteTable("new_releases", new_releases_config);
-export type SQLNewRelease = typeof new_releases_table.$inferSelect;
-export const artists_table                  = sqliteTable("artists", artists_config);
-export type SQLArtist = Omit<typeof artists_table.$inferSelect, "id">;
-export type SQLArtistInsert = Omit<typeof artists_table.$inferInsert, "id">;
-export const track_plays_table              = sqliteTable("track_plays", track_plays_config, (table) => ([index("track_plays_track_uid_created_at_idx").on(table.track_uid, table.created_at)]));
-export type SQLTrackPlays = Omit<typeof track_plays_table.$inferSelect, "id">;
-
-const sync_metadata_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    table_name: text().notNull().unique(),
-    last_sync_at: int().notNull().default(0),
-    last_pushed_at: int().notNull().default(0),
-    last_modified_at: int().notNull().default(0),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-const change_log_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    table_name: text().notNull(),
-    operation: text().notNull().$type<'insert' | 'update' | 'delete'>(),
-    record_id: text().notNull(),
-    data: text({ mode: 'json' }).notNull(),
-    deleted: int({ mode: 'boolean' }).notNull().default(false),
-    created_at: int().notNull().$defaultFn(() => Date.now()),
-    synced: int({ mode: 'boolean' }).notNull().default(false),
-    attempts: int().notNull().default(0),
-    last_error: text().notNull().default(''),
-    dropped: int({ mode: 'boolean' }).notNull().default(false),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-const sync_deletes_config = {
-    id: int().primaryKey({ autoIncrement: true }),
-    table_name: text().notNull(),
-    record_id: text().notNull(),
-    deleted_at: int().notNull().$defaultFn(() => Date.now()),
-    sync_error: text(),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
-
-export const sync_metadata_table = sqliteTable("sync_metadata", sync_metadata_config);
-export const change_log_table = sqliteTable("change_log", change_log_config);
-export const sync_deletes_table = sqliteTable("sync_deletes", sync_deletes_config, (table) => ([index("sync_deletes_table_idx").on(table.table_name)]));
-export type SQLSyncDelete = typeof sync_deletes_table.$inferSelect;
-
-const audiobooks_config = {
-	id: int().primaryKey({ autoIncrement: true }).notNull(),
-	uuid: text().notNull().unique().$defaultFn(gen_uuid),
-	version: int().notNull().default(1),
-	title: text().notNull().default(""),
-	author: text().notNull().default(""),
-	publisher: text().notNull().default(""),
-	cover: text().notNull().default(""),
-	date: text().notNull().default(""),
-	series_name: text().notNull().default(""),
-	series_no: int().notNull().default(0),
-	sort_index: int().notNull().default(0),
-	source_file: text().notNull().default(""),
-	source_file_type: text().notNull().default("FILEBASE"),
-	roz_uri: text().notNull().default(""),
-	source_raw_uri: text().notNull().default(""),
-	total_duration_ms: int().notNull().default(0),
-	chapter_count: int().notNull().default(0),
-	tts_engine: text().notNull().default(""),
-	tts_voice_id: text().notNull().default(""),
-	last_chapter_index: int().notNull().default(0),
-	last_chapter_timestamp_ms: int().notNull().default(0),
-	total_listened_ms: int().notNull().default(0),
-	added_date: text().notNull().$defaultFn(() => new Date().toISOString()),
-	last_read_date: text().notNull().default(""),
-	deleted: int({ mode: 'boolean' }).notNull().default(false),
+const timestamps = {
 	created_at: int().notNull().$defaultFn(() => Date.now()),
-	modified_at: int().notNull().$defaultFn(() => Date.now()),
-} as const satisfies ReturnType<Parameters<typeof sqliteTable>[1]>;
+	modified_at: int().notNull().$defaultFn(() => Date.now())
+};
 
-export const audiobooks_table = sqliteTable("audiobooks", audiobooks_config, (table) => ([index("audiobooks_uuid_idx").on(table.uuid)]));
-export type AudiobookTableItem = typeof audiobooks_table.$inferSelect;
-export type AudiobookTableInsert = typeof audiobooks_table.$inferInsert;
+/** User-owned rows: edited_at is the client edit time used for last-write-wins */
+const user_owned = {
+	deleted: int({ mode: 'boolean' }).notNull().default(false),
+	edited_at: int().notNull().$defaultFn(() => Date.now()),
+	...timestamps
+};
+
+/** Catalog data a user track carries along. The catalog itself lives on the server; this is the user's copy. */
+export interface SnapshotNamed {
+	name: string;
+	uri?: string | null;
+	uuid?: string;
+	illusi_id?: string;
+}
+export interface SnapshotThumbnail { url: string; width: number | null; height: number | null }
+export interface TrackSnapshot {
+	title: string;
+	/** In credit order */
+	artists: SnapshotNamed[];
+	album: SnapshotNamed | null;
+	duration_ms: number | null;
+	/** null: unknown, false: clean, true: explicit */
+	explicit: boolean | null;
+	imported: boolean;
+	/** Server service id columns */
+	service_ids: Record<string, string | number>;
+	thumbnails: SnapshotThumbnail[];
+	analysis: TrackAnalysisData | null;
+	// Illusive-only
+	alt_title: string;
+	prods: TrackProducer[];
+	unreleased: boolean;
+	/** Service view count (Track.plays) */
+	views: number;
+	imported_id: string;
+	/** TrackMetaData fields with no column of their own */
+	meta_extra: Partial<TrackMetaData>;
+}
+
+/**
+ * Every track the user has: the library (deleted = false), plus tracks only their playlists or plays point at
+ * (deleted = true). `track` is a snapshot of the catalog data, written from server rows, or by Illusive for tracks
+ * the server doesn't know yet. `uid` is the local key; tracks first seen through the server use their illusi_id.
+ */
+export const user_tracks_table = sqliteTable('user_tracks', {
+	uid: text().primaryKey(),
+	illusi_id: text(),
+	track: text({ mode: 'json' }).notNull().$type<TrackSnapshot>(),
+	/** The user's own title for the track */
+	title: text(),
+	downloaded_at: int(),
+	start_at: int(),
+	end_at: int(),
+	/** Unavailable on its original service; reported to the server */
+	backpacked: int({ mode: 'boolean' }).notNull().default(false),
+	backpacked_at: int(),
+	// Local
+	media_uri: text().notNull().default(''),
+	thumbnail_uri: text().notNull().default(''),
+	lyrics_uri: text().notNull().default(''),
+	synced_lyrics_uri: text().notNull().default(''),
+	/** Caches of track_plays */
+	plays: int().notNull().default(0),
+	last_played_at: int(),
+	...user_owned
+}, table => [uniqueIndex('user_tracks_illusi_id_idx').on(table.illusi_id), index('user_tracks_deleted_idx').on(table.deleted)]);
+export type UserTrackRow = typeof user_tracks_table.$inferSelect;
+export type UserTrackInsert = typeof user_tracks_table.$inferInsert;
+
+/** Device cache of artist profile pictures, keyed by the uri tracks reference artists by */
+export const artist_artwork_table = sqliteTable('artist_artwork', {
+	uri: text().primaryKey(),
+	name: text().notNull(),
+	artwork_url: text().notNull(),
+	...timestamps
+});
+
+export const playlists_table = sqliteTable('playlists', {
+	uuid: text().primaryKey(),
+	title: text().notNull().default(''),
+	description: text(),
+	pinned: int({ mode: 'boolean' }).notNull().default(false),
+	archived: int({ mode: 'boolean' }).notNull().default(false),
+	public: int({ mode: 'boolean' }).notNull().default(false),
+	sort_mode: text().notNull().$type<ApiSortType>().default('OLDEST'),
+	/** The server artwork thumbnail_uri mirrors; null until a local change is uploaded or a server one downloaded */
+	artwork_id: text(),
+	/** Last-write-wins clock for the artwork (ms), separate from edited_at */
+	artwork_edited_at: int(),
+	// Local
+	thumbnail_uri: text().notNull().default(''),
+	artwork_path: text(),
+	date: text().notNull().$defaultFn(() => new Date().toISOString()),
+	...user_owned
+});
+export type PlaylistRow = typeof playlists_table.$inferSelect;
+
+export const playlist_tracks_table = sqliteTable('playlist_tracks', {
+	playlist_uuid: text().notNull(),
+	track_uid: text().notNull(),
+	/** Local: insertion order */
+	position: int().notNull().default(0),
+	...user_owned
+}, table => [
+	primaryKey({ columns: [table.playlist_uuid, table.track_uid] }),
+	index('playlist_tracks_track_uid_idx').on(table.track_uid),
+	index('playlist_tracks_order_idx').on(table.playlist_uuid, table.position)
+]);
+export type PlaylistTrackRow = typeof playlist_tracks_table.$inferSelect;
+
+/** local_id is the push temp_id; id is the server's once assigned */
+export const playlist_inherited_searches_table = sqliteTable('playlist_inherited_searches', {
+	local_id: text().primaryKey(),
+	id: int(),
+	playlist_uuid: text().notNull(),
+	query: text(),
+	mode: text().$type<InheritanceMode>(),
+	position: int().notNull().default(0),
+	...user_owned
+}, table => [uniqueIndex('playlist_inherited_searches_id_idx').on(table.id), index('playlist_inherited_searches_playlist_idx').on(table.playlist_uuid)]);
+export type InheritedSearchRow = typeof playlist_inherited_searches_table.$inferSelect;
+
+export const playlist_inherited_playlists_table = sqliteTable('playlist_inherited_playlists', {
+	local_id: text().primaryKey(),
+	id: int(),
+	playlist_uuid: text().notNull(),
+	ref_uuid: text().notNull(),
+	mode: text().$type<InheritanceMode>(),
+	position: int().notNull().default(0),
+	...user_owned
+}, table => [uniqueIndex('playlist_inherited_playlists_id_idx').on(table.id), index('playlist_inherited_playlists_playlist_idx').on(table.playlist_uuid)]);
+export type InheritedPlaylistRow = typeof playlist_inherited_playlists_table.$inferSelect;
+
+/** Append-only; client_id dedupes pushes */
+export const track_plays_table = sqliteTable('track_plays', {
+	client_id: text().primaryKey(),
+	track_uid: text().notNull(),
+	created_at: int().notNull().$defaultFn(() => Date.now())
+}, table => [index('track_plays_track_uid_created_at_idx').on(table.track_uid, table.created_at), index('track_plays_created_at_idx').on(table.created_at)]);
+
+/** Local only. Keeps a snapshot because played tracks aren't always in the library. */
+export const recently_played_table = sqliteTable('recently_played', {
+	uid: text().primaryKey(),
+	track: text({ mode: 'json' }).notNull().$type<Record<string, unknown>>(),
+	played_at: int().notNull().$defaultFn(() => Date.now())
+}, table => [index('recently_played_played_at_idx').on(table.played_at)]);
+
+export const OUTBOX_KINDS = [
+	'user_track', 'playlist', 'playlist_track', 'inherited_search', 'inherited_playlist', 'track_play', 'recent_search', 'unavailable',
+	'playlist_artwork', 'artwork_download'
+] as const;
+export type OutboxKind = typeof OUTBOX_KINDS[number];
+
+/**
+ * Rows waiting to be pushed, one per (kind, key). A push reads each row's current state; version guards against
+ * dropping an entry that was touched again while its push was in flight.
+ */
+export const outbox_table = sqliteTable('outbox', {
+	id: int().primaryKey({ autoIncrement: true }),
+	kind: text().notNull().$type<OutboxKind>(),
+	key: text().notNull(),
+	payload: text({ mode: 'json' }).$type<Record<string, unknown>>(),
+	version: int().notNull().default(1),
+	attempts: int().notNull().default(0),
+	last_error: text(),
+	created_at: int().notNull().$defaultFn(() => Date.now())
+}, table => [uniqueIndex('outbox_kind_key_idx').on(table.kind, table.key)]);
+export type OutboxRow = typeof outbox_table.$inferSelect;
+
+/**
+ * Requests to the Illusi API that couldn't be sent (offline, or the server was unreachable), resent in order on
+ * startup and when the network comes back. `op` names a RequestQueue operation and `args` are its arguments.
+ */
+export const request_queue_table = sqliteTable('request_queue', {
+	id: int().primaryKey({ autoIncrement: true }),
+	op: text().notNull(),
+	args: text({ mode: 'json' }).notNull().$type<unknown[]>(),
+	/** Dropped unsent after this (ms); requests answering an action expire with its token */
+	expires_at: int(),
+	attempts: int().notNull().default(0),
+	last_error: text(),
+	created_at: int().notNull().$defaultFn(() => Date.now())
+});
+export type RequestQueueRow = typeof request_queue_table.$inferSelect;
+
+export const sync_state_table = sqliteTable('sync_state', {
+	key: text().primaryKey(),
+	value: text({ mode: 'json' }).$type<unknown>()
+});
+
+/** Progress of the 1810 -> v2 migration, written in the same transaction as each copied chunk */
+export const migration_state_table = sqliteTable('migration_state', {
+	key: text().primaryKey(),
+	value: text({ mode: 'json' }).$type<unknown>()
+});

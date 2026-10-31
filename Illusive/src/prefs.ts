@@ -1,632 +1,645 @@
-import { CookieJar } from "@common/utils/cookie_util";
-import type { HexColor, LinkerLink, Track } from '@illusive/types';
-import { gen_small_id, gen_uuid } from '@common/utils/util';
+import { CookieJar } from '@common/utils/cookie_util';
+import type { CompactPlaylist, HexColor, LinkerLink, Track } from '@illusive/types';
+import { gen_uuid, generate_new_uid } from '@common/utils/util';
 import { base_load_map, base_save_map, generic_load_prefs, generic_reset_prefs, generic_save_pref, type BasePref, type BasePrefLoadMap, type BasePrefSaveMap, type BasePrefTypes } from '@native/mmkv/mmkv_utils';
 import { fs } from '@native/fs/fs';
 import type { MMKVModule } from '@native/mmkv/mmkv.base';
-import { Constants } from "./constants";
-import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
-import { force_json_parse_array } from "@common/utils/parse_util";
-import { get_native_platform } from "@native/native_mode";
+import { Constants } from './constants';
+import { load_native_mmkv, mmkv } from '@native/mmkv/mmkv';
+import { force_json_parse, force_json_parse_array } from '@common/utils/parse_util';
+import { get_native_platform } from '@native/native_mode';
 
 export namespace Prefs {
-    export type OtherPrefTypes = "BIAS" | "LINKER_LINKS" | "PAST_QUEUE";
+	export type OtherPrefTypes = 'BIAS' | 'LINKER_LINKS' | 'PAST_QUEUE' | 'NEW_RELEASES';
 
-    export type PossibleThemes = keyof typeof themes;
+	export type PossibleThemes = keyof typeof themes;
 
-    export async function load_mmkv_module() {
-        await load_native_mmkv();
-        await mmkv().load_mmkv({
-            id: 'illusi.illusion.com',
-            path: get_native_platform() === "REACT_NATIVE" ? await fs().document_directory(".illusi", "ipref.mmkv") : await fs().document_directory("ipref.mmkv")
-        });
-    }
+	export async function load_mmkv_module() {
+		await load_native_mmkv();
+		await mmkv().load_mmkv({
+			id: 'illusi.illusion.com',
+			path: get_native_platform() === 'REACT_NATIVE' ? await fs().document_directory('.illusi', 'ipref.mmkv') : await fs().document_directory('ipref.mmkv')
+		});
+	}
 
-    const user_uuid = gen_uuid();
+	const user_uuid = gen_uuid();
 
-    export const equalizer_presets = {
-        "Default": [0, 0, 0, 0, 0, 0],
+	export const equalizer_presets = {
+		'Default': [0, 0, 0, 0, 0, 0],
 
-        // Bass variants
-        "Super Bass Boost": [8, 6, 2, 0, -1, -2],
-        "Bass Boost": [6, 4, 2, 0, -1, -2],
-        "Bass Reducer": [-6, -4, -2, 0, 0, 0],
-        "Deep Bass": [10, 7, 3, 0, -1, -2],
-        "Punchy Bass": [7, 3, 1, 0, -1, -1],
-        "Sub Bass": [10, 8, 4, 0, -2, -3],
-        "Low Bass": [-6, -4, -2, 0, 0, 0],
-        "No Bass": [-12, -6, -2, 0, 0, 0],
+		// Bass variants
+		'Super Bass Boost': [8, 6, 2, 0, -1, -2],
+		'Bass Boost': [6, 4, 2, 0, -1, -2],
+		'Bass Reducer': [-6, -4, -2, 0, 0, 0],
+		'Deep Bass': [10, 7, 3, 0, -1, -2],
+		'Punchy Bass': [7, 3, 1, 0, -1, -1],
+		'Sub Bass': [10, 8, 4, 0, -2, -3],
+		'Low Bass': [-6, -4, -2, 0, 0, 0],
+		'No Bass': [-12, -6, -2, 0, 0, 0],
 
-        // Treble variants
-        "Treble Boost": [-2, -1, 0, 2, 4, 6],
-        "Treble Reducer": [0, 0, 0, -2, -4, -6],
-        "Air": [-1, 0, 0, 1, 3, 7],
+		// Treble variants
+		'Treble Boost': [-2, -1, 0, 2, 4, 6],
+		'Treble Reducer': [0, 0, 0, -2, -4, -6],
+		'Air': [-1, 0, 0, 1, 3, 7],
 
-        // Boost variants
-        "Small Boost": [3, 2, 1, 0, 0, 0],
-        "Loudness": [5, 3, 1, 0, 2, 4],
-        "Full Boost": [5, 4, 3, 3, 4, 5],
-        "V-Shape": [6, 3, -1, -1, 3, 6],
-        "Flat Cut": [-3, -3, -3, -3, -3, -3],
+		// Boost variants
+		'Small Boost': [3, 2, 1, 0, 0, 0],
+		'Loudness': [5, 3, 1, 0, 2, 4],
+		'Full Boost': [5, 4, 3, 3, 4, 5],
+		'V-Shape': [6, 3, -1, -1, 3, 6],
+		'Flat Cut': [-3, -3, -3, -3, -3, -3],
 
-        // Vocal variants
-        "Vocal Boost": [-2, -1, 1, 3, 4, 2],
-        "Voice Clarity": [-3, -2, 2, 4, 3, 1],
-        "Podcast": [-3, -2, 1, 3, 4, 3],
-        "Karaoke": [-5, -3, 1, 4, 5, 3],
-        "Broadcast": [-2, 0, 2, 4, 4, 2],
+		// Vocal variants
+		'Vocal Boost': [-2, -1, 1, 3, 4, 2],
+		'Voice Clarity': [-3, -2, 2, 4, 3, 1],
+		'Podcast': [-3, -2, 1, 3, 4, 3],
+		'Karaoke': [-5, -3, 1, 4, 5, 3],
+		'Broadcast': [-2, 0, 2, 4, 4, 2],
 
-        // Genre
-        "Rock": [4, 2, 1, 1, 3, 5],
-        "Hard Rock": [6, 3, 1, 2, 4, 6],
-        "Metal": [7, 4, 1, 2, 4, 7],
-        "Pop": [-1, 1, 3, 4, 2, 1],
-        "K-Pop": [2, 2, 4, 4, 3, 2],
-        "Classical": [0, 1, 2, 1, 0, 2],
-        "Orchestra": [2, 1, 2, 1, 1, 3],
-        "Jazz": [2, 2, 1, 0, 2, 3],
-        "Blues": [5, 3, 1, 0, 2, 4],
-        "Soul": [4, 3, 2, 1, 2, 3],
-        "R&B": [6, 4, 2, 1, 2, 2],
-        "Hip-Hop": [6, 4, 2, 0, 1, -1],
-        "Trap": [8, 5, 2, 0, 0, -1],
-        "Electronic": [5, 3, 0, 1, 4, 6],
-        "EDM": [6, 4, 0, 2, 5, 7],
-        "House": [5, 3, 0, 1, 4, 5],
-        "Techno": [5, 2, 0, 2, 3, 5],
-        "Ambient": [3, 2, 1, 0, 1, 3],
-        "Lofi": [4, 3, 2, -1, -2, -3],
-        "Acoustic": [-1, 0, 2, 3, 2, 1],
-        "Folk": [1, 1, 2, 2, 1, 2],
-        "Country": [2, 1, 1, 2, 3, 4],
-        "Reggae": [5, 3, -1, -2, 2, 3],
-        "Latin": [3, 2, 1, 2, 4, 5],
-        "Dance": [5, 3, 0, 2, 4, 5],
-        "Funk": [5, 3, 2, 1, 2, 2],
-        "Punk": [5, 2, 0, 1, 3, 5],
-        "Gospel": [3, 2, 2, 3, 4, 3],
+		// Genre
+		'Rock': [4, 2, 1, 1, 3, 5],
+		'Hard Rock': [6, 3, 1, 2, 4, 6],
+		'Metal': [7, 4, 1, 2, 4, 7],
+		'Pop': [-1, 1, 3, 4, 2, 1],
+		'K-Pop': [2, 2, 4, 4, 3, 2],
+		'Classical': [0, 1, 2, 1, 0, 2],
+		'Orchestra': [2, 1, 2, 1, 1, 3],
+		'Jazz': [2, 2, 1, 0, 2, 3],
+		'Blues': [5, 3, 1, 0, 2, 4],
+		'Soul': [4, 3, 2, 1, 2, 3],
+		'R&B': [6, 4, 2, 1, 2, 2],
+		'Hip-Hop': [6, 4, 2, 0, 1, -1],
+		'Trap': [8, 5, 2, 0, 0, -1],
+		'Electronic': [5, 3, 0, 1, 4, 6],
+		'EDM': [6, 4, 0, 2, 5, 7],
+		'House': [5, 3, 0, 1, 4, 5],
+		'Techno': [5, 2, 0, 2, 3, 5],
+		'Ambient': [3, 2, 1, 0, 1, 3],
+		'Lofi': [4, 3, 2, -1, -2, -3],
+		'Acoustic': [-1, 0, 2, 3, 2, 1],
+		'Folk': [1, 1, 2, 2, 1, 2],
+		'Country': [2, 1, 1, 2, 3, 4],
+		'Reggae': [5, 3, -1, -2, 2, 3],
+		'Latin': [3, 2, 1, 2, 4, 5],
+		'Dance': [5, 3, 0, 2, 4, 5],
+		'Funk': [5, 3, 2, 1, 2, 2],
+		'Punk': [5, 2, 0, 1, 3, 5],
+		'Gospel': [3, 2, 2, 3, 4, 3],
 
-        // Media / use-case
-        "Movie": [4, 2, 0, 2, 3, 4],
-        "Gaming": [5, 3, 1, 2, 4, 5],
-        "Sports Commentary": [-2, 0, 1, 3, 4, 3],
-        "Night Mode": [-2, -1, 0, 1, 1, -1],
-        "Headphones": [3, 2, 1, 1, 2, 4],
-        "Earbuds": [4, 3, 2, 1, 3, 5],
-        "Laptop Speakers": [5, 4, 2, 1, 0, -1],
-        "Large Room": [4, 2, 0, 1, 2, 4],
-    } as const;
-    export type EqualizerPreset = keyof typeof equalizer_presets;
-    interface PastQueue { index: number; tracks: Track[]; }
+		// Media / use-case
+		'Movie': [4, 2, 0, 2, 3, 4],
+		'Gaming': [5, 3, 1, 2, 4, 5],
+		'Sports Commentary': [-2, 0, 1, 3, 4, 3],
+		'Night Mode': [-2, -1, 0, 1, 1, -1],
+		'Headphones': [3, 2, 1, 1, 2, 4],
+		'Earbuds': [4, 3, 2, 1, 3, 5],
+		'Laptop Speakers': [5, 4, 2, 1, 0, -1],
+		'Large Room': [4, 2, 0, 1, 2, 4]
+	} as const;
+	export type EqualizerPreset = keyof typeof equalizer_presets;
+	interface PastQueue { index: number; tracks: Track[] }
 
-    export const default_track_shuffle_bias = {
-        total_plays: 0,
-        too_long_duration: 0,
-        too_short_duration: 0,
-        last_played: 0,
-        recent_add_date: 0,
-        is_downloaded: 0,
-        has_thumbnail_dl: 0,
-        has_lyrics_dl: 0,
-        has_synced_lyrics_dl: 0,
-        plays_from_artist: 0,
-        plays_from_album: 0,
-        plays_in_past_month: 0,
-        explicit: 0,
-        no_explicit: 0,
-        acousticness: 0,
-        danceability: 0,
-        energy: 0,
-        instrumentalness: 0,
-        liveness: 0,
-        speechiness: 0,
-        valence: 0,
-    };
-    type Bias = typeof default_track_shuffle_bias;
+	export const default_track_shuffle_bias = {
+		total_plays: 0,
+		too_long_duration: 0,
+		too_short_duration: 0,
+		last_played: 0,
+		recent_add_date: 0,
+		is_downloaded: 0,
+		has_thumbnail_dl: 0,
+		has_lyrics_dl: 0,
+		has_synced_lyrics_dl: 0,
+		plays_from_artist: 0,
+		plays_from_album: 0,
+		plays_in_past_month: 0,
+		explicit: 0,
+		no_explicit: 0,
+		acousticness: 0,
+		danceability: 0,
+		energy: 0,
+		instrumentalness: 0,
+		liveness: 0,
+		speechiness: 0,
+		valence: 0
+	};
+	type Bias = typeof default_track_shuffle_bias;
 
-    export const prefs = {
-        legacy_prefs: { default_value: "", current_value: "", type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        youtube_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        youtube_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        soundcloud_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        spotify_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        amazon_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        apple_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        bandlab_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        audiomack_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        deezer_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        pandora_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        tidal_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: "COOKIE_JAR" } as BasePref<CookieJar, OtherPrefTypes>,
-        user_uuid: { default_value: user_uuid, current_value: user_uuid, type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        last_synced: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
-        automatic_new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
-        new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: "DATE" } as BasePref<Date, OtherPrefTypes>,
-        discord_webhook_url: { default_value: '', current_value: '', type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        latest_version: { default_value: "16.2.5", current_value: "16.2.5", type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        database_version: { default_value: "17.2.0", current_value: "17.2.0", type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        recent_searches: { default_value: [], current_value: [], type: "STRING_ARRAY" } as BasePref<string[], OtherPrefTypes>,
-        equalizer_preset: { default_value: "Default", current_value: "Default", type: "STRING" } as BasePref<EqualizerPreset, OtherPrefTypes>,
-        crossfade: { default_value: 0, current_value: 0, type: "NUMBER" } as BasePref<number, OtherPrefTypes>,
-        past_queue: { default_value: { index: 0, tracks: [] }, current_value: { index: 0, tracks: [] }, type: "PAST_QUEUE" } as BasePref<PastQueue, OtherPrefTypes>,
-        last_sleep_timer_ms: { default_value: 0, current_value: 0, type: "NUMBER" } as BasePref<number, OtherPrefTypes>,
-        linker_links: { default_value: [], current_value: [], type: "LINKER_LINKS" } as BasePref<LinkerLink[], OtherPrefTypes>,
-        primary_color: { default_value: '#7400fe', current_value: '#7400fe', type: "STRING" } as BasePref<HexColor, OtherPrefTypes>,
-        theme: { default_value: 'dark', current_value: 'dark', type: "STRING" } as BasePref<PossibleThemes, OtherPrefTypes>,
-        track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS" } as BasePref<Bias, OtherPrefTypes>,
-        carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: "STRING" } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
-        p2p_name: { default_value: `sumi!-${gen_small_id()}`, current_value: `sumi!-${gen_small_id()}`, type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        recent_rejected_ota_update: { default_value: '', current_value: '', type: "STRING" } as BasePref<string, OtherPrefTypes>,
-        
-        default_playlist_max_size: { default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
-        recently_played_max_size: { default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
-        fuzzy_search_threshold: { default_value: 50, current_value: 100, type: "NUMBER", range: { start: 0, end: 100 }, visible: true, section: "Playlist", description: "The minimum confidence for Illusi's fuzzy-search  (0-100%)" } as BasePref<number, OtherPrefTypes>,
-        ignore_fat_finger_for_seconds: { default_value: 0, current_value: 0, type: "NUMBER", range: { start: 0, end: 30 }, visible: true, section: "Interactions", description: "How long to set a delay before you can press on another track for it to actually play. Ignores track inputs after a track press for x seconds." } as BasePref<number, OtherPrefTypes>,
-        default_to_strict_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Your searches will default to the strict-search over fuzzy-search" } as BasePref<boolean, OtherPrefTypes>,
-        new_releases_hide_unknowns: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Hide all artists you've never seen in New-Releases" } as BasePref<boolean, OtherPrefTypes>,
-        compact_playlists: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Your playlists in the 'Playlists' screen will become smaller" } as BasePref<boolean, OtherPrefTypes>,
-        album_track_tinting: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Visual", description: "Tints all tracks in a album a different color so that it is easier to differentiate" } as BasePref<boolean, OtherPrefTypes>,
-        only_play_downloaded: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Only play downloaded tracks (except searched ones)" } as BasePref<boolean, OtherPrefTypes>,
-        always_shuffle: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Interactions", description: "Always shuffle user-made playlists and library" } as BasePref<boolean, OtherPrefTypes>,
-        play_without_popup: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Prevents Audioplayer from popping up when playing a new queue" } as BasePref<boolean, OtherPrefTypes>,
-        auto_download: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track media whenever added to library" } as BasePref<boolean, OtherPrefTypes>,
-        auto_cache_thumbnails: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track thumbnail whenever added to library" } as BasePref<boolean, OtherPrefTypes>,
-        auto_cache_lyrics: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Automation", description: "Download track lyrics whenever added to library" } as BasePref<boolean, OtherPrefTypes>,
-        use_track_shuffle_bias: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Interactions", description: "Enabled shuffle settings from Shuffler" } as BasePref<boolean, OtherPrefTypes>,
-        expensive_wifi_only: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Data", description: "Many expensive network based operations will only happen on WiFi" } as BasePref<boolean, OtherPrefTypes>,
-        warmup_youtube: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load YouTube Client on startup" } as BasePref<boolean, OtherPrefTypes>,
-        warmup_soundcloud: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Data", description: "Load Soundcloud Client on startup" } as BasePref<boolean, OtherPrefTypes>,
+	export const prefs = {
+		legacy_prefs: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		youtube_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		youtube_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		soundcloud_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		spotify_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		amazon_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		apple_music_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		bandlab_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		audiomack_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		deezer_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		pandora_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		tidal_cookie_jar: { default_value: new CookieJar([]), current_value: new CookieJar([]), type: 'COOKIE_JAR' } as BasePref<CookieJar, OtherPrefTypes>,
+		user_uuid: { default_value: user_uuid, current_value: user_uuid, type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		last_synced: { default_value: new Date(0), current_value: new Date(0), type: 'DATE' } as BasePref<Date, OtherPrefTypes>,
+		automatic_new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: 'DATE' } as BasePref<Date, OtherPrefTypes>,
+		new_releases_last_refreshed: { default_value: new Date(0), current_value: new Date(0), type: 'DATE' } as BasePref<Date, OtherPrefTypes>,
+		discord_webhook_url: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		latest_version: { default_value: '16.2.5', current_value: '16.2.5', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		database_version: { default_value: '17.2.0', current_value: '17.2.0', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		recent_searches: { default_value: [], current_value: [], type: 'STRING_ARRAY' } as BasePref<string[], OtherPrefTypes>,
+		equalizer_preset: { default_value: 'Default', current_value: 'Default', type: 'STRING' } as BasePref<EqualizerPreset, OtherPrefTypes>,
+		crossfade: { default_value: 0, current_value: 0, type: 'NUMBER' } as BasePref<number, OtherPrefTypes>,
+		past_queue: { default_value: { index: 0, tracks: [] }, current_value: { index: 0, tracks: [] }, type: 'PAST_QUEUE' } as BasePref<PastQueue, OtherPrefTypes>,
+		new_releases: { default_value: [], current_value: [], type: 'NEW_RELEASES' } as BasePref<CompactPlaylist[], OtherPrefTypes>,
+		last_sleep_timer_ms: { default_value: 0, current_value: 0, type: 'NUMBER' } as BasePref<number, OtherPrefTypes>,
+		linker_links: { default_value: [], current_value: [], type: 'LINKER_LINKS' } as BasePref<LinkerLink[], OtherPrefTypes>,
+		primary_color: { default_value: '#7400fe', current_value: '#7400fe', type: 'STRING' } as BasePref<HexColor, OtherPrefTypes>,
+		theme: { default_value: 'dark', current_value: 'dark', type: 'STRING' } as BasePref<PossibleThemes, OtherPrefTypes>,
+		track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: 'BIAS' } as BasePref<Bias, OtherPrefTypes>,
+		carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: 'STRING' } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
+		p2p_name: { default_value: `sumi!-${generate_new_uid('')}`, current_value: `sumi!-${generate_new_uid('')}`, type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		recent_rejected_ota_update: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		illusi_session: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		/** The first account that signed in; the default database holds its library */
+		illusi_owner_account: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		/** Database file the app opens at startup; empty is the default one */
+		illusi_active_db: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 
-        // Settings that have a chance of breaking things; use with caution; all disabled by default
-        enable_vibes_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
-        enable_linker: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
-        enable_sampler: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
-        fastpack: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation" } as BasePref<boolean, OtherPrefTypes>,
-        quick_fixer_upper: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Automation", description: "May slow down app; only use when necessary" } as BasePref<boolean, OtherPrefTypes>,
-        use_cookies_on_download: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
-        use_cookies_on_search: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
-        use_cookies_on_artist: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Data" } as BasePref<boolean, OtherPrefTypes>,
-        disable_supabase: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
-        dev_mode: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, show_type: "EXPERIMENTAL", section: "Other", description: "(Modification may require restart)" } as BasePref<boolean, OtherPrefTypes>,
+		default_playlist_max_size: { default_value: 200, current_value: 200, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,
+		recently_played_max_size: { default_value: 100, current_value: 100, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,
+		fuzzy_search_threshold: { default_value: 50, current_value: 100, type: 'NUMBER', range: { start: 0, end: 100 }, visible: true, section: 'Playlist', description: 'The minimum confidence for Illusi\'s fuzzy-search  (0-100%)' } as BasePref<number, OtherPrefTypes>,
+		ignore_fat_finger_for_seconds: { default_value: 0, current_value: 0, type: 'NUMBER', range: { start: 0, end: 30 }, visible: true, section: 'Interactions', description: 'How long to set a delay before you can press on another track for it to actually play. Ignores track inputs after a track press for x seconds.' } as BasePref<number, OtherPrefTypes>,
+		default_to_strict_search: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Interactions', description: 'Your searches will default to the strict-search over fuzzy-search' } as BasePref<boolean, OtherPrefTypes>,
+		new_releases_hide_unknowns: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Visual', description: 'Hide all artists you\'ve never seen in New-Releases' } as BasePref<boolean, OtherPrefTypes>,
+		compact_playlists: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Visual', description: 'Your playlists in the \'Playlists\' screen will become smaller' } as BasePref<boolean, OtherPrefTypes>,
+		album_track_tinting: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Visual', description: 'Tints all tracks in a album a different color so that it is easier to differentiate' } as BasePref<boolean, OtherPrefTypes>,
+		only_play_downloaded: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Interactions', description: 'Only play downloaded tracks (except searched ones)' } as BasePref<boolean, OtherPrefTypes>,
+		always_shuffle: { default_value: true, current_value: true, type: 'BOOLEAN', visible: true, section: 'Interactions', description: 'Always shuffle user-made playlists and library' } as BasePref<boolean, OtherPrefTypes>,
+		play_without_popup: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Interactions', description: 'Prevents Audioplayer from popping up when playing a new queue' } as BasePref<boolean, OtherPrefTypes>,
+		auto_download: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Automation', description: 'Download track media whenever added to library' } as BasePref<boolean, OtherPrefTypes>,
+		auto_cache_thumbnails: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Automation', description: 'Download track thumbnail whenever added to library' } as BasePref<boolean, OtherPrefTypes>,
+		auto_cache_lyrics: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Automation', description: 'Download track lyrics whenever added to library' } as BasePref<boolean, OtherPrefTypes>,
+		use_track_shuffle_bias: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Interactions', description: 'Enabled shuffle settings from Shuffler' } as BasePref<boolean, OtherPrefTypes>,
+		expensive_wifi_only: { default_value: true, current_value: true, type: 'BOOLEAN', visible: true, section: 'Data', description: 'Many expensive network based operations will only happen on WiFi' } as BasePref<boolean, OtherPrefTypes>,
+		warmup_youtube: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Data', description: 'Load YouTube Client on startup' } as BasePref<boolean, OtherPrefTypes>,
+		warmup_soundcloud: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Data', description: 'Load Soundcloud Client on startup' } as BasePref<boolean, OtherPrefTypes>,
 
-        audiobook_player_display_mode: { default_value: 'cover_only', current_value: 'cover_only', type: "STRING", visible: true, section: "Audiobooks", description: "What the audiobook player shows while listening: cover art, inline book images, or scrolling reader" } as BasePref<'cover_only' | 'book_images' | 'reader_follow_along', OtherPrefTypes>,
-        audiobook_tts_engine: { default_value: 'avs', current_value: 'avs', type: "STRING", visible: true, section: "Audiobooks", description: "Voice synthesis engine used when generating audiobook audio" } as BasePref<'avs' | 'piper', OtherPrefTypes>,
-        audiobook_tts_voice_id: { default_value: '', current_value: '', type: "STRING", visible: true, section: "Audiobooks", description: "Voice ID for audiobook generation — leave empty to use the device default" } as BasePref<string, OtherPrefTypes>,
-        audiobook_tts_rate: { default_value: 1.0, current_value: 1.0, type: "NUMBER", range: { start: 0.5, end: 2.0 }, visible: true, section: "Audiobooks", description: "Speech rate for audiobook generation (0.5 - 2.0)" } as BasePref<number, OtherPrefTypes>,
-        audiobook_auto_generate: { default_value: false, current_value: false, type: "BOOLEAN", visible: true, section: "Audiobooks", description: "Automatically generate audio for a new audiobook on import" } as BasePref<boolean, OtherPrefTypes>,
-        audiobook_reader_highlight_active: { default_value: true, current_value: true, type: "BOOLEAN", visible: true, section: "Audiobooks", description: "Highlight the currently spoken paragraph in reader follow-along mode" } as BasePref<boolean, OtherPrefTypes>,
-    };
-    export type PrefOptions = keyof typeof prefs;
-    const user_uuid_key: PrefOptions = "user_uuid";
+		// Settings that have a chance of breaking things; use with caution; all disabled by default
+		enable_vibes_sampler: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation' } as BasePref<boolean, OtherPrefTypes>,
+		enable_linker: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation' } as BasePref<boolean, OtherPrefTypes>,
+		enable_sampler: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation' } as BasePref<boolean, OtherPrefTypes>,
+		fastpack: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation' } as BasePref<boolean, OtherPrefTypes>,
+		quick_fixer_upper: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation', description: 'May slow down app; only use when necessary' } as BasePref<boolean, OtherPrefTypes>,
+		use_cookies_on_download: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
+		use_cookies_on_search: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
+		use_cookies_on_artist: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
+		illusi_api_url: { default_value: '', current_value: '', type: 'STRING', visible: true, section: 'Other', description: 'Illusi server used for accounts and sync (Modification may require restart)' } as BasePref<string, OtherPrefTypes>,
+		dev_mode: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Other', description: '(Modification may require restart)' } as BasePref<boolean, OtherPrefTypes>,
 
-    export function get_pref<T extends PrefOptions>(pref_key: T): (typeof prefs)[T]['default_value'] { return prefs[pref_key].current_value; }
+		audiobook_player_display_mode: { default_value: 'cover_only', current_value: 'cover_only', type: 'STRING', visible: true, section: 'Audiobooks', description: 'What the audiobook player shows while listening: cover art, inline book images, or scrolling reader' } as BasePref<'cover_only' | 'book_images' | 'reader_follow_along', OtherPrefTypes>,
+		audiobook_tts_engine: { default_value: 'avs', current_value: 'avs', type: 'STRING', visible: true, section: 'Audiobooks', description: 'Voice synthesis engine used when generating audiobook audio' } as BasePref<'avs' | 'piper', OtherPrefTypes>,
+		audiobook_tts_voice_id: { default_value: '', current_value: '', type: 'STRING', visible: true, section: 'Audiobooks', description: 'Voice ID for audiobook generation — leave empty to use the device default' } as BasePref<string, OtherPrefTypes>,
+		audiobook_tts_rate: { default_value: 1.0, current_value: 1.0, type: 'NUMBER', range: { start: 0.5, end: 2.0 }, visible: true, section: 'Audiobooks', description: 'Speech rate for audiobook generation (0.5 - 2.0)' } as BasePref<number, OtherPrefTypes>,
+		audiobook_auto_generate: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Audiobooks', description: 'Automatically generate audio for a new audiobook on import' } as BasePref<boolean, OtherPrefTypes>,
+		audiobook_reader_highlight_active: { default_value: true, current_value: true, type: 'BOOLEAN', visible: true, section: 'Audiobooks', description: 'Highlight the currently spoken paragraph in reader follow-along mode' } as BasePref<boolean, OtherPrefTypes>
+	};
+	export type PrefOptions = keyof typeof prefs;
+	const user_uuid_key: PrefOptions = 'user_uuid';
 
-    export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
-        ...base_load_map,
-        LINKER_LINKS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? "[]"),
-        PAST_QUEUE: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
-        BIAS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias)),
-    };
-    export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
-        ...base_save_map,
-        LINKER_LINKS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
-        PAST_QUEUE: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue)),
-        BIAS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as Bias))
-    };
+	export function get_pref<T extends PrefOptions>(pref_key: T): (typeof prefs)[T]['default_value'] { return prefs[pref_key].current_value; }
 
-    export async function load_prefs() {
-        const storage_user_uuid = await mmkv().get_string(user_uuid_key);
-        if (storage_user_uuid === null) await mmkv().set_string(user_uuid_key, user_uuid);
-        await generic_load_prefs<OtherPrefTypes, PrefOptions>(mmkv(), prefs, illusi_pref_load_map);
-    }
-    export async function save_pref<T extends PrefOptions>(pref_key: T, value: (typeof prefs)[T]['default_value']) {
-        await generic_save_pref<OtherPrefTypes, PrefOptions>(mmkv(), prefs, pref_key, value, illusi_pref_save_map);
-    }
-    export async function reset_prefs() {
-        await generic_reset_prefs(mmkv(), [user_uuid_key], load_prefs);
-    }
+	export const illusi_pref_load_map: BasePrefLoadMap<BasePrefTypes | OtherPrefTypes, unknown> = {
+		...base_load_map,
+		LINKER_LINKS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '[]'),
+		PAST_QUEUE: async (mod: MMKVModule, pref_key: string) => force_json_parse(await mod.get_string(pref_key) ?? '{"index":0,"tracks":[]}'),
+		NEW_RELEASES: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? '[]'),
+		BIAS: async (mod: MMKVModule, pref_key: string) => force_json_parse_array(await mod.get_string(pref_key) ?? JSON.stringify(default_track_shuffle_bias))
+	};
+	export const illusi_pref_save_map: BasePrefSaveMap<BasePrefTypes | OtherPrefTypes, unknown> = {
+		...base_save_map,
+		LINKER_LINKS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as string[])),
+		PAST_QUEUE: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as PastQueue)),
+		NEW_RELEASES: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as CompactPlaylist[])),
+		BIAS: async (mod: MMKVModule, pref_key: string, value: unknown) => await mod.set_string(pref_key, JSON.stringify(value as Bias))
+	};
 
-    export interface Theme {
-        dark: boolean;
-        colors: {
-            default_primary_color: string;
-            primary: string;
-            secondary: string;
-            background: string;
-            primary_dark: string;
-            card: string;
-            title: string;
-            text: string;
-            subtext: string;
-            deeptext: string;
-            border: string;
-            notification: string;
-            shelf: string;
-            tabInactive: string;
-            line: string;
-            searchInput: string;
-            searchPlaceholder: string;
-            inactive: string;
-            red: string;
-            green: string;
-            orange: string;
-            playingSong: string;
-            playScreen: string;
-            track: string;
-            highlightPressColor: string;
-            black: string;
-        }
-    }
+	export async function load_prefs() {
+		const storage_user_uuid = await mmkv().get_string(user_uuid_key);
+		if (storage_user_uuid === null) await mmkv().set_string(user_uuid_key, user_uuid);
+		await generic_load_prefs<OtherPrefTypes, PrefOptions>(mmkv(), prefs, illusi_pref_load_map);
+	}
+	export async function save_pref<T extends PrefOptions>(pref_key: T, value: (typeof prefs)[T]['default_value']) {
+		await generic_save_pref<OtherPrefTypes, PrefOptions>(mmkv(), prefs, pref_key, value, illusi_pref_save_map);
+	}
+	export async function reset_prefs() {
+		await generic_reset_prefs(mmkv(), [user_uuid_key], load_prefs);
+	}
 
-    export const light_theme: Theme = {
-        dark: false,
-        colors: {
-            default_primary_color: '#7400fe',
-            primary: get_pref('primary_color'),
-            secondary: '#c46a8f',
-            background: '#f7f3ef',
-            primary_dark: '#ddd5ca',
-            card: '#f0ebe4',
-            title: '#3a2e25',
-            text: '#2c2319',
-            subtext: '#8a7d72',
-            deeptext: '#b8afa5',
-            border: '#d8cfc5',
-            notification: '#7a6bbf',
-            shelf: '#ede7df',
-            tabInactive: '#b0a498',
-            line: '#e0d8d0',
-            searchInput: '#e8e1d8',
-            searchPlaceholder: '#b8a898',
-            inactive: '#b8a898',
-            red: '#c0392b',
-            green: '#4a8c5c',
-            orange: '#c87941',
-            playingSong: '#e8e1d8',
-            playScreen: '#e8e1d8',
-            track: '#e8e1d8',
-            highlightPressColor: '#c4a882',
-            black: '#1a1a1a',
-        },
-    }
+	export interface Theme {
+		dark: boolean;
+		colors: {
+			default_primary_color: string;
+			primary: string;
+			secondary: string;
+			background: string;
+			primary_dark: string;
+			card: string;
+			title: string;
+			text: string;
+			subtext: string;
+			deeptext: string;
+			border: string;
+			notification: string;
+			shelf: string;
+			tabInactive: string;
+			line: string;
+			searchInput: string;
+			searchPlaceholder: string;
+			inactive: string;
+			red: string;
+			green: string;
+			orange: string;
+			playingSong: string;
+			playScreen: string;
+			track: string;
+			highlightPressColor: string;
+			black: string;
+		};
+	}
 
-    export const dark_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#7400fe',
-            primary: get_pref('primary_color'),
-            secondary: '#fc00c9',
-            background: '#0d1016',
-            primary_dark: '#1a184f',
-            card: '#131213',
-            title: '#d0d0d0',
-            text: '#ffffff',
-            subtext: '#8c939d',
-            deeptext: '#606060',
-            border: '#222222',
-            notification: '#1313ff',
-            shelf: '#161B22',
-            tabInactive: '#cad1d8',
-            line: '#303040',
-            searchInput: '#404254',
-            searchPlaceholder: '#8080a0',
-            inactive: '#8080a0',
-            red: '#FF0000',
-            green: '#00FF00',
-            orange: '#FF7F50',
-            playingSong: '#141722',
-            playScreen: '#141722',
-            track: '#141722',
-            highlightPressColor: '#aa99ee',
-            black: "#000000"
-        },
-    }
+	export const light_theme: Theme = {
+		dark: false,
+		colors: {
+			default_primary_color: '#7400fe',
+			primary: get_pref('primary_color'),
+			secondary: '#c46a8f',
+			background: '#f7f3ef',
+			primary_dark: '#ddd5ca',
+			card: '#f0ebe4',
+			title: '#3a2e25',
+			text: '#2c2319',
+			subtext: '#8a7d72',
+			deeptext: '#b8afa5',
+			border: '#d8cfc5',
+			notification: '#7a6bbf',
+			shelf: '#ede7df',
+			tabInactive: '#b0a498',
+			line: '#e0d8d0',
+			searchInput: '#e8e1d8',
+			searchPlaceholder: '#b8a898',
+			inactive: '#b8a898',
+			red: '#c0392b',
+			green: '#4a8c5c',
+			orange: '#c87941',
+			playingSong: '#e8e1d8',
+			playScreen: '#e8e1d8',
+			track: '#e8e1d8',
+			highlightPressColor: '#c4a882',
+			black: '#1a1a1a'
+		}
+	};
 
-    export const oled_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#7400fe',
-            primary: get_pref('primary_color'),
-            secondary: '#fc00c9',
-            background: '#000000',
-            primary_dark: '#1a184f',
-            card: '#000000',
-            title: '#d0d0d0',
-            text: '#ffffff',
-            subtext: '#8c939d',
-            deeptext: '#606060',
-            border: '#222222',
-            notification: '#1313ff',
-            shelf: '#000000',
-            tabInactive: '#cad1d8',
-            line: '#303040',
-            searchInput: '#404254',
-            searchPlaceholder: '#8080a0',
-            inactive: '#8080a0',
-            red: '#FF0000',
-            green: '#00FF00',
-            orange: '#FF7F50',
-            playingSong: '#000000',
-            playScreen: '#000000',
-            track: '#000000',
-            highlightPressColor: '#aa99ee',
-            black: "#000000"
-        },
-    }
+	export const dark_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#7400fe',
+			primary: get_pref('primary_color'),
+			secondary: '#fc00c9',
+			background: '#0d1016',
+			primary_dark: '#1a184f',
+			card: '#131213',
+			title: '#d0d0d0',
+			text: '#ffffff',
+			subtext: '#8c939d',
+			deeptext: '#606060',
+			border: '#222222',
+			notification: '#1313ff',
+			shelf: '#161B22',
+			tabInactive: '#cad1d8',
+			line: '#303040',
+			searchInput: '#404254',
+			searchPlaceholder: '#8080a0',
+			inactive: '#8080a0',
+			red: '#FF0000',
+			green: '#00FF00',
+			orange: '#FF7F50',
+			playingSong: '#141722',
+			playScreen: '#141722',
+			track: '#141722',
+			highlightPressColor: '#aa99ee',
+			black: '#000000'
+		}
+	};
 
-    export const cozy_dark_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#c97b5a',
-            primary: get_pref('primary_color'),
-            secondary: '#c46a8f',
-            background: '#1a1410',
-            primary_dark: '#2a1e14',
-            card: '#201812',
-            title: '#e8d8b8',
-            text: '#d4c4a0',
-            subtext: '#8a7a65',
-            deeptext: '#5a4a38',
-            border: '#2e2420',
-            notification: '#9a7a5a',
-            shelf: '#241c14',
-            tabInactive: '#7a6a55',
-            line: '#2a2018',
-            searchInput: '#302418',
-            searchPlaceholder: '#6a5a48',
-            inactive: '#6a5a48',
-            red: '#c0392b',
-            green: '#4a8c5c',
-            orange: '#c87941',
-            playingSong: '#221a12',
-            playScreen: '#221a12',
-            track: '#221a12',
-            highlightPressColor: '#b89060',
-            black: '#0a0806',
-        },
-    }
+	export const oled_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#7400fe',
+			primary: get_pref('primary_color'),
+			secondary: '#fc00c9',
+			background: '#000000',
+			primary_dark: '#1a184f',
+			card: '#000000',
+			title: '#d0d0d0',
+			text: '#ffffff',
+			subtext: '#8c939d',
+			deeptext: '#606060',
+			border: '#222222',
+			notification: '#1313ff',
+			shelf: '#000000',
+			tabInactive: '#cad1d8',
+			line: '#303040',
+			searchInput: '#404254',
+			searchPlaceholder: '#8080a0',
+			inactive: '#8080a0',
+			red: '#FF0000',
+			green: '#00FF00',
+			orange: '#FF7F50',
+			playingSong: '#000000',
+			playScreen: '#000000',
+			track: '#000000',
+			highlightPressColor: '#aa99ee',
+			black: '#000000'
+		}
+	};
 
-    export const neon_noir_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#00eeff',
-            primary: get_pref('primary_color'),
-            secondary: '#ff0090',
-            background: '#07070f',
-            primary_dark: '#0a0a20',
-            card: '#0d0d1c',
-            title: '#dff8ff',
-            text: '#c0e8f8',
-            subtext: '#3a5868',
-            deeptext: '#1a2430',
-            border: '#121228',
-            notification: '#00ccee',
-            shelf: '#0b0b1e',
-            tabInactive: '#385868',
-            line: '#0e1624',
-            searchInput: '#12162e',
-            searchPlaceholder: '#284458',
-            inactive: '#284458',
-            red: '#ff2244',
-            green: '#00ff88',
-            orange: '#ff8c00',
-            playingSong: '#0a0c20',
-            playScreen: '#0a0c20',
-            track: '#0a0c20',
-            highlightPressColor: '#00d8ee',
-            black: '#030308',
-        },
-    }
+	export const cozy_dark_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#c97b5a',
+			primary: get_pref('primary_color'),
+			secondary: '#c46a8f',
+			background: '#1a1410',
+			primary_dark: '#2a1e14',
+			card: '#201812',
+			title: '#e8d8b8',
+			text: '#d4c4a0',
+			subtext: '#8a7a65',
+			deeptext: '#5a4a38',
+			border: '#2e2420',
+			notification: '#9a7a5a',
+			shelf: '#241c14',
+			tabInactive: '#7a6a55',
+			line: '#2a2018',
+			searchInput: '#302418',
+			searchPlaceholder: '#6a5a48',
+			inactive: '#6a5a48',
+			red: '#c0392b',
+			green: '#4a8c5c',
+			orange: '#c87941',
+			playingSong: '#221a12',
+			playScreen: '#221a12',
+			track: '#221a12',
+			highlightPressColor: '#b89060',
+			black: '#0a0806'
+		}
+	};
 
-    export const sage_mist_theme: Theme = {
-        dark: false,
-        colors: {
-            default_primary_color: '#5a7a4a',
-            primary: get_pref('primary_color'),
-            secondary: '#8a6a9a',
-            background: '#f0f2ee',
-            primary_dark: '#cdd8c4',
-            card: '#e8ece4',
-            title: '#1e2a1c',
-            text: '#2c3828',
-            subtext: '#7a8878',
-            deeptext: '#b0bca8',
-            border: '#dce0d8',
-            notification: '#6a8890',
-            shelf: '#e2e8dc',
-            tabInactive: '#9aaa90',
-            line: '#e4e8e0',
-            searchInput: '#dde4d6',
-            searchPlaceholder: '#a8b8a0',
-            inactive: '#a8b8a0',
-            red: '#b83c30',
-            green: '#3a7a50',
-            orange: '#b86830',
-            playingSong: '#dde4d6',
-            playScreen: '#dde4d6',
-            track: '#dde4d6',
-            highlightPressColor: '#7a9068',
-            black: '#181e16',
-        },
-    }
+	export const neon_noir_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#00eeff',
+			primary: get_pref('primary_color'),
+			secondary: '#ff0090',
+			background: '#07070f',
+			primary_dark: '#0a0a20',
+			card: '#0d0d1c',
+			title: '#dff8ff',
+			text: '#c0e8f8',
+			subtext: '#3a5868',
+			deeptext: '#1a2430',
+			border: '#121228',
+			notification: '#00ccee',
+			shelf: '#0b0b1e',
+			tabInactive: '#385868',
+			line: '#0e1624',
+			searchInput: '#12162e',
+			searchPlaceholder: '#284458',
+			inactive: '#284458',
+			red: '#ff2244',
+			green: '#00ff88',
+			orange: '#ff8c00',
+			playingSong: '#0a0c20',
+			playScreen: '#0a0c20',
+			track: '#0a0c20',
+			highlightPressColor: '#00d8ee',
+			black: '#030308'
+		}
+	};
 
-        export const ember_forge_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#e8920a',
-            primary: get_pref('primary_color'),
-            secondary: '#c0442a',
-            background: '#141008',
-            primary_dark: '#2e2008',
-            card: '#1a1408',
-            title: '#f0d890',
-            text: '#d4b870',
-            subtext: '#7a6848',
-            deeptext: '#3a3020',
-            border: '#28200e',
-            notification: '#c87830',
-            shelf: '#201808',
-            tabInactive: '#6a5840',
-            line: '#221a08',
-            searchInput: '#282010',
-            searchPlaceholder: '#584838',
-            inactive: '#584838',
-            red: '#c0392b',
-            green: '#3a8040',
-            orange: '#e07820',
-            playingSong: '#1c1608',
-            playScreen: '#1c1608',
-            track: '#1c1608',
-            highlightPressColor: '#d4a030',
-            black: '#080600',
-        },
-    }
+	export const sage_mist_theme: Theme = {
+		dark: false,
+		colors: {
+			default_primary_color: '#5a7a4a',
+			primary: get_pref('primary_color'),
+			secondary: '#8a6a9a',
+			background: '#f0f2ee',
+			primary_dark: '#cdd8c4',
+			card: '#e8ece4',
+			title: '#1e2a1c',
+			text: '#2c3828',
+			subtext: '#7a8878',
+			deeptext: '#b0bca8',
+			border: '#dce0d8',
+			notification: '#6a8890',
+			shelf: '#e2e8dc',
+			tabInactive: '#9aaa90',
+			line: '#e4e8e0',
+			searchInput: '#dde4d6',
+			searchPlaceholder: '#a8b8a0',
+			inactive: '#a8b8a0',
+			red: '#b83c30',
+			green: '#3a7a50',
+			orange: '#b86830',
+			playingSong: '#dde4d6',
+			playScreen: '#dde4d6',
+			track: '#dde4d6',
+			highlightPressColor: '#7a9068',
+			black: '#181e16'
+		}
+	};
 
-    export const crimson_void_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#cc0033',
-            primary: get_pref('primary_color'),
-            secondary: '#880044',
-            background: '#0c0808',
-            primary_dark: '#1e0808',
-            card: '#140808',
-            title: '#ffe4e4',
-            text: '#f0d0d0',
-            subtext: '#784848',
-            deeptext: '#2e1818',
-            border: '#200c0c',
-            notification: '#cc2244',
-            shelf: '#180a0a',
-            tabInactive: '#684040',
-            line: '#1c0e0e',
-            searchInput: '#220e0e',
-            searchPlaceholder: '#583838',
-            inactive: '#583838',
-            red: '#ff2244',
-            green: '#44aa66',
-            orange: '#dd6622',
-            playingSong: '#180a0a',
-            playScreen: '#180a0a',
-            track: '#180a0a',
-            highlightPressColor: '#cc4444',
-            black: '#060404',
-        },
-    }
+	export const ember_forge_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#e8920a',
+			primary: get_pref('primary_color'),
+			secondary: '#c0442a',
+			background: '#141008',
+			primary_dark: '#2e2008',
+			card: '#1a1408',
+			title: '#f0d890',
+			text: '#d4b870',
+			subtext: '#7a6848',
+			deeptext: '#3a3020',
+			border: '#28200e',
+			notification: '#c87830',
+			shelf: '#201808',
+			tabInactive: '#6a5840',
+			line: '#221a08',
+			searchInput: '#282010',
+			searchPlaceholder: '#584838',
+			inactive: '#584838',
+			red: '#c0392b',
+			green: '#3a8040',
+			orange: '#e07820',
+			playingSong: '#1c1608',
+			playScreen: '#1c1608',
+			track: '#1c1608',
+			highlightPressColor: '#d4a030',
+			black: '#080600'
+		}
+	};
 
-    export const deep_ocean_theme: Theme = {
-        dark: true,
-        colors: {
-            default_primary_color: '#00b8a0',
-            primary: get_pref('primary_color'),
-            secondary: '#e08840',
-            background: '#080e12',
-            primary_dark: '#0e2030',
-            card: '#0c1418',
-            title: '#d8eef4',
-            text: '#b0d0dc',
-            subtext: '#507080',
-            deeptext: '#1e3040',
-            border: '#101e28',
-            notification: '#2888a8',
-            shelf: '#101c24',
-            tabInactive: '#406070',
-            line: '#0c1820',
-            searchInput: '#101e2a',
-            searchPlaceholder: '#305868',
-            inactive: '#305868',
-            red: '#c0392b',
-            green: '#208858',
-            orange: '#d07828',
-            playingSong: '#0e1820',
-            playScreen: '#0e1820',
-            track: '#0e1820',
-            highlightPressColor: '#38a890',
-            black: '#040810',
-        },
-    }
+	export const crimson_void_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#cc0033',
+			primary: get_pref('primary_color'),
+			secondary: '#880044',
+			background: '#0c0808',
+			primary_dark: '#1e0808',
+			card: '#140808',
+			title: '#ffe4e4',
+			text: '#f0d0d0',
+			subtext: '#784848',
+			deeptext: '#2e1818',
+			border: '#200c0c',
+			notification: '#cc2244',
+			shelf: '#180a0a',
+			tabInactive: '#684040',
+			line: '#1c0e0e',
+			searchInput: '#220e0e',
+			searchPlaceholder: '#583838',
+			inactive: '#583838',
+			red: '#ff2244',
+			green: '#44aa66',
+			orange: '#dd6622',
+			playingSong: '#180a0a',
+			playScreen: '#180a0a',
+			track: '#180a0a',
+			highlightPressColor: '#cc4444',
+			black: '#060404'
+		}
+	};
 
-    const themes = {
-        light: light_theme,
-        dark: dark_theme,
-        oled: oled_theme,
-        mist_light: sage_mist_theme,
-        crimson_void: crimson_void_theme,
-        neon_noir: neon_noir_theme,
-        forge_dark: ember_forge_theme,
-        ocean_dark: deep_ocean_theme,
-        cozy_dark: cozy_dark_theme,
-    }
+	export const deep_ocean_theme: Theme = {
+		dark: true,
+		colors: {
+			default_primary_color: '#00b8a0',
+			primary: get_pref('primary_color'),
+			secondary: '#e08840',
+			background: '#080e12',
+			primary_dark: '#0e2030',
+			card: '#0c1418',
+			title: '#d8eef4',
+			text: '#b0d0dc',
+			subtext: '#507080',
+			deeptext: '#1e3040',
+			border: '#101e28',
+			notification: '#2888a8',
+			shelf: '#101c24',
+			tabInactive: '#406070',
+			line: '#0c1820',
+			searchInput: '#101e2a',
+			searchPlaceholder: '#305868',
+			inactive: '#305868',
+			red: '#c0392b',
+			green: '#208858',
+			orange: '#d07828',
+			playingSong: '#0e1820',
+			playScreen: '#0e1820',
+			track: '#0e1820',
+			highlightPressColor: '#38a890',
+			black: '#040810'
+		}
+	};
 
-    export async function try_remove_from_recent_searches(query: string) {
-        const recent_searches: string[] = get_pref('recent_searches');
-        const recent_search_index = recent_searches.findIndex(search => search === query);
-        if (recent_search_index !== -1) {
-            recent_searches.splice(recent_search_index, 1);
-        }
-        await save_pref('recent_searches', recent_searches);
-        return recent_searches;
-    }
-    export async function add_to_recent_searches(query: string) {
-        let recent_searches = await try_remove_from_recent_searches(query);
-        recent_searches.unshift(query);
-        recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
-        await save_pref('recent_searches', recent_searches);
-        return recent_searches;
-    }
+	const themes = {
+		light: light_theme,
+		dark: dark_theme,
+		oled: oled_theme,
+		mist_light: sage_mist_theme,
+		crimson_void: crimson_void_theme,
+		neon_noir: neon_noir_theme,
+		forge_dark: ember_forge_theme,
+		ocean_dark: deep_ocean_theme,
+		cozy_dark: cozy_dark_theme
+	};
 
-    export function snake_case_to_plain_text(text: string) {
-        text = text.replace(/_/g, ' ')
-        const words = text.split(" ");
-        for (let i = 0; i < words.length; i++) {
-            words[i] = words[i][0].toUpperCase() + words[i].slice(1);
-        }
-        return words.join(" ");
-    }
-    export async function set_settings_number(key: PrefOptions, value: number) {
-        await save_pref(key, value);
-    }
-    export async function set_settings_toggle(key: PrefOptions, value: boolean) {
-        await save_pref(key, value);
-    }
+	export async function try_remove_from_recent_searches(query: string) {
+		const recent_searches: string[] = get_pref('recent_searches');
+		const recent_search_index = recent_searches.findIndex(search => search === query);
+		if (recent_search_index !== -1) {
+			recent_searches.splice(recent_search_index, 1);
+		}
+		await save_pref('recent_searches', recent_searches);
+		return recent_searches;
+	}
+	let recent_search_listener: ((query: string) => void) | undefined;
+	export function on_recent_search(listener: ((query: string) => void) | undefined) {
+		recent_search_listener = listener;
+	}
+	export async function add_to_recent_searches(query: string) {
+		recent_search_listener?.(query);
+		let recent_searches = await try_remove_from_recent_searches(query);
+		recent_searches.unshift(query);
+		recent_searches = recent_searches.slice(0, Constants.recent_search_limit);
+		await save_pref('recent_searches', recent_searches);
+		return recent_searches;
+	}
 
-    export function pref_set_theme(set_theme: (_: Theme) => void) {
-        const theme = get_theme(get_pref('theme'));
-        set_theme(
-            {
-                dark: theme.dark,
-                colors: {
-                    ...theme.colors,
-                    primary: get_pref('primary_color')
-                }
-            }
-        );
-    }
-    export function get_theme(key: PossibleThemes) {
-        const fallback_theme = dark_theme;
-        if (key in themes) return themes[key];
-        return fallback_theme;
-    }
-    export function all_themes(): PossibleThemes[] {
-        return Object.keys(themes) as PossibleThemes[];
-    }
-    export interface PrimaryColorDetails { color: HexColor, icon: string, name: string }
-    export const possible_primary_colors: PrimaryColorDetails[] = [
-        { color: '#7400fe', icon: '🔮', name: 'Illusi' },
-        { color: '#FFFAFA', icon: '❄️', name: 'Snow' },
-        { color: '#FFCCFF', icon: '🌔', name: 'Moon' },
-        { color: '#FF007F', icon: '🌹', name: 'Rose' },
-        { color: '#FF69B4', icon: '🌸', name: 'Hot' },
-        { color: '#14f727', icon: '📗', name: 'Science' },
-        { color: '#FF7F50', icon: '🪸', name: 'Coral' },
-        { color: '#EB6123', icon: '🎃', name: "Halloween" },
-        { color: '#4B0082', icon: '🫐', name: 'Indigo' },
-        { color: '#E6E6FA', icon: '💠', name: 'Lavender' },
-        { color: '#00FA9A', icon: '🍃', name: 'Spring' },
-        { color: '#87CEEB', icon: '🌌', name: 'Sky' },
-        { color: '#FF0000', icon: '🏢', name: 'YouTube' },
-        { color: '#1ED760', icon: '🏢', name: 'Spotify' },
-        { color: '#0077C1', icon: '🏢', name: 'Amazon' },
-        { color: '#FC3C44', icon: '🏢', name: 'Apple' },
-        { color: '#FF7700', icon: '🏢', name: 'SoundCloud' },
-    ];
+	export function snake_case_to_plain_text(text: string) {
+		text = text.replace(/_/g, ' ');
+		const words = text.split(' ');
+		for (let i = 0; i < words.length; i++) {
+			words[i] = words[i][0].toUpperCase() + words[i].slice(1);
+		}
+		return words.join(' ');
+	}
+	export async function set_settings_number(key: PrefOptions, value: number) {
+		await save_pref(key, value);
+	}
+	export async function set_settings_toggle(key: PrefOptions, value: boolean) {
+		await save_pref(key, value);
+	}
+
+	export function pref_set_theme(set_theme: (_: Theme) => void) {
+		const theme = get_theme(get_pref('theme'));
+		set_theme(
+			{
+				dark: theme.dark,
+				colors: {
+					...theme.colors,
+					primary: get_pref('primary_color')
+				}
+			}
+		);
+	}
+	export function get_theme(key: PossibleThemes) {
+		const fallback_theme = dark_theme;
+		if (key in themes) return themes[key];
+		return fallback_theme;
+	}
+	export function all_themes(): PossibleThemes[] {
+		return Object.keys(themes) as PossibleThemes[];
+	}
+	export interface PrimaryColorDetails { color: HexColor; icon: string; name: string }
+	export const possible_primary_colors: PrimaryColorDetails[] = [
+		{ color: '#7400fe', icon: '🔮', name: 'Illusi' },
+		{ color: '#FFFAFA', icon: '❄️', name: 'Snow' },
+		{ color: '#FFCCFF', icon: '🌔', name: 'Moon' },
+		{ color: '#FF007F', icon: '🌹', name: 'Rose' },
+		{ color: '#FF69B4', icon: '🌸', name: 'Hot' },
+		{ color: '#14f727', icon: '📗', name: 'Science' },
+		{ color: '#FF7F50', icon: '🪸', name: 'Coral' },
+		{ color: '#EB6123', icon: '🎃', name: 'Halloween' },
+		{ color: '#4B0082', icon: '🫐', name: 'Indigo' },
+		{ color: '#E6E6FA', icon: '💠', name: 'Lavender' },
+		{ color: '#00FA9A', icon: '🍃', name: 'Spring' },
+		{ color: '#87CEEB', icon: '🌌', name: 'Sky' },
+		{ color: '#FF0000', icon: '🏢', name: 'YouTube' },
+		{ color: '#1ED760', icon: '🏢', name: 'Spotify' },
+		{ color: '#0077C1', icon: '🏢', name: 'Amazon' },
+		{ color: '#FC3C44', icon: '🏢', name: 'Apple' },
+		{ color: '#FF7700', icon: '🏢', name: 'SoundCloud' }
+	];
 }

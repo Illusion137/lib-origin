@@ -1,126 +1,129 @@
-import type { ResponseError } from "@common/types";
-import { status_codes_descriptions } from "@common/status_codes";
-import type { CookieJar } from "@common/utils/cookie_util";
-import { get_native_platform } from "@native/native_mode";
+import type { ResponseError } from '@common/types';
+import { status_codes_descriptions } from '@common/status_codes';
+import type { CookieJar } from '@common/utils/cookie_util';
+import { get_native_platform } from '@native/native_mode';
 
 export namespace Logger {
-    let enabled = get_native_platform() === "NODE";
-    export function enable(){ enabled = true; }
-    export function disable(){ enabled = false; }
-    export function is_enabled() { return enabled; }
-    export function should_log(err: ResponseError) {
-        return !err.error.message.includes("rozfetch failed | response NOT ok | 200");
-    }
+	let enabled = false;
+	export function enable() { enabled = true; }
+	export function disable() { enabled = false; }
+	export function is_enabled() { return enabled; }
+	export function should_log(err: ResponseError) {
+		return !err.error.message.includes('rozfetch failed | response NOT ok | 200');
+	}
 }
 
 export function args_prettystring(args: object, indent = 2) {
-    let str = '{\n';
-    const keys = Object.keys(args);
-    for (const key of keys) {
-        let value;
-        try { value = JSON.stringify(args[key]); }
-        catch (e) { value = `[unserializable: ${e instanceof Error ? e.message : String(e)}]`; }
-        str += `${new Array(indent).fill(' ').join('')}${key}: ${value}\n`;
-    }
-    str += '}'
-    return str;
+	let str = '{\n';
+	const keys = Object.keys(args);
+	for (const key of keys) {
+		let value;
+		try { value = JSON.stringify(args[key]); } catch (e) { value = `[unserializable: ${e instanceof Error ? e.message : String(e)}]`; }
+		str += `${new Array(indent).fill(' ').join('')}${key}: ${value}\n`;
+	}
+	str += '}';
+	return str;
 }
 function is_error_instance(e: unknown): e is Error {
-    return e instanceof Error;
+	return e instanceof Error;
 }
 export function is_timeout_error(e: unknown) {
-    return get_native_platform() !== "REACT_NATIVE" && e instanceof DOMException && e.name === "TimeoutError";
+	return get_native_platform() !== 'REACT_NATIVE' && e instanceof DOMException && e.name === 'TimeoutError';
 }
 
 function clean_error_trace(error: Error): Error {
-    if (!error.stack) return error;
-    const bad_regexes: RegExp[] = [
-        /anon_\d*_/i,
-        /asyncGeneratorStep/i,
-        /tryCallOne/i,
-        /InternalBytecode/i,
-        /invokeCallback/i,
-        /callTimer/i,
-        /callReact/i,
-        /flushedQueue/i,
-        /_next/i,
-        /__guard/i,
-        /anonymous/i,
-        /apply/i,
-        /generror(_.*?)?/i,
-        /processTicksAndRejections/i,
-        /Promise\._resolveFromExecutor/i,
-        /\._compile/i,
-        /node:interal/i,
-        /Module\._?load/i,
-        /wrapModuleLoad/i,
-        /\.traceSync/i,
-        /require.extensions.<computed>/i,
-    ];
-    const filtered_lines = error.stack.split('\n').filter(line => line.includes("at ") && !bad_regexes.some(regex => regex.test(line)));
-    error.stack = error.message + '\n' + filtered_lines.join('\n');
-    return error;
+	if (!error.stack) return error;
+	const bad_regexes: RegExp[] = [
+		/anon_\d*_/i,
+		/asyncGeneratorStep/i,
+		/tryCallOne/i,
+		/InternalBytecode/i,
+		/invokeCallback/i,
+		/callTimer/i,
+		/callReact/i,
+		/flushedQueue/i,
+		/_next/i,
+		/__guard/i,
+		/anonymous/i,
+		/apply/i,
+		/generror(_.*?)?/i,
+		/processTicksAndRejections/i,
+		/Promise\._resolveFromExecutor/i,
+		/\._compile/i,
+		/node:interal/i,
+		/Module\._?load/i,
+		/wrapModuleLoad/i,
+		/\.traceSync/i,
+		/require.extensions.<computed>/i
+	];
+	const filtered_lines = error.stack.split('\n').filter(line => line.includes('at ') && !bad_regexes.some(regex => regex.test(line)));
+	error.stack = error.message + '\n' + filtered_lines.join('\n');
+	return error;
 }
 function generror_base_msg(msg: string, emsg?: string, args: object = {}): string {
-    return `${msg}${emsg ? " | " + emsg : ""}\n : args${args_prettystring(args)}`;
+	return `${msg}${emsg ? ' | ' + emsg : ''}\n : args${args_prettystring(args)}`;
 }
-export type ErrorSeverity = "CRITICAL" | "MEDIUM" | "LOW" | "INFO";
+export type ErrorSeverity = 'CRITICAL' | 'MEDIUM' | 'LOW' | 'INFO';
 
 export const SEVERITY_HANDLER_MAP: Record<ErrorSeverity, (error: ResponseError) => any> = {
-    CRITICAL: () => { return; },
-    MEDIUM: () => { return; },
-    LOW: () => { return; },
-    INFO: () => { return; }
+	CRITICAL: () => { return; },
+	MEDIUM: () => { return; },
+	LOW: () => { return; },
+	INFO: () => { return; }
 };
 
 function handle_error(error: ResponseError, severity: ErrorSeverity, ignore = false): ResponseError {
-    if(Logger.is_enabled() && Logger.should_log(error) && severity !== "INFO" && !ignore) console.warn(error);
-    if(!ignore) SEVERITY_HANDLER_MAP[severity](error);
-    return error;
+	if (Logger.is_enabled() && Logger.should_log(error) && severity !== 'INFO' && !ignore) console.warn(error);
+	if (!ignore) SEVERITY_HANDLER_MAP[severity](error);
+	return error;
+}
+
+export function catch_error_log(e: Error) {
+	SEVERITY_HANDLER_MAP.MEDIUM({ error: e });
+	console.log(e);
 }
 
 export function generror_catch(e: unknown, msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
-    if (is_error_instance(e)) {
-        e.message = generror_base_msg(msg, e.message, args)
-        return handle_error({ error: clean_error_trace(e) }, severity);
-    }
-    else if (typeof e === "object" && e !== null && "error" in e) {
-        const err = e.error as Error;
-        err.message = generror_base_msg(msg, err.message, args)
-        return handle_error({ error: clean_error_trace(err) }, severity);
-    }
-    return handle_error({ error: clean_error_trace(new Error(`e: ${String(e)}\n ${generror_base_msg(msg, undefined, args)}`)) }, severity);
+	if (is_error_instance(e)) {
+		e.message = generror_base_msg(msg, e.message, args);
+		return handle_error({ error: clean_error_trace(e) }, severity);
+	} else if (typeof e === 'object' && e !== null && 'error' in e) {
+		const err = e.error as Error;
+		err.message = generror_base_msg(msg, err.message, args);
+		return handle_error({ error: clean_error_trace(err) }, severity);
+	}
+	return handle_error({ error: clean_error_trace(new Error(`e: ${String(e)}\n ${generror_base_msg(msg, undefined, args)}`)) }, severity);
 }
 export function generror_ignore(msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
-    return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity, true);
+	return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity, true);
 }
 export function generror(msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
-    return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity);
+	return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity);
 }
 export function generror_fetch(response: Response, msg: string, severity: ErrorSeverity, maybe_jar?: { cookie_jar?: CookieJar }, args: object = {}): ResponseError {
-    return generror(`${msg};\n Response failed with status code ${response.status}(${status_codes_descriptions[response.status]}) : "${response.statusText}"${maybe_jar?.cookie_jar !== undefined ? " [Using Cookies]" : ""}`, severity, args);
+	return generror(`${msg};\n Response failed with status code ${response.status}(${status_codes_descriptions[response.status]}) : "${response.statusText}"${maybe_jar?.cookie_jar !== undefined ? ' [Using Cookies]' : ''}`, severity, args);
 }
 
 export function catch_else_sync<T>(value: () => T, fail_value: (e: unknown) => T): T {
-    try {
-        return value();
-    } catch (e) {
-        return fail_value(e);
-    }
+	try {
+		return value();
+	} catch (e) {
+		return fail_value(e);
+	}
 }
 export async function catch_else<T>(value: () => Promise<T>, fail_value: (e: unknown) => Promise<T>): Promise<T> {
-    try {
-        return await value();
-    } catch (e) {
-        return await fail_value(e);
-    }
+	try {
+		return await value();
+	} catch (e) {
+		return await fail_value(e);
+	}
 }
 
 export async function catch_ignore(_: unknown) {
-    return;
+	return;
 }
 
 export function catch_log(e: unknown) {
-    console.error(e);
-    return;
+	console.error(e);
+	return;
 }

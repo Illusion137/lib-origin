@@ -1,66 +1,64 @@
-import { is_empty } from "@common/utils/util";
-import { Constants } from "@illusive/constants";
-import type { Track } from "@illusive/types";
-import { alert_error } from "@illusive/illusi/src/alert";
-import { SQLTracks } from "@illusive/sql/sql_tracks";
-import { SQLGlobal } from "@illusive/sql/sql_global";
-import { GLOBALS } from "@illusive/globals";
-import { SQLPlaylists } from "@illusive/sql/sql_playlists";
-import * as Haptics from 'expo-haptics';
+import { is_empty } from '@common/utils/util';
+import { Constants } from '@illusive/constants';
+import type { Track } from '@illusive/types';
+import { alert_error } from '@illusive/illusi/src/alert';
+import { SQLTracks } from '@illusive/sql/sql_tracks';
+import { SQLGlobal } from '@illusive/sql/sql_global';
+import { GLOBALS } from '@illusive/globals';
+import { SQLPlaylists } from '@illusive/sql/sql_playlists';
+import { alerts } from '@native/alerts/alerts';
 
 type SetState<T> = (value: React.SetStateAction<T>) => void;
 
-export async function download_track(track_data: Track, redownload: boolean , is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>) {
-    const track = await SQLTracks.fetch_track_data_from_uid(track_data.uid);
-    if(!track || "error" in track) return;
-    set_is_downloading(true);
-    if(!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex((item) => item.uid == track_data.uid) === -1))) {
-        const result = await GLOBALS.global_var.download_track(track_data, redownload);
-        if(typeof result === "object") {
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            set_is_downloaded(false);
-            alert_error(result);
-        }
-        else if(result === "EXISTS"){
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        }
-        else {
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-    }
+export async function download_track(track_data: Track, redownload: boolean, is_downloading: boolean, set_is_downloading: SetState<boolean>, set_is_downloaded: SetState<boolean>) {
+	const track = await SQLTracks.fetch_track_data_from_uid(track_data.uid);
+	if (!track || 'error' in track) return;
+	set_is_downloading(true);
+	if (!is_downloading && ((is_empty(track.media_uri) && GLOBALS.downloading.findIndex(item => item.uid === track_data.uid) === -1))) {
+		const result = await GLOBALS.global_var.download_track(track_data, redownload);
+		if (typeof result === 'object') {
+			await alerts().haptic_notification('ERROR');
+			set_is_downloaded(false);
+			alert_error(result);
+		} else if (result === 'EXISTS') {
+			await alerts().haptic_notification('WARNING');
+		} else {
+			await alerts().haptic_notification('SUCCESS');
+		}
+	}
 }
 
-export async function insert_into_write_playlist(track_data: Track, write_playlist_uuid: string|undefined, playlist_saved: boolean, set_playlist_saved: SetState<boolean>, refresh_data?: () => any) {
-    if(write_playlist_uuid === undefined) { alert_error({error: new Error("Track props.write_playlist is undefined")}); return; }
-    if(!playlist_saved) {
-        set_playlist_saved(true);
-        try {
-            if(write_playlist_uuid === Constants.library_write_playlist) await SQLTracks.insert_track(track_data);
-            else await SQLPlaylists.insert_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
-        } catch (error) {
-            set_playlist_saved(false);
-            alert_error({error: error as Error});
-            return;
-        }
-    } else if(write_playlist_uuid !== Constants.library_write_playlist) {
-        set_playlist_saved(false);
-        try {
-            await SQLPlaylists.delete_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
-        } catch (error) {
-            set_playlist_saved(true);
-            alert_error({error: error as Error});
-            return;
-        }
-    }
-    if(refresh_data !== undefined) refresh_data();
+export async function insert_into_write_playlist(track_data: Track, write_playlist_uuid: string | undefined, playlist_saved: boolean, set_playlist_saved: SetState<boolean>, refresh_data?: () => any) {
+	if (write_playlist_uuid === undefined) { alert_error({ error: new Error('Track props.write_playlist is undefined') }); return; }
+	if (!playlist_saved) {
+		set_playlist_saved(true);
+		try {
+			if (write_playlist_uuid === Constants.library_write_playlist) await SQLTracks.insert_track(track_data);
+			else await SQLPlaylists.insert_track_playlist({ uuid: write_playlist_uuid, track_uid: track_data.uid });
+		} catch (error) {
+			set_playlist_saved(false);
+			alert_error({ error: error as Error });
+			return;
+		}
+	} else if (write_playlist_uuid !== Constants.library_write_playlist) {
+		set_playlist_saved(false);
+		try {
+			await SQLPlaylists.delete_track_playlist({ uuid: write_playlist_uuid, track_uid: track_data.uid });
+		} catch (error) {
+			set_playlist_saved(true);
+			alert_error({ error: error as Error });
+			return;
+		}
+	}
+	if (refresh_data !== undefined) refresh_data();
 }
 
-export async function delete_track(track_data: Track, write_playlist_uuid: string|undefined) {
-    if(write_playlist_uuid === undefined || write_playlist_uuid === Constants.library_write_playlist) {
-        await SQLPlaylists.delete_track_from_all_playlists(track_data.uid);
-        await SQLTracks.delete_track(track_data.uid);
-        SQLGlobal.delete_global_track_item(track_data.uid);
-    } else {
-        await SQLPlaylists.delete_track_playlist({uuid: write_playlist_uuid, track_uid: track_data.uid});
-    }
+export async function delete_track(track_data: Track, write_playlist_uuid: string | undefined) {
+	if (write_playlist_uuid === undefined || write_playlist_uuid === Constants.library_write_playlist) {
+		await SQLPlaylists.delete_track_from_all_playlists(track_data.uid);
+		await SQLTracks.delete_track(track_data.uid);
+		SQLGlobal.delete_global_track_item(track_data.uid);
+	} else {
+		await SQLPlaylists.delete_track_playlist({ uuid: write_playlist_uuid, track_uid: track_data.uid });
+	}
 }

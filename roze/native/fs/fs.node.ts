@@ -1,11 +1,11 @@
-import fs from "fs/promises";
-import fs_sync from "fs";
-import os from "os";
-import path_lib from "path";
-import { gen_uuid } from "@common/utils/util";
-import type { FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
-import type { ReadableStream } from "stream/web";
-import { generror_catch } from "@common/utils/error_util";
+import fs from 'fs/promises';
+import fs_sync from 'fs';
+import os from 'os';
+import path_lib from 'path';
+import { gen_uuid } from '@common/utils/util';
+import type { FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from '@native/fs/fs.base';
+import type { ReadableStream } from 'stream/web';
+import { generror_catch } from '@common/utils/error_util';
 
 export const node_fs: FileSystem = {
 	temp_directory: async (...paths: string[]) => path_lib.join(os.tmpdir(), ...paths),
@@ -14,25 +14,25 @@ export const node_fs: FileSystem = {
 		try {
 			return (await fs.readFile(path, opts)).toString();
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path, opts });
+			return generror_catch(error, 'Failed to read file as string', 'MEDIUM', { path, opts });
 		}
 	},
 	read_as_buffer: async (path: string) => {
 		try {
 			return (await fs.readFile(path)).buffer;
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to read file as string', 'MEDIUM', { path });
 		}
 	},
 	read_as_buffer_range: async (path: string, position: number, length: number) => {
 		let handle: fs.FileHandle | undefined = undefined;
 		try {
-			handle = await fs.open(path, "r");
+			handle = await fs.open(path, 'r');
 			const buffer = Buffer.allocUnsafe(length);
 			const { bytesRead } = await handle.read(buffer, 0, length, position);
 			return new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead);
 		} catch (error) {
-			return generror_catch(error, "Failed to read file range", "MEDIUM", { path, position, length });
+			return generror_catch(error, 'Failed to read file range', 'MEDIUM', { path, position, length });
 		} finally {
 			await handle?.close();
 		}
@@ -41,7 +41,7 @@ export const node_fs: FileSystem = {
 		try {
 			return await fs.readdir(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to read directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to read directory', 'MEDIUM', { path });
 		}
 	},
 	get_info: async (path: string) => {
@@ -69,47 +69,47 @@ export const node_fs: FileSystem = {
 			await fs.writeFile(path, contents, opts);
 			return;
 		} catch (error) {
-			return generror_catch(error, "Failed to write file", "MEDIUM", { path, opts, contents: contents.slice(0, 50) });
+			return generror_catch(error, 'Failed to write file', 'MEDIUM', { path, opts, contents: contents.slice(0, 50) });
 		}
 	},
 	move: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await fs.rename(from_path, to_path);
 		} catch (error) {
-			return generror_catch(error, "Failed to move file/directory", "MEDIUM", { from_path, to_path, opts });
+			return generror_catch(error, 'Failed to move file/directory', 'MEDIUM', { from_path, to_path, opts });
 		}
 	},
 	copy: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await fs.cp(from_path, to_path, { force: !opts.no_overwrite, recursive: true });
 		} catch (error) {
-			return generror_catch(error, "Failed to copy file/directory", "MEDIUM", { from_path, to_path, opts });
+			return generror_catch(error, 'Failed to copy file/directory', 'MEDIUM', { from_path, to_path, opts });
 		}
 	},
 	make_directory: async (path: string) => {
 		try {
 			return await fs.mkdir(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to make directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to make directory', 'MEDIUM', { path });
 		}
 	},
 	remove: async (path: string) => {
 		try {
 			return fs.rm(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to remove file/directory', 'MEDIUM', { path });
 		}
 	},
 	remove_dir: async (path: string) => {
 		try {
-			return fs.rm(path, {recursive: true});
+			return fs.rm(path, { recursive: true });
 		} catch (error) {
-			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to remove file/directory', 'MEDIUM', { path });
 		}
 	},
 	download_to_file: async (uri: string, to_path?: string) => {
 		try {
-			if (!to_path) to_path = path_lib.join(os.tmpdir(), gen_uuid() + ".tmp");
+			if (!to_path) to_path = path_lib.join(os.tmpdir(), gen_uuid() + '.tmp');
 
 			const response = await fetch(uri);
 
@@ -125,18 +125,18 @@ export const node_fs: FileSystem = {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
-				if (!file_stream.write(value)) await new Promise((resolve) => file_stream.once("drain", resolve));
+				if (!file_stream.write(value)) await new Promise(resolve => file_stream.once('drain', resolve));
 			}
-			await new Promise<void>((resolve, reject) => file_stream.end(() => resolve()).once("error", reject));
+			await new Promise<void>((resolve, reject) => file_stream.end(() => resolve()).once('error', reject));
 			return to_path;
 		} catch (error) {
-			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });
+			return generror_catch(error, 'Failed to download_to_file', 'MEDIUM', { uri, to_path });
 		}
 	},
 	download_resumable: (opts: ResumableDownloadOpts) => ({
 		start: async () => {
 			const result = await node_fs.download_to_file(opts.uri, opts.to_path, opts.headers);
-			if (typeof result === "string") opts.on_progress?.(1, 1);
+			if (typeof result === 'string') opts.on_progress?.(1, 1);
 			return result;
 		},
 		pause: async () => undefined,

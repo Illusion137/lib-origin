@@ -5,19 +5,15 @@
 import type { EPub } from '../index';
 import type { EPub as libEPub } from './epub';
 
-export function fixToc(epub: EPub | libEPub)
-{
+export function fixToc(epub: EPub | libEPub) {
 	const manifest_keys = Object.keys(epub.manifest);
 
-	if (!epub.toc.length)
-	{
-		epub.toc = Object.values(epub.manifest).filter(node => {
-
+	if (!epub.toc.length) {
+		epub.toc = Object.values(epub.manifest).filter((node) => {
 			if (
 				['text/css', 'application/x-dtbncx+xml'].includes(node.mediaType ?? '')
 				|| /^(image)/.test(node.mediaType ?? '')
-			)
-			{
+			) {
 				return false;
 			}
 
@@ -27,16 +23,12 @@ export function fixToc(epub: EPub | libEPub)
 		return epub;
 	}
 
-	epub.toc.forEach(function (toc, _idx)
-	{
-		if (!toc.id || !epub.manifest[toc.id])
-		{
-			for (const k of manifest_keys)
-			{
+	epub.toc.forEach(function (toc, _idx) {
+		if (!toc.id || !epub.manifest[toc.id]) {
+			for (const k of manifest_keys) {
 				const row = epub.manifest[k];
 
-				if ((row.href == toc.href) || ((row.href ?? '').replace(/#.+$/g, '') == (toc.href ?? '').replace(/#.+$/g, '')))
-				{
+				if ((row.href === toc.href) || ((row.href ?? '').replace(/#.+$/g, '') === (toc.href ?? '').replace(/#.+$/g, ''))) {
 					toc.id = k;
 				}
 			}

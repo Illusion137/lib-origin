@@ -1,0 +1,10 @@
+{
+    "name": "lib-origin-node-project",
+    "version": "0.0.1",
+    "main": "main.js",
+    "type": "module",
+    "dependencies": {
+        "bgutils-js": "^4.0.3",
+        "jsdom": "26.1.0"
+    }
+}

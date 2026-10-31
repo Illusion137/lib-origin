@@ -6,10 +6,10 @@ import { join } from 'node:path';
 function wrap_better_sqlite3_client(client: InstanceType<typeof Database>): RawSQLiteConnection {
 	return {
 		execute_sync: (sql, params = []) =>
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 			client.prepare(sql).all(...params) as any[],
 		execute_async: async (sql, params = []) =>
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 			client.prepare(sql).all(...params) as any[],
 		execute_statement: async (sql, params = []) => {
 			client.prepare(sql).run(...params);
@@ -17,7 +17,7 @@ function wrap_better_sqlite3_client(client: InstanceType<typeof Database>): RawS
 		// better-sqlite3 transactions are sync; fn must not rely on async DB ops inside
 		execute_transaction: async (fn) => {
 			await fn();
-		},
+		}
 	};
 }
 
@@ -27,7 +27,7 @@ export const node_sqlite: SQLiteModule = {
 		return drizzle(conn) as unknown as DrizzleDB;
 	},
 	open_raw_connection: (_name, _location) => {
-		throw new Error("open_raw_connection is not supported on Node — no legacy mobile database exists on desktop");
+		throw new Error('open_raw_connection is not supported on Node — no legacy mobile database exists on desktop');
 	},
-	wrap_client: (client) => wrap_better_sqlite3_client(client),
+	wrap_client: client => wrap_better_sqlite3_client(client)
 };

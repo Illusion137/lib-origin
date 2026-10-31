@@ -2,7 +2,7 @@ import { defineConfig } from 'drizzle-kit';
 export default defineConfig({
     dialect: 'sqlite',
     driver: 'expo',
-    schema: './illusive/src/db/schema.ts',
+    schema: './illusive/src/legacy/1810/schema.ts',
     out: './illusive/src/drizzle/mobile',
     casing: "snake_case",
 });

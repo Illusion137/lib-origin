@@ -1,12 +1,12 @@
 import type { RawSQLiteConnection } from '@native/sqlite/sqlite.base';
-import { generror_catch } from "./error_util";
+import { generror_catch } from './error_util';
 
 function is_error_failed_unique_contraint(error: unknown) {
-	return (error as Error).message.includes("UNIQUE constraint failed")
+	return (error as Error).message.includes('UNIQUE constraint failed');
 }
 function log_error_if_not_unique_constraint_failed(error: unknown, source: string, what: string) {
 	if (!is_error_failed_unique_contraint(error)) {
-		console.error(generror_catch(error, `DB failed to ${what}`, "MEDIUM", { source }));
+		console.error(generror_catch(error, `DB failed to ${what}`, 'MEDIUM', { source }));
 		console.error(`SQL: ${source}`);
 	}
 }
@@ -21,7 +21,7 @@ export class DrizzleUtils<SQLTables extends string> {
 		try {
 			return this.conn.execute_sync(sql, params as any[]) as unknown as Awaited<TQuery>;
 		} catch (error) {
-			log_error_if_not_unique_constraint_failed(error, sql, "get all SYNC DZ");
+			log_error_if_not_unique_constraint_failed(error, sql, 'get all SYNC DZ');
 			return [] as unknown as Awaited<TQuery>;
 		}
 	}
@@ -30,7 +30,7 @@ export class DrizzleUtils<SQLTables extends string> {
 		try {
 			await this.conn.execute_statement(source);
 		} catch (error) {
-			log_error_if_not_unique_constraint_failed(error, source, "execute async");
+			log_error_if_not_unique_constraint_failed(error, source, 'execute async');
 		}
 	}
 
@@ -38,7 +38,7 @@ export class DrizzleUtils<SQLTables extends string> {
 		try {
 			await this.conn.execute_statement(source, params);
 		} catch (error) {
-			log_error_if_not_unique_constraint_failed(error, source, "run async");
+			log_error_if_not_unique_constraint_failed(error, source, 'run async');
 		}
 	}
 
@@ -46,21 +46,22 @@ export class DrizzleUtils<SQLTables extends string> {
 		try {
 			return this.conn.execute_sync(source, params) as T[];
 		} catch (error) {
-			log_error_if_not_unique_constraint_failed(error, source, "get all SYNC");
+			log_error_if_not_unique_constraint_failed(error, source, 'get all SYNC');
 			return [];
 		}
 	}
+
 	async get_all_async<T>(source: string, ...params: any[]): Promise<T[]> {
 		try {
 			return await this.conn.execute_async(source, params) as T[];
 		} catch (error) {
-			log_error_if_not_unique_constraint_failed(error, source, "get all async");
+			log_error_if_not_unique_constraint_failed(error, source, 'get all async');
 			return [];
 		}
 	}
 
 	async get_all_triggers() {
-		return await this.get_all_async<{ name: string }>("select name from sqlite_master where type = 'trigger';");
+		return await this.get_all_async<{ name: string }>('select name from sqlite_master where type = \'trigger\';');
 	}
 
 	async delete_all_triggers() {
@@ -92,7 +93,7 @@ export class DrizzleUtils<SQLTables extends string> {
 
 	// TODO get the only item in the deleted_table and use that as the only key to delete the shiznick
 	async create_on_delete_trigger_if_not_exists<T extends Record<string, any>>(watch_table: SQLTables, copy_table: SQLTables, obj: T) {
-		const triggers = await this.get_all_async<{ name: string }>("SELECT name from sqlite_master WHERE type = 'trigger';");
+		const triggers = await this.get_all_async<{ name: string }>('SELECT name from sqlite_master WHERE type = \'trigger\';');
 		if (triggers.map(trigger => trigger.name).includes(`${watch_table}_deleted_Trigger`)) return;
 		const keys = Object.keys(obj).filter(key => obj[key] !== undefined);
 		await this.exec_async(`

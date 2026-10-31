@@ -1,4 +1,4 @@
-export type PandoraType = "TR" | "AR" | "AL" | "PL" | "SF" | "PC" | "PE";
+export type PandoraType = 'TR' | 'AR' | 'AL' | 'PL' | 'SF' | 'PC' | 'PE';
 
 export interface PandoraArtwork {
 	url: string;
@@ -9,13 +9,13 @@ export interface PandoraArtwork {
 
 export interface PandoraTrack {
 	pandoraId: string;
-	type: "TR";
+	type: 'TR';
 	name: string;
 	sortableName: string;
 	duration: number;
 	trackNumber: number;
 	volumeNumber: number;
-	icon: { artId: string, dominantColor: string, artUrl: string };
+	icon: { artId: string; dominantColor: string; artUrl: string };
 	hasRadio: boolean;
 	isExplicit: boolean;
 	artistId: string;
@@ -27,10 +27,10 @@ export interface PandoraTrack {
 
 export interface PandoraArtist {
 	pandoraId: string;
-	type: "AR";
+	type: 'AR';
 	name: string;
 	sortableName: string;
-	icon: { artId: string, dominantColor: string, artUrl: string };
+	icon: { artId: string; dominantColor: string; artUrl: string };
 	trackCount: number;
 	albumCount: number;
 	hasRadio: boolean;
@@ -40,13 +40,13 @@ export interface PandoraArtist {
 
 export interface PandoraAlbum {
 	pandoraId: string;
-	type: "AL";
+	type: 'AL';
 	name: string;
 	sortableName: string;
 	releaseDate: string;
 	duration: number;
 	trackCount: number;
-	icon: { artId: string, dominantColor: string, artUrl: string };
+	icon: { artId: string; dominantColor: string; artUrl: string };
 	isExplicit: boolean;
 	artistId: string;
 	artistName: string;
@@ -55,12 +55,12 @@ export interface PandoraAlbum {
 
 export interface PandoraPlaylist {
 	pandoraId: string;
-	type: "PL";
+	type: 'PL';
 	name: string;
 	description: string;
 	duration: number;
 	trackCount: number;
-	icon: { artId: string, dominantColor: string, artUrl: string };
+	icon: { artId: string; dominantColor: string; artUrl: string };
 	listenerCount: number;
 	isPublic: boolean;
 	linkedType: string;
@@ -69,11 +69,11 @@ export interface PandoraPlaylist {
 
 export interface PandoraStation {
 	pandoraId: string;
-	type: "SF";
+	type: 'SF';
 	name: string;
-	icon: { artId: string, dominantColor: string, artUrl: string };
+	icon: { artId: string; dominantColor: string; artUrl: string };
 	genre: string[];
-	initialSeed: { seedId: string, seedType: number };
+	initialSeed: { seedId: string; seedType: number };
 }
 
 export type PandoraAnnotation = Record<string, PandoraTrack | PandoraArtist | PandoraAlbum | PandoraPlaylist | PandoraStation>;
@@ -81,11 +81,11 @@ export type PandoraAnnotation = Record<string, PandoraTrack | PandoraArtist | Pa
 export interface PandoraSearchResult {
 	annotations: PandoraAnnotation;
 	results: {
-		tracks?: { pandoraIds: string[], nextPageToken?: string };
-		artists?: { pandoraIds: string[], nextPageToken?: string };
-		albums?: { pandoraIds: string[], nextPageToken?: string };
-		playlists?: { pandoraIds: string[], nextPageToken?: string };
-		stations?: { pandoraIds: string[], nextPageToken?: string };
+		tracks?: { pandoraIds: string[]; nextPageToken?: string };
+		artists?: { pandoraIds: string[]; nextPageToken?: string };
+		albums?: { pandoraIds: string[]; nextPageToken?: string };
+		playlists?: { pandoraIds: string[]; nextPageToken?: string };
+		stations?: { pandoraIds: string[]; nextPageToken?: string };
 	};
 }
 

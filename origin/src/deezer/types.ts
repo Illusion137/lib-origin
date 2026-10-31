@@ -26,7 +26,7 @@ export interface DeezerAlbum {
 	cover_xl: string;
 	md5_image: string;
 	genre_id: number;
-	genres?: { data: { id: number, name: string }[] };
+	genres?: { data: { id: number; name: string }[] };
 	label: string;
 	nb_tracks: number;
 	duration: number;
@@ -68,7 +68,7 @@ export interface DeezerTrack {
 	contributors: DeezerArtist[];
 	md5_image: string;
 	artist: DeezerArtist;
-	album: Pick<DeezerAlbum, "id" | "title" | "link" | "cover" | "cover_small" | "cover_medium" | "cover_big" | "cover_xl" | "md5_image" | "release_date" | "tracklist">;
+	album: Pick<DeezerAlbum, 'id' | 'title' | 'link' | 'cover' | 'cover_small' | 'cover_medium' | 'cover_big' | 'cover_xl' | 'md5_image' | 'release_date' | 'tracklist'>;
 }
 
 export interface DeezerPlaylist {
@@ -94,7 +94,7 @@ export interface DeezerPlaylist {
 	creation_date: string;
 	md5_image: string;
 	picture_type: string;
-	creator: { id: number, name: string };
+	creator: { id: number; name: string };
 	tracks?: DeezerList<DeezerTrack>;
 }
 

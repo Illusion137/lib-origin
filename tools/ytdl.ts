@@ -3,10 +3,9 @@ import { TimeLog } from "@common/time_log";
 import { red, green } from "colors";
 import cli_progress from 'cli-progress';
 import path from 'path';
-import { YouTubeDL } from "@origin/youtube_dl/index";
+import { YouTubeDL } from "@origin/youtube/youtube_dl";
 import { load_native_sabr_downloader, sabr_downloader } from "@native/sabr_downloader/sabr_downloader";
 import { gen_uuid } from "@common/utils/util";
-import { load_native_potoken } from '@native/potoken/potoken';
 // import { refetch_env } from '@common/set_env_cookies';
 
 const is_win = process.platform === "win32";
@@ -20,7 +19,6 @@ async function ytdl_main__() {
     }
     // await refetch_env();
     YouTubeDL.preload_cookies();
-    await load_native_potoken();
     await load_native_sabr_downloader();
 
     const sabr_params = await TimeLog.log_fn_async(
@@ -35,7 +33,7 @@ async function ytdl_main__() {
     const title = url.replace(/[^a-zA-Z0-9]/g, '_');
     const output_path = path.join(output_folder, `${gen_uuid()}_${title}.m4a`);
 
-    const sabrFormats = sabr_params.sabrFormats;
+    const sabrFormats = sabr_params.formats;
     console.log(green(`Formats count: ${sabrFormats.length}`));
     const audioFormats = sabrFormats.filter(f => f.mimeType?.includes('audio'));
     const videoFormats = sabrFormats.filter(f => f.mimeType?.includes('video'));
@@ -46,24 +44,17 @@ async function ytdl_main__() {
     if (sabrFormats.length > 0 && audioFormats.length === 0) {
         console.log(red(`First format sample: ${JSON.stringify(sabrFormats[0])}`));
     }
-    console.log(green(`SABR URL: ${sabr_params.sabrServerUrl.substring(0, 80)}...`));
-    console.log(green(`Ustreamer config length: ${sabr_params.sabrUstreamerConfig.length}`));
+    console.log(green(`SABR URL: ${sabr_params.serverAbrStreamingUrl.substring(0, 80)}...`));
+    console.log(green(`Ustreamer config length: ${sabr_params.videoPlaybackUstreamerConfig.length}`));
     console.log(green(`ClientInfo: clientName=${sabr_params.clientInfo?.clientName} version=${sabr_params.clientInfo?.clientVersion}`));
     console.log(green(`Cookie present: ${!!sabr_params.cookie}`))
 
-    const duration_ms = sabr_params.sabrFormats?.[0]?.approxDurationMs ?? 0;
+    const duration_ms = sabr_params.formats?.[0]?.approxDurationMs ?? 0;
     const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_classic);
     progress_bar.start(100, 0);
 
     await sabr_downloader().download_sabr(
-        {
-            content_binding: sabr_params.content_binding,
-            sabrServerUrl: sabr_params.sabrServerUrl,
-            sabrUstreamerConfig: sabr_params.sabrUstreamerConfig,
-            sabrFormats,
-            clientInfo: sabr_params.clientInfo,
-            cookie: sabr_params.cookie,
-        },
+        sabr_params,
         output_path,
         (progress) => progress_bar.update(Math.floor(progress * 100))
     );

@@ -1,51 +1,42 @@
-import TrackPlayer, { Event } from 'react-native-track-player';
-import type { SabrDownloader, SabrTokenCallbackReason } from "./sabr_downloader.base";
-import { YouTubeDL } from '@origin/youtube_dl';
+import { DownloadEvent, DownloadManager, DownloadState } from 'react-native-everything-player';
+import type { Download, SabrStreamingInfo } from 'react-native-everything-player';
+import type { SabrDownloader } from './sabr_downloader.base';
+import { reinterpret_cast } from '@common/cast';
+import { fs } from '@native/fs/fs';
 
 export const mobile_sabr_downloader: SabrDownloader = {
 	download_sabr: async (params, output_path, on_progress) => {
+		const track_id = `sabr-download:${params.videoId}:${Date.now()}`;
+		const streaming_info = reinterpret_cast<SabrStreamingInfo>(params);
+
 		let unsub: { remove: () => void } | undefined;
-		let unsub_reload: { remove: () => void } | undefined;
-		if (on_progress) {
-			// SabrDownloadProgress = 'sabr-download-progress' (RNTPvE extension)
-			unsub = TrackPlayer.addEventListener(Event.SabrDownloadProgress, (event: { outputPath: string; progress: number }) => {
-				if (event.outputPath === output_path) on_progress(event.progress);
-			});
-		}
-		if (params.on_reload_player_response) {
-			unsub_reload = TrackPlayer.addEventListener(Event.SabrReloadPlayerResponse, async (event: { outputPath: string; token: string | null }) => {
-				if (event.outputPath !== output_path) return;
-				try {
-					const result = await params.on_reload_player_response!(event.token);
-					if (result) {
-						await TrackPlayer.updateSabrStream(output_path, result.sabrServerUrl, result.sabrUstreamerConfig);
-					}
-				} catch {
-					// ignore errors in reload handler — download will time out naturally
-				}
-			});
-		}
-		let token_refresh_in_flight = false;
-		const unsub_refresh = TrackPlayer.addEventListener(Event.SabrRefreshPoToken, async (event: { outputPath?: string, reason: SabrTokenCallbackReason }) => {
-			if (event.outputPath !== output_path) return;
-			if (token_refresh_in_flight) return;
-			token_refresh_in_flight = true;
-			try {
-				const token = await YouTubeDL.fetch_potoken(params.content_binding);
-				if("error" in token) throw token.error;
-				await TrackPlayer.updateSabrPoToken(output_path, token.po_token);
-			} catch {
-				// ignore — stream will fail naturally if token can't be refreshed
-			} finally {
-				token_refresh_in_flight = false;
-			}
-		});
 		try {
-			await TrackPlayer.downloadSabr(params as Parameters<typeof TrackPlayer.downloadSabr>[0], output_path);
+			const finished = new Promise<Download>((resolve, reject) => {
+				const settle = (download: Download) => {
+					if (download.state === DownloadState.Completed) resolve(download);
+					else if (download.state === DownloadState.Failed || download.state === DownloadState.Cancelled)
+						reject(new Error(download.error?.message ?? `SABR download ${download.state}`));
+				};
+				unsub = DownloadManager.addEventListener(DownloadEvent.DownloadChanged, (download) => {
+					if (download.trackId !== track_id) return;
+					on_progress?.(download.progress);
+					settle(download);
+				});
+				DownloadManager.download({
+					id: track_id,
+					title: params.videoId,
+					artist: '',
+					duration: params.duration,
+					streamingInfo: streaming_info
+				}).then(settle, reject);
+			});
+			const download = await finished;
+			const downloaded_path = download.audioPath ?? download.localPath;
+			if (downloaded_path === undefined) throw new Error('SABR download completed without a file path');
+			await fs().move(downloaded_path, output_path, {});
 		} finally {
 			unsub?.remove();
-			unsub_reload?.remove();
-			unsub_refresh?.remove();
+			await DownloadManager.remove(track_id).catch(() => { });
 		}
 	}
 };

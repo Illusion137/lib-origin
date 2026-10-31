@@ -1,22 +1,10 @@
-import type { YouTubeDL } from '@origin/youtube_dl/index';
+import type { ExtendedSabrStreamConfig } from '@origin/youtube/youtube_dl';
 
 export type SabrTokenCallbackReason = 'placeholder_needed' | 'proactive' | 'expired';
 
-export interface SabrDownloadParams {
-	content_binding: string;
-	sabrServerUrl: string;
-	sabrUstreamerConfig: string;
-	sabrFormats?: YouTubeDL.SabrFormat[];
-	placeholder_po_token?: string;
-	clientInfo?: YouTubeDL.SabrClientInfo;
-	cookie?: string;
-	on_reload_player_response?: (context: any) => Promise<{ sabrServerUrl: string; sabrUstreamerConfig: string } | null>;
-	preferOpus?: boolean;
-}
-
 export interface SabrDownloader {
 	download_sabr: (
-		params: SabrDownloadParams,
+		params: ExtendedSabrStreamConfig,
 		output_path: string,
 		on_progress?: (progress: number) => void
 	) => Promise<void>;
