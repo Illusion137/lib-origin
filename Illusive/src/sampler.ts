@@ -115,7 +115,6 @@ export async function handle_incoming_youtube_music_track_data(track: Track, new
 	track.artists = new_track.artists;
 	track.album = new_track.album;
 	track.explicit = new_track.explicit;
-	track.youtubemusic_id = new_track.youtubemusic_id;
 	await SQLTracks.update_track(track.uid, track);
 }
 export async function sample_tracks_meta(sample_tracks: Track[]) {
