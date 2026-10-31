@@ -1,75 +1,78 @@
 import rozfetch from "@common/rozfetch";
 import type { BaseOpts, PromiseResult } from "@common/types";
 import { encode_params } from "@common/utils/fetch_util";
-import { generror } from "@common/utils/error_util";
-import { extract_string_from_pattern, urlid } from "@common/utils/util";
+import { urlid } from "@common/utils/util";
 import type { TidalAlbum, TidalArtist, TidalList, TidalPlaylist, TidalSearchResult, TidalTrack } from "@origin/tidal/types";
 
 export type { TidalAlbum, TidalArtist, TidalList, TidalPlaylist, TidalSearchResult, TidalTrack } from "@origin/tidal/types";
 
 export namespace Tidal {
 	const BASE_URL = "https://api.tidal.com/v1";
-	const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+	const WEB_URL = "https://tidal.com";
+	const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36";
+	const CLIENT_VERSION = "2026.9.1";
+	const FALLBACK_CLIENT_TOKEN = "txNoH4kkV41MfH25";
 	const DEFAULT_COUNTRY = "US";
 	const token_cache = { token: null as string | null, enabled: true };
 
-	type Opts = BaseOpts & { country_code?: string };
+	type Opts = BaseOpts & { country_code?: string, user_token?: string };
 
 	export function enable_cache(enable: boolean) { token_cache.enabled = enable; }
 	export function token_cache_full() { return token_cache.enabled && token_cache.token !== null; }
 
+	function extract_client_token(js: string): string | null {
+		const entry = /\[\s*(`[^`]+`|"[^"]+"|'[^']+'|[A-Za-z_$][\w$]*)\s*,\s*\{\s*authType\s*:\s*[`"']clientCredentials[`"']\s*,\s*env\s*:\s*[`"']PROD[`"']/.exec(js);
+		if (entry === null) return null;
+		const key = entry[1];
+		const quoted = /^[`"'](.+)[`"']$/.exec(key);
+		if (quoted !== null) return quoted[1];
+		const resolved = new RegExp("\\b" + key + "\\s*=\\s*[`\"']([A-Za-z0-9_-]{8,})[`\"']").exec(js);
+		return resolved !== null ? resolved[1] : null;
+	}
+
 	export async function get_client_token(opts: Opts): PromiseResult<string> {
 		if (token_cache_full()) return token_cache.token!;
-		const response = await rozfetch("https://listen.tidal.com/", {
+		const page = await rozfetch(`${WEB_URL}/`, {
 			method: "GET",
 			headers: {
 				"User-Agent": USER_AGENT,
-				"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+				"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
 				"Accept-Language": "en-US,en;q=0.9",
 				...(opts.cookie_jar ? { "Cookie": opts.cookie_jar.toString() } : {})
 			},
 			...opts.fetch_opts
 		});
-		if ("error" in response) return response;
-		const html = await response.text();
-		const script_src = extract_string_from_pattern(html, /<script[^>]+src="([^"]+\/main\.[^"]+\.js)"/, "INFO");
-		if (typeof script_src === "string") {
-			const script_response = await rozfetch(script_src.startsWith("http") ? script_src : `https://listen.tidal.com${script_src}`, {
-				method: "GET",
-				headers: { "User-Agent": USER_AGENT }
-			});
-			if (!("error" in script_response)) {
-				const js = await script_response.text();
-				for (const pattern of [/clientId:"([^"]{10,})"/i, /client_id:"([^"]{10,})"/i, /"clientId"\s*:\s*"([^"]{10,})"/i]) {
-					const found = extract_string_from_pattern(js, pattern, "INFO");
-					if (typeof found === "string" && found.length > 5) {
-						if (token_cache.enabled) token_cache.token = found;
-						return found;
-					}
+		if (!("error" in page)) {
+			const html = await page.text();
+			const scripts = [...new Set([...html.matchAll(/\/assets\/(?:store|index)[A-Za-z0-9._-]*\.js/g)].map(m => m[0]))];
+			scripts.sort((a, b) => (a.includes("store") ? 0 : 1) - (b.includes("store") ? 0 : 1));
+			for (const src of scripts.slice(0, 6)) {
+				const asset = await rozfetch(`${WEB_URL}${src}`, { method: "GET" });
+				if ("error" in asset) continue;
+				const token = extract_client_token(await asset.text());
+				if (token !== null) {
+					if (token_cache.enabled) token_cache.token = token;
+					return token;
 				}
 			}
 		}
-		for (const pattern of [/"clientId"\s*:\s*"([^"]{10,})"/i, /TIDAL_CLIENT_ID['"]\s*:\s*["']([^"']{10,})["']/i]) {
-			const found = extract_string_from_pattern(html, pattern, "INFO");
-			if (typeof found === "string" && found.length > 5) {
-				if (token_cache.enabled) token_cache.token = found;
-				return found;
-			}
-		}
-		return generror("Could not extract Tidal client token from web player", "MEDIUM", { opts });
+		return FALLBACK_CLIENT_TOKEN;
 	}
 
-	function api_headers(token: string, opts: Opts): Record<string, string> {
+	function api_headers(token: string, url: string, opts: Opts): Record<string, string> {
 		const cookie_str = opts.cookie_jar?.toString();
-		return {
+		const headers: Record<string, string> = {
 			"User-Agent": USER_AGENT,
 			"Accept": "application/json",
 			"Accept-Language": "en-US,en;q=0.9",
-			"X-Tidal-Token": token,
-			"Origin": "https://listen.tidal.com",
-			"Referer": "https://listen.tidal.com/",
+			"Origin": WEB_URL,
+			"Referer": `${WEB_URL}/`,
 			...(cookie_str ? { "Cookie": cookie_str } : {})
 		};
+		if (url.includes("/v2")) headers["x-tidal-client-version"] = CLIENT_VERSION;
+		if (opts.user_token) headers.Authorization = `Bearer ${opts.user_token}`;
+		else headers["X-Tidal-Token"] = token;
+		return headers;
 	}
 
 	export async function apiget<T>(path: string, params: Record<string, any> = {}, opts: Opts = {}): PromiseResult<T> {
@@ -77,9 +80,10 @@ export namespace Tidal {
 		if (typeof token === "object") return token;
 		const country = opts.country_code ?? DEFAULT_COUNTRY;
 		const query = encode_params({ countryCode: country, ...params });
-		const response = await rozfetch<T>(`${BASE_URL}/${path}?${query}`, {
+		const url = `${BASE_URL}/${path}?${query}`;
+		const response = await rozfetch<T>(url, {
 			method: "GET",
-			headers: api_headers(token, opts),
+			headers: api_headers(token, url, opts),
 			...opts.fetch_opts
 		});
 		if ("error" in response) return response;

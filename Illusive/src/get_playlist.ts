@@ -407,6 +407,7 @@ export async function illusi_get_playlist(uuid: string): Promise<MusicServicePla
         title: playlist.title,
         tracks: playlist.tracks,
         description: playlist.description,
+        artwork_url: playlist.artwork_path ? Origin.Illusi.artwork_public_url(playlist.artwork_path) : undefined,
         date: new Date(playlist.created_at).toISOString() as ISOString,
         continuation: playlist.tracks.length < Origin.Illusi.PLAYLIST_LIMIT ? null : { uuid, offset: playlist.tracks.length } as IllusiPlaylistContinuation
     };

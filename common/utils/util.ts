@@ -37,7 +37,7 @@ export function extract_strings_from_pattern(str: string, pattern: RegExp) {
     return [...body_groups].slice(1);
 }
 export function extract_string_undef(str: string, pattern: RegExp) {
-    return error_undefined(extract_string_from_pattern(str, pattern, "LOW"));
+    return error_undefined(extract_string_from_pattern(str, pattern, "INFO"));
 }
 export function extract_all_strings_from_pattern(str: string, pattern: RegExp) {
     const matched = str.matchAll(pattern);
@@ -89,6 +89,9 @@ export function hours_of(time: MillOfTime): number {
 }
 export function days_of(time: MillOfTime): number {
     return hours_of(time) / 24;
+}
+export function weeks_of(time: MillOfTime): number {
+    return days_of(time) / 7;
 }
 export function empty_join(vals: any[], join_with: string) {
     return vals.filter(val => !is_empty(val)).join(join_with);
@@ -195,6 +198,19 @@ export function groupby<T>(items: T[], keyGetter: (t: T) => any): Record<string,
     }, {}) as Record<string, T[]>;
 };
 
+export function groupby_map<T, V>(items: T[], keyGetter: (t: T) => any, transform: (group: T[]) => V): Record<string, V> {
+    const groups = items.reduce((accumulator: Record<string, unknown[]>, item) => {
+        const key = keyGetter(item);
+        (accumulator[key] = accumulator[key] || []).push(item);
+        return accumulator;
+    }, {}) as Record<string, T[]>;
+    const mapped_groups: Record<string, V> = {};
+    for(const [key, value] of Object.entries(groups)) {
+        mapped_groups[key] = transform(value);
+    }
+    return mapped_groups;
+};
+
 export function version_split(version: string): [number, number, number] {
     return reinterpret_cast<[number, number, number]>(version.split('.').map(item => parseInt(item)));
 }
@@ -275,4 +291,14 @@ export function join_uri(base: string, ...paths: string[]): string {
     if (paths.length === 0) return base;
     const sep = base.endsWith('/') ? '' : '/';
     return base + sep + paths.join('/');
+}
+
+export function filter_by_set<T>(arr: T[], get: (item: T) => string|number): T[]{
+    const seen = new Set();
+    return arr.filter(item => {
+        const key = get(item);
+        if(seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }

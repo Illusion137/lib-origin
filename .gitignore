@@ -12,7 +12,7 @@ sample/illusi/*.sqlite3
 scratch
 scratch*
 scratch.**
-translate
+translate_m
 catids.txt
 *.roz.json
 *.wav

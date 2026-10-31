@@ -18,11 +18,11 @@ const output_folder = is_win ? "C:/Users/raygo/Music/ytdl/" : "/Users/illusion/y
 
 interface PoToken {po_token: string, placeholder_po_token: string};
 
-// TODO fix this whole thing up; use custom downloader instead of main downloader
-async function download(video_id: string, _po_token: PoToken){
+async function download(video_id: string, po_token: PoToken){
     await load_native_potoken();
     await load_native_sabr_downloader();
 
+    YouTubeDL.inject_potoken(video_id, po_token.po_token);
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
         async () => await YouTubeDL.resolve_sabr_info(video_id)
@@ -31,6 +31,7 @@ async function download(video_id: string, _po_token: PoToken){
         console.error(red("FAILED TO RESOLVE SABR URL"), sabr_params.error);
         return;
     }
+    sabr_params.placeholder_po_token = po_token.placeholder_po_token;
 
     const title = video_id.replace(/[^a-zA-Z0-9]/g, '_');
     const output_path = path.join(output_folder, `${gen_uuid()}_${title}.m4a`);
@@ -47,6 +48,7 @@ async function download(video_id: string, _po_token: PoToken){
         console.log(red(`First format sample: ${JSON.stringify(sabrFormats[0])}`));
     }
     console.log(green(`SABR URL: ${sabr_params.sabrServerUrl.substring(0, 80)}...`));
+    console.log(green(`FEXP: ${new URL(sabr_params.sabrServerUrl).searchParams.get("fexp")}`));
     console.log(green(`Ustreamer config length: ${sabr_params.sabrUstreamerConfig.length}`));
     console.log(green(`ClientInfo: clientName=${sabr_params.clientInfo?.clientName} version=${sabr_params.clientInfo?.clientVersion}`));
     console.log(green(`Cookie present: ${!!sabr_params.cookie}`))
@@ -62,6 +64,7 @@ async function download(video_id: string, _po_token: PoToken){
             sabrFormats,
             clientInfo: sabr_params.clientInfo,
             cookie: sabr_params.cookie,
+            placeholder_po_token: sabr_params.placeholder_po_token
         },
         output_path,
         (progress) => progress_bar.update(Math.floor(progress * 100))

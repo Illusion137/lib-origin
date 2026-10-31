@@ -1,4 +1,4 @@
-import { json_catch, milliseconds_of } from "@common/utils/util";
+import { milliseconds_of } from "@common/utils/util";
 import { GLOBALS } from "./globals";
 import type { CompactArtist, CompactPlaylist, FullPlaylist, MusicServiceType, Track } from "./types";
 import { FutsalShuffle } from "./futsal_shuffle";
@@ -9,8 +9,7 @@ import { SQLTracks } from "./sql/sql_tracks";
 import { catch_log, generror, generror_catch } from "@common/utils/error_util";
 import type { ResponseError } from "@common/types";
 import { SQLNewReleases } from "./sql/sql_new_releases";
-import { create_uri, get_most_played_artists, should_automatic_refresh } from "./illusive_utils";
-import { artist_watch } from "./artist_watch";
+import { create_uri, should_automatic_refresh } from "./illusive_utils";
 import { Prefs } from "./prefs";
 import { call_wtimeout } from "@common/utils/timed_util";
 import * as Origin from '@origin/index';
@@ -34,14 +33,9 @@ export namespace Explore {
 	}
 
 	type GetPersistantNewReleases = (refreshed?: boolean) => Promise<CompactPlaylist[]>;
-	export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases, on_progress: () => any): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
-		const most_played_artists = get_most_played_artists(GLOBALS.global_var.sql_tracks);
+	export async function refresh_new_releases(get_persistant_new_releases: GetPersistantNewReleases): Promise<(CompactPlaylist | ResponseError)[] | ResponseError> {
 		const new_releases_length = await SQLNewReleases.new_releases_count();
 		const old_persistant = await get_persistant_new_releases(true);
-		const artist_watch_new_releases: (CompactPlaylist[] | ResponseError)[] | ResponseError = await artist_watch(most_played_artists, on_progress).catch(json_catch);
-		if ("error" in artist_watch_new_releases) return artist_watch_new_releases;
-		const filtered_new_releases = (artist_watch_new_releases.filter((r) => !("error" in r)) as CompactPlaylist[][]).flat();
-		await SQLNewReleases.refresh_new_releases(filtered_new_releases);
 		const updated_new_releases_length = await SQLNewReleases.new_releases_count();
 		const persistant = await get_persistant_new_releases(true);
 		alert_new_releases(new_releases_length, updated_new_releases_length, old_persistant, persistant);
@@ -126,7 +120,7 @@ export namespace Explore {
 		const REC_SOUNDCLOUD_CACHE_KEY = "REC_SOUNDCLOUD_PLAYLISTS_CACHE_KEY";
 		const REC_SOUNDCLOUD_CACHE_EXPIRES_MS = milliseconds_of({days: 1});
 		const cache_hit = await FSCache.check_cache<SelectionItem[]>(REC_SOUNDCLOUD_CACHE_KEY, REC_SOUNDCLOUD_CACHE_EXPIRES_MS, {});
-		if(cache_hit) return cache_hit.filter(item => item.kind === "system-playlist")
+		if(cache_hit) return cache_hit.filter(item => "kind" in item && item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		if (!Illusive.music_service.get('SoundCloud')?.has_credentials()) return [];
 		const recommended_playlists_urn = "soundcloud:selections:personalized-tracks";
@@ -136,7 +130,7 @@ export namespace Explore {
 		const recommended_playlists_section = mixed_selection.data.collection.find(item => item.urn.startsWith(recommended_playlists_urn))?.items.collection;
 		if (!recommended_playlists_section) return [];
 		await FSCache.insert_cache(REC_SOUNDCLOUD_CACHE_KEY, recommended_playlists_section, {});
-		const playlists = recommended_playlists_section.filter(item => item.kind === "system-playlist")
+		const playlists = recommended_playlists_section.filter(item => "kind" in item && item.kind === "system-playlist")
 			.map(soundcloud_parse_system_playlist);
 		return playlists;
 	}
@@ -165,6 +159,11 @@ export namespace Explore {
 			console.warn(generror("Failed to get Illusi public playlists", "MEDIUM", {result}));
 			return [];
 		}
-		return result.map(playlist => ({ title: { name: playlist.title, uri: create_uri("illusi", playlist.uuid) }, artist: [{ name: "Sumi!", uri: null }], artwork_index: 0 }));
+		return result.map(playlist => ({
+			title: { name: playlist.title, uri: create_uri("illusi", playlist.uuid) },
+			artist: [{ name: "Sumi!", uri: null }],
+			artwork_url: playlist.artwork_path ? Origin.Illusi.artwork_public_url(playlist.artwork_path) : undefined,
+			artwork_index: 0
+		}));
 	}
 }

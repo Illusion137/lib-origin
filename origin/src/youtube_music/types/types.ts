@@ -21,6 +21,7 @@ export interface YouTubeMusicAlbum {
 	browse_id: string;
 	badges: YouTubeMusicBadges;
 	album_type: YouTubeMusicAlbumType;
+	year?: number;
 }
 export interface YouTubeMusicTrack {
 	thumbnails: YouTubeMusicThumbnail[];
@@ -50,4 +51,10 @@ export interface WatchNextResult {
 export interface LyricsResult {
 	lyrics: string;
 	source?: string;
+}
+export interface YouTubeMusicArtist {
+	thumbnails: YouTubeMusicThumbnail[];
+	name: string;
+	browse_id: string;
+	monthly_audience?: number;
 }

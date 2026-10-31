@@ -4,7 +4,6 @@ import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } fr
 import { GLOBALS } from './globals';
 import { SQLRecentlyPlayed } from './sql/sql_recently_played';
 
-// TODO call await SQLTracks.fetch_track_data(); before track_function prolly
 export const default_playlists = [
     {
         name: "Recently Added", track_function: (async () => {

@@ -1,6 +1,6 @@
 import type { CompactArtist, CompactPlaylist, MusicServiceType, Track } from "./types";
 import * as Origin from '@origin/index';
-import { parse_youtube_music_track } from "./parsers/youtube_music_parser";
+import { parse_youtube_music_albums, parse_youtube_music_artist, parse_youtube_music_track } from "./parsers/youtube_music_parser";
 import { Prefs } from "./prefs";
 import { supabase } from "./db/supabase";
 import { parse_spotify_search_album, parse_spotify_search_artist, parse_spotify_search_track } from "./parsers/spotify_parser";
@@ -15,7 +15,12 @@ export namespace Suggestions {
     }
     export async function get_youtube_music_suggestions(query: string): Promise<SuggestionItem[]>{
         const suggestions = await Origin.YouTubeMusic.search_suggestions({}, query);
-        return suggestions.map(s => typeof s === "string" ? s : parse_youtube_music_track(s));
+        return suggestions.map(s => {
+            if (typeof s === "string") return s;
+            if ("video_id" in s) return parse_youtube_music_track(s);
+            if ("album_type" in s) return parse_youtube_music_albums([s], "ALBUM")[0];
+            return parse_youtube_music_artist(s);
+        }) as SuggestionItem[];
     }
     export async function get_soundcloud_suggestions(query: string): Promise<SuggestionItem[]>{
         const suggestions = await Origin.SoundCloud.query_suggestions({query});

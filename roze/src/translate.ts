@@ -6,14 +6,13 @@ import { replace_html_codes } from "@roze/utils";
 import rozfetch, { type RoZFetchRequestInit } from "@common/rozfetch";
 type LangCode = keyof typeof languages;
 
-// TODO maybe integrate this into Illusi lyrics
 export namespace Translate {
     export async function google_translate_html_get_api_key(otps: {
         fetch_opts?: RoZFetchRequestInit;
     }) {
         const apikey_response = await rozfetch("https://translate.googleapis.com/_/translate_http/_/js/k=translate_http.tr.en_US._9aUrtDIFPs.O/am=AAAC/d=1/exm=el_conf/ed=1/rs=AN8SPfrCr6bGtQmtDQ15LtxWBBOPM_TtCQ/m=el_main", {
             cache_opts: {
-                cache_ms: milliseconds_of({ seconds: 30 }),
+                cache_ms: milliseconds_of({ hours: 1 }),
                 cache_ms_fail: milliseconds_of({ seconds: 1 }),
                 cache_mode: "file"
             },

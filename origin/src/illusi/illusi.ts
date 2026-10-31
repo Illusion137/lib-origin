@@ -9,7 +9,23 @@ const SUPABASE_ANON = process.env.EXPO_PUBLIC_SUPABASE_PUBLIC_KEY ?? '';
 export namespace Illusi {
     export interface Opts { jwt: string }
 
-    export type RemotePlaylist = Pick<Database['public']['Tables']['playlists']['Row'], 'uuid' | 'title' | 'description' | 'created_at' | 'modified_at'>;
+    export const ARTWORK_BUCKET = 'playlist-artworks';
+    const ARTWORK_PUBLIC_PREFIX = `/storage/v1/object/public/${ARTWORK_BUCKET}/`;
+
+    export function artwork_public_url(artwork_path: string): string {
+        return `${SUPABASE_URL}${ARTWORK_PUBLIC_PREFIX}${artwork_path}`;
+    }
+    export function is_artwork_public_url(url: string): boolean {
+        return url.includes(ARTWORK_PUBLIC_PREFIX);
+    }
+    export function artwork_path_from_url(url: string): string | null {
+        const idx = url.indexOf(ARTWORK_PUBLIC_PREFIX);
+        if (idx === -1) return null;
+        const path = url.substring(idx + ARTWORK_PUBLIC_PREFIX.length).split(/[?#]/)[0];
+        return path.length > 0 ? path : null;
+    }
+
+    export type RemotePlaylist = Pick<Database['public']['Tables']['playlists']['Row'], 'uuid' | 'title' | 'description' | 'artwork_path' | 'created_at' | 'modified_at'>;
     export type RemoteTrack = Omit<Database['public']['Tables']['tracks']['Row'], 'deleted'>;
     export type RemoteNewRelease = Omit<Database['public']['Tables']['new_releases']['Row'], 'id' | 'user_uid' | 'deleted' | 'modified_at'>;
     export type RemoteTrackSuggestion = Pick<RemoteTrack,
@@ -62,7 +78,7 @@ export namespace Illusi {
     ): PromiseResult<RemotePlaylistWithTracks> {
         const [playlist_result, tracks_result] = await Promise.all([
             rest<RemotePlaylist[]>(
-                `playlists?select=uuid,title,description,created_at,modified_at&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&limit=1`,
+                `playlists?select=uuid,title,description,artwork_path,created_at,modified_at&uuid=eq.${encodeURIComponent(uuid)}&deleted=eq.false&limit=1`,
                 opts,
             ),
             rest<{ track_uid: string }[]>(
@@ -136,7 +152,7 @@ export namespace Illusi {
     ): PromiseResult<RemotePlaylist[]> {
         const playlist_result = await
             rest<RemotePlaylist[]>(
-                `playlists?select=uuid,title,description,created_at,modified_at&deleted=eq.false&public=eq.true&limit=20`,
+                `playlists?select=uuid,title,description,artwork_path,created_at,modified_at&deleted=eq.false&public=eq.true&limit=20`,
                 opts,
             );
 
@@ -150,7 +166,7 @@ export namespace Illusi {
     ): PromiseResult<RemotePlaylist[]> {
         const playlist_result = await
             rest<RemotePlaylist[]>(
-                `playlists?select=uuid,title,description,created_at,modified_at&deleted=eq.false&limit=50`,
+                `playlists?select=uuid,title,description,artwork_path,created_at,modified_at&deleted=eq.false&limit=50`,
                 opts,
             );
 

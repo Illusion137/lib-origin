@@ -17,7 +17,7 @@ function get_database_location() {
 	const sqlite_location_mobile = SQLfs.document_directory('SQLite')
 		.replace('file://', '')
 		.replace('file:', '');
-	const sqlite_location_desktop = SQLfs.document_directory(".illusi/sumi.sqlite");
+	const sqlite_location_desktop = SQLfs.document_directory("sumi.sqlite");
 	const sqlite_location_map: Record<NativePlatform, string> = {
 		NODE: sqlite_location_desktop,
 		REACT_NATIVE: sqlite_location_mobile,

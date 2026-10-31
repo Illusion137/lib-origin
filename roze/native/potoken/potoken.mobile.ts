@@ -3,8 +3,10 @@ import type { PoTokenGenerator } from "@native/potoken/potoken.base";
 import { generror } from "@common/utils/error_util";
 import { force_json_parse } from "@common/utils/parse_util";
 
+const PO_TOKEN_CHANNEL = "potoken";
+
 let results: { poToken?: string; identifier?: string; error?: string } = {};
-nodejs?.channel?.addListener?.("potoken", (msg) => {
+nodejs?.channel?.addListener?.(PO_TOKEN_CHANNEL, (msg) => {
 	results = force_json_parse(msg);
 });
 
@@ -17,7 +19,7 @@ export const mobile_potoken: PoTokenGenerator = {
 			}
 			const context = innertube.session.context;
 			nodejs.channel.post("potoken", JSON.stringify({ content_binding, context }));
-			const MAX_TIMEOUT = 1000;
+			const MAX_TIMEOUT = 1500;
 			let timeoutCounter = 0;
 			while (timeoutCounter < MAX_TIMEOUT) {
 				timeoutCounter += 1;
@@ -38,5 +40,9 @@ export const mobile_potoken: PoTokenGenerator = {
 		} catch (e: any) {
 			return generror(`Node potoken generation failed: ${e.message}`, "CRITICAL");
 		}
+	},
+	generate_potoken_bytes(_innertube, _content_binding) {
+		// TODO implement this maybe if needed?
+		throw new Error("Unimplemented generate_potoken_bytes");
 	}
 };

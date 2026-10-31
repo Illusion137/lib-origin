@@ -17,12 +17,15 @@ export function args_prettystring(args: object, indent = 2) {
     let str = '{\n';
     const keys = Object.keys(args);
     for (const key of keys) {
-        str += `${new Array(indent).fill(' ').join('')}${key}: ${JSON.stringify(args[key])}\n`;
+        let value;
+        try { value = JSON.stringify(args[key]); }
+        catch (e) { value = `[unserializable: ${e instanceof Error ? e.message : String(e)}]`; }
+        str += `${new Array(indent).fill(' ').join('')}${key}: ${value}\n`;
     }
     str += '}'
     return str;
 }
-function is_error_instance(e: unknown) {
+function is_error_instance(e: unknown): e is Error {
     return e instanceof Error;
 }
 export function is_timeout_error(e: unknown) {
@@ -70,9 +73,9 @@ export const SEVERITY_HANDLER_MAP: Record<ErrorSeverity, (error: ResponseError) 
     INFO: () => { return; }
 };
 
-function handle_error(error: ResponseError, severity: ErrorSeverity): ResponseError {
-    if(Logger.is_enabled() && Logger.should_log(error)) console.warn(error);
-    SEVERITY_HANDLER_MAP[severity](error);
+function handle_error(error: ResponseError, severity: ErrorSeverity, ignore = false): ResponseError {
+    if(Logger.is_enabled() && Logger.should_log(error) && severity !== "INFO" && !ignore) console.warn(error);
+    if(!ignore) SEVERITY_HANDLER_MAP[severity](error);
     return error;
 }
 
@@ -87,6 +90,9 @@ export function generror_catch(e: unknown, msg: string, severity: ErrorSeverity,
         return handle_error({ error: clean_error_trace(err) }, severity);
     }
     return handle_error({ error: clean_error_trace(new Error(`e: ${String(e)}\n ${generror_base_msg(msg, undefined, args)}`)) }, severity);
+}
+export function generror_ignore(msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
+    return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity, true);
 }
 export function generror(msg: string, severity: ErrorSeverity, args: object = {}): ResponseError {
     return handle_error({ error: clean_error_trace(new Error(generror_base_msg(msg, undefined, args))) }, severity);

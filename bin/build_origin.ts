@@ -3,12 +3,6 @@ import path from 'path-browserify';
 import { log_error } from '@common/log';
 const cwd = process.argv[2];
 
-declare namespace NodeJS {
-    export interface ProcessEnv {
-        LORIGIN: string;
-    }
-}
-
 const ignore_sources: string[] = [
     "node_modules",
     "admin",
@@ -25,7 +19,7 @@ const ignore_sources: string[] = [
     "gitignore",
     ".git",
     ".history",
-    "translate",
+    "translate_m",
     "python",
     "ignore",
     ".venv",

@@ -54,9 +54,9 @@ export class Counter<T extends number | string | object> {
 
 export class TimedCacheValue<V> {
     lifespan_milliseconds: number
-    store?: { created_at: Date, value: V }
-    constructor(lifespan_milliseconds: number) {
-        this.lifespan_milliseconds = lifespan_milliseconds;
+    store?: { created_at: number, value: V }
+    constructor(lifespan_milliseconds?: number) {
+        this.lifespan_milliseconds = lifespan_milliseconds ?? 0;
         this.store = undefined;
     }
     get() {
@@ -65,15 +65,20 @@ export class TimedCacheValue<V> {
     }
     set(value: V) {
         this.clear_expired();
-        this.store = { created_at: new Date(), value };
+        this.store = { created_at: Date.now(), value };
+    }
+    set_with_lifespan(value: V, lifespan_ms: number) {
+        this.lifespan_milliseconds = lifespan_ms;
+        this.clear_expired();
+        this.store = { created_at: Date.now(), value };
     }
     update(update_value: () => V): V {
         this.clear_expired();
-        if (this.store === undefined) { this.store = { created_at: new Date(), value: update_value() }; }
+        if (this.store === undefined) { this.store = { created_at: Date.now(), value: update_value() }; }
         return this.store.value;
     }
     clear_expired() {
-        if ((this.store?.created_at.getTime() ?? 0) + (this.lifespan_milliseconds) < Date.now()) {
+        if ((this.store?.created_at ?? 0) + (this.lifespan_milliseconds) < Date.now()) {
             this.store = undefined;
         }
     }

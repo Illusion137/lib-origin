@@ -157,6 +157,7 @@ export async function illusi_startup(version: string, play_tracks: typeof GLOBAL
             GLOBALS.global_var.past_track_index = Prefs.get_pref('past_queue').index;
         }
         else {
+            await Prefs.save_pref('recent_rejected_ota_update', '');
             await Prefs.save_pref('past_queue', { index: 0, tracks: [] });
             (async () => {
                 const tmp_dir = await fs().temp_directory();

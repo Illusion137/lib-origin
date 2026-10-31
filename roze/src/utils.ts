@@ -57,6 +57,13 @@ const tag_name_content_type_map: Record<ElementTagName, RozContentType> = {
     A: "PARAGRAPH",
     BLOCKQUOTE: "PARAGRAPH"
 };
+
+export function normalize_heading_text(text: string): string {
+    const has_letter = /[a-zA-Z]/.test(text);
+    const has_lowercase = /[a-z]/.test(text);
+    if (!has_letter || has_lowercase) return text;
+    return text.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
 function html_extract_text(node: Element | ChildNode): string{
     if("innerText" in node) return node.innerText as string;
     let out = "";
@@ -89,9 +96,11 @@ function element_to_roz_content(el: Element): RozContent|undefined{ // TODO Acco
     }
     const text = html_extract_text(el).trim();
     if(is_empty(text)) return undefined;
+    const content_type = tag_name_content_type_map[element_tag_name];
+    const is_heading = content_type === "CHAPTER_TITLE" || content_type === "CHAPTER_SUBTITLE";
     return {
-        type: tag_name_content_type_map[element_tag_name],
-        content: text,
+        type: content_type,
+        content: is_heading ? normalize_heading_text(text) : text,
         duration: 0,
         uuid: gen_uuid()
     };
@@ -128,17 +137,28 @@ export function roz_contents_to_roz_chapters_contents(contents: RozContent[]): R
     let prev_chapter_title = "Cover";
     for(const content of contents){
         if(content.type === "CHAPTER_TITLE" || content.type === "CHAPTER_SUBTITLE"){
-            roz_chapter_contents.push({
-                chapter: {
-                    uuid: gen_uuid(),
-                    title: prev_chapter_title
-                },
-                contents: chapter_contents
-            });
+            if(chapter_contents.length > 0){
+                roz_chapter_contents.push({
+                    chapter: {
+                        uuid: gen_uuid(),
+                        title: prev_chapter_title
+                    },
+                    contents: chapter_contents
+                });
+            }
             prev_chapter_title = content.content;
             chapter_contents = [];
         }
         chapter_contents.push(content);
+    }
+    if(chapter_contents.length > 0){
+        roz_chapter_contents.push({
+            chapter: {
+                uuid: gen_uuid(),
+                title: prev_chapter_title
+            },
+            contents: chapter_contents
+        });
     }
     return roz_chapter_contents;
 }

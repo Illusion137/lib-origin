@@ -15,6 +15,7 @@ import { Constants } from "./constants";
 import { generror } from "@common/utils/error_util";
 import type { PromiseResult } from "@common/types";
 import { reinterpret_cast } from '../../common/cast';
+import { get_native_platform } from "@native/native_mode";
 
 export namespace AudiobookGen {
     interface RozChapterToAudiobookCallbacks {
@@ -89,28 +90,15 @@ export namespace AudiobookGen {
             }
         });
 
-        // Each duration probe is a full ffprobe session with fixed spawn/log overhead,
-        // so probing the chapter's segments one-by-one added seconds of dead time after
-        // synthesis. Probe through a small worker pool instead (same idiom as
-        // speak_export), then walk the results in order so callback order is unchanged.
-        const PROBE_POOL = 4;
-        const durations = new Array<number>(preped_content.length);
-        let probe_cursor = 0;
-        const probe_worker = async (): Promise<void> => {
-            for (let i = probe_cursor++; i < preped_content.length; i = probe_cursor++) {
-                durations[i] = await get_audio_duration().get_audio_duration(preped_content[i][3]);
-            }
-        };
-        await Promise.all(Array.from({ length: Math.min(PROBE_POOL, preped_content.length) }, probe_worker));
-
-        for (const [index, [_, roz_content, __, content_temp_file_path]] of preped_content.entries()) {
-            const content_duration = durations[index];
+        for (const [_, roz_content, __, content_temp_file_path] of preped_content) {
+            const content_duration = await get_audio_duration().get_audio_duration(content_temp_file_path);
             if (content_duration > 0) content_file_path_list.push(content_temp_file_path);
             else return generror("Missing content in audiobook generation", "CRITICAL", { roz_content, content_temp_file_path });
             roz_content.duration = content_duration;
             total_duration += content_duration;
             callbacks.on_chapter_content_duration_check?.(roz_chapter, content_temp_file_path);
         }
+
 
         const concat_audio_result = content_file_path_list.length === 0 ? undefined : await concact_audio_files(
             content_file_path_list,
@@ -134,13 +122,15 @@ export namespace AudiobookGen {
         };
     }
     export async function roz_full_audio(roz: Roz, opts: RozFullAudioOpts, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}, clean_temp_files: CleanTempFiles = "CLEAN_FILES"): PromiseResult<RozFullAudio> {
-        // Sequential, not Promise.all: each chapter spins up its own pool of native
-        // TTS synthesizers, so running every chapter at once spawns chapters x pool
-        // instances and freezes the app. One chapter at a time keeps it bounded.
-        const chapter_audiobooks: Awaited<ReturnType<typeof roz_chapter_to_audiobook>>[] = [];
-        for (const chapter of roz.chapters) {
-            chapter_audiobooks.push(await roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options));
+        let chapter_audiobooks: Awaited<ReturnType<typeof roz_chapter_to_audiobook>>[];
+        if(get_native_platform() === "NODE") chapter_audiobooks = await Promise.all(roz.chapters.map(async (chapter) => roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options)));
+        else {
+            chapter_audiobooks = [];
+            for (const chapter of roz.chapters) {
+                chapter_audiobooks.push(await roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options));
+            }
         }
+        
         const bad_audiobook = chapter_audiobooks.find(chapter => "error" in chapter);
         if (bad_audiobook) return bad_audiobook;
         roz.chapters = reinterpret_cast<typeof roz.chapters>(chapter_audiobooks);
@@ -157,10 +147,13 @@ export namespace AudiobookGen {
         return { ffmpeg_gen_result, roz, srt_file_path, youtube_chapters_file_path };
     }
     export async function roz_to_chapter_full_audio(roz: Roz, opts: RozFullAudioOpts, callbacks: RozChapterToAudiobookCallbacks = {}, voice_options: VoiceOptions = {}) {
-        // Sequential to keep the native TTS pool bounded across chapters (see roz_full_audio).
-        const chapter_audiobooks: Awaited<ReturnType<typeof roz_chapter_to_audiobook>>[] = [];
-        for (const chapter of roz.chapters) {
-            chapter_audiobooks.push(await roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options));
+        let chapter_audiobooks: Awaited<ReturnType<typeof roz_chapter_to_audiobook>>[];
+        if(get_native_platform() === "NODE") chapter_audiobooks = await Promise.all(roz.chapters.map(async (chapter) => roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options)));
+        else {
+            chapter_audiobooks = [];
+            for (const chapter of roz.chapters) {
+                chapter_audiobooks.push(await roz_chapter_to_audiobook(chapter, opts, callbacks, voice_options));
+            }
         }
         return chapter_audiobooks;
     }

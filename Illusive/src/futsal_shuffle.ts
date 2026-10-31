@@ -1,4 +1,4 @@
-import { days_of, is_empty, milliseconds_of, seconds_of } from "@common/utils/util";
+import { days_of, is_empty, milliseconds_of, seconds_of, weeks_of } from "@common/utils/util";
 import { Prefs } from "./prefs";
 import type { Track } from "./types";
 import { GLOBALS } from "./globals";
@@ -17,12 +17,14 @@ export namespace FutsalShuffle {
         track_uid_to_weight: new Map<string, number>()
     };
     export function build_cache() {
-        icache.max_plays_in_library = Math.max(1, ...GLOBALS.global_var.sql_tracks.map(track => track.meta?.plays ?? 0));
-        icache.most_recent_played_ms = Math.max(...GLOBALS.global_var.sql_tracks.map(track => track.meta?.last_played_date ? new Date(track.meta.last_played_date).getTime() : 0));
-        icache.most_recent_added_ms = Math.max(...GLOBALS.global_var.sql_tracks.map(track => track.meta?.added_date ? new Date(track.meta.added_date).getTime() : 0));
+        icache.max_plays_in_library = GLOBALS.global_var.sql_tracks.reduce((max, track) => Math.max(max, track.meta?.plays ?? 0), 1);
+        icache.most_recent_played_ms = GLOBALS.global_var.sql_tracks.reduce((max, track) => Math.max(max, track.meta?.last_played_date ? new Date(track.meta.last_played_date).getTime() : 0), 0);
+        icache.most_recent_added_ms = GLOBALS.global_var.sql_tracks.reduce((max, track) => Math.max(max, track.meta?.added_date ? new Date(track.meta.added_date).getTime() : 0), 0);
         icache.plays_from_albums.clear();
         icache.plays_from_artist.clear();
         icache.plays_in_past_month.clear();
+
+        
 
         GLOBALS.global_var.sql_tracks.forEach(track => {
             if (track.album?.uri)
@@ -48,7 +50,7 @@ export namespace FutsalShuffle {
             icache.track_uid_to_weight.set(track.uid, weight);
         });
 
-        const min_weight = Math.min(...weights);
+        const min_weight = weights.reduce((min, weight) => Math.min(min, weight), Infinity);
         if (min_weight < 1) {
             for (const key of icache.track_uid_to_weight.keys()) {
                 const weight = icache.track_uid_to_weight.get(key) ?? 1;
@@ -67,8 +69,8 @@ export namespace FutsalShuffle {
 
     function get_raw_bias_factors(track: Track): RawBiasFactors {
         return {
-            too_long_duration: track.duration > too_long_duration ? Math.log2(track.duration - too_long_duration) : 0,
-            too_short_duration: track.duration < too_short_duration ? Math.log2(too_short_duration - track.duration) : 0,
+            too_long_duration: track.duration > too_long_duration ? Math.log2(Math.max(track.duration - too_long_duration, 1)) : 0,
+            too_short_duration: track.duration < too_short_duration ? Math.log2(Math.max(too_short_duration - track.duration, 1)) : 0,
             explicit: track.explicit !== "EXPLICIT" ? 0 : boolean_weight,
             no_explicit: track.explicit === "EXPLICIT" ? 0 : boolean_weight,
             has_lyrics_dl: is_empty(track.lyrics_uri) ? 0 : boolean_weight,
@@ -83,7 +85,7 @@ export namespace FutsalShuffle {
             plays_in_past_month: icache.plays_in_past_month.get(track.uid) ?? 0,
             recent_add_date: !track.meta?.added_date || new Date(track.meta.added_date).getTime() === 0
                 ? 0
-                : Math.min(days_of({ milliseconds: icache.most_recent_added_ms - new Date(track.meta.added_date).getTime() }), 20),
+                : Math.max(30 - weeks_of({ milliseconds: icache.most_recent_added_ms - new Date(track.meta.added_date).getTime() }), 0),
             total_plays: 100 * ((track.meta?.plays ?? 0) / icache.max_plays_in_library),
             acousticness: !is_empty(track.acousticness) ? track.acousticness! - 0.5 : 0,
             danceability: !is_empty(track.danceability) ? track.danceability! - 0.5 : 0,

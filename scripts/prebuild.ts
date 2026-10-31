@@ -1,67 +1,16 @@
 // FULL BUILD ORIGIN
 import { reinterpret_cast } from "@common/cast";
 import { log_error, log_info } from "@common/log";
+import { refetch_env } from "@common/set_env_cookies";
 import { TimeLog } from "@common/time_log";
-import { Cookie, CookieJar } from "@common/utils/cookie_util";
+import { spawn_code } from "@common/utils/node_utils";
+import { Prefs } from "@illusive/prefs";
 import { fs, load_native_fs } from "@native/fs/fs";
-import { spawn } from "child_process";
-import { getCookies, getProfiles } from 'chrome-cookie-decrypt';
 import path from "path-browserify";
-
-const cookie_jar_env_urls = {
-    "YOUTUBE_COOKIE_JAR": "youtube.com",
-    "YOUTUBE_MUSIC_COOKIE_JAR": "music.youtube.com",
-    "SPOTIFY_COOKIE_JAR": "spotify.com",
-    "SOUNDCLOUD_COOKIE_JAR": "soundcloud.com",
-    "AMAZON_MUSIC_COOKIE_JAR": "music.amazon.com",
-    "APPLE_MUSIC_COOKIE_JAR": "music.apple.com",
-    "BANDLAB_COOKIE_JAR": "bandlab.com",
-    "JNOVEL_COOKIE_JAR": "j-novel.club",
-    "INSTAGRAM_COOKIE_JAR": "instagram.com",
-    "GOOGLE_TRANSLATE_COOKIE_JAR": "translate.google.com",
-} as const;
-
-async function modify_env(key: string, value: string) {
-    const env_string = await fs().read_as_string('.env', {});
-    if (typeof env_string !== 'string') throw new Error(".env file could not be read.");
-    const variables = env_string.split('\n').filter(line => line.trim().length > 0);
-    const index = variables.findIndex(line => line.startsWith(`${key}=`));
-    if (index === -1) return;
-    variables[index] = `${key}='${value}'`;
-    await fs().write_file_as_string('.env', variables.join('\n'), {});
-}
-
-async function spawn_code(cmd: string, args: string[]) {
-    const command = spawn(cmd, args, { stdio: "inherit" });
-    const exit_code = new Promise<number>(resolve => {
-        command.addListener("exit", (code) => {
-            resolve(code ?? -1);
-        });
-    });
-    return await exit_code;
-}
 
 async function update_env() {
     log_info("Fetching Chrome Cookies to store in .env...");
-    const default_profile = (await getProfiles())[0];
-    for (const key of Object.keys(cookie_jar_env_urls)) {
-        log_info("-- Fetching cookies for " + cookie_jar_env_urls[key]);
-        const cookies = await getCookies(cookie_jar_env_urls[key], default_profile.directory);
-        log_info(`---- Fetched ${cookies.length} cookies.`);
-        const cookie_jar = new CookieJar(
-            cookies.map(cookie => new Cookie({
-                name: cookie.name,
-                value: cookie.value,
-                domain: cookie.domain,
-                expires: cookie.expires ? new Date(cookie.expires) : undefined,
-                path: cookie.path,
-                secure: cookie.secure,
-                http_only: cookie.httpOnly,
-                same_site: cookie.sameSite
-            }))
-        );
-        await modify_env(key, cookie_jar.toString());
-    }
+    await refetch_env();
 }
 
 async function genv() {
@@ -114,6 +63,55 @@ import { reinterpret_cast } from "@common/cast";
     await fs().write_file_as_string("Illusive/src/gen/illusi_playlists_links.ts", text, {});
 }
 
+async function generate_illusive_prefs_themes_css(){
+    log_info("Generating Prefs themes CSS (Tailwind color tokens)...");
+
+    const to_kebab = (key: string) => key
+        .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+        .replace(/_/g, "-")
+        .toLowerCase();
+
+    const color_keys = Object.keys(Prefs.dark_theme.colors) as (keyof Prefs.Theme["colors"])[];
+
+    const theme_tokens = color_keys
+        .map(key => `\t--color-${to_kebab(key)}: var(--${key});`)
+        .join("\n");
+
+    const theme_block = (selector: string, theme: Prefs.Theme) => {
+        const vars = color_keys.map(key => {
+            const value = key === "primary" ? theme.colors.default_primary_color : theme.colors[key];
+            return `\t--${key}: ${value};`;
+        }).join("\n");
+        return `${selector} {\n\tcolor-scheme: ${theme.dark ? "dark" : "light"};\n${vars}\n}`;
+    };
+
+    const default_theme_key = Prefs.prefs.theme.default_value;
+    const blocks = Prefs.all_themes().map(theme_key => {
+        const theme = Prefs.get_theme(theme_key);
+        const selector = theme_key === default_theme_key
+            ? `:root,\n[data-theme="${theme_key}"]`
+            : `[data-theme="${theme_key}"]`;
+        return theme_block(selector, theme);
+    });
+
+    const css = `/*
+ * AUTO-GENERATED DO NOT EDIT.
+ * Regenerate with: yarn build:gen
+ *
+ * Switch themes by setting the <html data-theme="<key>"> attribute.
+ */
+
+@theme inline {
+${theme_tokens}
+}
+
+${blocks.join("\n\n")}
+`;
+
+    await fs().write_file_as_string("Illusive/src/gen/css/themes.css", css, {});
+    log_info("Wrote Illusive/src/gen/css/themes.css");
+}
+
 async function run_tests() {
     log_info("Running Tests...");
     const test_exit_code = await spawn_code("yarn", ["test"]);
@@ -128,9 +126,10 @@ async function prebuild_main() {
         await update_env();
         await genv();
         await generate_illusi_playlists_links();
-        await update_spotify_secrets();
-
-        // await run_tests();
+        await generate_illusive_prefs_themes_css();
+        
+        update_spotify_secrets;
+        run_tests;
     }
     catch (e) {
         log_error(reinterpret_cast<Error>(e).message);

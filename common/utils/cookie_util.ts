@@ -1,5 +1,6 @@
 import type { Cookies } from "@react-native-community/cookies";
 import type { AxiosResponse } from "axios";
+import { filter_by_set } from "./util";
 
 type SameSite = "None" | "Lax" | "Strict" | undefined;
 
@@ -77,7 +78,7 @@ export class Cookie {
 export class CookieJar {
     #jar: Cookie[]
     constructor(j: Cookie[]) {
-        this.#jar = j;
+        this.#jar = filter_by_set(j, (c) => c.getData().name);
     }
     static fromString(cstring: string): CookieJar {
         cstring = cstring ?? "";

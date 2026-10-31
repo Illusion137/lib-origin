@@ -5,7 +5,7 @@ import { default_playlists } from "@illusive/default_playlists";
 import { GLOBALS } from '@illusive/globals';
 import { track_query_filter, tracks_exclude, tracks_include, tracks_intersection, tracks_mask } from "@illusive/illusive_utils";
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, SortType, SQLPlaylist, Track } from "@illusive/types";
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { SQLTracks } from "./sql_tracks";
 import { reinterpret_cast } from "@common/cast";
 import { catch_ignore } from "@common/utils/error_util";
@@ -265,30 +265,48 @@ export namespace SQLPlaylists {
     export async function insert_all_tracks_playlist(many_playlist_tracks: PlaylistsTracks[]) {
         if(many_playlist_tracks.length === 0) return;
         const to_insert: PlaylistsTracks[] = [];
+        const to_revive: { id: number; uuid: string; track_uid: string }[] = [];
         const grouped = groupby(many_playlist_tracks, (playlist_track) => playlist_track.uuid);
         for(const [uuid, group] of Object.entries(grouped)) {
-            const existing_track_uids = new Set<string>();
+            const existing_by_track_uid = new Map<string, { id: number; deleted: boolean }>();
             for(let i = 0; i < group.length; i += playlist_tracks_chunk_size) {
                 const chunk = group.slice(i, i + playlist_tracks_chunk_size);
                 const existing_rows = await db
-                    .select({ track_uid: playlists_tracks_table.track_uid })
+                    .select({ id: playlists_tracks_table.id, track_uid: playlists_tracks_table.track_uid, deleted: playlists_tracks_table.deleted })
                     .from(playlists_tracks_table)
                     .where(and(
-                        eq(playlists_tracks_table.deleted, false),
                         eq(playlists_tracks_table.uuid, uuid),
                         inArray(playlists_tracks_table.track_uid, chunk.map(playlist_track => playlist_track.track_uid))
                     ));
-                for(const row of existing_rows) existing_track_uids.add(row.track_uid);
+                for(const row of existing_rows) {
+                    const prev = existing_by_track_uid.get(row.track_uid);
+                    if(prev === undefined || (prev.deleted && !row.deleted)) existing_by_track_uid.set(row.track_uid, { id: row.id, deleted: row.deleted });
+                }
             }
-            to_insert.push(...group.filter(playlist_track => !existing_track_uids.has(playlist_track.track_uid)));
+            for(const playlist_track of group) {
+                const existing = existing_by_track_uid.get(playlist_track.track_uid);
+                if(existing === undefined) to_insert.push(playlist_track);
+                else if(existing.deleted) to_revive.push({ id: existing.id, uuid, track_uid: playlist_track.track_uid });
+            }
         }
-        if(to_insert.length === 0) return;
+        if(to_insert.length === 0 && to_revive.length === 0) return;
         await db.transaction(async(tx) => {
+            if(to_revive.length > 0) {
+                const max_row = await tx.select({ max_id: sql<number>`MAX(${playlists_tracks_table.id})` }).from(playlists_tracks_table).get();
+                let next_id = (max_row?.max_id ?? 0) + 1;
+                for(const revive of to_revive) {
+                    await tx.update(playlists_tracks_table).set({ deleted: false, id: next_id }).where(eq(playlists_tracks_table.id, revive.id));
+                    next_id += 1;
+                }
+            }
             for(let i = 0; i < to_insert.length; i += playlist_tracks_chunk_size) {
                 await tx.insert(playlists_tracks_table).values(to_insert.slice(i, i + playlist_tracks_chunk_size));
             }
         });
-        await ChangeTracker.log_changes('playlists_tracks', 'insert', to_insert.map(playlist_track => `${playlist_track.uuid}:${playlist_track.track_uid}`));
+        await ChangeTracker.log_changes('playlists_tracks', 'insert', [
+            ...to_revive.map(revive => `${revive.uuid}:${revive.track_uid}`),
+            ...to_insert.map(playlist_track => `${playlist_track.uuid}:${playlist_track.track_uid}`),
+        ]);
         invalidate_playlist_tracks_cache();
     }
     export async function insert_track_playlist(playlist_track: PlaylistsTracks) {
@@ -302,7 +320,7 @@ export namespace SQLPlaylists {
             for(const [uuid, group] of Object.entries(grouped)) {
                 for(let i = 0; i < group.length; i += playlist_tracks_chunk_size) {
                     const chunk = group.slice(i, i + playlist_tracks_chunk_size);
-                    await tx.delete(playlists_tracks_table).where(and(
+                    await tx.update(playlists_tracks_table).set({ deleted: true }).where(and(
                         eq(playlists_tracks_table.uuid, uuid),
                         inArray(playlists_tracks_table.track_uid, chunk.map(playlist_track => playlist_track.track_uid))
                     ));
@@ -314,7 +332,8 @@ export namespace SQLPlaylists {
     }
     export async function delete_track_playlist(playlist_track: PlaylistsTracks) {
         await db
-            .delete(playlists_tracks_table)
+            .update(playlists_tracks_table)
+            .set({ deleted: true })
             .where(
                 and(
                     eq(playlists_tracks_table.uuid, playlist_track.uuid),
@@ -325,9 +344,10 @@ export namespace SQLPlaylists {
         invalidate_playlist_tracks_cache();
     }
     export async function delete_track_from_all_playlists(track_uid: PlaylistsTracks['track_uid']) {
-        const tracks_to_delete = await db.select({ uuid: playlists_tracks_table.uuid }).from(playlists_tracks_table).where(eq(playlists_tracks_table.track_uid, track_uid));
+        const tracks_to_delete = await db.select({ uuid: playlists_tracks_table.uuid }).from(playlists_tracks_table).where(and(eq(playlists_tracks_table.deleted, false), eq(playlists_tracks_table.track_uid, track_uid)));
         await db
-            .delete(playlists_tracks_table)
+            .update(playlists_tracks_table)
+            .set({ deleted: true })
             .where(
                 eq(playlists_tracks_table.track_uid, track_uid)
         );

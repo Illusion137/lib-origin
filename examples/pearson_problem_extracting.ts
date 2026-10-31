@@ -1,14 +1,19 @@
 import { log_info } from "@common/log";
 import { CookieJar } from "@common/utils/cookie_util";
 import { wait } from "@common/utils/timed_util";
+import { get_cookies } from "@lib/get-chrome-cookies";
 import { fs, load_native_fs } from "@native/fs/fs";
 import { Pearson } from "@origin/pearson/pearson";
 
-// TODO TODO for self; make script for extracting cookies from browser mid script?????
-const cookies_string = ""; // TODO fill this in with cookies that you extract through browser or other means?
-const cookie_jar = CookieJar.fromString(cookies_string);
+const cookies_string = ""; // ?? fill this in with cookies that you extract through browser or other means?
 
 async function main__pearson_problem_extracting() {
+    const cookie_jar = cookies_string ? CookieJar.fromString(cookies_string) : (await get_cookies([".pearson.com"]))[".pearson.com"];
+    if(cookie_jar === undefined || cookie_jar === null) {
+        console.error("No cookie jar...");
+        return;
+    }
+    
     await load_native_fs();
     const extracted_data: any[] = [];
 

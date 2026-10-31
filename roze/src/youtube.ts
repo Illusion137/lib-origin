@@ -39,6 +39,22 @@ export namespace RozeYouTube {
         return youtube_client_instance;
     }
 
+    export async function upload_video(opts: {
+        cookie_jar?: CookieJar;
+        media_path: string;
+    }) {
+        const youtube_client = await get_youtube_client();
+
+        const media_buffer = await fs().read_as_buffer(opts.media_path);
+        if (typeof media_buffer === "object" && "error" in media_buffer) return media_buffer;
+        const upload_response = await youtube_client.studio.upload(media_buffer, {
+            title: path.basename(opts.media_path),
+            privacy: "PUBLIC"
+        });
+        if (!upload_response.success) return generror("Uploading audiobook not successful", "CRITICAL", opts);
+        return { "status": "GOOD" } as const;
+    }
+
     export async function upload_audiobook_headless(opts: {
         cookie_jar?: CookieJar;
         media_path: string;

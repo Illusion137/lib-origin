@@ -9,6 +9,7 @@ import { Illusive } from "@illusive/illusive";
 import { all_track_ids, track_exists, track_primary_key } from "@illusive/illusive_utils";
 import { force_json_parse, force_json_parse_array } from "@common/utils/parse_util";
 import { sqlite } from "@native/sqlite/sqlite";
+import { get_native_platform } from "@native/native_mode";
 import { clean_album_title } from "@illusive/parsers/apple_music_parser";
 import { Prefs } from "@illusive/prefs";
 import type { ISOString, NamedUUID, OnErrorCallback, Promises, Track, TrackMetaData } from "@illusive/types";
@@ -22,8 +23,7 @@ import { ChangeTracker } from "@illusive/db/sync/change_tracker";
 import type { Lyrics } from "@illusive/lyrics";
 
 export namespace SQLTracks {
-    // TODO remove this and preprocess tracks 
-    const bad_artist_names = [',', '&', 'and'];
+    const bad_artist_names = [',', '&', 'and']; // keep this incase of bad parsing prolly
 
     export async function fixup(track: Track, t: Track) {
         let update = false;
@@ -84,26 +84,32 @@ export namespace SQLTracks {
         return key_map.get(lookup_key);
     }
 
-    export function add_playback_saved_data_to_track(track: Track) {
-        track.playback = {
-            artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track),
-            added: false,
-            successful: false
-        }
+    export function add_playback_saved_data_to_track(track: Track): Track {
         const saved = track_exists(track, GLOBALS.global_var.sql_tracks);
-        track.downloading_data = { saved: saved, progress: 0, playlist_saved: false };
+        let new_track: Track = {
+            ...track,
+            playback: {
+                artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track),
+                added: false,
+                successful: false
+            },
+            downloading_data: { saved: saved, progress: 0, playlist_saved: false }
+        };
         if (saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri) && is_empty(track.thumbnail_uri)) {
             const primary_key = track_primary_key(track);
             const found_track = find_track_in_globals_with_key(track, primary_key);
-            if (found_track) track.uid = found_track.uid;
-            track.media_uri = found_track?.media_uri;
-            track.thumbnail_uri = found_track?.thumbnail_uri;
-            track.lyrics_uri = found_track?.lyrics_uri;
-            track.synced_lyrics_uri = found_track?.synced_lyrics_uri;
-            track.meta = found_track?.meta;
+            new_track = {
+                ...new_track,
+                uid: found_track ? found_track.uid : new_track.uid,
+                media_uri: found_track?.media_uri,
+                thumbnail_uri: found_track?.thumbnail_uri,
+                lyrics_uri: found_track?.lyrics_uri,
+                synced_lyrics_uri: found_track?.synced_lyrics_uri,
+                meta: found_track?.meta
+            };
         }
-        check_fixerupper_track(track).catch(catch_ignore);
-        return track;
+        check_fixerupper_track(new_track).catch(catch_ignore);
+        return new_track;
     }
 
     export function add_playback_saved_data_to_tracks(tracks: Track[]) {
@@ -270,7 +276,8 @@ export namespace SQLTracks {
         }
     }
     export async function fetch_track_data() {
-        const raw_rows = await sqlite().wrap_client(db.$client).execute_async("SELECT * FROM tracks WHERE deleted = 0");
+        const imported_filter = get_native_platform() === "NODE" ? " AND imported_id = ''" : "";
+        const raw_rows = await sqlite().wrap_client(db.$client).execute_async(`SELECT * FROM tracks WHERE deleted = 0${imported_filter} ORDER BY json_extract(meta, '$.added_date') ASC, id ASC`);
         const document_directory = SQLfs.document_directory("");
         const tracks: Track[] = [];
         for (const row of raw_rows) {
@@ -410,7 +417,6 @@ export namespace SQLTracks {
             }
         }
         await db.update(tracks_table).set({ thumbnail_uri }).where(eq(tracks_table.uid, track.uid));
-        await ChangeTracker.log_change('tracks', 'update', track.uid, { thumbnail_uri });
         SQLGlobal.update_global_track_property(track.uid, 'thumbnail_uri', thumbnail_uri);
         SQLGlobal.update_global_track_property(track.uid, 'playback', { ...track.playback!, artwork: Illusive.get_track_artwork(SQLfs.document_directory(""), track) });
         return track.uid + ext;
@@ -423,10 +429,6 @@ export namespace SQLTracks {
         for (const file of files)
             promises.push(SQLfs.delete_item(SQLfs.thumbnail_directory(file)))
 
-        const tracks_to_update = await db.select({ uid: tracks_table.uid }).from(tracks_table).where(and(eq(tracks_table.deleted, false), eq(tracks_table.thumbnail_uri, "")));
-        for (const track of tracks_to_update) {
-            await ChangeTracker.log_change('tracks', 'update', track.uid, { thumbnail_uri: "" });
-        }
         await db.update(tracks_table).set({ thumbnail_uri: "" });
         await Promise.all(promises);
         SQLGlobal.update_global_track_all_property('thumbnail_uri', '');

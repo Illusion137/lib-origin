@@ -1,15 +1,17 @@
 import type { Channel, Client, Message, OmitPartialGroupDMChannel } from "discord.js";
 import type { Player } from "@illusicord/player/player";
 import { RepeatMode, type DiscordTrack } from "@illusicord/types";
-import type { MusicServiceType, Track } from "@illusive/types";
-import { is_empty } from "@common/utils/util";
+import type { IllusiveURI, MusicServiceType, Track } from "@illusive/types";
+import { is_empty, shuffle_array } from "@common/utils/util";
 import { Illusive } from "@illusive/illusive";
 import { MEDIA } from "@illusicord/media";
-import { play_track_discord_recieve } from "@illusive/discord";
+import { play_playliist_discord_recieve, play_track_discord_recieve } from "@illusive/discord";
 import { Utils } from "@illusicord/player/utils";
 import { Constants } from "@illusicord/constants";
-import { duration_to_string } from "@illusive/illusive_utils";
+import { duration_to_string, split_uri } from "@illusive/illusive_utils";
 import { catch_ignore } from "@common/utils/error_util";
+import { music_service_uri_to_music_service } from '@illusive/illusive_utils';
+import type { DiscordPlaylistMode } from '@illusive/discord';
 
 export type DiscordClient = Client & { player: Player };
 export type DiscordMessage = OmitPartialGroupDMChannel<Message>;
@@ -40,6 +42,10 @@ function get_best_channel(message: OmitPartialGroupDMChannel<Message>) {
 
 async function get_playlist_tracks(args: string[], service: MusicServiceType): Promise<DiscordTrack[]> {
 	return (await Illusive.music_service.get(service)!.get_full_playlist(args.join(" "))).tracks.map(Utils.track_to_discord_track);
+}
+async function get_uri_playlist_tracks(playlist_uri: IllusiveURI): Promise<DiscordTrack[]> {
+	const [service, id] = split_uri(playlist_uri);
+	return (await Illusive.music_service.get(music_service_uri_to_music_service(service))!.get_full_playlist(id)).tracks.map(Utils.track_to_discord_track);
 }
 
 async function play_base(client: DiscordClient, message: DiscordMessage, tracks: Track[] | (() => Promise<Track | undefined>)[]) {
@@ -93,6 +99,27 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 	},
 	illusno: async (client, message, args) => {
 		await play_base(client, message, [play_track_discord_recieve(args.join(" "))]);
+	},
+	illusplus: async (client, message, args) => {
+		const [encoded_playlist_uri, mode] = args as [string, DiscordPlaylistMode];
+		const tracks = await get_uri_playlist_tracks(play_playliist_discord_recieve(encoded_playlist_uri));
+		disable_messages = true;
+		let good = true;
+		switch(mode){
+			case "order":
+				await play_base(client, message, tracks);
+				break;
+			case "shuffle":
+				await play_base(client, message, shuffle_array(tracks));
+				break;
+			default:
+				good = false;
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				console.warn(`Unknown playlist mode: ${mode}`);
+				break;
+		}
+		disable_messages = false;
+		if(good) send_message(client, `Added \`${tracks.length}\` Songs from \`${play_playliist_discord_recieve(encoded_playlist_uri)}\``);
 	},
 	playlist: async (client, message, args) => {
 		disable_messages = true;

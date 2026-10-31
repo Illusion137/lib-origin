@@ -3,10 +3,8 @@ import fs_sync from "fs";
 import os from "os";
 import path_lib from "path";
 import { gen_uuid } from "@common/utils/util";
-import { Readable } from "stream";
 import type { FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import type { ReadableStream } from "stream/web";
-import { finished } from "stream/promises";
 import { generror_catch } from "@common/utils/error_util";
 
 export const node_fs: FileSystem = {
@@ -17,6 +15,26 @@ export const node_fs: FileSystem = {
 			return (await fs.readFile(path, opts)).toString();
 		} catch (error) {
 			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path, opts });
+		}
+	},
+	read_as_buffer: async (path: string) => {
+		try {
+			return (await fs.readFile(path)).buffer;
+		} catch (error) {
+			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
+		}
+	},
+	read_as_buffer_range: async (path: string, position: number, length: number) => {
+		let handle: fs.FileHandle | undefined = undefined;
+		try {
+			handle = await fs.open(path, "r");
+			const buffer = Buffer.allocUnsafe(length);
+			const { bytesRead } = await handle.read(buffer, 0, length, position);
+			return new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead);
+		} catch (error) {
+			return generror_catch(error, "Failed to read file range", "MEDIUM", { path, position, length });
+		} finally {
+			await handle?.close();
 		}
 	},
 	read_directory: async (path: string) => {
@@ -33,6 +51,7 @@ export const node_fs: FileSystem = {
 				exists: true,
 				file_modified_ms: stats.mtime.getTime(),
 				is_directory: stats.isDirectory(),
+				size: stats.isDirectory() ? 0 : stats.size,
 				uri: path
 			};
 		} catch (_) {
@@ -40,6 +59,7 @@ export const node_fs: FileSystem = {
 				exists: false,
 				file_modified_ms: 0,
 				is_directory: false,
+				size: 0,
 				uri: path
 			};
 		}
@@ -80,6 +100,13 @@ export const node_fs: FileSystem = {
 			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
 		}
 	},
+	remove_dir: async (path: string) => {
+		try {
+			return fs.rm(path, {recursive: true});
+		} catch (error) {
+			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+		}
+	},
 	download_to_file: async (uri: string, to_path?: string) => {
 		try {
 			if (!to_path) to_path = path_lib.join(os.tmpdir(), gen_uuid() + ".tmp");
@@ -90,10 +117,17 @@ export const node_fs: FileSystem = {
 				throw new Error(`Failed to download file: ${response.statusText}`);
 			}
 
-			const body = Readable.fromWeb(response.body as ReadableStream);
+			// Read via the web-stream reader instead of Readable.fromWeb — in an
+			// Electron renderer fetch returns Blink's ReadableStream, which node's
+			// fromWeb rejects with ERR_INVALID_ARG_TYPE.
+			const reader = (response.body as ReadableStream<Uint8Array>).getReader();
 			const file_stream = fs_sync.createWriteStream(to_path);
-
-			await finished(body.pipe(file_stream));
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				if (!file_stream.write(value)) await new Promise((resolve) => file_stream.once("drain", resolve));
+			}
+			await new Promise<void>((resolve, reject) => file_stream.end(() => resolve()).once("error", reject));
 			return to_path;
 		} catch (error) {
 			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });

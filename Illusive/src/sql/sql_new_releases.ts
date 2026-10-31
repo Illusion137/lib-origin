@@ -66,7 +66,7 @@ export namespace SQLNewReleases {
             const known_names_set = new Set(known_names);
             const known_uris_set = new Set(known_uris);
             new_releases = new_releases.filter(release => {
-                if(release.song_track !== undefined) return true;
+                if(release.song_track !== undefined && release.song_track !== null) return true;
                 const release_artists_uris = release.artist
                     .map(artist => artist.uri)
                     .filter(uri => !is_empty(uri));

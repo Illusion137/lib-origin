@@ -1,15 +1,21 @@
 import { is_empty, join_uri } from '@common/utils/util';
 import { Constants } from '@illusive/constants';
 import { fs } from '@native/fs/fs';
+import { get_native_platform } from '@native/native_mode';
 import path_lib from 'path-browserify';
 
 export namespace SQLfs {
     let cached_temp_directory: (...paths: string[]) => string = () => "";
     let cached_document_directory: (...paths: string[]) => string = () => "";
 
+    export async function sql_fs_document_directory(){
+        if(get_native_platform() === "REACT_NATIVE") return await fs().document_directory();
+        return await fs().document_directory("/.illusi/");
+    }
+
     export async function cache_load_directories() {
         const hold_temp_directory = await fs().temp_directory();
-        const hold_document_directory = await fs().document_directory();
+        const hold_document_directory = await sql_fs_document_directory();
         cached_temp_directory = (...paths: string[]) => join_uri(hold_temp_directory, ...paths);
         cached_document_directory = (...paths: string[]) => join_uri(hold_document_directory, ...paths);
     }
@@ -28,14 +34,6 @@ export namespace SQLfs {
     export function synced_lyrics_directory(item: string) { return document_directory(Constants.synced_lyrics_archive_path) + forward_item(item); }
     export function audiobook_directory(item: string) { return document_directory(Constants.audiobooks_archive_path) + forward_item(item); }
 
-    // This loop was traced (by manual bisection on a real device) to be a
-    // multi-second contributor to the post-paint startup freeze — not because
-    // of the loop itself, but because fs().get_info() on a directory path used
-    // to call Directory.info(), which on iOS recursively walks the entire
-    // subtree just to report a modificationTime nothing here reads. Real fix
-    // landed in fs.mobile.ts's get_info() (skips that call for directories);
-    // this loop is cheap again now that each check is a single stat. See
-    // [[project_post_paint_freeze]].
     export async function recreate_directories() {
         for (const dir of Constants.default_directories) {
             if ((await fs().get_info(document_directory(dir))).exists) continue;

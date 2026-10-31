@@ -49,8 +49,8 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
 
     const artist_info: NamedUUID = { name: parse_runs(artist_response.data.header?.musicImmersiveHeaderRenderer?.title?.runs), uri: create_uri("youtubemusic", artist_response.data.artist_id ?? id) };
 
-    const artist_albums_response_promise = YouTubeMusic.get_only_artist_albums({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, artist_response.icfg.ytcfg, artist_response.data.artist_id ?? id);
-    const artist_tracks_response_promise = YouTubeMusic.get_only_artist_tracks({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, artist_response);
+    const artist_albums_response_promise = YouTubeMusic.get_only_artist_albums({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response.icfg.ytcfg, artist_response.data.artist_id ?? id);
+    const artist_tracks_response_promise = YouTubeMusic.get_only_artist_tracks({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar'), proxy: opts?.proxy }, artist_response);
 
     const [artist_albums_response, artist_tracks_response] = await Promise.all([artist_albums_response_promise, artist_tracks_response_promise]);
 
@@ -103,10 +103,7 @@ export async function youtube_music_get_artist(id: string, opts?: ArtistOpts): P
 }
 
 export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
-    //TODO proxy: opts?.proxy
-    opts;
-
-    const artist_response = await AppleMusic.get_artist(id, { cookie_jar: get_cookie_jar('apple_music_cookie_jar') });
+    const artist_response = await AppleMusic.get_artist(id, { cookie_jar: get_cookie_jar('apple_music_cookie_jar'), fetch_opts: {proxy: opts?.proxy}});
     if ("error" in artist_response) return default_artist(artist_response);
 
     const artist_info: NamedUUID = { name: artist_response.data.pageMetrics.pageFields.pageDetails.content, uri: create_uri("applemusic", urlid(artist_response.data.canonicalURL)) };
@@ -196,12 +193,32 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
     };
 }
 
-export async function spotify_get_artist(id: string): Promise<MusicServiceArtist> {
-    const artist = await Spotify.get_artist({ cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), var: { uri: id, includePrerelease: false } });
+export async function spotify_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
+    const artist = await Spotify.get_artist({ cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), var: { uri: id, includePrerelease: false }, fetch_opts: {proxy: opts?.proxy} });
     if ("error" in artist) return default_artist(artist);
     const union_artist = artist.data.artistUnion;
     const artist_uri: NamedUUID = { name: union_artist.profile.name, uri: create_uri("spotify", id) };
     const popular_release_albums = union_artist?.discography?.popularReleasesAlbums?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [];
+
+    const background_artwork_url = best_thumbnail(union_artist.visuals?.avatarImage?.sources)?.url;
+    const profile_artwork_url = best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url;
+    const similar_artists = union_artist.relatedContent.relatedArtists.items.map(parse_spotify_similar_artist);
+
+    if (profile_artwork_url) {
+        SQLArtists.insert_sql_artists({
+            artwork_url: profile_artwork_url,
+            name: union_artist.profile.name,
+            uri: create_uri('spotify', id)
+        }).catch(catch_log);
+    }
+    similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach(artist => {
+        SQLArtists.insert_sql_artists({
+            artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
+            name: artist.name.name,
+            uri: artist.name.uri!
+        }).catch(catch_log);
+    })
+
     return {
         name: union_artist.profile.name,
         albums: popular_release_albums.concat(union_artist.discography.albums.items?.[0]?.releases?.items?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? []),
@@ -210,9 +227,9 @@ export async function spotify_get_artist(id: string): Promise<MusicServiceArtist
         tracks: union_artist.discography?.topTracks?.items.map(parse_spotify_artist_track) ?? [],
         singles_eps: union_artist.discography.singles.items?.map(item => item.releases.items)?.flat()?.map(item => parse_spotify_artist_album(item, artist_uri)) ?? [],
         appears_on: union_artist.relatedContent.appearsOn.items?.map(item => item.releases.items)?.flat()?.map(parse_spotify_artist_appears_on),
-        similar_artists: union_artist.relatedContent.relatedArtists.items.map(parse_spotify_similar_artist),
-        background_artwork_url: best_thumbnail(union_artist.visuals?.avatarImage?.sources)?.url,
-        profile_artwork_url: best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url,
+        similar_artists: similar_artists,
+        background_artwork_url: background_artwork_url,
+        profile_artwork_url: profile_artwork_url,
         is_following: undefined,
         follow: empty_async_call,
         unfollow: empty_async_call

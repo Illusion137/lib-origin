@@ -9,6 +9,7 @@ export interface PlayerOptions {
     volume?: number;
     yt_quality?: any;
     localAddress?: string;
+    useCookies?: boolean;
 }
 export enum RepeatMode {
     DISABLED = 0,

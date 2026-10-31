@@ -11,6 +11,7 @@ export interface FileInfo {
 	exists: boolean;
 	is_directory: boolean;
 	file_modified_ms: number;
+	size: number;
 	uri: string;
 }
 export interface DownloadSavable {
@@ -34,7 +35,9 @@ export interface ResumableDownload {
 export interface FileSystem {
 	temp_directory: (...paths: string[]) => Promise<string>;
 	document_directory: (...paths: string[]) => Promise<string>;
-	read_as_string: (path: string, opts: EncodingOpts) => Promise<string | ResponseError>;
+	read_as_string: (path: string, opts: EncodingOpts) => PromiseResult<string>;
+	read_as_buffer: (path: string) => PromiseResult<ArrayBuffer >;
+	read_as_buffer_range: (path: string, position: number, length: number) => PromiseResult<Uint8Array>;
 	read_directory: (path: string) => Promise<string[] | ResponseError>;
 	get_info: (path: string) => Promise<FileInfo>;
 	write_file_as_string: (path: string, contents: string, opts: EncodingOpts) => PromiseResult<undefined>;
@@ -42,6 +45,7 @@ export interface FileSystem {
 	copy: (from_path: string, to_path: string, opts: NoOverwriteOpts) => Promise<unknown>;
 	make_directory: (path: string) => Promise<unknown>;
 	remove: (path: string) => Promise<unknown>;
+	remove_dir: (path: string) => Promise<unknown>;
 	download_to_file: (uri: string, to_path?: string, headers?: Record<string, string>) => PromiseResult<string>;
 	download_resumable: (opts: ResumableDownloadOpts) => ResumableDownload;
 }

@@ -52,26 +52,6 @@ export namespace SQLUpdate {
         }
     }
 
-    // TODO come back to this
-    // async function fix_thumbnail(thumbnail_uri: string) {
-    //     if (is_empty(thumbnail_uri)) return;
-    //     const full_path = SQLfs.thumbnail_directory(thumbnail_uri);
-    //     try {
-    //         // eslint-disable-next-line @typescript-eslint/no-deprecated
-    //         const { width, height } = await ImageManipulator.manipulateAsync(full_path, []);
-    //         if (width > height) {
-    //             // eslint-disable-next-line @typescript-eslint/no-deprecated
-    //             await ImageManipulator.manipulateAsync(
-    //                 full_path,
-    //                 [{ crop: { originX: (width - height) / 2, originY: 0, width: height, height: height } }],
-    //                 { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-    //             );
-    //         }
-    //     } catch (e) {
-    //         console.error("Failed to fix thumbnail:", e);
-    //     }
-    // }
-
     export async function fix_to_new_update() {
         await update_to("17.2.0", async () => {
             let updated = false;
@@ -155,8 +135,6 @@ export namespace SQLUpdate {
                     track.thumbnail_uri = "";
                     track.artwork_url = await Illusive.get_highest_quality_service_thumbnail_uri(track.artwork_url ?? "");
                 }
-                // TODO come back to this
-                // if(track.thumbnail_uri) await fix_thumbnail(track.thumbnail_uri);
             }
 
             const fail_callback = (e: Error, tx: SQLiteTransaction<"async", unknown, any, any>) => {
@@ -273,6 +251,11 @@ export namespace SQLUpdate {
                     })
                     .where(eq(tracks_table.uid, track.uid));
             }
+            return true;
+        });
+        await update_to("22.0.0", async() => {
+            const playlists = await db.select({ uuid: playlists_table.uuid }).from(playlists_table);
+            await ChangeTracker.log_changes('playlists', 'update', playlists.map(playlist => playlist.uuid));
             return true;
         });
     }

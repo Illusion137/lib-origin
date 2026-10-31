@@ -18,7 +18,8 @@ async function add_playback_data_to_releases(releases: (CompactPlaylist[]|Respon
                     : item)))
 }
 
-export async function artist_watch(artists: NamedUUID[], on_progress: () => any): Promise<(CompactPlaylist[]|ResponseError)[]>{
+// TODO YouTube proxies are in a bad place right now so just put this on the back burner for a while
+async function _artist_watch(artists: NamedUUID[], on_progress: () => any): Promise<(CompactPlaylist[]|ResponseError)[]>{
     const proxies = await get_proxies(artists.length);
     artists = shuffle_array(artists);
     if(proxies.length < 5) artists = artists.slice(0, Constants.new_releases_artist_watch_small_amount);
@@ -29,15 +30,14 @@ export async function artist_watch(artists: NamedUUID[], on_progress: () => any)
         const [service, id] = split_uri(artist.uri!);
         const music_service = Illusive.music_service.get(music_service_uri_to_music_service(service))!;
         if(music_service?.get_latest_releases !== undefined){
-            // TODO reimplement proxies
-            // if(proxies.length > 3){
-                // promises.push(music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch))
-            // }
-            // else {
-            const release = (await music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch) ?? []) as CompactPlaylist[];
-            releases.push(release);
-            on_progress?.();
-            // }
+            if(proxies.length > 3){
+                promises.push(music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch))
+            }
+            else {
+                const release = (await music_service.get_latest_releases(id, {proxy: Proxy.get_random_proxy(proxies)}).catch(json_catch) ?? []) as CompactPlaylist[];
+                releases.push(release);
+                on_progress?.();
+            }
         }
     }
     if(promises.length > 0) return await add_playback_data_to_releases(

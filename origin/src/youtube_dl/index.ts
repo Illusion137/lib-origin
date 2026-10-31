@@ -13,11 +13,12 @@ import {
 } from '@native/fs/fs';
 import { load_native_potoken, potoken } from '@native/potoken/potoken';
 import { urlid } from '@common/utils/util';
+import { retry_result } from '@common/utils/retry_util';
 import type { ReloadPlaybackContext } from 'googlevideo/protos';
 import { jseval, load_native_jseval } from '@native/jseval/jseval';
 import { RCache } from './rcache';
-import BG from 'bgutils-js';
 import type { PoTokenResult } from '@native/potoken/potoken.base';
+import { createColdStartToken } from 'bgutils-js/webpo';
 
 export type VideoInfo = Awaited<ReturnType<Innertube['getInfo']>>;
 
@@ -29,8 +30,13 @@ Platform.shim.eval = async (data: Types.BuildScriptResult, _: Record<string, Typ
 export namespace YouTubeDL {
     export interface Chapter { title: string, start_time: number };
     let innertube_client: Innertube;
+    let preloaded_cookies: string | undefined;
 
-    export async function get_innertube_client(client_type?: ClientType): Promise<Innertube> {
+    export function preload_cookies(cookie?: string){
+        preloaded_cookies = cookie ?? process ? process?.env?.YOUTUBE_COOKIE_JAR : undefined;
+    }
+
+    export async function get_innertube_client(client_type?: ClientType, cookie?: string): Promise<Innertube> {
         Log.setLevel(Log.Level.NONE);
         if (innertube_client) return innertube_client;
         await load_native_fs();
@@ -38,7 +44,8 @@ export namespace YouTubeDL {
         await load_native_jseval();
         innertube_client = await Innertube.create({
             client_type: client_type,
-            cache: new RCache(true, await fs().temp_directory())
+            cache: new RCache(true, await fs().temp_directory()),
+            cookie: preloaded_cookies ?? cookie
         });
         return innertube_client;
     }
@@ -99,14 +106,15 @@ export namespace YouTubeDL {
     }
 
     type PoTokenStatusResultSent = ["sent", PromiseResult<PoTokenResult>];
-    type PoTokenStatusResultRecieved = ["recieved", PoTokenResult|ResponseError];
+    type PoTokenStatusResultRecieved = ["recieved", PoTokenResult];
     type PoTokenContentBindingStatusMap = Record<string, PoTokenStatusResultSent|PoTokenStatusResultRecieved>;
     const content_binding_status_map: PoTokenContentBindingStatusMap = {};
     export async function fetch_potoken(content_binding: string): PromiseResult<PoTokenResult> {
         if(content_binding_status_map?.[content_binding]?.[0] === 'recieved') return content_binding_status_map[content_binding][1];
         if(content_binding_status_map?.[content_binding]?.[0] === 'sent') {
-            const recieved = await content_binding_status_map[content_binding][1]
-            content_binding_status_map[content_binding] = ["recieved", recieved];
+            const recieved = await content_binding_status_map[content_binding][1];
+            if ("error" in recieved) delete content_binding_status_map[content_binding];
+            else content_binding_status_map[content_binding] = ["recieved", recieved];
             return recieved;
         };
         const sent_token = potoken().generate_potoken(innertube_client, content_binding);
@@ -114,7 +122,23 @@ export namespace YouTubeDL {
             "sent",
             sent_token
         ];
-        return await sent_token;
+        const result = await sent_token;
+        if ("error" in result) delete content_binding_status_map[content_binding];
+        else content_binding_status_map[content_binding] = ["recieved", result];
+        return result;
+    }
+    export async function fetch_potoken_bytes(content_binding: string): Promise<Uint8Array> {
+        const po_token = await potoken().generate_potoken_bytes(innertube_client, content_binding);
+        if("error" in po_token) return new Uint8Array();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return po_token;
+    }
+
+    export function inject_potoken(content_binding: string, po_token: string) {
+        content_binding_status_map[content_binding] = ["recieved", {
+            identifier: content_binding,
+            po_token
+        }];
     }
 
     export async function make_player_request(innertube: Innertube, videoId: string, reloadPlaybackContext?: ReloadPlaybackContext): Promise<IPlayerResponse> {
@@ -140,26 +164,26 @@ export namespace YouTubeDL {
         return await watch_endpoint.call<IPlayerResponse>(innertube.actions, { ...extraArgs, parse: true });
     }
 
+    export async function get_streaming_data(video_id: string) {
+        const client = await get_innertube_client();
+        const player = await make_player_request(client, video_id);
+        return { streaming_data: player.streaming_data, placeholder_token: generate_placeholder_potoken(video_id) };
+    }
+
     function generate_placeholder_potoken(content_binding: string){
-        return BG.PoToken.generateColdStartToken(content_binding);
+        return createColdStartToken(content_binding);
     }
 
     export async function resolve_sabr_info(video_id: string): Promise<SabrTrackParams | ResponseError> {
-        const MAX_RETRIES = 2;
-        let last_error: unknown;
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
-            try {
-                return await resolve_sabr_info_attempt(video_id);
-            } catch (error) {
-                if (attempt < MAX_RETRIES && error instanceof TypeError && error.message.includes("Network request failed")) {
-                    last_error = error;
-                    continue;
-                }
-                return generror_catch(error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
-            }
+        const try_resolve_sabr_info = async () => {
+            try { return await resolve_sabr_info_attempt(video_id); }
+            catch (error) { return generror_catch(error, "resolve_sabr_info attempt failed", "LOW", { video_id }); }
+        };
+        const result = await retry_result<SabrTrackParams>(try_resolve_sabr_info, {wait_for_network: true});
+        if (typeof result === "object" && result !== null && "error" in result) {
+            return generror_catch(result.error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
         }
-        return generror_catch(last_error, "Failed to resolve SABR URL", "CRITICAL", { video_id });
+        return result;
     }
 
     async function resolve_sabr_info_attempt(video_id: string): Promise<SabrTrackParams | ResponseError> {
@@ -175,7 +199,7 @@ export namespace YouTubeDL {
         if (sabr_server_url === undefined) return generror("serverAbrStreamingUrl not found", "LOW", { video_id, player_response });
 
         const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+             
             .map((f: any) => buildSabrFormat(f));
 
         const ctx = client.session.context.client;

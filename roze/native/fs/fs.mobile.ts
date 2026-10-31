@@ -3,6 +3,7 @@ import { gen_uuid } from "@common/utils/util";
 import type { DownloadSavable, FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
 import * as expo_fs from "expo-file-system/legacy";
 import { File, Paths } from "expo-file-system";
+import { toByteArray } from 'react-native-quick-base64';
 import path_lib from "path";
 
 function join_uri(base: string, ...paths: string[]): string {
@@ -21,6 +22,27 @@ export const mobile_fs: FileSystem = {
 			return generror_catch(error, "Failed to read file as string", "LOW", { path, opts });
 		}
 	},
+	read_as_buffer: async (path: string) => {
+		try {
+			const base64 = await expo_fs.readAsStringAsync(path, {encoding: "base64"});
+			const uint8_array = toByteArray(base64);
+			return uint8_array.buffer as ArrayBuffer;
+		} catch (error) {
+			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
+		}
+	},
+	read_as_buffer_range: async (path: string, position: number, length: number) => {
+		let handle: ReturnType<File["open"]> | undefined = undefined;
+		try {
+			handle = new File(path).open();
+			handle.offset = position;
+			return handle.readBytes(length);
+		} catch (error) {
+			return generror_catch(error, "Failed to read file range", "MEDIUM", { path, position, length });
+		} finally {
+			handle?.close();
+		}
+	},
 	read_directory: async (path: string) => {
 		try {
 			return await expo_fs.readDirectoryAsync(path);
@@ -32,18 +54,21 @@ export const mobile_fs: FileSystem = {
 		try {
 			const path_info = Paths.info(path);
 			if (!path_info.exists) {
-				return { exists: false, file_modified_ms: 0, is_directory: false, uri: path };
+				return { exists: false, file_modified_ms: 0, is_directory: false, size: 0, uri: path };
 			}
 			const is_directory = path_info.isDirectory ?? false;
 			let file_modified_ms = 0;
+			let size = 0;
 			if (!is_directory) {
 				try {
-					file_modified_ms = new File(path).info().modificationTime ?? 0;
+					const file_info = new File(path).info();
+					file_modified_ms = file_info.modificationTime ?? 0;
+					size = file_info.size ?? 0;
 				} catch {}
 			}
-			return { exists: true, file_modified_ms, is_directory, uri: path };
+			return { exists: true, file_modified_ms, is_directory, size, uri: path };
 		} catch (_) {
-			return { exists: false, file_modified_ms: 0, is_directory: false, uri: path };
+			return { exists: false, file_modified_ms: 0, is_directory: false, size: 0, uri: path };
 		}
 	},
 	write_file_as_string: async (path: string, contents: string, opts: EncodingOpts) => {
@@ -76,6 +101,13 @@ export const mobile_fs: FileSystem = {
 		}
 	},
 	remove: async (path: string) => {
+		try {
+			return await expo_fs.deleteAsync(path, { idempotent: true });
+		} catch (error) {
+			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+		}
+	},
+	remove_dir: async (path: string) => {
 		try {
 			return await expo_fs.deleteAsync(path, { idempotent: true });
 		} catch (error) {

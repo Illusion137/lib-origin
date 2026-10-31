@@ -7,6 +7,7 @@ import type { MMKVModule } from '@native/mmkv/mmkv.base';
 import { Constants } from "./constants";
 import { load_native_mmkv, mmkv } from "@native/mmkv/mmkv";
 import { force_json_parse_array } from "@common/utils/parse_util";
+import { get_native_platform } from "@native/native_mode";
 
 export namespace Prefs {
     export type OtherPrefTypes = "BIAS" | "LINKER_LINKS" | "PAST_QUEUE";
@@ -17,7 +18,7 @@ export namespace Prefs {
         await load_native_mmkv();
         await mmkv().load_mmkv({
             id: 'illusi.illusion.com',
-            path: await fs().document_directory(".illusi", "ipref.mmkv")
+            path: get_native_platform() === "REACT_NATIVE" ? await fs().document_directory(".illusi", "ipref.mmkv") : await fs().document_directory("ipref.mmkv")
         });
     }
 
@@ -154,6 +155,7 @@ export namespace Prefs {
         track_shuffle_bias: { default_value: default_track_shuffle_bias, current_value: default_track_shuffle_bias, type: "BIAS" } as BasePref<Bias, OtherPrefTypes>,
         carplay_play_mode: { default_value: 'shuffle', current_value: 'shuffle', type: "STRING" } as BasePref<'shuffle' | 'in_order' | 'mix_queue', OtherPrefTypes>,
         p2p_name: { default_value: `sumi!-${gen_small_id()}`, current_value: `sumi!-${gen_small_id()}`, type: "STRING" } as BasePref<string, OtherPrefTypes>,
+        recent_rejected_ota_update: { default_value: '', current_value: '', type: "STRING" } as BasePref<string, OtherPrefTypes>,
         
         default_playlist_max_size: { default_value: 200, current_value: 200, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
         recently_played_max_size: { default_value: 100, current_value: 100, type: "NUMBER", visible: true, section: "Playlist" } as BasePref<number, OtherPrefTypes>,
@@ -604,8 +606,8 @@ export namespace Prefs {
         if (key in themes) return themes[key];
         return fallback_theme;
     }
-    export function all_themes() {
-        return Object.keys(themes);
+    export function all_themes(): PossibleThemes[] {
+        return Object.keys(themes) as PossibleThemes[];
     }
     export interface PrimaryColorDetails { color: HexColor, icon: string, name: string }
     export const possible_primary_colors: PrimaryColorDetails[] = [

@@ -186,7 +186,7 @@ export function soundcloud_parse_search(search_response: ClientSearchOf<Playlist
 }
 export async function soundcloud_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('soundcloud_cookie_jar');
-    const search_response = await Origin.SoundCloud.search("EVERYTHING", {query, cookie_jar, limit: opts?.limit});
+    const search_response = await Origin.SoundCloud.search("EVERYTHING", {query, cookie_jar, limit: opts?.limit, fetch_opts: {proxy: opts?.proxy}});
     if("error" in search_response) return default_search(search_response);
     return soundcloud_parse_search(search_response);
 }
@@ -256,7 +256,7 @@ export async function illusi_search(query: string, opts?: SearchOpts): Promise<M
 }
 
 export async function audiomack_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
-    const search_response = await Origin.Audiomack.search({ query, limit: opts?.limit ?? 20 });
+    const search_response = await Origin.Audiomack.search({ query, limit: opts?.limit ?? 20, fetch_opts: {proxy: opts?.proxy} });
     if ("error" in search_response) return default_search(search_response);
     return {
         tracks: (search_response.results as AudiomackTrack[]).map(audiomack_parse_track),
@@ -269,7 +269,7 @@ export async function audiomack_search(query: string, opts?: SearchOpts): Promis
 
 export async function deezer_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('deezer_cookie_jar');
-    const search_response = await Origin.Deezer.search({ query, type: "track", limit: opts?.limit ?? 25, cookie_jar });
+    const search_response = await Origin.Deezer.search({ query, type: "track", limit: opts?.limit ?? 25, cookie_jar, fetch_opts: {proxy: opts?.proxy} });
     if ("error" in search_response) return default_search(search_response);
     return {
         tracks: (search_response.data as DeezerTrack[]).map(deezer_parse_track),
@@ -282,7 +282,7 @@ export async function deezer_search(query: string, opts?: SearchOpts): Promise<M
 
 export async function pandora_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('pandora_cookie_jar');
-    const search_response = await Origin.Pandora.search({ query, types: ["TR"], page_size: opts?.limit ?? 20, cookie_jar });
+    const search_response = await Origin.Pandora.search({ query, types: ["TR"], page_size: opts?.limit ?? 20, cookie_jar, fetch_opts: {proxy: opts?.proxy} });
     if ("error" in search_response) return default_search(search_response);
     const track_ids = search_response.results.tracks?.pandoraIds ?? [];
     const tracks = track_ids.map(id => search_response.annotations[id]).filter(t => t?.type === "TR");
@@ -297,7 +297,7 @@ export async function pandora_search(query: string, opts?: SearchOpts): Promise<
 
 export async function tidal_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse> {
     const cookie_jar = get_cookie_jar('tidal_cookie_jar');
-    const search_response = await Origin.Tidal.search({ query, types: ["TRACKS"], limit: opts?.limit ?? 20, cookie_jar });
+    const search_response = await Origin.Tidal.search({ query, types: ["TRACKS"], limit: opts?.limit ?? 20, cookie_jar, fetch_opts: {proxy: opts?.proxy} });
     if ("error" in search_response) return default_search(search_response);
     return {
         tracks: search_response.tracks.items.map(tidal_parse_track),
@@ -310,9 +310,7 @@ export async function tidal_search(query: string, opts?: SearchOpts): Promise<Mu
 
 export async function apple_music_search(query: string, opts?: SearchOpts): Promise<MusicSearchResponse>{
     const cookie_jar = get_cookie_jar('apple_music_cookie_jar');
-    // TODO proxy: opts?.proxy
-    opts;
-    const search_response = await Origin.AppleMusic.search(query, {cookie_jar});
+    const search_response = await Origin.AppleMusic.search(query, {cookie_jar, fetch_opts: {proxy: opts?.proxy}});
     if("error" in search_response) return default_search(search_response);
 
     const tracks = is_empty(search_response.data.resources.songs) ? [] : Object.values(search_response.data.resources.songs);

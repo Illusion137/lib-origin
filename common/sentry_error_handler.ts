@@ -15,6 +15,9 @@ export function breadcrumb(category: string, message: string, data?: Record<stri
     if (console_sink_enabled) console.log(`[${category}] ${message}`, data ?? "");
     Sentry.addBreadcrumb({ category, message, data, level: "info" });
 }
+export function set_context(name: string, context: Record<string, any>) {
+    Sentry.setContext(name, context);
+}
 
 export function initialize_sentry_severity_handler() {
     SEVERITY_HANDLER_MAP.INFO = (error: ResponseError) => {
