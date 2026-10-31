@@ -31,6 +31,23 @@ export namespace YouTubeDL {
 	export interface Chapter { title: string; start_time: number }
 	let preloaded_cookies: string | undefined;
 
+	const UNAVAILABLE_ERROR_NAME = 'YouTubeUnavailableError';
+	const UNAVAILABLE_STATUSES = new Set(['ERROR', 'UNPLAYABLE']);
+
+	export function is_unavailable_error(error: ResponseError) {
+		return error.error.name === UNAVAILABLE_ERROR_NAME;
+	}
+
+	function is_unavailable_status(status: string, reason: string) {
+		return UNAVAILABLE_STATUSES.has(status) || (status === 'LOGIN_REQUIRED' && /private/i.test(reason));
+	}
+
+	function unavailable_error(video_id: string, status: string, reason: string): ResponseError {
+		const response_error = generror(`YouTube video unavailable: ${status} ${reason}`, 'LOW', { video_id });
+		response_error.error.name = UNAVAILABLE_ERROR_NAME;
+		return response_error;
+	}
+
 	export function preload_cookies(cookie?: string) {
 		preloaded_cookies = cookie ?? (typeof process !== 'undefined' ? process?.env?.YOUTUBE_COOKIE_JAR : undefined);
 		YouTubeSession.preload_cookies(cookie);
@@ -115,6 +132,10 @@ export namespace YouTubeDL {
 		fetch_potoken(video_id).catch(catch_error_log);
 
 		const player_response = await make_player_request(client, video_id);
+		const playability_status = player_response.playability_status;
+		if (playability_status !== undefined && is_unavailable_status(playability_status.status, playability_status.reason ?? ''))
+			return unavailable_error(video_id, playability_status.status, playability_status.reason ?? '');
+
 		const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;
 		if (video_playback_ustreamer_config === undefined) return generror('ustreamerConfig not found', 'LOW', { video_id, player_response });
 

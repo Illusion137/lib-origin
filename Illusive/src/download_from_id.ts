@@ -28,7 +28,7 @@ export async function soundcloud_download_from_id(permalink: string, retry_track
 export async function youtube_download_from_id(video_id: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
 	try {
 		const sabr_params = await Origin.YouTubeDL.resolve_sabr_info(video_id);
-		if ('error' in sabr_params) return youtube_download_from_id_retry(sabr_params, retry_track);
+		if ('error' in sabr_params) return Origin.YouTubeDL.is_unavailable_error(sabr_params) ? sabr_params : youtube_download_from_id_retry(sabr_params, retry_track);
 		return {
 			url: sabr_params.serverAbrStreamingUrl,
 			duration: sabr_params.duration,

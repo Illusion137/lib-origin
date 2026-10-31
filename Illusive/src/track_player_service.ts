@@ -15,6 +15,7 @@ import { SQLTracks } from '@illusive/sql/sql_tracks';
 import { Prefs } from './prefs';
 import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { reinterpret_cast } from '@common/cast';
 import type { Track as EPTrack, SabrStreamingInfo } from 'react-native-everything-player';
 import EverythingPlayer, { AppKilledPlaybackBehavior, Capability, Event, RepeatMode, State } from 'react-native-everything-player';
@@ -148,8 +149,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 	const url_data = await Illusive.get_download_url(SQLfs.document_directory(''), track);
 	if ('error' in url_data) {
 		GLOBALS.global_var.bottom_alert('Failed to convert track to Illusive track', 'WARN', url_data);
-		if (url_data.error.message.includes('Video unavailable'))
-			await SQLBackpack.report_unavailable(track);
+		if (YouTubeDL.is_unavailable_error(url_data)) await SQLBackpack.report_unavailable(track);
 		return 'skip';
 	}
 	if ('duration' in url_data && url_data.duration && !isNaN(url_data.duration) && is_empty(track.duration)) {

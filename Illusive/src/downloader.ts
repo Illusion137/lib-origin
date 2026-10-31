@@ -15,6 +15,7 @@ import { sabr_downloader } from '@native/sabr_downloader/sabr_downloader';
 import { generror } from '@common/utils/error_util';
 import { wait } from '@common/utils/timed_util';
 import { Lyrics } from './lyrics';
+import { YouTubeDL } from '@origin/youtube/youtube_dl';
 
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
 	return tracks.sort((a, b) => a.duration - b.duration);
@@ -102,9 +103,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 	}
 	const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), downloading.track, downloading.redownload);
 	if ('error' in download_uri) {
-		if (download_uri.error.message.toLowerCase().includes('unavailable'))
-			// TODO use more methods of error checking for unavailable tracks
-			await SQLBackpack.report_unavailable(downloading.track);
+		if (YouTubeDL.is_unavailable_error(download_uri)) await SQLBackpack.report_unavailable(downloading.track);
 		return download_uri;
 	}
 	if ('url' in download_uri && download_uri.url.includes('file://')) {

@@ -90,19 +90,4 @@ export class DrizzleUtils<SQLTables extends string> {
             END;
         `);
 	}
-
-	// TODO get the only item in the deleted_table and use that as the only key to delete the shiznick
-	async create_on_delete_trigger_if_not_exists<T extends Record<string, any>>(watch_table: SQLTables, copy_table: SQLTables, obj: T) {
-		const triggers = await this.get_all_async<{ name: string }>('SELECT name from sqlite_master WHERE type = \'trigger\';');
-		if (triggers.map(trigger => trigger.name).includes(`${watch_table}_deleted_Trigger`)) return;
-		const keys = Object.keys(obj).filter(key => obj[key] !== undefined);
-		await this.exec_async(`
-            CREATE TRIGGER IF NOT EXISTS ${watch_table}_deleted_Trigger
-            BEFORE DELETE ON ${watch_table}
-            FOR EACH ROW
-            BEGIN
-                INSERT INTO ${copy_table} (${keys.join(', ')}) VALUES (${keys.map(key => `OLD.${key}`).join(', ')});
-            END;
-        `);
-	}
 }

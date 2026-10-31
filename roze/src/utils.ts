@@ -72,14 +72,25 @@ function html_extract_text(node: Element | ChildNode): string {
 		if (child.nodeType === child.TEXT_NODE) {
 			out += child.textContent ?? '';
 		} else if (child.nodeType === child.ELEMENT_NODE) {
-			out += html_extract_text(child);
+			out += reinterpret_cast<Element>(child).tagName === 'BR' ? '\n' : html_extract_text(child);
 		}
 	}
 	return out;
 }
-function element_to_roz_content(el: Element): RozContent | undefined { // TODO Account for paragraph inline br/ and hr/ and other balony
+function is_break_content_type(content_type: RozContentType) {
+	return content_type === 'LINE_BREAK' || content_type === 'THEME_BREAK';
+}
+function element_to_roz_content(el: Element): RozContent | undefined {
 	const element_tag_name = reinterpret_cast<ElementTagName>(el.tagName);
 	if (tag_name_content_type_map[element_tag_name] === undefined) return undefined;
+	if (is_break_content_type(tag_name_content_type_map[element_tag_name])) {
+		return {
+			type: tag_name_content_type_map[element_tag_name],
+			content: '',
+			duration: 0,
+			uuid: gen_uuid()
+		};
+	}
 	if (tag_name_content_type_map[element_tag_name] === 'IMAGE') {
 		const image_src = reinterpret_cast<HTMLImageElement>(el).src ?? reinterpret_cast<HTMLImageElement>(el).getAttribute('xlink:href');
 		if (image_src) {
@@ -121,7 +132,7 @@ export function html_to_roz_contents(html_content: string | Document, root_eleme
 				contents.push(...html_to_roz_contents(html_content, child));
 			}
 		}
-		return contents.filter(c => c.content);
+		return contents.filter(c => c.content || is_break_content_type(c.type));
 	} catch (e) {
 		console.log(e);
 		return [];
