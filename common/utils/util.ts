@@ -93,7 +93,7 @@ export function empty_join(vals: any[], join_with: string) {
 export function empty_join_dot(vals: any[]) {
 	return empty_join(vals, ' • ');
 }
-export function chunkify<T>(array: T[], size: number): T[][] {
+export function chunkify<T>(array: readonly T[], size: number): T[][] {
 	const chunk_map: T[][] = [];
 	for (let i = 0; i < array.length; i += size) {
 		chunk_map.push(array.slice(i, i + size));
