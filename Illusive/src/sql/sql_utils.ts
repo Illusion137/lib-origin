@@ -13,13 +13,13 @@ export namespace SQLUtils {
 		const thumbnail_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({ thumbnail_uri }) => thumbnail_uri).filter(item => item !== undefined));
 		const media_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({ media_uri }) => media_uri).filter(item => item !== undefined));
 		const lyrics_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({ lyrics_uri }) => lyrics_uri).filter(item => item !== undefined));
-		const synced_lyrics_uri_set = new Set(GLOBALS.global_var.sql_tracks.map(({ synced_lyrics_uri }) => synced_lyrics_uri).filter(item => item !== undefined));
 
 		const files_to_delete = {
 			thumbnails: thumbnail_files.filter(file => !thumbnail_uri_set.has(file)).map(file => SQLfs.thumbnail_directory(file)),
 			media: media_files.filter(file => !media_uri_set.has(file)).map(file => SQLfs.media_directory(file)),
 			lyrics: lyrics_files.filter(file => !lyrics_uri_set.has(file)).map(file => SQLfs.lyrics_directory(file)),
-			synced_lyrics: synced_lyrics_files.filter(file => !synced_lyrics_uri_set.has(file)).map(file => SQLfs.synced_lyrics_directory(file))
+			// Left over from before a track kept its lyrics in one file
+			synced_lyrics: synced_lyrics_files.map(file => SQLfs.synced_lyrics_directory(file))
 		};
 
 		return files_to_delete;

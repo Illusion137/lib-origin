@@ -50,7 +50,7 @@ export namespace FutsalShuffle {
 			is_downloaded: flag(!is_empty(track.media_uri)),
 			has_thumbnail_dl: flag(!is_empty(track.thumbnail_uri)),
 			has_lyrics_dl: flag(!is_empty(track.lyrics_uri)),
-			has_synced_lyrics_dl: flag(!is_empty(track.synced_lyrics_uri)),
+			has_synced_lyrics_dl: flag(!is_empty(track.lyrics_uri) && (track.sync_status ?? 'NONE') !== 'NONE'),
 			plays_from_artist: Math.log1p(icache.plays_from_artist.get(track.artists?.[0]?.uri ?? '') ?? 0),
 			plays_from_album: Math.log1p(icache.plays_from_albums.get(track.album?.uri ?? '') ?? 0),
 			plays_in_past_month: Math.log1p(icache.plays_in_past_month.get(track.uid) ?? 0),

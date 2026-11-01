@@ -8,7 +8,7 @@ import type { TRACK_SERVICE_ID_FIELDS } from './track_codec';
 import { decode_track } from './track_codec';
 
 const WRITTEN_COLUMNS = [
-	'illusi_id', 'track', 'title', 'downloaded_at', 'start_at', 'end_at', 'media_uri', 'thumbnail_uri', 'lyrics_uri', 'synced_lyrics_uri',
+	'illusi_id', 'track', 'title', 'downloaded_at', 'start_at', 'end_at', 'media_uri', 'thumbnail_uri', 'lyrics_uri', 'sync_status',
 	'plays', 'last_played_at', 'deleted', 'edited_at', 'created_at', 'modified_at'
 ] as const;
 

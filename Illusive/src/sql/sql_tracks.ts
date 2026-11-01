@@ -15,6 +15,7 @@ import { SQLfs } from './sql_fs';
 import { SQLGlobal } from './sql_global';
 import { Store } from '@illusive/db/store';
 import type { Lyrics } from '@illusive/lyrics';
+import type { ParsedLyrics } from '@origin/illusi/types';
 
 export namespace SQLTracks {
 	const bad_artist_names = [',', '&', 'and']; // keep this incase of bad parsing prolly
@@ -89,7 +90,7 @@ export namespace SQLTracks {
 			},
 			downloading_data: { saved: saved, progress: 0, playlist_saved: false }
 		};
-		if (saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri) && is_empty(track.thumbnail_uri)) {
+		if (saved && is_empty(track.media_uri) && is_empty(track.lyrics_uri) && is_empty(track.thumbnail_uri)) {
 			const primary_key = track_primary_key(track);
 			const found_track = find_track_in_globals_with_key(track, primary_key);
 			new_track = {
@@ -98,7 +99,7 @@ export namespace SQLTracks {
 				media_uri: found_track?.media_uri,
 				thumbnail_uri: found_track?.thumbnail_uri,
 				lyrics_uri: found_track?.lyrics_uri,
-				synced_lyrics_uri: found_track?.synced_lyrics_uri,
+				sync_status: found_track?.sync_status,
 				meta: found_track?.meta
 			};
 		}
@@ -123,7 +124,7 @@ export namespace SQLTracks {
 			media_uri: is_empty(track.media_uri) ? new_track.media_uri : track.media_uri,
 			thumbnail_uri: is_empty(track.thumbnail_uri) ? new_track.thumbnail_uri : track.thumbnail_uri,
 			lyrics_uri: is_empty(track.lyrics_uri) ? new_track.lyrics_uri : track.lyrics_uri,
-			synced_lyrics_uri: is_empty(track.synced_lyrics_uri) ? new_track.synced_lyrics_uri : track.synced_lyrics_uri,
+			sync_status: is_empty(track.lyrics_uri) ? new_track.sync_status : track.sync_status,
 			imported_id: is_empty(track.imported_id) ? new_track.imported_id : track.imported_id,
 			illusi_id: is_empty(track.illusi_id) ? new_track.illusi_id : track.illusi_id,
 			youtube_id: is_empty(track.youtube_id) ? new_track.youtube_id : track.youtube_id,
@@ -252,7 +253,7 @@ export namespace SQLTracks {
 	function run_new_track_side_effects(track: Track) {
 		if (Prefs.get_pref('auto_cache_thumbnails')) download_thumbnail(track).catch(catch_log);
 		if (Prefs.get_pref('auto_download') && is_empty(track.media_uri)) GLOBALS.global_var.download_track(track).catch(catch_log);
-		if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri) && is_empty(track.synced_lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
+		if (Prefs.get_pref('auto_cache_lyrics') && is_empty(track.lyrics_uri)) GLOBALS.global_var.download_track_lyrics(track).catch(catch_log);
 	}
 	export async function insert_all_tracks(tracks: Track[]) {
 		const new_tracks = tracks.filter(track => !track_exists(track, GLOBALS.global_var.sql_tracks)).map(build_new_track);
@@ -363,41 +364,36 @@ export namespace SQLTracks {
 		return { exists: true, path: track.lyrics_uri ?? or_path };
 	}
 
-	export async function save_track_lyrics(track: Track, lyrics: Lyrics.LyricsResult) {
-		const lyrics_file = `${track.uid}.txt`;
-		const synced_lyrics_file = `${track.uid}.sync.txt`;
-		await SQLfs.create_file(SQLfs.lyrics_directory(lyrics_file), lyrics.plain);
-		if (lyrics.synced !== undefined) {
-			await SQLfs.create_file(SQLfs.synced_lyrics_directory(synced_lyrics_file), lyrics.synced);
-		}
-		const synced_lyrics_uri = lyrics.synced === undefined ? undefined : synced_lyrics_file;
-		const new_track = {
-			...track,
-			lyrics_uri: lyrics_file,
-			synced_lyrics_uri: synced_lyrics_uri
-		};
-		await Store.write(async repos => repos.tracks.patch(track.uid, synced_lyrics_uri === undefined ? { lyrics_uri: lyrics_file } : { lyrics_uri: lyrics_file, synced_lyrics_uri }));
-		SQLGlobal.update_global_track_item(track.uid, new_track);
+	export async function save_track_lyrics(track: Track, lyrics: Lyrics.TrackLyrics) {
+		const lyrics_file = lyrics.sync_status === 'NONE' ? `${track.uid}.txt` : `${track.uid}.json`;
+		await SQLfs.create_file(SQLfs.lyrics_directory(lyrics_file), lyrics.sync_status === 'NONE' ? lyrics.plain : JSON.stringify(lyrics.lyrics));
+		// The other kind of file from an earlier save
+		const stale = lyrics_file.endsWith('.txt') ? `${track.uid}.json` : `${track.uid}.txt`;
+		await SQLfs.delete_item(SQLfs.lyrics_directory(stale));
+		const fields = { lyrics_uri: lyrics_file, sync_status: lyrics.sync_status };
+		await Store.write(async repos => repos.tracks.patch(track.uid, fields));
+		SQLGlobal.update_global_track_item(track.uid, { ...track, ...fields });
 		return lyrics_file;
 	}
 	export async function undownload_track_lyrics(track: Track) {
 		await SQLfs.delete_item(SQLfs.lyrics_directory(`${track.uid}.txt`));
-		await SQLfs.delete_item(SQLfs.synced_lyrics_directory(`${track.uid}.sync.txt`));
-		const new_track = {
-			...track,
-			lyrics_uri: '',
-			synced_lyrics_uri: ''
-		};
-		await Store.write(async repos => repos.tracks.patch(track.uid, { lyrics_uri: '', synced_lyrics_uri: '' }));
-		SQLGlobal.update_global_track_item(track.uid, new_track);
+		await SQLfs.delete_item(SQLfs.lyrics_directory(`${track.uid}.json`));
+		const fields = { lyrics_uri: '', sync_status: 'NONE' } as const;
+		await Store.write(async repos => repos.tracks.patch(track.uid, fields));
+		SQLGlobal.update_global_track_item(track.uid, { ...track, ...fields });
 	}
 
-	export async function read_track_lyrics(track: Track) {
+	/** The track's lyrics as saved, undefined when there are none or the file can't be read */
+	export async function read_track_lyrics(track: Track): Promise<Lyrics.TrackLyrics | undefined> {
 		if (is_empty(track.lyrics_uri)) return undefined;
-		return await SQLfs.read_file(SQLfs.lyrics_directory(track.lyrics_uri!));
-	}
-	export async function read_track_synced_lyrics(track: Track) {
-		if (is_empty(track.synced_lyrics_uri)) return undefined;
-		return await SQLfs.read_file(SQLfs.synced_lyrics_directory(track.synced_lyrics_uri!));
+		const content = await SQLfs.read_file(SQLfs.lyrics_directory(track.lyrics_uri!));
+		if (typeof content !== 'string') return undefined;
+		const sync_status = track.sync_status ?? 'NONE';
+		if (sync_status === 'NONE') return { sync_status, plain: content };
+		try {
+			return { sync_status, lyrics: JSON.parse(content) as ParsedLyrics };
+		} catch {
+			return undefined;
+		}
 	}
 }

@@ -63,7 +63,7 @@ function make_track(uid: string, overrides: Partial<Track> = {}): Track {
 		thumbnail_uri: '',
 		media_uri: 'file.m4a',
 		lyrics_uri: '',
-		synced_lyrics_uri: '',
+		sync_status: 'NONE',
 		meta: { plays: 7, added_date: iso(NOW - 1000) as never, last_played_date: iso(NOW - 500) as never, begdur: 1.5, enddur: 190 },
 		...overrides
 	} as Track;

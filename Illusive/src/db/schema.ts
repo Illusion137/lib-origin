@@ -1,4 +1,4 @@
-import type { InheritanceMode, SortType as ApiSortType } from '@origin/illusi/types';
+import type { InheritanceMode, LyricsSyncType, SortType as ApiSortType } from '@origin/illusi/types';
 import type { TrackAnalysisData, TrackMetaData, TrackProducer } from '@illusive/types';
 import { index, int, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
@@ -69,7 +69,8 @@ export const user_tracks_table = sqliteTable('user_tracks', {
 	media_uri: text().notNull().default(''),
 	thumbnail_uri: text().notNull().default(''),
 	lyrics_uri: text().notNull().default(''),
-	synced_lyrics_uri: text().notNull().default(''),
+	/** How the lyrics file is timed: plain text when NONE, ParsedLyrics JSON otherwise */
+	sync_status: text().notNull().$type<LyricsSyncType>().default('NONE'),
 	/** Caches of track_plays */
 	plays: int().notNull().default(0),
 	last_played_at: int(),

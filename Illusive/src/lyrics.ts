@@ -4,29 +4,35 @@ import { generror } from '@common/utils/error_util';
 import type { Track } from './types';
 import type { PromiseResult, ResponseError } from '@common/types';
 import { remove_topic } from '@common/utils/clean_util';
-import { extract_strings_from_pattern, is_empty, seconds_of } from '@common/utils/util';
-import { reinterpret_cast } from '../../common/cast';
+import { is_empty } from '@common/utils/util';
 import { fs } from '@native/fs/fs';
 import { SQLfs } from './sql/sql_fs';
 import { Translate } from '@roze/translate';
 import { Illusi } from '@origin/illusi/illusi';
-import type { Action, LyricsLine, LyricsResponse, ParsedLyrics } from '@origin/illusi/types';
+import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics } from '@origin/illusi/types';
+import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
 import { server_service_ids, track_graph } from './db/sync/push';
 import { deterministic_uuid } from './db/v2/keys';
 import { encode_track } from './db/v2/track_codec';
 
 export namespace Lyrics {
-	export interface LyricsResult {
-		plain: string;
-		synced: string | undefined;
-	}
+	const VOCALS_DURATION_TOLERANCE_MS = 3_000;
+
+	export type TrackLyrics = { sync_status: 'NONE'; plain: string } | { sync_status: Exclude<LyricsSyncType, 'NONE'>; lyrics: ParsedLyrics };
+	/** Seconds */
 	export interface LyricsInterval {
 		from: number;
+		to?: number;
+	}
+	export interface SyncedSegment {
+		text: string;
+		interval: LyricsInterval;
 	}
 	export interface SyncedLyric {
 		text: string;
 		interval: LyricsInterval;
+		segments?: SyncedSegment[];
 	}
 	export interface LRCLibSyncedLyrics {
 		type: 'LRCLIB';
@@ -39,14 +45,54 @@ export namespace Lyrics {
 		const centis = total_cs % 100;
 		return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
 	}
-	/** The server's parsed lyrics as plain text plus, when timed, LRC */
-	export function from_illusi(lyrics: ParsedLyrics): LyricsResult {
-		const plain = lyrics.lines.map(line => line.text).join('\n');
-		const timed = lyrics.sync_type !== 'NONE' && lyrics.lines.some(line => line.start_ms !== null);
-		const synced = timed
-			? lyrics.lines.filter(line => line.start_ms !== null).map(line => `[${lrc_time(line.start_ms!)}] ${line.text}`).join('\n')
-			: undefined;
-		return { plain, synced };
+	function lrc_line(line: LyricsLine): string {
+		if (line.segments === undefined || line.segments.length === 0) return `[${lrc_time(line.start_ms!)}] ${line.text}`;
+		const words = line.segments.map(segment => `<${lrc_time(segment.start_ms)}>${segment.text}`).join('');
+		const end = line.segments[line.segments.length - 1].end_ms;
+		return `[${lrc_time(line.start_ms!)}] ${words.trimEnd()}${end === null ? '' : `<${lrc_time(end)}>`}`;
+	}
+	function timed_lines(lyrics: ParsedLyrics): LyricsLine[] {
+		return lyrics.sync_type === 'NONE' ? [] : lyrics.lines.filter(line => line.start_ms !== null && !LyricsAlign.is_header(line.text));
+	}
+	export function to_plain(lyrics: ParsedLyrics): string {
+		return lyrics.lines.map(line => line.text).join('\n');
+	}
+	export function from_plain(plain: string): ParsedLyrics {
+		return { sync_type: 'NONE', lines: plain.split('\n').map(text => ({ text, start_ms: null, end_ms: null })) };
+	}
+	export function to_track_lyrics(lyrics: ParsedLyrics): TrackLyrics {
+		if (lyrics.sync_type === 'NONE' || timed_lines(lyrics).length === 0) return { sync_status: 'NONE', plain: to_plain(lyrics) };
+		return { sync_status: lyrics.sync_type, lyrics };
+	}
+	export function to_lrc(lyrics: ParsedLyrics): string {
+		return timed_lines(lyrics).map(lrc_line).join('\n');
+	}
+	export function to_synced_lyrics(lyrics: ParsedLyrics): SyncedLyric[] {
+		const lines = timed_lines(lyrics);
+		return lines.map((line, i) => {
+			const to = line.end_ms ?? line.segments?.at(-1)?.end_ms ?? lines[i + 1]?.start_ms ?? null;
+			const segments = line.segments?.map(segment => ({ text: segment.text, interval: { from: segment.start_ms / 1000, ...(segment.end_ms === null ? {} : { to: segment.end_ms / 1000 }) } }));
+			return {
+				text: line.text,
+				interval: { from: line.start_ms! / 1000, ...(to === null ? {} : { to: to / 1000 }) },
+				...(segments !== undefined && segments.length > 0 ? { segments } : {})
+			};
+		});
+	}
+
+	export async function with_vocal_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number): Promise<ParsedLyrics> {
+		if (lyrics.sync_type === 'WORD' || lyrics.sync_type === 'SYLLABLE') return lyrics;
+		const vocals = await Illusi.Tracks.vocals(track_id);
+		if (Illusi.is_error(vocals)) return lyrics;
+		if (duration_s !== undefined && duration_s > 0 && Math.abs(vocals.duration_ms - duration_s * 1000) > VOCALS_DURATION_TOLERANCE_MS) return lyrics;
+		let lined: ParsedLyrics | null = lyrics;
+		if (lyrics.sync_type === 'NONE') {
+			const plain = lyrics.lines.map(line => line.text).join('\n');
+			// When Whisper's words can judge the lyrics, its verdict stands, including "leave them unsynced"
+			lined = LyricsAlign.can_hear(plain, vocals) ? LyricsAlign.heard_line_sync(plain, vocals)?.lyrics ?? null : LyricsAlign.line_sync(plain, vocals);
+		}
+		if (lined === null) return lyrics;
+		return LyricsAlign.word_sync(lined, vocals) ?? lined;
 	}
 	/** The track's illusi_id: its own, else the server's match for it, contributing the track when there is none */
 	async function server_track_id(track: Track): PromiseResult<string> {
@@ -71,7 +117,20 @@ export namespace Lyrics {
 		return contributed.refs[track.uid] ?? generror('The server didn\'t accept the track', 'LOW', { track: small_track(track), rejected: contributed.rejected });
 	}
 
-	export async function get_track_lyrics(track: Track): PromiseResult<LyricsResult> {
+	/**
+	 * Experimental on-device sync for a track whose lyrics are unsynced: line timings from the vocal analysis the
+	 * server keeps for it, or null when there is none or the timings can't be trusted (keep showing the plain lyrics).
+	 */
+	export async function experimental_sync(track: Track, plain: string): PromiseResult<ParsedLyrics | null> {
+		if (Illusi.get_session() === null) return generror('Log in to Illusi to sync lyrics', 'INFO', { track: small_track(track) });
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return id;
+		const unsynced = from_plain(plain);
+		const synced = await with_vocal_sync(id, unsynced, track.duration);
+		return synced === unsynced ? null : synced;
+	}
+
+	export async function get_track_lyrics(track: Track): PromiseResult<TrackLyrics> {
 		if (Illusi.get_session() === null) return generror('Log in to Illusi to get lyrics', 'INFO', { track: small_track(track) });
 		const id = await server_track_id(track);
 		if (typeof id !== 'string') return id;
@@ -87,30 +146,54 @@ export namespace Lyrics {
 			if (answered !== null) response = answered;
 		}
 		IllusiActions.handle(pending);
-		if (response.lyrics !== null) return from_illusi(response.lyrics);
-		if (response.instrumental === true) return { plain: '', synced: undefined };
+		if (response.lyrics !== null) return to_track_lyrics(response.lyrics);
+		if (response.instrumental === true) return { sync_status: 'NONE', plain: '' };
 		return generror('No lyrics found', 'INFO', { track: small_track(track) });
 	}
-	function parse_lrclib_synced_line(line: string): SyncedLyric | ResponseError {
-		const pattern = /\[(\d+):(\d+)\.(\d+)\] ?(.*?)$/g;
-		const extracted = extract_strings_from_pattern(line, pattern);
-		if (extracted.length < 4) return generror('Couldn\'t extract the lyrics pattern', 'LOW', { line });
-		const [minute, second, millisecond, text] = extracted;
-		const seconds = seconds_of({
-			milliseconds: parseFloat(millisecond),
-			seconds: parseFloat(second),
-			minutes: parseFloat(minute)
-		});
-		return { text: text, interval: { from: seconds } };
+	const LRC_TIME = /(\d+):(\d+(?:\.\d+)?)/;
+	const LRC_LINE = /^((?:\[\d+:\d+(?:\.\d+)?\])+) ?(.*)$/;
+	const LRC_WORD_TIME = /<(\d+:\d+(?:\.\d+)?)>/g;
+	function lrc_seconds(time: string): number {
+		const [, minutes, seconds] = LRC_TIME.exec(time)!;
+		return parseInt(minutes, 10) * 60 + parseFloat(seconds);
+	}
+	function parse_lrc_line(line: string): SyncedLyric[] {
+		const match = LRC_LINE.exec(line.trim());
+		if (match === null) return [];
+		const [, stamps, body] = match;
+		const parts = body.split(LRC_WORD_TIME);
+		const segments: SyncedSegment[] = [];
+		for (let i = 1; i + 1 < parts.length; i += 2) {
+			const from = lrc_seconds(parts[i]);
+			if (parts[i + 1] === '') {
+				// A tag with no text after it ends the segment before it
+				if (segments.length > 0) segments[segments.length - 1].interval.to = from;
+				continue;
+			}
+			if (segments.length > 0) segments[segments.length - 1].interval.to ??= from;
+			segments.push({ text: parts[i + 1], interval: { from } });
+		}
+		const text = (segments.length > 0 ? parts.filter((_, i) => i % 2 === 0).join('') : body).trim();
+		return [...stamps.matchAll(/\[([^\]]+)\]/g)].map(([, stamp]) => ({
+			text,
+			interval: { from: lrc_seconds(stamp) },
+			...(segments.length > 0 ? { segments } : {})
+		}));
 	}
 	export function lrclib_synced_lyrics_to_json(synced_lyrics_text: string): LRCLibSyncedLyrics | ResponseError {
-		const synced_lyrics = synced_lyrics_text.split('\n').filter(line => !is_empty(line)).map(parse_lrclib_synced_line);
-		const first_error = synced_lyrics.find(item => 'error' in item);
-		if (first_error !== undefined) return first_error;
-		return {
-			type: 'LRCLIB',
-			lyrics: reinterpret_cast<SyncedLyric[]>(synced_lyrics)
-		};
+		const lyrics = synced_lyrics_text.split('\n').flatMap(parse_lrc_line).sort((a, b) => a.interval.from - b.interval.from);
+		if (lyrics.length === 0 && !is_empty(synced_lyrics_text.trim())) return generror('Couldn\'t extract the lyrics pattern', 'LOW', { synced_lyrics_text });
+		for (let i = 0; i < lyrics.length; i++) lyrics[i].interval.to = lyrics[i].segments?.at(-1)?.interval.to ?? lyrics[i + 1]?.interval.from;
+		return { type: 'LRCLIB', lyrics };
+	}
+
+	/** The text of a ParsedLyrics JSON file, or '' when it doesn't parse */
+	function plain_of_file(json: string): string {
+		try {
+			return to_plain(JSON.parse(json) as ParsedLyrics);
+		} catch {
+			return '';
+		}
 	}
 
 	interface LyricsFileEntry {
@@ -126,10 +209,11 @@ export namespace Lyrics {
 				.map(async (track) => {
 					const path = SQLfs.lyrics_directory(track.lyrics_uri!);
 					const content = await fs().read_as_string(path, { encoding: 'utf8' });
+					const text = typeof content === 'object' ? '' : content;
 					return {
 						filename: path.split('/').pop() ?? path,
 						path,
-						content: typeof content === 'object' ? '' : content
+						content: (track.sync_status ?? 'NONE') === 'NONE' ? text : plain_of_file(text)
 					};
 				})
 		);
@@ -172,22 +256,27 @@ export namespace Lyrics {
 		return Translate.google_translate_html(lines, { lang_from, lang_to: 'en' });
 	}
 
-	export async function translate_plain_lyrics(lyrics: string): PromiseResult<[string, string][]> {
-		const lyrics_lines = lyrics.split('\n');
-		const translation_result = await translate_lines(lyrics_lines);
+	export type TranslatedLine<T extends { text: string } = { text: string }> = T & { translated?: string };
+
+	async function with_translations<T extends { text: string }>(lines: readonly T[]): PromiseResult<TranslatedLine<T>[]> {
+		const sung = lines.filter(line => line.text.trim() !== '' && !LyricsAlign.is_header(line.text));
+		const translation_result = await translate_lines(sung.map(line => line.text));
 		if ('error' in translation_result) return translation_result;
-		return lyrics_lines.map((line, i) => [line, translation_result[i]]);
+		const translations = new Map(sung.map((line, i) => [line, translation_result[i]]));
+		return lines.map((line) => {
+			const translated = translations.get(line);
+			return translated === undefined || translated.trim() === '' ? { ...line } : { ...line, translated };
+		});
 	}
-	export async function translate_line_synced_lyrics(lyrics: SyncedLyric[]): PromiseResult<[SyncedLyric, string][]> {
-		const lyrics_lines = lyrics.map(lyric => lyric.text);
-		const translation_result = await translate_lines(lyrics_lines);
-		if ('error' in translation_result) return translation_result;
-		return lyrics.map((lyric, i) => [lyric, translation_result[i]]);
+	export async function translate_plain_lyrics(lyrics: string): PromiseResult<TranslatedLine[]> {
+		return with_translations(lyrics.split('\n').map(text => ({ text })));
 	}
-	export async function translate_word_synced_lyrics(lines: LyricsLine[]): PromiseResult<[LyricsLine, string][]> {
-		const lyrics_lines = lines.map(line => line.segments?.map(segment => segment.text).join('').trim() || line.text);
-		const translation_result = await translate_lines(lyrics_lines);
-		if ('error' in translation_result) return translation_result;
-		return lines.map((line, i) => [line, translation_result[i]]);
+	export async function translate_synced_lyrics(lyrics: readonly SyncedLyric[]): PromiseResult<TranslatedLine<SyncedLyric>[]> {
+		return with_translations(lyrics);
+	}
+	export async function translate_parsed_lyrics(lyrics: ParsedLyrics): PromiseResult<Omit<ParsedLyrics, 'lines'> & { lines: TranslatedLine<LyricsLine>[] }> {
+		const lines = await with_translations(lyrics.lines);
+		if ('error' in lines) return lines;
+		return { ...lyrics, lines };
 	}
 }

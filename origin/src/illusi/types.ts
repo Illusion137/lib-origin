@@ -213,7 +213,46 @@ export interface TrackVocals extends Redirected {
 	voice: number[];
 	/** Voiced spans derived from `voice`, accurate to about half a second. */
 	segments: VocalSegment[];
+	/** Beat tracking over the same file; null for files analyzed before it ran */
+	rhythm: TrackRhythm | null;
+	/** What lining up lyrics reads; each is null for files analyzed before it ran */
+	words: TrackWords | null;
+	speech: TrackSpeech | null;
+	beat_grid: TrackBeatGrid | null;
 	analyzed_at: ISODateString;
+}
+export interface HeardWord {
+	text: string;
+	start_ms: number;
+	end_ms: number;
+	/** Whisper's confidence, 0-1 */
+	probability: number;
+}
+/** Words Whisper heard in the full mix, in order; empty when it heard none */
+export interface TrackWords {
+	model: string;
+	words: HeardWord[];
+}
+/** Silero's voice probability (0-1) of the frame `[i * hop_ms, (i + 1) * hop_ms)`; it often hears nothing in sung pop */
+export interface TrackSpeech {
+	model: string;
+	hop_ms: number;
+	voice: number[];
+}
+/** Beat This! beats and downbeats, which follow tempo changes */
+export interface TrackBeatGrid {
+	model: string;
+	beats_ms: number[];
+	downbeats_ms: number[];
+}
+export interface TrackRhythm {
+	model: string;
+	bpm: number;
+	/** Essentia's multifeature confidence, 0 to ~5.32: above 3.5 very reliable, under 1.5 unreliable */
+	confidence: number;
+	/** Every beat, increasing; empty when none was found */
+	beats_ms: number[];
+	bpm_estimates: number[];
 }
 export type BestLyrics
 	= | { instrumental: true }

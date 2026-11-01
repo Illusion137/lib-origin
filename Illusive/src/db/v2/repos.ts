@@ -56,7 +56,8 @@ async function in_library(ex: DrizzleDB, uids: readonly string[]): Promise<Set<s
 	return new Set([...users.values()].filter(user => !user.deleted).map(user => user.uid));
 }
 
-const BULK_COLUMNS = ['media_uri', 'thumbnail_uri', 'lyrics_uri', 'synced_lyrics_uri'] as const;
+/** Columns set on every row at once, with the value a missing field clears them to */
+const BULK_COLUMNS = { media_uri: '', thumbnail_uri: '', lyrics_uri: '', sync_status: 'NONE' } as const;
 
 const tracks: TracksRepo = {
 	async load_library() {
@@ -106,8 +107,8 @@ const tracks: TracksRepo = {
 		});
 	},
 	async patch_all(fields, affected_uids, sync = true) {
-		const bulk = Object.fromEntries(BULK_COLUMNS.filter(column => column in fields).map(column => [column, fields[column] ?? '']));
-		const rest = Object.keys(fields).filter(key => !(BULK_COLUMNS as readonly string[]).includes(key));
+		const bulk = Object.fromEntries(Object.entries(BULK_COLUMNS).filter(([column]) => column in fields).map(([column, cleared]) => [column, fields[column as keyof typeof BULK_COLUMNS] ?? cleared]));
+		const rest = Object.keys(fields).filter(key => !(key in BULK_COLUMNS));
 		await transaction(db, async (tx) => {
 			if (Object.keys(bulk).length > 0) await tx.update(user_tracks_table).set({ ...bulk, modified_at: Date.now() });
 			if (bulk.media_uri === '') {

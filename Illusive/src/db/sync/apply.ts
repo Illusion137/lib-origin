@@ -132,7 +132,8 @@ async function merge_tracks(ex: DrizzleDB, from: string, to: string) {
 		last_played_at: Math.max(a.last_played_at ?? 0, b.last_played_at ?? 0) || null,
 		created_at: Math.min(a.created_at, b.created_at)
 	};
-	for (const column of ['media_uri', 'thumbnail_uri', 'lyrics_uri', 'synced_lyrics_uri'] as const) if (b[column] === '' && a[column] !== '') set[column] = a[column];
+	for (const column of ['media_uri', 'thumbnail_uri'] as const) if (b[column] === '' && a[column] !== '') set[column] = a[column];
+	if (b.lyrics_uri === '' && a.lyrics_uri !== '') Object.assign(set, { lyrics_uri: a.lyrics_uri, sync_status: a.sync_status });
 	// The library copy's own settings win over a row that's only here for a playlist or play
 	if (b.deleted && !a.deleted) Object.assign(set, { title: a.title, downloaded_at: a.downloaded_at, start_at: a.start_at, end_at: a.end_at, deleted: false, edited_at: a.edited_at });
 	await ex.update(user_tracks_table).set(set).where(eq(user_tracks_table.uid, to));

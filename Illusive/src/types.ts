@@ -8,6 +8,7 @@ import { remove } from '@common/utils/clean_util';
 import type { BasePref } from '@native/mmkv/mmkv_utils';
 import type { RoZFetchRequestInit } from '@common/rozfetch';
 import type { ExtendedSabrStreamConfig, YouTubeDL } from '@origin/youtube/youtube_dl';
+import type { LyricsSyncType, ParsedLyrics } from '@origin/illusi/types';
 
 type ArtworkCacheType = 'force-cache';
 
@@ -144,10 +145,9 @@ export interface LyricsDownloading {
 	track: Track;
 	uid: string;
 }
-export type LyricsDownloadingResult = 'EXISTS' | ResponseError | {
-	plain: string;
-	synced: string | undefined;
-};
+export type LyricsDownloadingResult = 'EXISTS' | ResponseError
+	| { sync_status: 'NONE'; plain: string }
+	| { sync_status: Exclude<LyricsSyncType, 'NONE'>; lyrics: ParsedLyrics };
 
 export type IllusiveURI = `${MusicServiceURI}:${string}`;
 export type NamedUUID = { name: string; uuid: string; uri?: never } | { name: string; uuid?: never; uri: IllusiveURI | null };
@@ -249,7 +249,8 @@ export interface Track {
 	thumbnail_uri?: string;
 	media_uri?: string;
 	lyrics_uri?: string;
-	synced_lyrics_uri?: string;
+	/** How the file at `lyrics_uri` is timed: plain text when NONE, ParsedLyrics JSON otherwise */
+	sync_status?: LyricsSyncType;
 	meta?: TrackMetaData;
 	playback?: TrackPlaybackData;
 	downloading_data?: TrackDownloadingData;

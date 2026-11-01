@@ -123,8 +123,9 @@ export function parse_track_row(row: SQLiteRow): LegacyTrackRow {
 		artwork_url: row.artwork_url ?? '',
 		thumbnail_uri: row.thumbnail_uri ?? '',
 		media_uri: row.media_uri ?? '',
-		lyrics_uri: row.lyrics_uri ?? '',
-		synced_lyrics_uri: row.synced_lyrics_uri ?? '',
+		// Lyrics are fetched again in the current format
+		lyrics_uri: '',
+		sync_status: 'NONE',
 		meta: json<TrackMetaData>(row.meta, { plays: 0, added_date: new Date(Number(row.created_at) || 0).toISOString(), last_played_date: new Date(0).toISOString() } as TrackMetaData)
 	};
 	const created_at = Number(row.created_at) || 0;

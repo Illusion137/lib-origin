@@ -156,7 +156,7 @@ export function encode_track(track: Track, opts: { now: number; title_is_catalog
 		media_uri,
 		thumbnail_uri: track.thumbnail_uri ?? '',
 		lyrics_uri: track.lyrics_uri ?? '',
-		synced_lyrics_uri: track.synced_lyrics_uri ?? '',
+		sync_status: track.lyrics_uri ? track.sync_status ?? 'NONE' : 'NONE',
 		plays: Number.isFinite(meta.plays) ? meta.plays! : 0,
 		last_played_at: meta.last_played_date === undefined || meta.last_played_date === EPOCH ? null : time_of(meta.last_played_date, 0) || null,
 		deleted: false,
@@ -201,7 +201,7 @@ export function decode_track(row: UserTrackRow): Track {
 		thumbnail_uri: row.thumbnail_uri,
 		media_uri: row.media_uri,
 		lyrics_uri: row.lyrics_uri,
-		synced_lyrics_uri: row.synced_lyrics_uri,
+		sync_status: row.sync_status,
 		meta
 	};
 	for (const field of TRACK_SERVICE_ID_FIELDS) {
