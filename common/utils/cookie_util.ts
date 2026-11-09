@@ -138,4 +138,9 @@ export class CookieJar {
 		const set_cookies = response.headers['set-cookie'];
 		this.merge(CookieJar.fromStrings(set_cookies ?? []));
 	}
+
+	updateCookie(key: string, value: string) {
+		const jar = CookieJar.fromString(`${key}=${value}`);
+		this.merge(jar);
+	}
 }
