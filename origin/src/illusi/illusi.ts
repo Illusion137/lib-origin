@@ -13,7 +13,7 @@ import type {
 	ReviewApplyBody, ReviewApplyResult, ReviewDismissResult, ReviewList, ReviewListQuery, SearchQuery, SearchResponse, SearchSuggestions,
 	SearchSuggestionsQuery, SearchType,
 	SharedEntityTable, SimilarQuery, SoundCloudIngestBody, SoundCloudIngestItem, TempRef, TokenPair, TrackBatchBody, TrackBatchResponse,
-	TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, UUID, YouTubeMusicLyricsIngestBody,
+	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, UUID, YouTubeMusicLyricsIngestBody,
 	YouTubeMusicLyricsPayload
 } from '@origin/illusi/types';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
@@ -85,6 +85,7 @@ export namespace Illusi {
 		'GET /tracks/:id/similar': { query: SimilarQuery; response: { items: TrackView[] } };
 		'GET /tracks/:id/lyrics': { response: LyricsResponse };
 		'GET /tracks/:id/vocals': { response: TrackVocals };
+		'GET /tracks/:id/alignment': { response: TrackAlignment };
 		'GET /albums/:id': { response: AlbumDetail };
 		'GET /artists/:id': { response: ArtistView };
 		'GET /artists/:id/albums': { query: ArtistAlbumsQuery; response: Page<AlbumView> };
@@ -423,6 +424,13 @@ export namespace Illusi {
 		/** 404 until the track has uploaded media that the analyzer has processed. */
 		export async function vocals(track_id: IllusiId) {
 			return call('GET /tracks/:id/vocals', { params: { id: track_id } });
+		}
+		/**
+		 * 404 until the analyzer has separated the track's vocals; asking while a user plays a track whose lyrics are all
+		 * unsynced is what queues that analysis.
+		 */
+		export async function alignment(track_id: IllusiId) {
+			return call('GET /tracks/:id/alignment', { params: { id: track_id } });
 		}
 	}
 

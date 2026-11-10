@@ -221,6 +221,38 @@ export interface TrackVocals extends Redirected {
 	beat_grid: TrackBeatGrid | null;
 	analyzed_at: ISODateString;
 }
+/** A vocal passage sung again `lag_ms` later */
+export interface VocalRepeat {
+	start_ms: number;
+	end_ms: number;
+	lag_ms: number;
+	strength: number;
+}
+/**
+ * What the app aligns plain lyrics against, from the separated vocals of the track's media file. The server keeps no
+ * synced version; the app builds one from this and keeps it to itself.
+ */
+export interface TrackAlignment extends Redirected {
+	track_id: IllusiId;
+	resource_id: string;
+	model: string;
+	duration_ms: number;
+	/** Length of one frame of `letters` and `loudness` */
+	frame_ms: number;
+	/** CTC labels, blank first */
+	alphabet: string;
+	letter_scale: number;
+	/** Base64, frame-major: one byte per `alphabet` entry per frame, `round(-log p * letter_scale)` capped at 255 */
+	letters: string;
+	/** Base64, one byte per frame: `round(127.5 * sqrt(min(4, rms / p90)))` of the vocals stem */
+	loudness: string;
+	/** Whisper on the vocals stem */
+	words: TrackWords;
+	/** Beat This! on the drums stem */
+	beat_grid: TrackBeatGrid;
+	repeats: VocalRepeat[];
+	analyzed_at: ISODateString;
+}
 export interface HeardWord {
 	text: string;
 	start_ms: number;
