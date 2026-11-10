@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Illusi } from '@origin/illusi/illusi';
-import type { ParsedLyrics, TrackVocals } from '@origin/illusi/types';
+import type { ParsedLyrics, TrackAlignment, TrackVocals } from '@origin/illusi/types';
 import type { Track } from './types';
 import { Translate } from '@roze/translate';
+import { LetterSync } from './letter_sync';
 import { Lyrics } from './lyrics';
 import { LyricsAlign } from './lyrics_align';
 
@@ -27,6 +28,7 @@ const found = (track_id: string) => ({ track_id, lyrics: parsed, service: 'LRCLI
 beforeEach(() => {
 	vi.spyOn(Illusi, 'get_session').mockReturnValue({ access_token: 'a', refresh_token: 'r' } as Illusi.Session);
 	vi.spyOn(Illusi.Tracks, 'vocals').mockResolvedValue({ error: new Error('no vocals detected for this track'), status: 404 } as never);
+	vi.spyOn(Illusi.Tracks, 'alignment').mockResolvedValue({ error: new Error('no alignment analysis for this track yet'), status: 404 } as never);
 });
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -113,6 +115,28 @@ describe('Lyrics.with_vocal_sync', () => {
 		expect(await Lyrics.experimental_sync(track({ illusi_id: 'ill1', duration: 0 }), LINES.join('\n'))).toBeNull();
 		vi.mocked(Illusi.Tracks.vocals).mockResolvedValue({ error: new Error('no vocals detected for this track'), status: 404 } as never);
 		expect(await Lyrics.experimental_sync(track({ illusi_id: 'ill1', duration: 0 }), LINES.join('\n'))).toBeNull();
+	});
+
+	it('prefers the alignment against the separated vocals once there is one, and stands by its verdict', async () => {
+		const alignment = { duration_ms: 40_000 } as TrackAlignment;
+		vi.mocked(Illusi.Tracks.alignment).mockResolvedValue(alignment);
+		vi.mocked(Illusi.Tracks.vocals).mockResolvedValue(vocals());
+		const aligned: ParsedLyrics = { sync_type: 'LINE', lines: LINES.map((text, i) => ({ text, start_ms: start(i), end_ms: null })) };
+		const line_sync = vi.spyOn(LetterSync, 'line_sync').mockReturnValue(aligned);
+		expect(await Lyrics.with_vocal_sync('ill1', unsynced)).toBe(aligned);
+		expect(line_sync).toHaveBeenCalledWith(LINES.join('\n'), alignment);
+		line_sync.mockReturnValue(null);
+		expect(await Lyrics.with_vocal_sync('ill1', unsynced)).toBe(unsynced);
+		expect(Illusi.Tracks.vocals).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the vocal analysis while the vocals aren\'t separated, or are from another file', async () => {
+		vi.mocked(Illusi.Tracks.vocals).mockResolvedValue(vocals());
+		const line_sync = vi.spyOn(LetterSync, 'line_sync');
+		expect((await Lyrics.with_vocal_sync('ill1', unsynced)).sync_type).not.toBe('NONE');
+		vi.mocked(Illusi.Tracks.alignment).mockResolvedValue({ duration_ms: 90_000 } as TrackAlignment);
+		expect((await Lyrics.with_vocal_sync('ill1', unsynced, 42)).sync_type).not.toBe('NONE');
+		expect(line_sync).not.toHaveBeenCalled();
 	});
 
 	it('uses the vocal curve alone for files analyzed before transcription', async () => {

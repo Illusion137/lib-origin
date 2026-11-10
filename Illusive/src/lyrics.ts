@@ -10,6 +10,7 @@ import { SQLfs } from './sql/sql_fs';
 import { Translate } from '@roze/translate';
 import { Illusi } from '@origin/illusi/illusi';
 import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics } from '@origin/illusi/types';
+import { LetterSync } from './letter_sync';
 import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
 import { server_service_ids, track_graph } from './db/sync/push';
@@ -80,15 +81,25 @@ export namespace Lyrics {
 		});
 	}
 
+	async function letter_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number): Promise<ParsedLyrics | null | undefined> {
+		const alignment = await Illusi.Tracks.alignment(track_id);
+		if (Illusi.is_error(alignment)) return undefined;
+		if (duration_s !== undefined && duration_s > 0 && Math.abs(alignment.duration_ms - duration_s * 1000) > VOCALS_DURATION_TOLERANCE_MS) return undefined;
+		return LetterSync.line_sync(to_plain(lyrics), alignment);
+	}
+
 	export async function with_vocal_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number): Promise<ParsedLyrics> {
 		if (lyrics.sync_type === 'WORD' || lyrics.sync_type === 'SYLLABLE') return lyrics;
+		if (lyrics.sync_type === 'NONE') {
+			const aligned = await letter_sync(track_id, lyrics, duration_s);
+			if (aligned !== undefined) return aligned ?? lyrics;
+		}
 		const vocals = await Illusi.Tracks.vocals(track_id);
 		if (Illusi.is_error(vocals)) return lyrics;
 		if (duration_s !== undefined && duration_s > 0 && Math.abs(vocals.duration_ms - duration_s * 1000) > VOCALS_DURATION_TOLERANCE_MS) return lyrics;
 		let lined: ParsedLyrics | null = lyrics;
 		if (lyrics.sync_type === 'NONE') {
 			const plain = lyrics.lines.map(line => line.text).join('\n');
-			// When Whisper's words can judge the lyrics, its verdict stands, including "leave them unsynced"
 			lined = LyricsAlign.can_hear(plain, vocals) ? LyricsAlign.heard_line_sync(plain, vocals)?.lyrics ?? null : LyricsAlign.line_sync(plain, vocals);
 		}
 		if (lined === null) return lyrics;
@@ -117,10 +128,6 @@ export namespace Lyrics {
 		return contributed.refs[track.uid] ?? generror('The server didn\'t accept the track', 'LOW', { track: small_track(track), rejected: contributed.rejected });
 	}
 
-	/**
-	 * Experimental on-device sync for a track whose lyrics are unsynced: line timings from the vocal analysis the
-	 * server keeps for it, or null when there is none or the timings can't be trusted (keep showing the plain lyrics).
-	 */
 	export async function experimental_sync(track: Track, plain: string): PromiseResult<ParsedLyrics | null> {
 		if (Illusi.get_session() === null) return generror('Log in to Illusi to sync lyrics', 'INFO', { track: small_track(track) });
 		const id = await server_track_id(track);
