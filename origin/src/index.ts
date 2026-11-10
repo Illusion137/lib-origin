@@ -25,5 +25,7 @@ import { Illusi } from '@origin/illusi/illusi';
 import { BandLab } from '@origin/bandlab/bandlab';
 import { LRCLib } from './lrclib/lrclib';
 import { Elscione } from '@origin/elscione/elscione';
+import { MountainLine } from './mountain_line/mountain_line';
+import { BusGenius } from './busgenius/busgenius';
 
-export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, YouTubeStudio, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, ITunes, Google, BandLab, Illusi, LRCLib, Musixmatch, BiniLyrics, GoLyrics, Audiomack, AudiomackDL, Deezer, Pandora, Tidal, Elscione };
+export { Proxy, Musi, ProIP, YouTube, YouTubeDL, YouTubeMusic, YouTubeStudio, Spotify, AmazonMusic, SoundCloud, SoundCloudDL, AppleMusic, Genius, ITunes, Google, BandLab, Illusi, LRCLib, Musixmatch, BiniLyrics, GoLyrics, Audiomack, AudiomackDL, Deezer, Pandora, Tidal, Elscione, MountainLine, BusGenius };
