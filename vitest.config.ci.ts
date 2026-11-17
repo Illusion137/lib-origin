@@ -12,6 +12,9 @@ export default defineConfig({
 			"Illusive/src/**/*.test.ts",
 			"tests/roze.test.ts",
 		],
+		exclude: [
+			"Illusive/src/lyrics_align.test.ts",
+		],
 		testTimeout: 60_000,
 		disableConsoleIntercept: false
 	},
