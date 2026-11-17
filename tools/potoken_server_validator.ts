@@ -20,7 +20,6 @@ interface PoToken {po_token: string, placeholder_po_token: string};
 async function download(video_id: string, po_token: PoToken){
     await load_native_sabr_downloader();
 
-    // TODO implement a version of po_token injection
     const sabr_params = await TimeLog.log_fn_async(
         green("RESOLVED SABR URL"),
         async () => await YouTubeDL.resolve_sabr_info(video_id)
@@ -30,6 +29,8 @@ async function download(video_id: string, po_token: PoToken){
         return;
     }
     sabr_params.poToken = po_token.placeholder_po_token;
+    if(!sabr_params.callbacks) sabr_params.callbacks = {};
+    sabr_params.callbacks.onMintPoToken = async() => Uint8Array.fromBase64(po_token.po_token);
 
     const title = video_id.replace(/[^a-zA-Z0-9]/g, '_');
     const output_path = path.join(output_folder, `${gen_uuid()}_${title}.m4a`);
