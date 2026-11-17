@@ -4,6 +4,7 @@ import { encode_params } from '@common/utils/fetch_util';
 export namespace MountainLine {
 	const NAU_PATH_STOPS = 'routes/6269/stops';
 	const NAU_PATH_VEHICLES = 'routes/6269/vehicles';
+	const NAU_PATH_PATTERNS = 'routes/6269/patterns';
 
 	export interface Bus {
 		patternId: number;
@@ -27,6 +28,22 @@ export namespace MountainLine {
 		name: string;
 		stopCode: string;
 		rtpiNumber: string;
+	}
+
+	export interface Pattern {
+		color: string;
+		direction: string | null;
+		id: number;
+		name: string;
+		directionType: string;
+		shape: string;
+	}
+
+	export interface PatternStop {
+		stopSequence: number;
+		shapeDistanceTraveled: number;
+		stop: Stop;
+		routes: number[];
 	}
 
 	function headers() {
@@ -70,5 +87,31 @@ export namespace MountainLine {
 	}
 	export async function nau_live_route() {
 		return await live_route(NAU_PATH_VEHICLES);
+	}
+
+	export async function patterns(path: string) {
+		const params = {
+			path
+		};
+		const patterns_response = await rozfetch<Pattern[]>(`https://mountainline.syncromatics.com/api/rtpi?${encode_params(params)}`, { headers: headers() });
+		if ('error' in patterns_response) return patterns_response;
+		const patterns = await patterns_response.json();
+		return patterns;
+	}
+	export async function nau_patterns() {
+		return await patterns(NAU_PATH_PATTERNS);
+	}
+
+	export async function pattern_stops(path: string) {
+		const params = {
+			path
+		};
+		const pattern_stops_response = await rozfetch<PatternStop[]>(`https://mountainline.syncromatics.com/api/rtpi?${encode_params(params)}`, { headers: headers() });
+		if ('error' in pattern_stops_response) return pattern_stops_response;
+		const pattern_stops = await pattern_stops_response.json();
+		return pattern_stops;
+	}
+	export async function nau_pattern_stops(pattern_id: number) {
+		return await pattern_stops(`${NAU_PATH_PATTERNS}/${pattern_id}/stops`);
 	}
 }

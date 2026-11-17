@@ -43,3 +43,13 @@ export interface BusGeniusStop {
 	lat: number;
 	lng: number;
 }
+
+export interface BusGeniusRoute {
+	id: number;
+	path: [number, number][];
+}
+
+export interface BusGeniusMap {
+	routes: BusGeniusRoute[];
+	stops: BusGeniusStop[];
+}

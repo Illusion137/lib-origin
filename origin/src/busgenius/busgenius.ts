@@ -3,7 +3,7 @@ import { CookieJar } from '@common/utils/cookie_util';
 import { encode_params } from '@common/utils/fetch_util';
 import type { PromiseResult } from '@common/types';
 import { generror } from '@common/utils/error_util';
-import type { BusGeniusRouteResponse, BusGeniusStop } from './types';
+import type { BusGeniusMap, BusGeniusRoute, BusGeniusRouteResponse, BusGeniusStop } from './types';
 
 export namespace BusGenius {
 	export const NAU_ROUTES = ['129', '130', '135', '182', '477'];
@@ -47,14 +47,25 @@ export namespace BusGenius {
 		}
 		return [...stops.values()].filter(stop => Number.isFinite(stop.lat) && Number.isFinite(stop.lng));
 	}
-	export async function stops(live_url: string): PromiseResult<BusGeniusStop[]> {
+	const ROUTE_PATH_REGEX = /routeObj\[(\d+)\]\.polyline = L\.polyline\((.*?), \{/g;
+	function parse_routes(html: string): BusGeniusRoute[] {
+		const routes: BusGeniusRoute[] = [];
+		for (const match of html.matchAll(ROUTE_PATH_REGEX)) {
+			const rings = JSON.parse(match[2]) as [number, number][][];
+			const path = rings.flat();
+			if (path.length >= 2) routes.push({ id: Number(match[1]), path });
+		}
+		return routes;
+	}
+	export async function map(live_url: string): PromiseResult<BusGeniusMap> {
 		const map_response = await rozfetch(`https://www.busgenius.com/setup_map_url?${encode_params({ live_url })}`);
 		if ('error' in map_response) return map_response;
-		const stops = parse_stops(await map_response.text());
-		if (stops.length === 0) return generror('BusGenius stops: no checkpoints found in map page', 'MEDIUM', { live_url });
-		return stops;
+		const html = await map_response.text();
+		const stops = parse_stops(html);
+		if (stops.length === 0) return generror('BusGenius map: no checkpoints found in map page', 'MEDIUM', { live_url });
+		return { routes: parse_routes(html), stops };
 	}
-	export async function nau_stops() {
-		return await stops('nau');
+	export async function nau_map() {
+		return await map('nau');
 	}
 }
