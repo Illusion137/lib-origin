@@ -30,7 +30,7 @@ async function download(video_id: string, po_token: PoToken){
     }
     sabr_params.poToken = po_token.placeholder_po_token;
     if(!sabr_params.callbacks) sabr_params.callbacks = {};
-    sabr_params.callbacks.onMintPoToken = async() => Uint8Array.fromBase64(po_token.po_token);
+    sabr_params.callbacks.onMintPoToken = async() => new Uint8Array(Buffer.from(po_token.po_token, 'base64'));
 
     const title = video_id.replace(/[^a-zA-Z0-9]/g, '_');
     const output_path = path.join(output_folder, `${gen_uuid()}_${title}.m4a`);
