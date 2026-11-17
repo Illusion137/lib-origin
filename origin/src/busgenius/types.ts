@@ -33,3 +33,13 @@ export interface Announcement {
 	content: string;
 	date_time_str: string;
 }
+
+export interface BusGeniusStop {
+	id: number;
+	route_id: number;
+	name: string;
+	abbrev: string;
+	route_abbrev: string;
+	lat: number;
+	lng: number;
+}
