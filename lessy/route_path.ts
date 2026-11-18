@@ -1,4 +1,4 @@
-import { point_along_polyline, project_onto_polyline, type LatLon } from "@common/utils/geo_util";
+import { distance_m, point_along_polyline, project_onto_polyline, type LatLon } from "@common/utils/geo_util";
 import { Lessy } from "./lessy";
 
 export namespace RoutePath {
@@ -10,7 +10,11 @@ export namespace RoutePath {
     }
 
     export function position(bus: Lessy.Bus, route: Lessy.Route): number | undefined {
-        if (bus.path_distance_m !== undefined && Number.isFinite(bus.path_distance_m)) return bus.path_distance_m;
+        // Reported distances can be wrong (e.g. 0 for a parked bus), so only trust them when they match the bus's location.
+        if (bus.path_distance_m !== undefined && Number.isFinite(bus.path_distance_m)) {
+            const reported = point_along_polyline(route.path, route.cumulative_m, bus.path_distance_m).point;
+            if (distance_m(reported, bus) <= MAX_OFFSET_M) return bus.path_distance_m;
+        }
         const projected = project_onto_polyline(bus, route.path, route.cumulative_m, bus.heading_deg);
         if (projected === undefined || projected.offset_m > MAX_OFFSET_M) return undefined;
         return projected.distance_m;

@@ -17,6 +17,8 @@ export namespace Analyzer {
     export const PRIOR_WEIGHT = 3;
     export const DISAPPEAR_THRESHOLD = 0.5;
     export const MAX_LAPS = 2;
+    export const ARRIVAL_HORIZON_MINUTES = 2 * NEAR_TERM_MINUTES;
+    export const STALE_REPORT_MINUTES = 2;
 
     const MINUTE_MS = 60_000;
     const DAY_MS = 86_400_000;
@@ -43,9 +45,19 @@ export namespace Analyzer {
         }
     };
 
+    export interface Arrival {
+        bus_id: string;
+        source: Lessy.Source;
+        route_id?: string;
+        minutes: number;
+        passenger_count: number;
+        capacity: number;
+    };
+
     export type PredictedStop = Lessy.Stop & {
         predicted_waiting: number | null;
         minutes_until_bus: number | null;
+        upcoming: Arrival[];
     };
 
     interface Sample {
@@ -54,13 +66,29 @@ export namespace Analyzer {
     };
     type Samples = Map<string, Sample>;
 
-    interface Model {
+    interface Layout {
+        day: number;
+        slot: number;
+        day_type: 'weekday' | 'weekend';
+        snapshots: { minutes: number; buses: Lessy.Bus[] }[];
+    };
+
+    export interface Model {
         boardings: Samples;
         headways: Samples;
         dwells: Samples;
         disappearances: Samples;
         terminal_priors: Set<string>;
         speed_mph: Record<Lessy.Source, number>;
+        layouts: Map<string, Layout>;
+        occupancy: Samples;
+    };
+
+    export interface Context {
+        model: Model;
+        network: Lessy.Network;
+        live?: Lessy.Live;
+        now?: Date;
     };
 
     interface StopEvent {
@@ -98,7 +126,7 @@ export namespace Analyzer {
             weekday,
             minutes,
             slot: Math.floor(minutes / SLOT_MINUTES),
-            day_type: weekday === 0 || weekday === 6 ? 'weekend' : 'weekday'
+            day_type: (weekday === 0 || weekday === 6 ? 'weekend' : 'weekday') as Layout['day_type']
         };
     }
 
@@ -165,20 +193,30 @@ export namespace Analyzer {
         return priors;
     }
 
-    function build_model(snapshots: Snapshot[], network: Lessy.Network): Model {
-        const { stops, routes } = network;
-        const boardings: Samples = new Map();
-        const headways: Samples = new Map();
-        const dwells: Samples = new Map();
-        const disappearances: Samples = new Map();
-        const speeds: Samples = new Map();
-        const states = new Map<string, BusState>();
-        const last_departure = new Map<string, number>();
-        const sorted = [...snapshots].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-        let previous_time: number | undefined;
+    // Incremental model: feed snapshots in chronological order with add(), read the current model with model().
+    export class ModelBuilder {
+        private readonly boardings: Samples = new Map();
+        private readonly headways: Samples = new Map();
+        private readonly dwells: Samples = new Map();
+        private readonly disappearances: Samples = new Map();
+        private readonly speeds: Samples = new Map();
+        private readonly occupancy: Samples = new Map();
+        private readonly layouts = new Map<string, Layout>();
+        private readonly states = new Map<string, BusState>();
+        private readonly last_departure = new Map<string, number>();
+        private readonly terminal_priors: Set<string>;
+        private previous_time: number | undefined;
 
-        for (const snapshot of sorted) {
+        constructor(private readonly network: Lessy.Network) {
+            this.terminal_priors = terminal_priors(network);
+        }
+
+        add(snapshot: Snapshot) {
+            const { stops, routes } = this.network;
+            const { boardings, headways, dwells, disappearances, speeds, states, last_departure } = this;
             const time = snapshot.timestamp.getTime();
+            if (this.previous_time !== undefined && time < this.previous_time) return;
+            const previous_time = this.previous_time;
             const present = new Set<string>();
             for (const bus of snapshot.buses) {
                 const bus_key = Lessy.key(bus);
@@ -228,24 +266,50 @@ export namespace Analyzer {
                     states.delete(bus_key);
                 }
             }
-            previous_time = time;
+            this.add_layout(snapshot);
+            this.previous_time = time;
         }
 
-        const speed_of_source = (source: Lessy.Source) => {
-            const sample = speeds.get(source);
-            return sample !== undefined ? sample.sum / sample.count : DEFAULT_SPEED_MPH;
-        };
-        return {
-            boardings,
-            headways,
-            dwells,
-            disappearances,
-            terminal_priors: terminal_priors(network),
-            speed_mph: {
-                busgenius: speed_of_source('busgenius'),
-                mountain_line: speed_of_source('mountain_line')
+        private add_layout(snapshot: Snapshot) {
+            const { day, weekday, minutes, slot, day_type } = slot_of(snapshot.timestamp);
+            const layout_key = `d${weekday}|${slot}`;
+            const layout = this.layouts.get(layout_key);
+            const entry = { minutes, buses: snapshot.buses };
+            if (layout === undefined || day > layout.day) this.layouts.set(layout_key, { day, slot, day_type, snapshots: [entry] });
+            else if (day === layout.day) layout.snapshots.push(entry);
+            for (const bus of snapshot.buses) {
+                if (bus.capacity <= 0) continue;
+                add_sample(this.occupancy, `${bus.source}|d${weekday}|${slot}`, bus.passenger_count / bus.capacity);
+                add_sample(this.occupancy, `${bus.source}|${day_type}|${slot}`, bus.passenger_count / bus.capacity);
             }
-        };
+        }
+
+        model(): Model {
+            const speed_of_source = (source: Lessy.Source) => {
+                const sample = this.speeds.get(source);
+                return sample !== undefined ? sample.sum / sample.count : DEFAULT_SPEED_MPH;
+            };
+            return {
+                boardings: this.boardings,
+                headways: this.headways,
+                dwells: this.dwells,
+                disappearances: this.disappearances,
+                terminal_priors: this.terminal_priors,
+                speed_mph: {
+                    busgenius: speed_of_source('busgenius'),
+                    mountain_line: speed_of_source('mountain_line')
+                },
+                layouts: this.layouts,
+                occupancy: this.occupancy
+            };
+        }
+    };
+
+    export function build_model(snapshots: Snapshot[], network: Lessy.Network): Model {
+        const builder = new ModelBuilder(network);
+        const sorted = [...snapshots].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        for (const snapshot of sorted) builder.add(snapshot);
+        return builder.model();
     }
 
     function dwell_minutes(model: Model, stop_key: string, source: Lessy.Source, timestamp: Date) {
@@ -340,7 +404,7 @@ export namespace Analyzer {
 
         let best: number | undefined;
         for (const bus of live.buses) {
-            if (bus.source !== stop.source) continue;
+            if (bus.source !== stop.source || is_stale(bus, timestamp, elapsed)) continue;
             const event = journey(bus, routes, model, timestamp, elapsed + NEAR_TERM_MINUTES)?.events.find(event => event.stop_key === stop_key);
             if (event === undefined || event.disappears || event.depart_min < elapsed) continue;
             const remaining = Math.max(0, event.arrive_min - elapsed);
@@ -358,7 +422,15 @@ export namespace Analyzer {
             is_near_term(offset) ? Lessy.live(now) : undefined
         ]);
         if ('error' in history) return history;
-        const model = build_model(history, network);
+        return predict_stops_with({ model: build_model(history, network), network, live, now }, timestamp);
+    }
+
+    // context.network should be the network active at timestamp; context.live is only used for near-term timestamps.
+    export function predict_stops_with(context: Context, timestamp: Date): PredictedStop[] {
+        const { model, network } = context;
+        const offset = offset_minutes(timestamp, context.now ?? new Date());
+        const live = is_near_term(offset) ? context.live : undefined;
+        const arrivals = live && upcoming_arrivals(live, network.routes, model, timestamp, Math.max(0, offset));
 
         return network.stops.map(stop => {
             const stop_key = Lessy.key(stop);
@@ -367,17 +439,53 @@ export namespace Analyzer {
             return {
                 ...stop,
                 predicted_waiting: lookup(model.boardings, stop_key, timestamp),
-                minutes_until_bus: live_minutes ?? (headway !== null ? headway / 2 : null)
+                minutes_until_bus: live_minutes ?? (headway !== null ? headway / 2 : null),
+                upcoming: arrivals?.get(stop_key) ?? []
             };
         });
+    }
+
+    // Every live bus's arrivals (minutes after timestamp) within ARRIVAL_HORIZON_MINUTES, keyed by stop.
+    // Buses predicted to end their trip at a stop are left out there, matching live_minutes_until_bus.
+    function upcoming_arrivals(live: Lessy.Live, routes: Lessy.Route[], model: Model, timestamp: Date, elapsed: number) {
+        const arrivals = new Map<string, Arrival[]>();
+        for (const bus of live.buses) {
+            if (is_stale(bus, timestamp, elapsed)) continue;
+            const trip = journey(bus, routes, model, timestamp, elapsed + ARRIVAL_HORIZON_MINUTES);
+            if (trip === undefined) continue;
+            const passed: string[] = [];
+            for (const event of trip.events) {
+                if (!event.disappears && event.depart_min >= elapsed) {
+                    const stop_arrivals = arrivals.get(event.stop_key) ?? [];
+                    stop_arrivals.push({
+                        bus_id: bus.id,
+                        source: bus.source,
+                        route_id: bus.route_id,
+                        minutes: Math.max(0, event.arrive_min - elapsed),
+                        passenger_count: Math.min(bus.capacity, bus.passenger_count + boarded(model, passed, timestamp)),
+                        capacity: bus.capacity
+                    });
+                    arrivals.set(event.stop_key, stop_arrivals);
+                }
+                if (!event.current) passed.push(event.stop_key);
+            }
+        }
+        for (const stop_arrivals of arrivals.values()) stop_arrivals.sort((a, b) => a.minutes - b.minutes);
+        return arrivals;
     }
 
     function boarded(model: Model, stop_keys: string[], timestamp: Date) {
         return stop_keys.reduce((sum, stop_key) => sum + (lookup(model.boardings, stop_key, timestamp) ?? 0), 0);
     }
 
+    // A bus that hasn't reported in a while (parked, out of service) shouldn't be moved along its route.
+    function is_stale(bus: Lessy.Bus, timestamp: Date, elapsed: number) {
+        const live_time = timestamp.getTime() - elapsed * MINUTE_MS;
+        return live_time - bus.last_updated.getTime() > STALE_REPORT_MINUTES * MINUTE_MS;
+    }
+
     function extrapolate_bus(bus: Lessy.Bus, routes: Lessy.Route[], model: Model, timestamp: Date, elapsed: number): Lessy.Bus | undefined {
-        if (elapsed <= 0) return { ...bus, last_updated: timestamp };
+        if (elapsed <= 0 || is_stale(bus, timestamp, elapsed)) return { ...bus, last_updated: timestamp };
         const trip = journey(bus, routes, model, timestamp, elapsed);
         if (trip === undefined) return { ...bus, last_updated: timestamp };
 
@@ -409,25 +517,20 @@ export namespace Analyzer {
         };
     }
 
-    function historical_buses(history: Snapshot[], timestamp: Date): Lessy.Bus[] {
+    function historical_buses(model: Model, timestamp: Date): Lessy.Bus[] {
         const target = slot_of(timestamp);
-        const in_slot = history.map(snapshot => ({ snapshot, slot: slot_of(snapshot.timestamp) })).filter(({ slot }) => slot.slot === target.slot);
-        const same_weekday = in_slot.filter(({ slot }) => slot.weekday === target.weekday);
-        const pool = same_weekday.length > 0 ? same_weekday : in_slot.filter(({ slot }) => slot.day_type === target.day_type);
-        if (pool.length === 0) return [];
+        const same_weekday = model.layouts.get(`d${target.weekday}|${target.slot}`);
+        const layout = same_weekday ?? [...model.layouts.values()]
+            .filter(candidate => candidate.slot === target.slot && candidate.day_type === target.day_type)
+            .sort((a, b) => b.day - a.day)[0];
+        if (layout === undefined) return [];
+        const occupancy_key = same_weekday !== undefined ? `d${target.weekday}|${target.slot}` : `${target.day_type}|${target.slot}`;
+        const nearest = layout.snapshots.reduce((best, entry) => Math.abs(entry.minutes - target.minutes) < Math.abs(best.minutes - target.minutes) ? entry : best);
 
-        const occupancy: Samples = new Map();
-        for (const { snapshot } of pool) {
-            for (const bus of snapshot.buses) {
-                if (bus.capacity > 0) add_sample(occupancy, bus.source, bus.passenger_count / bus.capacity);
-            }
-        }
-        const layout = [...pool].sort((a, b) => b.slot.day - a.slot.day || Math.abs(a.slot.minutes - target.minutes) - Math.abs(b.slot.minutes - target.minutes))[0];
-
-        return layout.snapshot.buses
+        return nearest.buses
             .filter(bus => Lessy.source_active(bus.source, timestamp))
             .map(bus => {
-                const sample = occupancy.get(bus.source);
+                const sample = model.occupancy.get(`${bus.source}|${occupancy_key}`);
                 const ratio = sample !== undefined ? sample.sum / sample.count : bus.passenger_count / Math.max(1, bus.capacity);
                 return { ...bus, passenger_count: ratio * bus.capacity, last_updated: timestamp };
             });
@@ -439,7 +542,8 @@ export namespace Analyzer {
         if (!is_near_term(offset)) {
             const history = await load_history(store, now);
             if ('error' in history) return history;
-            return historical_buses(history, timestamp);
+            const network: Lessy.Network = { stops: [], routes: [] };
+            return predict_buses_with({ model: build_model(history, network), network, now }, timestamp);
         }
 
         const [history, network, live] = await Promise.all([
@@ -448,8 +552,15 @@ export namespace Analyzer {
             Lessy.live(now)
         ]);
         if ('error' in history) return history;
-        const model = build_model(history, network);
-        return live.buses
+        return predict_buses_with({ model: build_model(history, network), network, live, now }, timestamp);
+    }
+
+    // Near-term timestamps extrapolate context.live along context.network; later ones replay the model's historical layout.
+    export function predict_buses_with(context: Context, timestamp: Date): Lessy.Bus[] {
+        const { model, network, live } = context;
+        const offset = offset_minutes(timestamp, context.now ?? new Date());
+        if (!is_near_term(offset)) return historical_buses(model, timestamp);
+        return (live?.buses ?? [])
             .map(bus => extrapolate_bus(bus, network.routes, model, timestamp, Math.max(0, offset)))
             .filter((bus): bus is Lessy.Bus => bus !== undefined);
     }

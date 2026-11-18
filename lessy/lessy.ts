@@ -36,6 +36,8 @@ export namespace Lessy {
         length_m: number;
         loop: boolean;
         stop_distances_m: Record<string, number>;
+        name?: string;
+        color?: string;
     };
 
     export interface Network {
@@ -201,7 +203,8 @@ export namespace Lessy {
                     stop_distances_m[key({ id: String(pattern_stop.stop.id), source: 'mountain_line' })] = pattern_stop.shapeDistanceTraveled;
                 }
             }
-            return make_route(String(pattern.id), 'mountain_line', path, pattern.directionType === 'Loop', stop_distances_m);
+            const route: Route = { ...make_route(String(pattern.id), 'mountain_line', path, pattern.directionType === 'Loop', stop_distances_m), name: pattern.name, color: pattern.color };
+            return route;
         }));
         return routes.filter((route): route is Route => route !== undefined);
     }
