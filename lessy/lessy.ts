@@ -1,6 +1,7 @@
 import { cumulative_lengths_m, decode_polyline, distance_m, project_onto_polyline, type LatLon } from "@common/utils/geo_util";
 import type { BusGeniusRoute, BusGeniusRouteResponse, BusGeniusStop } from "@origin/busgenius/types";
 import { BusGenius, MountainLine } from "@origin/index";
+import { Timetable } from "./timetable";
 
 export namespace Lessy {
     export type Source = 'busgenius' | 'mountain_line';
@@ -43,6 +44,7 @@ export namespace Lessy {
     export interface Network {
         stops: Stop[];
         routes: Route[];
+        timepoints?: Record<string, number[]>; // stop key -> scheduled departures (epoch ms) that early buses wait for
     };
 
     export interface Live {
@@ -210,10 +212,11 @@ export namespace Lessy {
     }
 
     export async function network(timestamp = new Date()): Promise<Network> {
-        const [busgenius_map, mountain_line_stops, mountain_line_route_list] = await Promise.all([
+        const [busgenius_map, mountain_line_stops, mountain_line_route_list, timepoints] = await Promise.all([
             source_active('busgenius', timestamp) ? BusGenius.nau_map() : { routes: [], stops: [] },
             MountainLine.nau_stops(),
-            mountain_line_routes()
+            mountain_line_routes(),
+            Timetable.timepoints(timestamp)
         ]);
         const stops: Stop[] = [];
         const routes: Route[] = [...mountain_line_route_list];
@@ -223,7 +226,7 @@ export namespace Lessy {
             routes.push(...busgenius_map.routes.filter(route => LUMBERJACK_ROUTE_IDS.has(route.id)).map(route => busgenius_route_to_lessy_route(route, lumberjack_stops)));
         }
         if (!("error" in mountain_line_stops)) stops.push(...mountain_line_stops.map(mountain_line_stop_to_lessy_stop));
-        return { stops, routes };
+        return { stops, routes, timepoints };
     }
 
     export async function all_stops(timestamp = new Date()): Promise<Stop[]> {
