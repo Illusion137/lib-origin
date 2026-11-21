@@ -1,4 +1,4 @@
-export const status_codes_descriptions = {
+export const status_codes_descriptions: Record<number, string> = {
 	200: 'OK',
 	201: 'Created',
 	202: 'Accepted',

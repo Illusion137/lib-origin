@@ -190,6 +190,8 @@ export interface LyricsLine {
 	segments?: LyricsSegment[];
 	/** Singer id when the source has one */
 	agent?: string;
+	/** Background vocals sung over the line */
+	background?: Pick<LyricsLine, 'text' | 'start_ms' | 'end_ms' | 'segments'>;
 }
 export interface ParsedLyrics {
 	sync_type: LyricsSyncType;

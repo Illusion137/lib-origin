@@ -81,7 +81,8 @@ export namespace Spotify {
 			'upgrade-insecure-requests': '1',
 			'Access-Control-Allow-Origin': '*',
 			'Cookies': undefined as undefined | string,
-			'authorization': undefined as undefined | string
+			'authorization': undefined as undefined | string,
+			'client-token': undefined as undefined | string
 		};
 		if (cookie_jar !== undefined)
 			default_headers.Cookies = cookie_jar.toString();

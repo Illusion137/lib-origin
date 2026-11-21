@@ -125,7 +125,7 @@ export const node_fs: FileSystem = {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
-				if (!file_stream.write(value)) await new Promise(resolve => file_stream.once('drain', resolve));
+				if (!file_stream.write(value)) await new Promise<void>(resolve => file_stream.once('drain', () => resolve()));
 			}
 			await new Promise<void>((resolve, reject) => file_stream.end(() => resolve()).once('error', reject));
 			return to_path;

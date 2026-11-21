@@ -436,7 +436,7 @@ export interface MusicServiceArtist {
 	unfollow: () => PromiseResult<any>;
 }
 export interface YTDescriptionSong {
-	artwork_url: string;
+	artwork_url?: string;
 	title: string;
 	artist: string;
 	album?: string;

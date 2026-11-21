@@ -1,6 +1,6 @@
 import type { PdfReader, PdfLoadingTask, PdfDocument, PdfPage, PdfPageObjs, PdfMetadata, PdfMetadataInfo, PdfImageObject } from '@native/pdf_reader/pdf_reader.base';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
-import pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 function wrap_page_objs(raw_objs: PDFPageProxy['objs']): PdfPageObjs {
 	return {

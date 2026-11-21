@@ -32,8 +32,8 @@ export async function block_fetch_item<T>(key: string, callback: () => PromiseRe
 	block_fetch_item_map[key] = ['sent', sent_item];
 	return await sent_item;
 }
-export function get_block_fetch_item<T>(key: string) {
-	return block_fetch_item_map[key] as T;
+export function get_block_fetch_item(key: string): BlockFetchResultSent<unknown> | BlockFetchResultRecieved<unknown> | undefined {
+	return block_fetch_item_map[key];
 }
 export function delete_block_fetch_item(key: string) {
 	delete block_fetch_item_map[key];
