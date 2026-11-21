@@ -280,7 +280,7 @@ export function parse_ytm_track(item: YTNodes.MusicResponsiveListItem): YTMTrack
 	return {
 		video_id: item.id,
 		title: item.title ?? '',
-		artists: artist_refs(item.artists),
+		artists: artist_refs(item.artists ?? item.authors ?? (item.author ? [item.author] : [])),
 		album: item.album ? { name: item.album.name, browse_id: item.album.id } : undefined,
 		duration_seconds: item.duration?.seconds,
 		views: views_number(item.views),
