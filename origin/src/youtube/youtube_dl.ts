@@ -144,7 +144,10 @@ export namespace YouTubeDL {
 
 		const all_formats: SabrFormat[] = (player_response.streaming_data?.adaptive_formats ?? [])
 
-			.map((f: any) => buildSabrFormat(f));
+			.map((f: any) => {
+				const format = buildSabrFormat(f);
+				return { ...format, language: format.language ?? undefined };
+			});
 
 		const ctx = client.session.context.client;
 		const client_name_id = parseInt(
