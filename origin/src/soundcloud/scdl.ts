@@ -15,8 +15,9 @@ export namespace SoundCloudDL {
 	export async function get_download_info_from_permalink(permalink: string, cookie_jar?: CookieJar) {
 		let fcache;
 		if (dl_cache_full() && !is_empty(fcache = dl_cache.dls.find(item => item.permalink === permalink))) return fcache?.url as string;
-		if (!(/(https:\/\/)?soundcloud\.com\/.+?\/.+/.exec(permalink))) return generror('Permalink-url doesn\'t match regex', 'LOW', { permalink, cookie_jar });
-		const hydration = await SoundCloud.get_hydration(permalink, { cookie_jar: cookie_jar });
+		const path = SoundCloud.clean_permalink(permalink);
+		if (!(/^[^/]+\/.+/.exec(path))) return generror('Permalink-url doesn\'t match regex', 'LOW', { permalink, cookie_jar });
+		const hydration = await SoundCloud.get_hydration(`https://soundcloud.com/${path}`, { cookie_jar: cookie_jar });
 		if ('error' in hydration) return hydration;
 		const client_id = await SoundCloud.get_client_id({ cookie_jar, scripts: hydration.scripts_urls });
 		if ('error' in client_id) return client_id;

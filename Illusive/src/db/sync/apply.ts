@@ -273,7 +273,8 @@ async function apply_catalog(ex: DrizzleDB, rows: Partial<SyncRows>, now: number
 			const existing = snapshot.album !== null && (snapshot.album.illusi_id === track.album_id || snapshot.album.illusi_id === undefined) ? snapshot.album : undefined;
 			album = entry_for('albums', track.album_id, existing);
 		}
-		snapshots.set(uid, { ...snapshot, title: track.title, album, duration_ms: track.duration_ms, explicit: track.explicit, imported: track.imported });
+		// A server that doesn't know the duration yet mustn't erase the one this device measured
+		snapshots.set(uid, { ...snapshot, title: track.title, album, duration_ms: track.duration_ms ?? snapshot.duration_ms, explicit: track.explicit, imported: track.imported });
 		await ex.update(user_tracks_table).set({ backpacked: track.backpacked, backpacked_at: time(track.backpacked_at), modified_at: now }).where(eq(user_tracks_table.uid, uid));
 		changed = true;
 	}

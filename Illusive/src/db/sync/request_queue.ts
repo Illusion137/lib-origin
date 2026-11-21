@@ -15,6 +15,7 @@ export namespace RequestQueue {
 		ingest_service: async (...args: Parameters<typeof Illusi.Ingest.service>) => Illusi.Ingest.service(...args),
 		contribute: async (...args: Parameters<typeof Illusi.contribute>) => Illusi.contribute(...args),
 		backpack_report: async (...args: Parameters<typeof Illusi.Backpack.report>) => Illusi.Backpack.report(...args),
+		duration_report: async (...args: Parameters<typeof Illusi.Durations.report>) => Illusi.Durations.report(...args),
 		media_fulfil: async (...args: Parameters<typeof Illusi.MediaFiles.fulfil>) => Illusi.MediaFiles.fulfil(...args),
 		track_research: async (...args: Parameters<typeof Illusi.Ingest.track_research>) => Illusi.Ingest.track_research(...args),
 		track_research_not_found: async (...args: Parameters<typeof Illusi.Ingest.track_research_not_found>) => Illusi.Ingest.track_research_not_found(...args),

@@ -17,19 +17,33 @@ import { catch_log } from '@common/utils/error_util';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { reinterpret_cast } from '@common/cast';
-import type { Track as EPTrack, SabrStreamingInfo } from 'react-native-everything-player';
+import type { Track as EPTrack, QueuedTrack, SabrStreamingInfo } from 'react-native-everything-player';
+import { track_store } from './stores/track_store';
 import EverythingPlayer, { AppKilledPlaybackBehavior, Capability, EQUALIZER_FREQUENCIES, Event, RepeatMode, State } from 'react-native-everything-player';
 
 export let trackplayer_has_been_setup = false;
 
+export function track_of_queued(queued: QueuedTrack): Track {
+	const other = reinterpret_cast<Track | undefined>(queued.otherData);
+	if (other !== undefined) return other;
+	return track_store.getState().tracks_by_uid.get(queued.id) ?? {
+		uid: queued.id,
+		title: queued.title,
+		artists: queued.artist ? [{ name: queued.artist, uri: null }] : [],
+		album: queued.album ? { name: queued.album, uri: null } : undefined,
+		duration: queued.duration ?? NaN,
+		artwork_url: typeof queued.artwork === 'string' ? queued.artwork : undefined
+	};
+}
+
 function queue_tracks(): Track[] {
-	return EverythingPlayer.getQueue().map(queued => reinterpret_cast<Track>(queued.otherData));
+	return EverythingPlayer.getQueue().map(track_of_queued);
 }
 
 function queue_track(index: number | undefined): Track | undefined {
 	if (index === undefined) return undefined;
 	const queued = EverythingPlayer.getQueue()[index];
-	return queued === undefined ? undefined : reinterpret_cast<Track>(queued.otherData);
+	return queued === undefined ? undefined : track_of_queued(queued);
 }
 
 const PRESET_FREQUENCIES = [60, 150, 400, 1000, 2400, 15000];

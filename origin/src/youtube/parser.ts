@@ -280,23 +280,57 @@ function album_type_of(item_type?: string): YTMAlbumType {
 function run_browse_id(run: Misc.TextRun | Misc.EmojiRun): string | undefined {
 	return 'endpoint' in run ? (run.endpoint?.payload as { browseId?: string } | undefined)?.browseId : undefined;
 }
-function column_artist_refs(item: YTNodes.MusicResponsiveListItem, linked: YTMArtistRef[]): YTMArtistRef[] {
-	const first = linked[0]?.browse_id;
-	if (first === undefined) return linked;
-	const runs = item.flex_columns.find(column => column.title.runs?.some(run => run_browse_id(run) === first))?.title.runs;
-	if (runs === undefined) return linked;
-	const refs: YTMArtistRef[] = [];
+const ITEM_TYPE_LABELS = new Set(['song', 'video', 'episode', 'podcast', 'album', 'single', 'ep', 'playlist', 'artist', 'profile', 'station', 'audiobook']);
+interface CreditPart { text: string; browse_id?: string }
+
+function is_type_label(text: string) {
+	return ITEM_TYPE_LABELS.has(text.trim().toLowerCase());
+}
+function is_credit_metadata(text: string) {
+	return /^(\d{4}|[\d.,]+[KMB]?\s*(plays?|views?|subscribers?|monthly audience|songs?|tracks?|episodes?|videos?)|\d+:\d{2}(:\d{2})?|\d+\s*(min|hr|sec)\b.*|(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?) \d{1,2}(, \d{4})?|\d+ (seconds?|minutes?|hours?|days?|weeks?|months?|years?) ago)$/i.test(text.trim());
+}
+function is_artist_browse_id(browse_id: string) {
+	return browse_id.startsWith('UC') || browse_id.startsWith('MPAD') || browse_id.startsWith('FEmusic_library_privately_owned_artist');
+}
+function credit_segments(runs: (Misc.TextRun | Misc.EmojiRun)[]): CreditPart[][] {
+	const segments: CreditPart[][] = [[]];
 	for (const run of runs) {
 		const browse_id = run_browse_id(run);
 		if (browse_id !== undefined) {
-			refs.push({ name: run.text, browse_id });
+			segments[segments.length - 1].push({ text: run.text, browse_id });
 			continue;
 		}
-		const [credits] = run.text.split('•');
-		for (const name of credits.split(/,|&/)) if (name.trim() !== '') refs.push({ name: name.trim() });
-		if (run.text.includes('•')) break;
+		run.text.split('•').forEach((text, i) => {
+			if (i > 0) segments.push([]);
+			if (text.trim() !== '') segments[segments.length - 1].push({ text });
+		});
 	}
-	return refs.length >= linked.length ? refs : linked;
+	return segments.filter(segment => segment.length > 0);
+}
+function segment_credits(segment: CreditPart[]): YTMArtistRef[] {
+	return segment.flatMap(part => part.browse_id !== undefined
+		? [{ name: part.text, browse_id: part.browse_id }]
+		: part.text.split(/,|&/).map(name => name.trim()).filter(name => name !== '').map(name => ({ name })));
+}
+function runs_artist_refs(runs: (Misc.TextRun | Misc.EmojiRun)[] | undefined): YTMArtistRef[] {
+	const segments = credit_segments(runs ?? []);
+	const linked = segments.find(segment => segment.some(part => part.browse_id !== undefined && is_artist_browse_id(part.browse_id)));
+	if (linked !== undefined) return segment_credits(linked);
+	const label = segments.findIndex(segment => segment.length === 1 && is_type_label(segment[0].text));
+	const after_label = label === -1 ? undefined : segments[label + 1];
+	if (after_label === undefined || after_label.some(part => part.browse_id !== undefined || is_credit_metadata(part.text))) return [];
+	return segment_credits(after_label);
+}
+function credited_artists(credit_texts: (Misc.Text | undefined)[], fallback: YTMArtistRef[]): YTMArtistRef[] {
+	const cleaned = fallback.filter(ref => ref.browse_id !== undefined || !is_type_label(ref.name));
+	for (const text of credit_texts) {
+		const refs = runs_artist_refs(text?.runs);
+		if (refs.length > 0) return refs.length >= cleaned.length ? refs : cleaned;
+	}
+	return cleaned;
+}
+function column_artist_refs(item: YTNodes.MusicResponsiveListItem, fallback: YTMArtistRef[]): YTMArtistRef[] {
+	return credited_artists(item.flex_columns.slice(1).map(column => column.title), fallback);
 }
 
 function column_views(item: YTNodes.MusicResponsiveListItem): string | undefined {
@@ -331,7 +365,7 @@ export function parse_ytm_album(item: YTNodes.MusicResponsiveListItem): YTMAlbum
 	return {
 		browse_id: item.id,
 		title: item.title ?? '',
-		artists: artist_refs(item.artists ?? item.authors ?? (item.author ? [item.author] : [])),
+		artists: column_artist_refs(item, artist_refs(item.artists ?? item.authors ?? (item.author ? [item.author] : []))),
 		thumbnails: thumbs(item.thumbnails),
 		explicit: has_explicit(item.badges),
 		year: item.year,
@@ -350,7 +384,7 @@ export function parse_ytm_two_row_album(item: YTNodes.MusicTwoRowItem): YTMAlbum
 	return {
 		browse_id: item.id ?? (item.endpoint?.payload)?.browseId,
 		title: text_of(item.title),
-		artists: artist_refs(item.artists ?? (item.author ? [item.author] : [])),
+		artists: credited_artists([item.subtitle], artist_refs(item.artists ?? (item.author ? [item.author] : []))),
 		thumbnails: thumbs(item.thumbnail),
 		explicit: has_explicit(item.badges?.array?.() ?? undefined),
 		year: item.year,
@@ -361,7 +395,7 @@ export function parse_ytm_two_row_video(item: YTNodes.MusicTwoRowItem): YTMTrack
 	return {
 		video_id: (item.endpoint?.payload)?.videoId ?? item.id,
 		title: text_of(item.title),
-		artists: artist_refs(item.artists ?? (item.author ? [item.author] : [])),
+		artists: credited_artists([item.subtitle], artist_refs(item.artists ?? (item.author ? [item.author] : []))),
 		views: views_number(item.views),
 		explicit: has_explicit(item.badges?.array?.() ?? undefined),
 		thumbnails: thumbs(item.thumbnail)

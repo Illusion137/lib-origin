@@ -13,7 +13,7 @@ export type Ref = string;
 export type Cursor = string;
 
 export type ITunesExplicitness = 'explicit' | 'cleaned' | 'notExplicit';
-export type LyricsService = 'GOLYRICS' | 'BINILYRICS' | 'MUSIXMATCH' | 'LRCLIB' | 'YOUTUBE_MUSIC' | 'GENIUS';
+export type LyricsService = 'BINILYRICS' | 'LRCLIB' | 'UNISON' | 'QQMUSIC' | 'KUGOU' | 'LRCRED' | 'YOUTUBE_MUSIC' | 'GENIUS';
 export type LyricsSyncType = 'NONE' | 'LINE' | 'WORD' | 'SYLLABLE';
 export type AlbumType = 'SINGLE' | 'ALBUM' | 'EP';
 export type InheritanceMode = 'INCLUDE' | 'EXCLUDE' | 'MASK' | 'INTERSECTION';
@@ -738,6 +738,19 @@ export interface UnavailableReportResult extends Redirected {
 	backpacked_at: ISODateString | null;
 	/** The server has a copy, so the track wasn't flagged; stream it through MediaFiles */
 	has_media: boolean;
+}
+export interface DurationReportBody {
+	duration_ms: number;
+	/** download: measured from a file this device downloaded; service: the length a streaming service gave */
+	source: 'download' | 'service';
+	service?: string;
+}
+export interface DurationReportResult extends Redirected {
+	track_id: IllusiId;
+	/** The duration the server keeps after this report */
+	duration_ms: number | null;
+	/** filled an empty duration, confirmed it, corrected it (enough users agreed), or disputed it (sent to review) */
+	outcome: 'filled' | 'confirmed' | 'corrected' | 'disputed';
 }
 export interface BackpackRequestsQuery {
 	limit?: number;

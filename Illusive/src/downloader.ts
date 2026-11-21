@@ -12,10 +12,12 @@ import { SQLBackpack } from './sql/sql_backpack';
 import { SQLfs } from './sql/sql_fs';
 import { ffmpeg } from '@native/ffmpeg/ffmpeg';
 import { sabr_downloader } from '@native/sabr_downloader/sabr_downloader';
-import { generror } from '@common/utils/error_util';
+import { catch_log, generror } from '@common/utils/error_util';
 import { wait } from '@common/utils/timed_util';
 import { Lyrics } from './lyrics';
 import { YouTubeDL } from '@origin/youtube/youtube_dl';
+import { Illusi } from '@origin/illusi/illusi';
+import { RequestQueue } from './db/sync/request_queue';
 
 export function sort_tracks_for_download(tracks: Track[]): Track[] {
 	return tracks.sort((a, b) => a.duration - b.duration);
@@ -185,8 +187,16 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 	}
 
 	await SQLTracks.mark_track_downloaded(downloading.track.uid, media_uri);
+	void report_measured_duration(downloading.track, audio_duration_seconds);
 
 	return 'GOOD';
+}
+
+/** Tells the server what the downloaded file measured, so every device gets a real duration */
+async function report_measured_duration(track: Track, seconds: number) {
+	if (!track.illusi_id || Illusi.get_session() === null) return;
+	const result = await RequestQueue.send('duration_report', track.illusi_id, { duration_ms: Math.round(seconds * 1000), source: 'download' });
+	if (result !== null && Illusi.is_error(result)) catch_log(result.error);
 }
 
 export const track_downloader = new AsyncFNQueue<Downloading, Awaited<ReturnType<typeof download_track_base>>>(

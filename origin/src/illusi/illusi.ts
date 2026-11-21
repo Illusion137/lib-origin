@@ -13,7 +13,7 @@ import type {
 	ReviewApplyBody, ReviewApplyResult, ReviewDismissResult, ReviewList, ReviewListQuery, SearchQuery, SearchResponse, SearchSuggestions,
 	SearchSuggestionsQuery, SearchType,
 	SharedEntityTable, SimilarQuery, SoundCloudIngestBody, SoundCloudIngestItem, TempRef, TokenPair, TrackBatchBody, TrackBatchResponse,
-	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, UUID, YouTubeMusicLyricsIngestBody,
+	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, DurationReportBody, DurationReportResult, UUID, YouTubeMusicLyricsIngestBody,
 	YouTubeMusicLyricsPayload
 } from '@origin/illusi/types';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
@@ -115,6 +115,7 @@ export namespace Illusi {
 		'GET /media/requests': { query: MediaRequestsQuery; response: { actions: ActionOf<'UPLOAD_MEDIA'>[]; next_cursor: IllusiId | null } };
 
 		'POST /tracks/:id/unavailable': { body: UnavailableReportBody; response: UnavailableReportResult };
+		'POST /tracks/:id/duration': { body: DurationReportBody; response: DurationReportResult };
 		'GET /backpack/requests': { query: BackpackRequestsQuery; response: { actions: ActionOf<'RESEARCH_TRACK'>[] } };
 
 		'GET /admin/review': { query: ReviewListQuery; response: ReviewList };
@@ -515,6 +516,13 @@ export namespace Illusi {
 		}
 		export async function requests(limit?: number) {
 			return call('GET /backpack/requests', { query: { limit } });
+		}
+	}
+
+	export namespace Durations {
+		/** Call with a track's measured length; the server fills, confirms or (once users agree) corrects its duration */
+		export async function report(track_id: IllusiId, body: DurationReportBody) {
+			return call('POST /tracks/:id/duration', { params: { id: track_id }, body });
 		}
 	}
 
