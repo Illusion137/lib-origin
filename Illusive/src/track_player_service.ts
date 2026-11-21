@@ -18,7 +18,7 @@ import { SQLTrackPlays } from './sql/sql_track_plays';
 import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { reinterpret_cast } from '@common/cast';
 import type { Track as EPTrack, SabrStreamingInfo } from 'react-native-everything-player';
-import EverythingPlayer, { AppKilledPlaybackBehavior, Capability, Event, RepeatMode, State } from 'react-native-everything-player';
+import EverythingPlayer, { AppKilledPlaybackBehavior, Capability, EQUALIZER_FREQUENCIES, Event, RepeatMode, State } from 'react-native-everything-player';
 
 export let trackplayer_has_been_setup = false;
 
@@ -32,6 +32,22 @@ function queue_track(index: number | undefined): Track | undefined {
 	return queued === undefined ? undefined : reinterpret_cast<Track>(queued.otherData);
 }
 
+const PRESET_FREQUENCIES = [60, 150, 400, 1000, 2400, 15000];
+
+/** A preset resampled onto the player's bands, interpolating along log frequency */
+export function equalizer_bands(preset: Prefs.EqualizerPreset): number[] {
+	const gains: readonly number[] = Prefs.equalizer_presets[preset] ?? Prefs.equalizer_presets.Default;
+	const logs = PRESET_FREQUENCIES.map(Math.log);
+	return EQUALIZER_FREQUENCIES.map((frequency) => {
+		const x = Math.log(frequency);
+		const upper = logs.findIndex(log => log >= x);
+		if (upper === 0) return gains[0];
+		if (upper === -1) return gains[gains.length - 1];
+		const t = (x - logs[upper - 1]) / (logs[upper] - logs[upper - 1]);
+		return gains[upper - 1] + (gains[upper] - gains[upper - 1]) * t;
+	});
+}
+
 export async function setup_track_player(): Promise<boolean> {
 	let playing_tracks: Track[] = [];
 	let index = 0;
@@ -41,31 +57,29 @@ export async function setup_track_player(): Promise<boolean> {
 	} catch (_) { }
 	GLOBALS.global_var.past_playing_tracks = playing_tracks.length === 0 ? GLOBALS.global_var.past_playing_tracks : playing_tracks;
 	GLOBALS.global_var.past_track_index = playing_tracks.length === 0 ? GLOBALS.global_var.past_track_index : index;
-	try {
-		EverythingPlayer.getActiveTrackIndex();
+	if (EverythingPlayer.isSetup()) {
 		trackplayer_has_been_setup = true;
-	} catch (_) {
-		await EverythingPlayer.setupPlayer({ enableVideo: false, sabrPoolAhead: 1 });
-		trackplayer_has_been_setup = true;
-		await EverythingPlayer.updateOptions({
-			android: {
-				appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification
-			},
-			capabilities: [
-				Capability.Play,
-				Capability.Pause,
-				Capability.SkipToNext,
-				Capability.SkipToPrevious,
-				Capability.SeekTo,
-				Capability.PlayFromSearch
-			],
-			progressUpdateEventInterval: 1
-		});
-		EverythingPlayer.setRepeatMode(RepeatMode.Off);
-		EverythingPlayer.setEqualizer(Prefs.equalizer_presets[Prefs.get_pref('equalizer_preset')] as unknown as number[]);
-		EverythingPlayer.setCrossFade(Prefs.get_pref('crossfade'));
 		return true;
 	}
+	await EverythingPlayer.setupPlayer({ enableVideo: false, sabrPoolAhead: 1 });
+	trackplayer_has_been_setup = true;
+	await EverythingPlayer.updateOptions({
+		android: {
+			appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification
+		},
+		capabilities: [
+			Capability.Play,
+			Capability.Pause,
+			Capability.SkipToNext,
+			Capability.SkipToPrevious,
+			Capability.SeekTo,
+			Capability.PlayFromSearch
+		],
+		progressUpdateEventInterval: 1
+	});
+	EverythingPlayer.setRepeatMode(RepeatMode.Off);
+	EverythingPlayer.setEqualizer(equalizer_bands(Prefs.get_pref('equalizer_preset')));
+	EverythingPlayer.setCrossFade(Prefs.get_pref('crossfade'));
 	return true;
 }
 
