@@ -118,7 +118,7 @@ export class TimedCache<K, V> {
 		this.clear_expired();
 		const i = this.store.findIndex(item => item.key === key);
 		if (i === -1) this.add(key, value);
-		this.store[this.store.length - 1].value = value;
+		else this.store[i].value = value;
 		return value;
 	}
 
