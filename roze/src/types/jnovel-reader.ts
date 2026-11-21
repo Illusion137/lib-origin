@@ -1,53 +1,53 @@
 export type JNovel_Toc = {
-	no: number
-	title: string
-	uuid: string
+	no: number;
+	title: string;
+	uuid: string;
 	chapters: {
-		no: number
-		title: string
-		uuid: string
-		selected?: boolean
-	}[]
-}[]
+		no: number;
+		title: string;
+		uuid: string;
+		selected?: boolean;
+	}[];
+}[];
 export interface JNovel_Serie {
-	legacy_id: string
-	type: number
-	title: string
-	short_title: string
-	original_title: string
-	slug: string
+	legacy_id: string;
+	type: number;
+	title: string;
+	short_title: string;
+	original_title: string;
+	slug: string;
 	created: {
-		seconds: number
-		nanos: number
-	}
-	description: string
-	short_description: string
-	tags: string[]
+		seconds: number;
+		nanos: number;
+	};
+	description: string;
+	short_description: string;
+	tags: string[];
 	cover: {
-		cover_url: string
-		thumbnail_url: string
-	}
-	rentals: boolean
-	ForumId: any
+		cover_url: string;
+		thumbnail_url: string;
+	};
+	rentals: boolean;
+	ForumId: any;
 }
 export interface JNovel_Part {
-	legacy_id: string
-	title: string
-	slug: string
-	number: number
-	preview: boolean
+	legacy_id: string;
+	title: string;
+	slug: string;
+	number: number;
+	preview: boolean;
 	created: {
-		seconds: number
-		nanos: number
-	}
+		seconds: number;
+		nanos: number;
+	};
 	expiration: {
-		seconds: number
-	}
+		seconds: number;
+	};
 	launch: {
-		seconds: number
-	}
+		seconds: number;
+	};
 	cover: {
-		cover_url: string
-		thumbnail_url: string
-	}
+		cover_url: string;
+		thumbnail_url: string;
+	};
 }

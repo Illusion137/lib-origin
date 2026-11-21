@@ -1,33 +1,33 @@
 // Reference https://cdn.feelthemusi.com/parsing/parsing_source.min.js
 
-import rozfetch from "@common/rozfetch";
+import rozfetch from '@common/rozfetch';
 
 export namespace ProIP {
-    export type IpResult = IpSuccessResult|IpFailureResult;
-    export interface IpSuccessResult {
-        as: string
-        city: string
-        country: string
-        countryCode: string
-        isp: string
-        lat: number
-        lon: number
-        org: string
-        query: string
-        region: string
-        regionName: string
-        status: "success"
-        timezone: string
-        zip: string
-    }
-    export interface IpFailureResult {
-        status: "fail"
-        message: string
-    }
-      
-    export async function pro_ip_api(api_key?: string) {
-        const response = await rozfetch<IpResult>(`https://pro.ip-api.com/json?key=${api_key}`);
-        if("error" in response) return response;
-        return await response.json();
-    }
+	export type IpResult = IpSuccessResult | IpFailureResult;
+	export interface IpSuccessResult {
+		as: string;
+		city: string;
+		country: string;
+		countryCode: string;
+		isp: string;
+		lat: number;
+		lon: number;
+		org: string;
+		query: string;
+		region: string;
+		regionName: string;
+		status: 'success';
+		timezone: string;
+		zip: string;
+	}
+	export interface IpFailureResult {
+		status: 'fail';
+		message: string;
+	}
+
+	export async function pro_ip_api(api_key?: string) {
+		const response = await rozfetch<IpResult>(`https://pro.ip-api.com/json?key=${api_key}`);
+		if ('error' in response) return response;
+		return await response.json();
+	}
 }

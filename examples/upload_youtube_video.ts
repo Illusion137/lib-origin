@@ -14,11 +14,7 @@ async function main__upload_youtube_video(){
         console.log("Progress: ", {written_bytes, total_bytes, progress: written_bytes / total_bytes});
     }, async(full_created) => {
         await YouTubeStudio.upload_feedback_cycle([full_created.feedback_token], (content) => {
-            if(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.transferProgressBar)
-                console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.transferProgressBar);
-            else if(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.uploadChecksRenderer)
-                console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]?.uploadChecksRenderer);
-            else console.log(content?.[0]?.uploadFeedbackItemContinuation?.contents?.[0]);
+            console.log(content?.[0]);
             return true;
         });
     });

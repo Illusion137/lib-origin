@@ -1,8 +1,8 @@
-import { bold, cyan, red } from "colors";
+import { bold, cyan, red } from 'colors';
 
 export function log_info(str: any) {
-    console.log(cyan(`${bold("[INFO]:")} ${str}`));
+	console.log(cyan(`${bold('[INFO]:')} ${str}`));
 }
 export function log_error(str: any) {
-    console.log(red(`${bold("[ERROR]:")} ${str}`));
+	console.log(red(`${bold('[ERROR]:')} ${str}`));
 }

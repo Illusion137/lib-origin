@@ -1,22 +1,22 @@
 export type Hydration = (HydratableUser | HydratablePlaylist | HydratableSound | HydratableId | HydrateableEvil | HydrateableMeUser)[];
 
 export interface HydrateableEvil {
-	hydratable: "statsigClientInitializeResponse";
+	hydratable: 'statsigClientInitializeResponse';
 	data: { configString: string; user: { userID: string; customIDs: { stableID: string }; country: string; appVersion: string; custom: { region: string }; statsigEnvironment: { tier: string } } };
 }
 
 export interface HydratableId {
-	hydratable: "anonymousId";
+	hydratable: 'anonymousId';
 	data: string;
 }
 
 export interface HydratableUser {
-	hydratable: "user";
+	hydratable: 'user';
 	data: UserData;
 }
 
 export interface HydratableSound {
-	hydratable: "sound";
+	hydratable: 'sound';
 	data: SoundData;
 }
 
@@ -93,7 +93,7 @@ export interface Badges {
 }
 
 export interface HydratablePlaylist {
-	hydratable: "playlist";
+	hydratable: 'playlist';
 	data: Data;
 }
 
@@ -208,7 +208,7 @@ export interface Transcoding {
 }
 
 export interface Format {
-	protocol: "hls" | "progressive" | "ctr-encrypted-hls" | "cbc-encrypted-hls";
+	protocol: 'hls' | 'progressive' | 'ctr-encrypted-hls' | 'cbc-encrypted-hls';
 	mime_type: string;
 }
 
@@ -428,7 +428,7 @@ export interface Transcoding {
 }
 
 export interface Format {
-	protocol: "hls" | "progressive" | "ctr-encrypted-hls" | "cbc-encrypted-hls";
+	protocol: 'hls' | 'progressive' | 'ctr-encrypted-hls' | 'cbc-encrypted-hls';
 	mime_type: string;
 }
 
@@ -462,7 +462,7 @@ export interface Badges2 {
 }
 
 export interface HydrateableMeUser {
-	hydratable: "meUser";
+	hydratable: 'meUser';
 	data: {
 		avatar_url: string;
 		blocked_tracks_count: number;
@@ -521,4 +521,4 @@ export interface HydrateableMeUser {
 		ppid: string;
 		spotlight_limit: number;
 	};
-};
+}

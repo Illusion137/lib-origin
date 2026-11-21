@@ -1,42 +1,46 @@
-import { milliseconds_of } from "@common/utils/util";
-import { FutsalShuffle } from "./futsal_shuffle";
-import { sum } from "./illusive_utils";
-import type { Track } from "./types";
+import { days_of, weeks_of } from '@common/utils/util';
+import { FutsalShuffle } from './futsal_shuffle';
+import { track_time_ms, track_unplayed_since_ms } from './illusive_utils';
+import type { Track } from './types';
 
 export namespace KeepDelete {
-    const base_time = 1665298800000; // new Date("October 9, 2022").getTime();
-    export function track_days_since_last_played(track: Track): number {
-        const time_since_last_played = Date.now() - Math.max(new Date(track.meta?.last_played_date ?? 0).getTime(), base_time);
-        const days_since_last_played = time_since_last_played / milliseconds_of({ days: 1 });
-        return days_since_last_played;
-    }
-    export function track_weeks_since_last_played(track: Track): number {
-        const time_since_last_played = Date.now() - Math.max(new Date(track.meta?.last_played_date ?? 0).getTime(), base_time);
-        const weeks_since_last_played = time_since_last_played / milliseconds_of({ weeks: 1 });
-        return weeks_since_last_played;
-    }
-    export function track_percentage_of_plays(track: Track, sum_plays: number) {
-        const plays = track.meta?.plays ?? 0;
-        const percentage_of_plays = plays / sum_plays;
-        return percentage_of_plays;
-    }
-    export function track_value(track: Track, sum_plays: number, track_count: number) {
-        return track_percentage_of_plays(track, sum_plays) * track_count;
-    }
+	const GRACE_PERIOD_DAYS = 30;
+	const MIN_STALE_WEEKS = 4;
+	const KEEP_ENGAGEMENT = 4;
 
-    function keep_delete_track_weight(track: Track, sum_plays: number, track_count: number): number {
-        const good_value = 24;
-        const plays = track.meta?.plays ?? 0;
-        const value = track_value(track, sum_plays, track_count);
+	export function track_weeks_since_last_played(track: Track, now_ms = Date.now()): number {
+		const unplayed_since_ms = track_unplayed_since_ms(track);
+		if (unplayed_since_ms === 0) return 0;
+		return Math.max(weeks_of({ milliseconds: now_ms - unplayed_since_ms }), 0);
+	}
+	export function track_value(track: Track, sum_plays: number, track_count: number) {
+		if (sum_plays <= 0) return 0;
+		return ((track.meta?.plays ?? 0) / sum_plays) * track_count;
+	}
 
-        if (track_percentage_of_plays(track, sum_plays) >= 0.085) return 1
-        if (value > good_value) return 1;
-        return Math.max(1, track_weeks_since_last_played(track) - plays - good_value);
-    }
-    export function ordered_keep_delete_tracks(all_tracks: Track[]): Track[] {
-        const sum_plays = sum(all_tracks.map(track => track.meta?.plays ?? 0));
-        const weighted_tracks = all_tracks.map(track => ({ value: track, weight: keep_delete_track_weight(track, sum_plays, all_tracks.length) }))
-            .filter(track => track.weight !== 1);
-        return FutsalShuffle.shuffle_weighted(weighted_tracks);
-    }
+	function median(nums: number[]) {
+		if (nums.length === 0) return 0;
+		const sorted = nums.slice().sort((a, b) => a - b);
+		const mid = Math.floor(sorted.length / 2);
+		return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+	}
+
+	function delete_weight(track: Track, median_plays: number, now_ms: number): number {
+		const added_ms = track_time_ms(track.meta?.added_date);
+		if (added_ms > 0 && days_of({ milliseconds: now_ms - added_ms }) < GRACE_PERIOD_DAYS) return 0;
+		const stale_weeks = track_weeks_since_last_played(track, now_ms);
+		if (stale_weeks < MIN_STALE_WEEKS) return 0;
+		const engagement = (track.meta?.plays ?? 0) / Math.max(median_plays, 1);
+		if (engagement >= KEEP_ENGAGEMENT) return 0;
+		return stale_weeks / (1 + engagement);
+	}
+
+	export function ordered_keep_delete_tracks(all_tracks: Track[]): Track[] {
+		const now_ms = Date.now();
+		const median_plays = median(all_tracks.map(track => track.meta?.plays ?? 0));
+		const weighted_tracks = all_tracks
+			.map(track => ({ value: track, weight: delete_weight(track, median_plays, now_ms) }))
+			.filter(track => track.weight > 0);
+		return FutsalShuffle.shuffle_weighted(weighted_tracks);
+	}
 }

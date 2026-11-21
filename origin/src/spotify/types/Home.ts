@@ -1,291 +1,291 @@
 export interface Home {
-    data: Data
-    extensions: Extensions
+	data: Data;
+	extensions: Extensions;
 }
 
 interface Data {
-    home: Home2
+	home: Home2;
 }
 
 interface Home2 {
-    __typename: string
-    greeting: Greeting
-    sectionContainer: SectionContainer
-    homeChips: HomeChip[]
+	__typename: string;
+	greeting: Greeting;
+	sectionContainer: SectionContainer;
+	homeChips: HomeChip[];
 }
 
 interface Greeting {
-    text: string
+	text: string;
 }
 
 interface SectionContainer {
-    sections: Sections
-    uri: string
+	sections: Sections;
+	uri: string;
 }
 
 interface Sections {
-    items: Item[]
-    totalCount: number
+	items: Item[];
+	totalCount: number;
 }
 
 interface Item {
-    data: Data2
-    sectionItems: SectionItems
-    uri: string
+	data: Data2;
+	sectionItems: SectionItems;
+	uri: string;
 }
 
 interface Data2 {
-    __typename: string
-    title?: Title
+	__typename: string;
+	title?: Title;
 }
 
 interface Title {
-    text: string
+	text: string;
 }
 
 interface SectionItems {
-    items: Item2[]
-    totalCount: number
+	items: Item2[];
+	totalCount: number;
 }
 
 interface Item2 {
-    data?: Data3
-    content: Content
-    uri: string
+	data?: Data3;
+	content: Content;
+	uri: string;
 }
 
 interface Data3 {
-    __typename: string
+	__typename: string;
 }
 
 interface Content {
-    __typename: string
-    data: Data4
+	__typename: string;
+	data: Data4;
 }
 
 interface Data4 {
-    __typename: string
-    artists?: Artists
-    coverArt?: CoverArt
-    name?: string
-    uri?: string
-    profile?: Profile2
-    visuals?: Visuals
-    mediaType?: string
-    publisher?: Publisher
-    contentRating?: ContentRating
-    description?: string
-    duration?: Duration
-    playedState?: PlayedState
-    podcastV2?: PodcastV2
-    releaseDate?: ReleaseDate
-    videoThumbnailImage?: VideoThumbnailImage
-    accessInfo?: AccessInfo
-    authors?: Author[]
-    attributes?: Attribute[]
-    format?: string
-    images?: Images
-    ownerV2?: OwnerV2
+	__typename: string;
+	artists?: Artists;
+	coverArt?: CoverArt;
+	name?: string;
+	uri?: string;
+	profile?: Profile2;
+	visuals?: Visuals;
+	mediaType?: string;
+	publisher?: Publisher;
+	contentRating?: ContentRating;
+	description?: string;
+	duration?: Duration;
+	playedState?: PlayedState;
+	podcastV2?: PodcastV2;
+	releaseDate?: ReleaseDate;
+	videoThumbnailImage?: VideoThumbnailImage;
+	accessInfo?: AccessInfo;
+	authors?: Author[];
+	attributes?: Attribute[];
+	format?: string;
+	images?: Images;
+	ownerV2?: OwnerV2;
 }
 
 interface Artists {
-    items: Item3[]
+	items: Item3[];
 }
 
 interface Item3 {
-    profile: Profile
-    uri: string
+	profile: Profile;
+	uri: string;
 }
 
 interface Profile {
-    name: string
+	name: string;
 }
 
 interface CoverArt {
-    extractedColors: ExtractedColors
-    sources: Source[]
+	extractedColors: ExtractedColors;
+	sources: Source[];
 }
 
 interface ExtractedColors {
-    colorDark: ColorDark
+	colorDark: ColorDark;
 }
 
 interface ColorDark {
-    hex: string
-    isFallback: boolean
+	hex: string;
+	isFallback: boolean;
 }
 
 interface Source {
-    height: number
-    url: string
-    width: number
+	height: number;
+	url: string;
+	width: number;
 }
 
 interface Profile2 {
-    name: string
+	name: string;
 }
 
 interface Visuals {
-    avatarImage: AvatarImage
+	avatarImage: AvatarImage;
 }
 
 interface AvatarImage {
-    extractedColors: ExtractedColors2
-    sources: Source2[]
+	extractedColors: ExtractedColors2;
+	sources: Source2[];
 }
 
 interface ExtractedColors2 {
-    colorDark: ColorDark2
+	colorDark: ColorDark2;
 }
 
 interface ColorDark2 {
-    hex: string
-    isFallback: boolean
+	hex: string;
+	isFallback: boolean;
 }
 
 interface Source2 {
-    height: number
-    url: string
-    width: number
+	height: number;
+	url: string;
+	width: number;
 }
 
 interface Publisher {
-    name: string
+	name: string;
 }
 
 interface ContentRating {
-    label: string
+	label: string;
 }
 
 interface Duration {
-    totalMilliseconds: number
+	totalMilliseconds: number;
 }
 
 interface PlayedState {
-    playPositionMilliseconds: number
-    state: string
+	playPositionMilliseconds: number;
+	state: string;
 }
 
 interface PodcastV2 {
-    data: Data5
+	data: Data5;
 }
 
 interface Data5 {
-    __typename: string
-    coverArt: CoverArt2
-    mediaType: string
-    name: string
-    publisher: Publisher2
-    uri: string
+	__typename: string;
+	coverArt: CoverArt2;
+	mediaType: string;
+	name: string;
+	publisher: Publisher2;
+	uri: string;
 }
 
 interface CoverArt2 {
-    extractedColors: ExtractedColors3
-    sources: Source3[]
+	extractedColors: ExtractedColors3;
+	sources: Source3[];
 }
 
 interface ExtractedColors3 {
-    colorDark: ColorDark3
+	colorDark: ColorDark3;
 }
 
 interface ColorDark3 {
-    hex: string
-    isFallback: boolean
+	hex: string;
+	isFallback: boolean;
 }
 
 interface Source3 {
-    height: number
-    url: string
-    width: number
+	height: number;
+	url: string;
+	width: number;
 }
 
 interface Publisher2 {
-    name: string
+	name: string;
 }
 
 interface ReleaseDate {
-    isoString: string
+	isoString: string;
 }
 
 interface VideoThumbnailImage {
-    data: Data6
+	data: Data6;
 }
 
 interface Data6 {
-    __typename: string
-    sources: Source4[]
+	__typename: string;
+	sources: Source4[];
 }
 
 interface Source4 {
-    url: string
+	url: string;
 }
 
 interface AccessInfo {
-    signifier: Signifier
+	signifier: Signifier;
 }
 
 interface Signifier {
-    text: string
+	text: string;
 }
 
 interface Author {
-    name: string
+	name: string;
 }
 
 interface Attribute {
-    key: string
-    value: string
+	key: string;
+	value: string;
 }
 
 interface Images {
-    items: Item4[]
+	items: Item4[];
 }
 
 interface Item4 {
-    extractedColors: ExtractedColors4
-    sources: Source5[]
+	extractedColors: ExtractedColors4;
+	sources: Source5[];
 }
 
 interface ExtractedColors4 {
-    colorDark: ColorDark4
+	colorDark: ColorDark4;
 }
 
 interface ColorDark4 {
-    hex: string
-    isFallback: boolean
+	hex: string;
+	isFallback: boolean;
 }
 
 interface Source5 {
-    height?: number
-    url: string
-    width?: number
+	height?: number;
+	url: string;
+	width?: number;
 }
 
 interface OwnerV2 {
-    data: Data7
+	data: Data7;
 }
 
 interface Data7 {
-    __typename: string
-    name: string
+	__typename: string;
+	name: string;
 }
 
 interface HomeChip {
-    id: string
-    label: Label
+	id: string;
+	label: Label;
 }
 
 interface Label {
-    originalLabel: OriginalLabel
-    text: string
+	originalLabel: OriginalLabel;
+	text: string;
 }
 
 interface OriginalLabel {
-    baseText: BaseText
+	baseText: BaseText;
 }
 
 interface BaseText {
-    text: string
+	text: string;
 }
 
 interface Extensions { }

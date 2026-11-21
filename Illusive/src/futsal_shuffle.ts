@@ -1,207 +1,207 @@
-import { days_of, is_empty, milliseconds_of, seconds_of, weeks_of } from "@common/utils/util";
-import { Prefs } from "./prefs";
-import type { Track } from "./types";
-import { GLOBALS } from "./globals";
-import { SQLTrackPlays } from "./sql/sql_track_plays";
+import { days_of, is_empty, milliseconds_of, seconds_of, weeks_of } from '@common/utils/util';
+import { Prefs } from './prefs';
+import type { Track } from './types';
+import { GLOBALS } from './globals';
+import { SQLTrackPlays } from './sql/sql_track_plays';
+import { track_time_ms, track_unplayed_since_ms } from './illusive_utils';
 
 export namespace FutsalShuffle {
-    export const icache = {
-        cache_built: false,
-        max_plays_in_library: 1,
-        most_recent_played_ms: 0,
-        most_recent_added_ms: 0,
-        plays_from_albums: new Map<string, number>(),
-        plays_from_artist: new Map<string, number>(),
-        plays_in_past_month: new Map<string, number>(),
+	type BiasKey = keyof typeof Prefs.default_track_shuffle_bias;
+	type Bias = typeof Prefs.default_track_shuffle_bias;
+	type RawBiasFactors = Record<BiasKey, number>;
+	export type BiasInfluence = RawBiasFactors;
 
-        track_uid_to_weight: new Map<string, number>()
-    };
-    export function build_cache() {
-        icache.max_plays_in_library = GLOBALS.global_var.sql_tracks.reduce((max, track) => Math.max(max, track.meta?.plays ?? 0), 1);
-        icache.most_recent_played_ms = GLOBALS.global_var.sql_tracks.reduce((max, track) => Math.max(max, track.meta?.last_played_date ? new Date(track.meta.last_played_date).getTime() : 0), 0);
-        icache.most_recent_added_ms = GLOBALS.global_var.sql_tracks.reduce((max, track) => Math.max(max, track.meta?.added_date ? new Date(track.meta.added_date).getTime() : 0), 0);
-        icache.plays_from_albums.clear();
-        icache.plays_from_artist.clear();
-        icache.plays_in_past_month.clear();
+	const BIAS_STRENGTH = 3;
+	const CACHE_TTL_MS = milliseconds_of({ minutes: 10 });
+	const too_long_duration = seconds_of({ minutes: 4 });
+	const too_short_duration = seconds_of({ minutes: 1 });
 
-        
+	export const icache = {
+		cache_built: false,
+		built_at_ms: 0,
+		built_from: [] as Track[],
+		built_from_length: 0,
+		built_bias: '',
+		plays_from_albums: new Map<string, number>(),
+		plays_from_artist: new Map<string, number>(),
+		plays_in_past_month: new Map<string, number>(),
 
-        GLOBALS.global_var.sql_tracks.forEach(track => {
-            if (track.album?.uri)
-                icache.plays_from_albums.set(track.album.uri, (icache.plays_from_albums.get(track.album.uri) ?? 0) + (track.meta?.plays ?? 0));
-            if (track.artists?.[0]?.uri)
-                icache.plays_from_artist.set(track.artists[0].uri, (icache.plays_from_artist.get(track.artists[0].uri) ?? 0) + (track.meta?.plays ?? 0));
-        });
+		track_uid_to_log_weight: new Map<string, number>()
+	};
 
-        const grouped_plays = SQLTrackPlays.count_all_track_plays_sync({ date_start: new Date(Date.now() - milliseconds_of({ months: 1 })) });
-        for (const [track_uid, count_array] of Object.entries(grouped_plays)) {
-            icache.plays_in_past_month.set(track_uid, count_array.length);
-        }
+	const bias_keys = () => Object.keys(Prefs.default_track_shuffle_bias) as BiasKey[];
 
-        for (const key of Object.keys(Prefs.default_track_shuffle_bias)) {
-            Prefs.prefs.track_shuffle_bias.current_value[key] ??= 0;
-            Prefs.prefs.track_shuffle_bias.default_value[key] ??= 0;
-        }
+	function increment(map: Map<string, number>, key: string, amount: number) {
+		map.set(key, (map.get(key) ?? 0) + amount);
+	}
 
-        const weights: number[] = [];
-        GLOBALS.global_var.sql_tracks.forEach(track => {
-            const weight = get_track_weight(track);
-            weights.push(weight);
-            icache.track_uid_to_weight.set(track.uid, weight);
-        });
+	function get_raw_bias_factors(track: Track, now_ms: number): RawBiasFactors {
+		const has_duration = !is_empty(track.duration);
+		const added_ms = track_time_ms(track.meta?.added_date);
+		const unplayed_since_ms = track_unplayed_since_ms(track);
+		const flag = (value: boolean) => value ? 1 : 0;
+		const analysis = (value?: number) => is_empty(value) ? 0.5 : value!;
+		return {
+			total_plays: Math.log1p(track.meta?.plays ?? 0),
+			too_long_duration: has_duration ? Math.log1p(Math.max(track.duration - too_long_duration, 0)) : 0,
+			too_short_duration: has_duration ? Math.log1p(Math.max(too_short_duration - track.duration, 0)) : 0,
+			last_played: unplayed_since_ms > 0 ? Math.log1p(Math.max(days_of({ milliseconds: now_ms - unplayed_since_ms }), 0)) : 0,
+			recent_add_date: added_ms > 0 ? 1 / (1 + Math.max(weeks_of({ milliseconds: now_ms - added_ms }), 0)) : 0,
+			is_downloaded: flag(!is_empty(track.media_uri)),
+			has_thumbnail_dl: flag(!is_empty(track.thumbnail_uri)),
+			has_lyrics_dl: flag(!is_empty(track.lyrics_uri)),
+			has_synced_lyrics_dl: flag(!is_empty(track.lyrics_uri) && (track.sync_status ?? 'NONE') !== 'NONE'),
+			plays_from_artist: Math.log1p(icache.plays_from_artist.get(track.artists?.[0]?.uri ?? '') ?? 0),
+			plays_from_album: Math.log1p(icache.plays_from_albums.get(track.album?.uri ?? '') ?? 0),
+			plays_in_past_month: Math.log1p(icache.plays_in_past_month.get(track.uid) ?? 0),
+			explicit: flag(track.explicit === 'EXPLICIT'),
+			no_explicit: flag(track.explicit !== 'EXPLICIT'),
+			acousticness: analysis(track.analysis?.acousticness),
+			danceability: analysis(track.analysis?.danceability),
+			energy: analysis(track.analysis?.energy),
+			instrumentalness: analysis(track.analysis?.instrumentalness),
+			liveness: analysis(track.analysis?.liveness),
+			speechiness: analysis(track.analysis?.speechiness),
+			valence: analysis(track.analysis?.valence)
+		};
+	}
 
-        const min_weight = weights.reduce((min, weight) => Math.min(min, weight), Infinity);
-        if (min_weight < 1) {
-            for (const key of icache.track_uid_to_weight.keys()) {
-                const weight = icache.track_uid_to_weight.get(key) ?? 1;
-                icache.track_uid_to_weight.set(key, weight + Math.abs(min_weight) + 1);
-            }
-        }
+	function normalized_factors(tracks: Track[], now_ms: number): Map<string, BiasInfluence> {
+		const keys = bias_keys();
+		const raw = new Map<string, RawBiasFactors>();
+		for (const track of tracks) raw.set(track.uid, get_raw_bias_factors(track, now_ms));
 
-        icache.cache_built = true;
-    }
+		const mins = {} as RawBiasFactors;
+		const maxs = {} as RawBiasFactors;
+		for (const key of keys) {
+			mins[key] = Infinity;
+			maxs[key] = -Infinity;
+		}
+		for (const factors of raw.values()) {
+			for (const key of keys) {
+				mins[key] = Math.min(mins[key], factors[key]);
+				maxs[key] = Math.max(maxs[key], factors[key]);
+			}
+		}
 
-    const boolean_weight = 10;
-    const too_long_duration = seconds_of({ minutes: 4 });
-    const too_short_duration = seconds_of({ minutes: 1 });
+		const normalized = new Map<string, BiasInfluence>();
+		for (const [uid, factors] of raw) {
+			const influence = {} as BiasInfluence;
+			for (const key of keys) influence[key] = maxs[key] === mins[key] ? 0 : (factors[key] - mins[key]) / (maxs[key] - mins[key]);
+			normalized.set(uid, influence);
+		}
+		return normalized;
+	}
 
-    type RawBiasFactors = Record<keyof typeof Prefs.default_track_shuffle_bias, number>;
+	function get_log_weight(influence: BiasInfluence, bias: Bias): number {
+		let log_weight = 0;
+		for (const key of bias_keys()) log_weight += (bias[key] ?? 0) * influence[key];
+		return BIAS_STRENGTH * log_weight;
+	}
 
-    function get_raw_bias_factors(track: Track): RawBiasFactors {
-        return {
-            too_long_duration: track.duration > too_long_duration ? Math.log2(Math.max(track.duration - too_long_duration, 1)) : 0,
-            too_short_duration: track.duration < too_short_duration ? Math.log2(Math.max(too_short_duration - track.duration, 1)) : 0,
-            explicit: track.explicit !== "EXPLICIT" ? 0 : boolean_weight,
-            no_explicit: track.explicit === "EXPLICIT" ? 0 : boolean_weight,
-            has_lyrics_dl: is_empty(track.lyrics_uri) ? 0 : boolean_weight,
-            has_synced_lyrics_dl: is_empty(track.synced_lyrics_uri) ? 0 : boolean_weight,
-            has_thumbnail_dl: is_empty(track.thumbnail_uri) ? 0 : boolean_weight,
-            is_downloaded: is_empty(track.media_uri) ? 0 : boolean_weight,
-            last_played: !track.meta?.last_played_date
-                ? boolean_weight
-                : Math.min(days_of({ milliseconds: icache.most_recent_played_ms - new Date(track.meta.last_played_date).getTime() }), 20),
-            plays_from_album: icache.plays_from_albums.get(track.album?.uri ?? "") ?? 0,
-            plays_from_artist: icache.plays_from_artist.get(track.artists?.[0]?.uri ?? "") ?? 0,
-            plays_in_past_month: icache.plays_in_past_month.get(track.uid) ?? 0,
-            recent_add_date: !track.meta?.added_date || new Date(track.meta.added_date).getTime() === 0
-                ? 0
-                : Math.max(30 - weeks_of({ milliseconds: icache.most_recent_added_ms - new Date(track.meta.added_date).getTime() }), 0),
-            total_plays: 100 * ((track.meta?.plays ?? 0) / icache.max_plays_in_library),
-            acousticness: !is_empty(track.acousticness) ? track.acousticness! - 0.5 : 0,
-            danceability: !is_empty(track.danceability) ? track.danceability! - 0.5 : 0,
-            energy: !is_empty(track.energy) ? track.energy! - 0.5 : 0,
-            instrumentalness: !is_empty(track.instrumentalness) ? track.instrumentalness! - 0.5 : 0,
-            liveness: !is_empty(track.liveness) ? track.liveness! - 0.5 : 0,
-            speechiness: !is_empty(track.speechiness) ? track.speechiness! - 0.5 : 0,
-            valence: !is_empty(track.valence) ? track.valence! - 0.5 : 0,
-        };
-    }
+	export function build_cache() {
+		const tracks = GLOBALS.global_var.sql_tracks;
+		const now_ms = Date.now();
+		const bias = Prefs.get_pref('track_shuffle_bias');
 
-    function get_track_weight(track: Track): number {
-        const bias = Prefs.get_pref('track_shuffle_bias');
-        const factors = get_raw_bias_factors(track);
-        let weight = 1;
-        for (const key of Object.keys(factors) as (keyof RawBiasFactors)[]) {
-            weight += bias[key] * factors[key];
-        }
-        return weight;
-    }
+		icache.plays_from_albums.clear();
+		icache.plays_from_artist.clear();
+		icache.plays_in_past_month.clear();
+		icache.track_uid_to_log_weight.clear();
 
-    export type BiasInfluence = RawBiasFactors;
+		for (const track of tracks) {
+			const plays = track.meta?.plays ?? 0;
+			if (track.album?.uri) increment(icache.plays_from_albums, track.album.uri, plays);
+			if (track.artists?.[0]?.uri) increment(icache.plays_from_artist, track.artists[0].uri, plays);
+		}
 
-    function get_bias_influence(tracks: Track[]): Map<string, BiasInfluence> {
-        if (!icache.cache_built) build_cache();
+		const grouped_plays = SQLTrackPlays.count_all_track_plays_sync({ date_start: new Date(now_ms - milliseconds_of({ months: 1 })) });
+		for (const [track_uid, count_array] of Object.entries(grouped_plays)) {
+			icache.plays_in_past_month.set(track_uid, count_array.length);
+		}
 
-        const bias_keys = Object.keys(Prefs.default_track_shuffle_bias) as (keyof RawBiasFactors)[];
-        const raw: Map<string, RawBiasFactors> = new Map<string, RawBiasFactors>();
-        for (const track of tracks) {
-            raw.set(track.uid, get_raw_bias_factors(track));
-        }
+		for (const [uid, influence] of normalized_factors(tracks, now_ms)) {
+			icache.track_uid_to_log_weight.set(uid, get_log_weight(influence, bias));
+		}
 
-        const mins: Partial<Record<keyof RawBiasFactors, number>> = {};
-        const maxs: Partial<Record<keyof RawBiasFactors, number>> = {};
-        for (const key of bias_keys) {
-            let min = Infinity, max = -Infinity;
-            for (const factors of raw.values()) {
-                const v = factors[key];
-                if (v < min) min = v;
-                if (v > max) max = v;
-            }
-            mins[key] = min;
-            maxs[key] = max;
-        }
+		icache.cache_built = true;
+		icache.built_at_ms = now_ms;
+		icache.built_from = tracks;
+		icache.built_from_length = tracks.length;
+		icache.built_bias = JSON.stringify(bias);
+	}
 
-        const result = new Map<string, BiasInfluence>();
-        for (const track of tracks) {
-            const factors = raw.get(track.uid)!;
-            const influence = {} as BiasInfluence;
-            for (const key of bias_keys) {
-                const min = mins[key]!;
-                const max = maxs[key]!;
-                influence[key] = max === min ? 0 : (factors[key] - min) / (max - min);
-            }
-            result.set(track.uid, influence);
-        }
-        return result;
-    }
+	export function invalidate() {
+		icache.cache_built = false;
+	}
 
-    export function get_bias_visualizer_data(tracks: Track[]) {
-        const influences = get_bias_influence(tracks);
-        const bias = Prefs.get_pref('track_shuffle_bias');
-        const influences_values = [...influences.values()];
-        const keys = Object.keys(Prefs.default_track_shuffle_bias) as (keyof RawBiasFactors)[];
-        const data = new Array<number>(keys.length).fill(0);
-        for (const value of influences_values) {
-            for (let i = 0; i < keys.length; i++) {
-                data[i] += value[keys[i]] * Math.abs(bias[keys[i]] ?? 0);
-            }
-        }
-        const max = Math.max(...data);
-        for (let i = 0; i < keys.length; i++) {
-            if (isNaN(data[i])) data[i] = 0;
-            data[i] = max > 0 ? data[i] / max : 0;
-            if (bias[keys[i] ?? 0] < 0) data[i] *= -1;
-        }
-        return data;
-    }
+	function is_stale() {
+		const tracks = GLOBALS.global_var.sql_tracks;
+		return !icache.cache_built
+			|| icache.built_from !== tracks
+			|| icache.built_from_length !== tracks.length
+			|| Date.now() - icache.built_at_ms > CACHE_TTL_MS
+			|| icache.built_bias !== JSON.stringify(Prefs.get_pref('track_shuffle_bias'));
+	}
 
-    export function shuffle_weighted<T>(data: { weight: number, value: T }[]): T[] {
-        const n = data.length;
-        const keys = new Float64Array(n);
+	function ensure_cache() {
+		if (is_stale()) build_cache();
+	}
 
-        for (let i = 0; i < n; i++) {
-            const w = data[i].weight;
-            const u = Math.random();
-            const g = -Math.log(-Math.log(u));
-            keys[i] = Math.log(w) + g;
-        }
+	export function get_bias_visualizer_data(tracks: Track[]) {
+		ensure_cache();
+		const influences = [...normalized_factors(tracks, Date.now()).values()];
+		const bias = Prefs.get_pref('track_shuffle_bias');
+		const keys = bias_keys();
+		const data = new Array<number>(keys.length).fill(0);
+		for (const influence of influences) {
+			for (let i = 0; i < keys.length; i++) {
+				data[i] += influence[keys[i]] * Math.abs(bias[keys[i]] ?? 0);
+			}
+		}
+		const max = Math.max(...data);
+		for (let i = 0; i < keys.length; i++) {
+			if (isNaN(data[i])) data[i] = 0;
+			data[i] = max > 0 ? data[i] / max : 0;
+			if ((bias[keys[i]] ?? 0) < 0) data[i] *= -1;
+		}
+		return data;
+	}
 
-        const idx = new Uint32Array(n);
-        for (let i = 0; i < n; i++) idx[i] = i;
+	function shuffle_log_weighted<T>(data: { log_weight: number; value: T }[]): T[] {
+		const n = data.length;
+		const keys = new Float64Array(n);
+		for (let i = 0; i < n; i++) {
+			keys[i] = data[i].log_weight - Math.log(-Math.log(Math.random()));
+		}
 
-        idx.sort((a, b) => keys[b] - keys[a]);
+		const idx = new Uint32Array(n);
+		for (let i = 0; i < n; i++) idx[i] = i;
+		idx.sort((a, b) => keys[b] - keys[a]);
 
-        const out = new Array<T>(n);
-        for (let i = 0; i < n; i++) {
-            out[i] = data[idx[i]].value;
-        }
+		const out = new Array<T>(n);
+		for (let i = 0; i < n; i++) {
+			out[i] = data[idx[i]].value;
+		}
+		return out;
+	}
 
-        return out;
-    }
+	export function shuffle_weighted<T>(data: { weight: number; value: T }[]): T[] {
+		return shuffle_log_weighted(data.map(item => ({ log_weight: Math.log(item.weight), value: item.value })));
+	}
 
-    function get_weighted_tracks(tracks: Track[]) {
-        const weighted_tracks = tracks.map(track => ({ value: track, weight: icache.track_uid_to_weight.get(track.uid) ?? 1 }));
-        return weighted_tracks;
-    }
-    export function get_weighted_tracks_descending(tracks: Track[]) {
-        return get_weighted_tracks(tracks).sort((a, b) => b.weight - a.weight).map(track => track.value)
-    }
-    export function get_weighted_tracks_ascending(tracks: Track[]) {
-        return get_weighted_tracks(tracks).sort((a, b) => a.weight - b.weight).map(track => track.value)
-    }
+	function get_log_weighted_tracks(tracks: Track[]) {
+		ensure_cache();
+		return tracks.map(track => ({ value: track, log_weight: icache.track_uid_to_log_weight.get(track.uid) ?? 0 }));
+	}
+	export function get_weighted_tracks_descending(tracks: Track[]) {
+		return get_log_weighted_tracks(tracks).sort((a, b) => b.log_weight - a.log_weight).map(track => track.value);
+	}
+	export function get_weighted_tracks_ascending(tracks: Track[]) {
+		return get_log_weighted_tracks(tracks).sort((a, b) => a.log_weight - b.log_weight).map(track => track.value);
+	}
 
-    export function futsal_shuffle(tracks: Track[]) {
-        if (!icache.cache_built) build_cache();
-        return shuffle_weighted(get_weighted_tracks(tracks));
-    }
+	export function futsal_shuffle(tracks: Track[]) {
+		return shuffle_log_weighted(get_log_weighted_tracks(tracks));
+	}
 }

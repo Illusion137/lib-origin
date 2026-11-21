@@ -1,27 +1,25 @@
-import { json_catch } from "@common/utils/util";
-import { ItemTimedCache, type FetchMethod, type PromiseResult, type ResponseError } from "@common/types";
-import MD5 from "crypto-js/md5";
+import { json_catch } from '@common/utils/util';
+import { ItemTimedCache, type FetchMethod, type PromiseResult, type ResponseError } from '@common/types';
+import MD5 from 'crypto-js/md5';
 
-import { fs, load_native_fs } from "@native/fs/fs";
-import { load_native_scrapefetch, scrapefetch } from "@native/scrapefetch/scrapefetch";
-import { load_native_proxyfetch, proxyfetch } from "@native/proxyfetch/proxyfetch";
-import { try_json_parse } from "@common/utils/parse_util";
-import { generror_catch, generror_fetch, is_timeout_error } from "@common/utils/error_util";
-import { retry_result, type RetryResultOptions } from "@common/utils/retry_util";
-import pathlib from "path-browserify";
-import { reinterpret_cast } from "./cast";
-import { status_codes_descriptions } from "./status_codes";
+import { fs, load_native_fs } from '@native/fs/fs';
+import { load_native_proxyfetch, proxyfetch } from '@native/proxyfetch/proxyfetch';
+import { try_json_parse } from '@common/utils/parse_util';
+import { generror_catch, generror_fetch, is_timeout_error } from '@common/utils/error_util';
+import pathlib from 'path-browserify';
+import { reinterpret_cast } from './cast';
+import { status_codes_descriptions } from './status_codes';
 
 interface RozFetchCacheOptsBase {
 	cache_ms: number;
 	cache_ms_fail?: number;
-	cache_on?: "url" | "request"
+	cache_on?: 'url' | 'request';
 }
 interface RozFetchCacheOptsMemory {
-	cache_mode?: "memory" | "none";
+	cache_mode?: 'memory' | 'none';
 }
 interface RozFetchCacheOptsFile {
-	cache_mode?: "file" | "all" | "none";
+	cache_mode?: 'file' | 'all' | 'none';
 	cache_directory?: string;
 }
 type RozFetchCacheOpts = RozFetchCacheOptsBase & (RozFetchCacheOptsMemory | RozFetchCacheOptsFile);
@@ -37,7 +35,6 @@ export interface RoZFetchRequestInit extends RequestInit {
 	method?: FetchMethod | (string & {});
 	ignore_fail_request?: boolean;
 	impersonate?: boolean;
-	retry?: RetryResultOptions | false;
 }
 type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
@@ -49,24 +46,23 @@ export interface RoZFetchResponse<T> extends Response {
 	ok: true;
 }
 
-const cache_file_extension = ".che";
+const cache_file_extension = '.che';
 const rozfetch_cache = new ItemTimedCache<string, ResponseError | RoZFetchResponse<unknown>>();
 
 export function rozfetch_cache_key(input: string, init?: RoZFetchRequestInit): string {
-	if ((init?.cache_opts?.cache_on ?? "url") === "url") {
+	if ((init?.cache_opts?.cache_on ?? 'url') === 'url') {
 		return MD5(input).toString();
-	}
-	else return MD5(input + JSON.stringify(init)).toString();
+	} else return MD5(input + JSON.stringify(init)).toString();
 }
 
 async function generate_cache_file_path(opts: { directory?: string; cache_key: string }) {
-	opts.directory ??= (await fs().temp_directory()) ?? "";
+	opts.directory ??= (await fs().temp_directory()) ?? '';
 	return pathlib.join(opts.directory, opts.cache_key + cache_file_extension);
 }
 
 export async function invalidate_rozfetch_cache(init: RoZFetchRequestInit, cache_key: string) {
 	rozfetch_cache.remove(cache_key);
-	if (fs && init?.cache_opts && (init.cache_opts.cache_mode === "file" || init.cache_opts.cache_mode === "all")) {
+	if (fs && init?.cache_opts && (init.cache_opts.cache_mode === 'file' || init.cache_opts.cache_mode === 'all')) {
 		const cache_file_path = await generate_cache_file_path({ cache_key, directory: init.cache_opts?.cache_directory });
 		const file_info = await fs().get_info(cache_file_path);
 		if (!file_info.exists) return;
@@ -75,27 +71,27 @@ export async function invalidate_rozfetch_cache(init: RoZFetchRequestInit, cache
 }
 
 async function check_rozfetch_cache<T>(init: RoZFetchRequestInit, cache_key: string): PromiseResult<RoZFetchResponse<T> | undefined> {
-	if (init?.cache_opts) init.cache_opts.cache_mode ??= "none";
-	if (init.cache_opts?.cache_mode === "none") return;
-	if (init?.cache_opts && (init.cache_opts.cache_mode === "memory" || init.cache_opts.cache_mode === "all")) {
+	if (init?.cache_opts) init.cache_opts.cache_mode ??= 'none';
+	if (init.cache_opts?.cache_mode === 'none') return;
+	if (init?.cache_opts && (init.cache_opts.cache_mode === 'memory' || init.cache_opts.cache_mode === 'all')) {
 		const cache_response = rozfetch_cache.get(cache_key);
 		if (cache_response) {
-			if (!("error" in cache_response)) cache_response.cache_timestamp = rozfetch_cache.get_raw(cache_key)?.created_at.getTime() ?? -1;
+			if (!('error' in cache_response)) cache_response.cache_timestamp = rozfetch_cache.get_raw(cache_key)?.created_at.getTime() ?? -1;
 			return cache_response as RoZFetchResponse<T>;
 		}
 	}
-	if (fs && init?.cache_opts && (init.cache_opts.cache_mode === "file" || init.cache_opts.cache_mode === "all")) {
+	if (fs && init?.cache_opts && (init.cache_opts.cache_mode === 'file' || init.cache_opts.cache_mode === 'all')) {
 		const cache_file_path = await generate_cache_file_path({ cache_key, directory: init.cache_opts.cache_directory });
 		const file_info = await fs().get_info(cache_file_path);
 		if (!file_info.exists) return;
-		const data = await fs().read_as_string(cache_file_path, { encoding: "utf8" });
-		if (typeof data === "object") return;
+		const data = await fs().read_as_string(cache_file_path, { encoding: 'utf8' });
+		if (typeof data === 'object') return;
 		const response = new Response() as RoZFetchResponse<T>;
 		response.text = (async () => data) as RozFetchText<T>;
 		response.json = (async () => try_json_parse<T>(data)) as RozFetchJSON<T>;
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init, cache_key);
 		response.cache_timestamp = file_info.file_modified_ms;
-		if (init.cache_opts.cache_mode === "all") {
+		if (init.cache_opts.cache_mode === 'all') {
 			rozfetch_cache.update(cache_key, response, init.cache_opts.cache_ms);
 		}
 		return response;
@@ -103,13 +99,13 @@ async function check_rozfetch_cache<T>(init: RoZFetchRequestInit, cache_key: str
 	return;
 }
 async function write_cache_file(init: RoZFetchRequestInit, cache_key: string, text: string) {
-	if ((fs && init.cache_opts?.cache_mode === "file") || init.cache_opts?.cache_mode === "all") {
+	if ((fs && init.cache_opts?.cache_mode === 'file') || init.cache_opts?.cache_mode === 'all') {
 		const cache_file_path = await generate_cache_file_path({ cache_key, directory: init.cache_opts.cache_directory });
-		await fs().write_file_as_string(cache_file_path, text, { encoding: "utf8" });
+		await fs().write_file_as_string(cache_file_path, text, { encoding: 'utf8' });
 	}
 }
 async function update_rozfetch_cache<T>(init: RoZFetchRequestInit, response: RoZFetchResponse<T>, cache_key: string, err: ResponseError) {
-	if (!init?.cache_opts || init.cache_opts.cache_mode === "none") return;
+	if (!init?.cache_opts || init.cache_opts.cache_mode === 'none') return;
 	const lifespan_ms = !response.ok ? init.cache_opts.cache_ms_fail ?? init.cache_opts.cache_ms : init.cache_opts.cache_ms;
 	const clone_response = response.clone();
 	response.text = (async () => {
@@ -124,17 +120,17 @@ async function update_rozfetch_cache<T>(init: RoZFetchRequestInit, response: RoZ
 		await write_cache_file(init, cache_key, JSON.stringify(json));
 		return json;
 	}) as RozFetchJSON<T>;
-	if (init.cache_opts.cache_mode === "memory" || init.cache_opts.cache_mode === "all") {
+	if (init.cache_opts.cache_mode === 'memory' || init.cache_opts.cache_mode === 'all') {
 		rozfetch_cache.add(cache_key, !response.ok ? err : response, lifespan_ms);
 	}
 }
 
 function summarize_body(body: BodyInit | null | undefined): unknown {
 	if (body === undefined || body === null) return body;
-	if (typeof body === "string") return body.length > 500 ? `[string, length=${body.length}]` : body;
+	if (typeof body === 'string') return body.length > 500 ? `[string, length=${body.length}]` : body;
 	if (body instanceof Uint8Array) return `[Uint8Array, length=${body.byteLength}]`;
 	if (body instanceof ArrayBuffer) return `[ArrayBuffer, length=${body.byteLength}]`;
-	if (typeof Blob !== "undefined" && body instanceof Blob) return `[Blob, length=${body.size}]`;
+	if (typeof Blob !== 'undefined' && body instanceof Blob) return `[Blob, length=${body.size}]`;
 	return body;
 }
 function error_context_init(init: RoZFetchRequestInit | undefined): object | undefined {
@@ -144,13 +140,13 @@ function error_context_init(init: RoZFetchRequestInit | undefined): object | und
 
 // fix headers for react-native
 function sanitize_headers(headers: HeadersInit | undefined): HeadersInit | undefined {
-	if (headers === undefined || (typeof Headers !== "undefined" && headers instanceof Headers)) return headers;
+	if (headers === undefined || (typeof Headers !== 'undefined' && headers instanceof Headers)) return headers;
 	if (Array.isArray(headers)) return headers.filter(header => header?.[0] !== undefined && header?.[0] !== null && header?.[1] !== undefined && header?.[1] !== null);
 	return Object.fromEntries(Object.entries(headers).filter(([, value]) => value !== undefined && value !== null));
 }
 
-export const ABORT_MESSAGE = "[ABORTED_ROZFETCH]";
-async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
+export const ABORT_MESSAGE = '[ABORTED_ROZFETCH]';
+export default async function rozfetch<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
 	try {
 		await load_native_fs();
 		const cache_key = rozfetch_cache_key(input, init);
@@ -158,12 +154,7 @@ async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestIni
 		if (cached_response !== undefined) return cached_response;
 
 		let transport: typeof fetch = fetch;
-		if (init?.impersonate) {
-			await load_native_scrapefetch();
-			const sf = scrapefetch();
-			if (sf) transport = sf as typeof fetch;
-		}
-		else if (init?.proxy) {
+		if (init?.proxy) {
 			await load_native_proxyfetch();
 			const pf = proxyfetch();
 			if (pf) transport = pf as typeof fetch;
@@ -173,7 +164,7 @@ async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestIni
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
 
-		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, "INFO", {}, { input, init: error_context_init(init) });
+		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, 'INFO', {}, { input, init: error_context_init(init) });
 		await update_rozfetch_cache(init ?? {}, response, cache_key, err);
 
 		if (!response.ok && init?.ignore_fail_request !== true) return err;
@@ -186,14 +177,9 @@ async function rozfetch_once<T = never>(input: string, init?: RoZFetchRequestIni
 			error.message = ABORT_MESSAGE + err.message;
 			error.stack = ABORT_MESSAGE + err.stack;
 			error.cause = err.cause;
-			return generror_catch(error, "rozfetch failed", "LOW", { input, init: { ...error_context_init(init), headers: "{VARIOUS HEADERS}" } });
+			return generror_catch(error, 'rozfetch failed', 'LOW', { input, init: { ...error_context_init(init), headers: '{VARIOUS HEADERS}' } });
 		}
-		if ((e as Error).message.includes("Network request failed")) return generror_catch(e, "rozfetch failed", "INFO", { input, init: error_context_init(init) });
-		return generror_catch(e, "rozfetch failed", "MEDIUM", { input, init: error_context_init(init) });
+		if ((e as Error).message.includes('Network request failed')) return generror_catch(e, 'rozfetch failed', 'INFO', { input, init: error_context_init(init) });
+		return generror_catch(e, 'rozfetch failed', 'MEDIUM', { input, init: error_context_init(init) });
 	}
-}
-
-export default async function rozfetch<T = never>(input: string, init?: RoZFetchRequestInit): PromiseResult<RoZFetchResponse<T>> {
-	if (init?.retry === false) return rozfetch_once<T>(input, init);
-	return retry_result<RoZFetchResponse<T>>(async() => await rozfetch_once<T>(input, init), {wait_for_network: true, ...init?.retry});
 }

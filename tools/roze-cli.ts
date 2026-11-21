@@ -48,7 +48,7 @@ ${magenta("roz")} ${blue("-i")} ${yellow("[syosetu|jnovel|pdf|text|roz|witchcult
   ${magenta("roz")} ${blue("-i")} ${yellow("epub")} ${cyan("<epub-file-path/url>")}                                               Epub file at {epub-file-path}
   ${magenta("roz")} ${blue("-i")} ${yellow("docx")} ${cyan("<docx-file-path/url>")}                                               Docx file at {docx-file-path}
   ${magenta("roz")} ${blue("-i")} ${yellow("roz")} ${cyan("<roz-file-path/url>")}                                                 Roz file at {roz-file-path}
-  ${magenta("roz")} ${blue("-i")} ${yellow("witchcult_translations")} ${cyan("<witchcult_translations-url>")}                     NO_DETAIL
+  ${magenta("roz")} ${blue("-i")} ${yellow("witchcult_translations")} ${cyan("<arc-no/arc-url>")}                                 Re:Zero arc from https://witchculttranslation.com/arc-{arc-no}
 
 ${magenta("roz")} ${cyan("<input>")} ${blue("-v")} ${cyan("<voice>")}                                                           Sets the voice for the audiobook
 ${magenta("roz")} ${cyan("<input>")} ${blue("-l")} ${cyan("<cover?>")}                                                          Outputs cover file
@@ -298,9 +298,15 @@ async function get_roz(source_file_type: RozSourceFileType, input_options: strin
 		}
 		case "WITCHCULT": {
 			const witchcult_progress_bar = new cliprogress.SingleBar({ stopOnComplete: true }, cliprogress.Presets.shades_classic);
-			witchcult_progress_bar.start(2, 0);
-			return await WitchcultTranslations.arcno_to_roz(0, {
-				on_chapter_fetch: () => { return }
+			const arc_no = Number(/(?:arc-)?(\d+)\/?$/i.exec(input_options[0])?.[1]);
+			if (!Number.isInteger(arc_no) || arc_no < 1) {
+				log_input_error("Invalid Arc number or Arc url", "WITCHCULT");
+				return no_roz;
+			}
+			witchcult_progress_bar.start(1, 0);
+			return await WitchcultTranslations.arcno_to_roz(arc_no, {
+				on_chapter_count: (count) => witchcult_progress_bar.setTotal(count),
+				on_chapter_fetch: () => witchcult_progress_bar.increment()
 			});
 		}
 		case "FILEBASE": {

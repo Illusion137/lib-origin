@@ -1,0 +1,1 @@
+act pull_request --env-file /dev/null

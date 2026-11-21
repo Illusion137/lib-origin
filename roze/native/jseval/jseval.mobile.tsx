@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
-import { View, StyleSheet } from "react-native";
-import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import React, { useCallback } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 interface PendingRequest {
 	resolve: (result: any) => void;
@@ -8,7 +8,7 @@ interface PendingRequest {
 	timer: ReturnType<typeof setTimeout>;
 }
 
-const BGUTILS_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)";
+const BGUTILS_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)';
 export const WEBVIEW_INJECTED_JS = `\n` + `
 (function() {
     var _wv_log = function(level, args) {
@@ -60,9 +60,8 @@ export const WEBVIEW_INJECTED_JS = `\n` + `
 true;
 `;
 
-const WEBVIEW_ORIGIN_WHITELIST = ["*"];
+const WEBVIEW_ORIGIN_WHITELIST = ['*'];
 
- 
 export let _jseval_webview_ref: WebView | null = null;
 export let _jseval_is_ready = false;
 export let _jseval_ready_promise: Promise<void> | null = null;
@@ -86,21 +85,21 @@ function handle_message(event: WebViewMessageEvent) {
 		return;
 	}
 
-	if (data.type === "WV_LOG") {
+	if (data.type === 'WV_LOG') {
 		const prefix = `[WebView:${data.level}]`;
-		if (data.level === "error") console.error(prefix, data.msg);
-		else if (data.level === "warn") console.warn(prefix, data.msg);
+		if (data.level === 'error') console.error(prefix, data.msg);
+		else if (data.level === 'warn') console.warn(prefix, data.msg);
 		else console.log(prefix, data.msg);
 		return;
 	}
 
-	if (data.type === "JSEVAL_READY") {
+	if (data.type === 'JSEVAL_READY') {
 		_jseval_is_ready = true;
 		_jseval_ready_resolve?.();
 		return;
 	}
 
-	if (data.type === "EVAL_RESULT") {
+	if (data.type === 'EVAL_RESULT') {
 		const req = _jseval_pending.get(data.request_id);
 		if (req) {
 			clearTimeout(req.timer);
@@ -110,7 +109,7 @@ function handle_message(event: WebViewMessageEvent) {
 		return;
 	}
 
-	if (data.type === "EVAL_ERROR") {
+	if (data.type === 'EVAL_ERROR') {
 		const req = _jseval_pending.get(data.request_id);
 		if (req) {
 			clearTimeout(req.timer);
@@ -123,7 +122,7 @@ function handle_message(event: WebViewMessageEvent) {
 
 export async function eval_in_webview(code: string, timeout_ms = 15_000): Promise<any> {
 	if (!_jseval_webview_ref) {
-		throw new Error("JSEvaluatorWebView is not mounted. Add <JSEvaluatorWebView /> to your component tree.");
+		throw new Error('JSEvaluatorWebView is not mounted. Add <JSEvaluatorWebView /> to your component tree.');
 	}
 
 	if (!_jseval_is_ready) {
@@ -143,7 +142,7 @@ export async function eval_in_webview(code: string, timeout_ms = 15_000): Promis
 
 		_jseval_webview_ref!.postMessage(
 			JSON.stringify({
-				type: "EVAL_CODE",
+				type: 'EVAL_CODE',
 				request_id,
 				code
 			})
@@ -192,7 +191,7 @@ export function JSEvaluatorWebView() {
 
 const styles = StyleSheet.create({
 	hidden: {
-		position: "absolute",
+		position: 'absolute',
 		top: -10000,
 		left: 0,
 		width: 1,

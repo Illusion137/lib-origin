@@ -1,9 +1,9 @@
-import type { PromiseResult, ResponseError } from "@common/types";
+import type { PromiseResult, ResponseError } from '@common/types';
 
 export interface NoOverwriteOpts {
 	no_overwrite?: boolean;
 }
-export type EncodingTypes = "utf8" | "base64";
+export type EncodingTypes = 'utf8' | 'base64';
 export interface EncodingOpts {
 	encoding?: EncodingTypes;
 }
@@ -36,7 +36,7 @@ export interface FileSystem {
 	temp_directory: (...paths: string[]) => Promise<string>;
 	document_directory: (...paths: string[]) => Promise<string>;
 	read_as_string: (path: string, opts: EncodingOpts) => PromiseResult<string>;
-	read_as_buffer: (path: string) => PromiseResult<ArrayBuffer >;
+	read_as_buffer: (path: string) => PromiseResult<ArrayBuffer>;
 	read_as_buffer_range: (path: string, position: number, length: number) => PromiseResult<Uint8Array>;
 	read_directory: (path: string) => Promise<string[] | ResponseError>;
 	get_info: (path: string) => Promise<FileInfo>;

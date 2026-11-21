@@ -1,10 +1,10 @@
-import { generror, generror_catch } from "@common/utils/error_util";
-import { gen_uuid } from "@common/utils/util";
-import type { DownloadSavable, FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from "@native/fs/fs.base";
-import * as expo_fs from "expo-file-system/legacy";
-import { File, Paths } from "expo-file-system";
+import { generror, generror_catch } from '@common/utils/error_util';
+import { gen_uuid } from '@common/utils/util';
+import type { DownloadSavable, FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from '@native/fs/fs.base';
+import * as expo_fs from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import { toByteArray } from 'react-native-quick-base64';
-import path_lib from "path";
+import path_lib from 'path';
 
 function join_uri(base: string, ...paths: string[]): string {
 	if (paths.length === 0) return base;
@@ -19,26 +19,26 @@ export const mobile_fs: FileSystem = {
 		try {
 			return await expo_fs.readAsStringAsync(path, opts);
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", "LOW", { path, opts });
+			return generror_catch(error, 'Failed to read file as string', 'LOW', { path, opts });
 		}
 	},
 	read_as_buffer: async (path: string) => {
 		try {
-			const base64 = await expo_fs.readAsStringAsync(path, {encoding: "base64"});
+			const base64 = await expo_fs.readAsStringAsync(path, { encoding: 'base64' });
 			const uint8_array = toByteArray(base64);
 			return uint8_array.buffer as ArrayBuffer;
 		} catch (error) {
-			return generror_catch(error, "Failed to read file as string", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to read file as string', 'MEDIUM', { path });
 		}
 	},
 	read_as_buffer_range: async (path: string, position: number, length: number) => {
-		let handle: ReturnType<File["open"]> | undefined = undefined;
+		let handle: ReturnType<File['open']> | undefined = undefined;
 		try {
 			handle = new File(path).open();
 			handle.offset = position;
 			return handle.readBytes(length);
 		} catch (error) {
-			return generror_catch(error, "Failed to read file range", "MEDIUM", { path, position, length });
+			return generror_catch(error, 'Failed to read file range', 'MEDIUM', { path, position, length });
 		} finally {
 			handle?.close();
 		}
@@ -47,7 +47,7 @@ export const mobile_fs: FileSystem = {
 		try {
 			return await expo_fs.readDirectoryAsync(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to read directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to read directory', 'MEDIUM', { path });
 		}
 	},
 	get_info: async (path: string) => {
@@ -76,51 +76,51 @@ export const mobile_fs: FileSystem = {
 			await expo_fs.writeAsStringAsync(path, contents, opts);
 			return;
 		} catch (error) {
-			return generror_catch(error, "Failed to write file", "MEDIUM", { path, opts, contents });
+			return generror_catch(error, 'Failed to write file', 'MEDIUM', { path, opts, contents });
 		}
 	},
 	move: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await expo_fs.moveAsync({ from: from_path, to: to_path });
 		} catch (error) {
-			return generror_catch(error, "Failed to move file/directory", "MEDIUM", { from_path, to_path, opts });
+			return generror_catch(error, 'Failed to move file/directory', 'MEDIUM', { from_path, to_path, opts });
 		}
 	},
 	copy: async (from_path: string, to_path: string, opts: NoOverwriteOpts) => {
 		try {
 			return await expo_fs.copyAsync({ from: from_path, to: to_path });
 		} catch (error) {
-			return generror_catch(error, "Failed to copy file/directory", "MEDIUM", { from_path, to_path, opts });
+			return generror_catch(error, 'Failed to copy file/directory', 'MEDIUM', { from_path, to_path, opts });
 		}
 	},
 	make_directory: async (path: string) => {
 		try {
 			return await expo_fs.makeDirectoryAsync(path);
 		} catch (error) {
-			return generror_catch(error, "Failed to make directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to make directory', 'MEDIUM', { path });
 		}
 	},
 	remove: async (path: string) => {
 		try {
 			return await expo_fs.deleteAsync(path, { idempotent: true });
 		} catch (error) {
-			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to remove file/directory', 'MEDIUM', { path });
 		}
 	},
 	remove_dir: async (path: string) => {
 		try {
 			return await expo_fs.deleteAsync(path, { idempotent: true });
 		} catch (error) {
-			return generror_catch(error, "Failed to remove file/directory", "MEDIUM", { path });
+			return generror_catch(error, 'Failed to remove file/directory', 'MEDIUM', { path });
 		}
 	},
 	download_to_file: async (uri: string, to_path?: string, headers?: Record<string, string>) => {
 		try {
-			if (!to_path) to_path = path_lib.join(expo_fs.cacheDirectory!, gen_uuid() + ".tmp");
+			if (!to_path) to_path = path_lib.join(expo_fs.cacheDirectory!, gen_uuid() + '.tmp');
 			await expo_fs.downloadAsync(uri, to_path, headers ? { headers } : {});
 			return to_path;
 		} catch (error) {
-			return generror_catch(error, "Failed to download_to_file", "MEDIUM", { uri, to_path });
+			return generror_catch(error, 'Failed to download_to_file', 'MEDIUM', { uri, to_path });
 		}
 	},
 	download_resumable: (opts: ResumableDownloadOpts) => {
@@ -129,7 +129,7 @@ export const mobile_fs: FileSystem = {
 			opts.uri,
 			opts.to_path,
 			download_options,
-			(p) => opts.on_progress?.(p.totalBytesWritten, p.totalBytesExpectedToWrite),
+			p => opts.on_progress?.(p.totalBytesWritten, p.totalBytesExpectedToWrite),
 			opts.resume_data
 		);
 		let last_savable: DownloadSavable = { url: opts.uri, to_path: opts.to_path, headers: opts.headers, resume_data: opts.resume_data };
@@ -137,10 +137,10 @@ export const mobile_fs: FileSystem = {
 			start: async () => {
 				try {
 					const result = opts.resume_data ? await task.resumeAsync() : await task.downloadAsync();
-					if (!result) return generror("Resumable download returned no result", "MEDIUM", { uri: opts.uri, to_path: opts.to_path });
+					if (!result) return generror('Resumable download returned no result', 'MEDIUM', { uri: opts.uri, to_path: opts.to_path });
 					return result.uri;
 				} catch (error) {
-					return generror_catch(error, "Failed resumable download", "MEDIUM", { uri: opts.uri, to_path: opts.to_path });
+					return generror_catch(error, 'Failed resumable download', 'MEDIUM', { uri: opts.uri, to_path: opts.to_path });
 				}
 			},
 			pause: async () => {

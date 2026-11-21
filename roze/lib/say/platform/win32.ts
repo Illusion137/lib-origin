@@ -1,60 +1,60 @@
-import { spawn } from "child_process";
-import { catch_ignore, generror, generror_catch } from "@common/utils/error_util";
-import type { SayPlatformBase } from "./base";
-import type { ResponseError } from "@common/types";
-import os from "os";
-import path from "path-browserify";
-import fs from "fs/promises";
-import { gen_uuid } from "@common/utils/util";
+import { spawn } from 'child_process';
+import { catch_ignore, generror, generror_catch } from '@common/utils/error_util';
+import type { SayPlatformBase } from './base';
+import type { ResponseError } from '@common/types';
+import os from 'os';
+import path from 'path-browserify';
+import fs from 'fs/promises';
+import { gen_uuid } from '@common/utils/util';
 
 export const SayPlatformWin32: SayPlatformBase = {
 	get_voices: async () => {
-		const ps_command = "Add-Type -AssemblyName System.speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;$speak.GetInstalledVoices() | % {$_.VoiceInfo.Name}";
+		const ps_command = 'Add-Type -AssemblyName System.speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;$speak.GetInstalledVoices() | % {$_.VoiceInfo.Name}';
 		return new Promise((resolve) => {
 			try {
-				const powershell = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command], { windowsHide: true });
+				const powershell = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps_command], { windowsHide: true });
 
-				let voices_str = "";
+				let voices_str = '';
 				let voices: string[] = [];
 
-				powershell.stdin.setDefaultEncoding("ascii");
-				powershell.stderr.setEncoding("ascii");
+				powershell.stdin.setDefaultEncoding('ascii');
+				powershell.stderr.setEncoding('ascii');
 
-				powershell.stdout.on("data", function (data) {
+				powershell.stdout.on('data', function (data) {
 					const output = data.toString();
 					voices_str += output;
 				});
 
-				powershell.addListener("exit", () => {
+				powershell.addListener('exit', () => {
 					if (voices_str.length > 0) {
-						voices = voices_str.split("\r\n");
-						voices = voices[voices.length - 1] === "" ? voices.slice(0, voices.length - 1) : voices;
+						voices = voices_str.split('\r\n');
+						voices = voices[voices.length - 1] === '' ? voices.slice(0, voices.length - 1) : voices;
 					}
 				});
 
 				powershell.stdin.end();
 
-				powershell.on("close", (code) => (code === 0 ? resolve(voices) : generror("Failed to get tts voices", "CRITICAL", { code })));
+				powershell.on('close', code => (code === 0 ? resolve(voices) : generror('Failed to get tts voices', 'CRITICAL', { code })));
 			} catch (e) {
-				resolve(generror_catch(e, "Failed to get tts voices", "CRITICAL", {}));
+				resolve(generror_catch(e, 'Failed to get tts voices', 'CRITICAL', {}));
 			}
 		});
 	},
 	speak: async (text: string, voice?: string, speed?: number) => {
-		let ps_command = "Add-Type -AssemblyName System.speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;";
+		let ps_command = 'Add-Type -AssemblyName System.speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;';
 		if (voice) ps_command += `$speak.SelectVoice('${voice}');`;
 		if (speed) ps_command += `$speak.Rate = ${speed};`;
 		ps_command += `$speak.Speak([Console]::In.ReadToEnd())`;
 
 		return new Promise((resolve) => {
 			try {
-				const ps = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command], { windowsHide: true });
+				const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps_command], { windowsHide: true });
 				ps.stdin.end(text);
-				ps.stdout.on("data", (data) => console.log(`[TTS] ${data}`));
-				ps.stderr.on("data", (data) => console.error(`[TTS ERROR] ${data}`));
-				ps.on("close", (code) => (code === 0 ? resolve(code) : generror("Failed to speak tts", "CRITICAL", { code })));
+				ps.stdout.on('data', data => console.log(`[TTS] ${data}`));
+				ps.stderr.on('data', data => console.error(`[TTS ERROR] ${data}`));
+				ps.on('close', code => (code === 0 ? resolve(code) : generror('Failed to speak tts', 'CRITICAL', { code })));
 			} catch (e) {
-				resolve(generror_catch(e, "Failed to speak tts", "CRITICAL", { text, voice, speed }));
+				resolve(generror_catch(e, 'Failed to speak tts', 'CRITICAL', { text, voice, speed }));
 			}
 		});
 	},
@@ -67,7 +67,7 @@ export const SayPlatformWin32: SayPlatformBase = {
 
 		// Windows SpeechSynthesizer rate is -10..10 — clamp it.
 		const rate = Math.max(-10, Math.min(10, speed ?? 0));
-		voice = voice ?? "";
+		voice = voice ?? '';
 
 		const tmp_directory = os.tmpdir();
 		const stamp = gen_uuid();
@@ -242,44 +242,44 @@ export const SayPlatformWin32: SayPlatformBase = {
 	}
 	`;
 
-		await fs.writeFile(script_path, powershell_script, "utf8");
-		await fs.writeFile(json_path, JSON.stringify(texts), { encoding: "utf8", flag: "w" });
+		await fs.writeFile(script_path, powershell_script, 'utf8');
+		await fs.writeFile(json_path, JSON.stringify(texts), { encoding: 'utf8', flag: 'w' });
 
 		return await new Promise<number | ResponseError>((resolve) => {
 			const powershell = spawn(
-				"pwsh",
+				'pwsh',
 				[
-					"-NoProfile",
-					"-ExecutionPolicy",
-					"Bypass",
-					"-File",
+					'-NoProfile',
+					'-ExecutionPolicy',
+					'Bypass',
+					'-File',
 					script_path,
-					"-JsonPath",
+					'-JsonPath',
 					json_path,
-					"-Voice",
+					'-Voice',
 					voice,
-					"-Rate",
+					'-Rate',
 					String(rate)
 				],
 				{ windowsHide: true }
 			);
 
-			powershell.stdout.on("data", (data) => {
+			powershell.stdout.on('data', (data) => {
 				on_text_export?.(stamp, data.toString());
 			});
 
-			powershell.stderr.on("data", (d) => {
+			powershell.stderr.on('data', (d) => {
 				process.stderr.write(`[TTS ERROR] ${d}`);
 			});
 
-			powershell.on("close", async (code) => {
+			powershell.on('close', async (code) => {
 				try {
 					await fs.unlink(script_path).catch(catch_ignore);
 					await fs.unlink(json_path).catch(catch_ignore);
 				} finally {
 					code === 0
 						? resolve(code)
-						: resolve(generror("Failed to export tts", "CRITICAL", { code }));
+						: resolve(generror('Failed to export tts', 'CRITICAL', { code }));
 				}
 			});
 		});

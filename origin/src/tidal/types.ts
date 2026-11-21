@@ -56,7 +56,7 @@ export interface TidalTrack {
 	audioModes: string[];
 	artist: TidalArtist;
 	artists: TidalArtist[];
-	album: Pick<TidalAlbum, "id" | "title" | "cover" | "videoCover">;
+	album: Pick<TidalAlbum, 'id' | 'title' | 'cover' | 'videoCover'>;
 }
 
 export interface TidalPlaylist {
@@ -64,7 +64,7 @@ export interface TidalPlaylist {
 	title: string;
 	numberOfTracks: number;
 	numberOfVideos: number;
-	creator: { id: number, name?: string, url?: string, picture?: string };
+	creator: { id: number; name?: string; url?: string; picture?: string };
 	description: string;
 	duration: number;
 	lastUpdated: string;
@@ -89,5 +89,5 @@ export interface TidalSearchResult {
 	albums: TidalList<TidalAlbum>;
 	playlists: TidalList<TidalPlaylist>;
 	tracks: TidalList<TidalTrack>;
-	topHit: { value: TidalArtist | TidalAlbum | TidalTrack | TidalPlaylist, type: string } | null;
+	topHit: { value: TidalArtist | TidalAlbum | TidalTrack | TidalPlaylist; type: string } | null;
 }

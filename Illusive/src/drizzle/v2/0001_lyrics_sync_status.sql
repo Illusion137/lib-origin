@@ -1,0 +1,1 @@
+ALTER TABLE `user_tracks` ADD `sync_status` text DEFAULT 'NONE' NOT NULL;

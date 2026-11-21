@@ -1,8 +1,8 @@
 import { Shumil } from 'react-native-shumil';
-import { VoiceSynthConstants, PIPER_VOICE_CATALOG, KOKORO_VOICE_CATALOG, type DownloadableVoiceCatalogEntry } from "@native/voice_synth/voice_synth_constants";
-import type { VoiceBank, VoiceExportBatchTexts, VoiceOptions, VoiceSynth } from "@native/voice_synth/voice_synth.base";
-import { fs } from "@native/fs/fs";
-import { generror_catch } from "@common/utils/error_util";
+import { VoiceSynthConstants, PIPER_VOICE_CATALOG, KOKORO_VOICE_CATALOG, type DownloadableVoiceCatalogEntry } from '@native/voice_synth/voice_synth_constants';
+import type { VoiceBank, VoiceExportBatchTexts, VoiceOptions, VoiceSynth } from '@native/voice_synth/voice_synth.base';
+import { fs } from '@native/fs/fs';
+import { generror_catch } from '@common/utils/error_util';
 
 let active_engine: 'avs' | 'kokoro' | 'piper' = 'avs';
 // Tracks which downloadable model is currently loaded into the native piper/kokoro
@@ -11,7 +11,7 @@ let active_engine: 'avs' | 'kokoro' | 'piper' = 'avs';
 let loaded_model: { engine: string; model_id: string } | null = null;
 
 function strip_file_scheme(p: string): string {
-	return p.startsWith("file://") ? p.slice("file://".length) : p;
+	return p.startsWith('file://') ? p.slice('file://'.length) : p;
 }
 
 function catalog_for(engine: string): DownloadableVoiceCatalogEntry[] {
@@ -47,7 +47,7 @@ async function model_paths(engine: string, model_id: string) {
 async function model_is_complete(engine: string, model_id: string): Promise<boolean> {
 	const paths = await model_paths(engine, model_id);
 	const required_uris = engine === 'kokoro' ? [paths.primary_uri, paths.voices_uri, paths.tokens_uri, paths.espeak_uri] : [paths.primary_uri, paths.tokens_uri, paths.espeak_uri];
-	const infos = await Promise.all(required_uris.map(async(uri) => await fs().get_info(uri)));
+	const infos = await Promise.all(required_uris.map(async uri => await fs().get_info(uri)));
 	return infos.every(info => info.exists);
 }
 
@@ -74,7 +74,7 @@ export const mobile_voice_synth: VoiceSynth = {
 		const remaining = catalog.filter(entry => !covered_ids.has(entry.id));
 		const unique_model_ids = [...new Set(remaining.map(entry => entry.model_id))];
 		const exists_by_model: Record<string, boolean> = {};
-		await Promise.all(unique_model_ids.map(async model_id => {
+		await Promise.all(unique_model_ids.map(async (model_id) => {
 			exists_by_model[model_id] = await model_is_complete(active_engine, model_id);
 		}));
 		const downloadable: VoiceBank[] = remaining.map(entry => ({
@@ -104,13 +104,13 @@ export const mobile_voice_synth: VoiceSynth = {
 			loaded_model = { engine: active_engine, model_id };
 			return;
 		} catch (error) {
-			return generror_catch(error, "Failed to prepare voice model", "MEDIUM", { engine: active_engine, model_id });
+			return generror_catch(error, 'Failed to prepare voice model', 'MEDIUM', { engine: active_engine, model_id });
 		}
 	},
 	speak: async (text: string, opts: VoiceOptions) => {
 		await Shumil.speak(text, active_engine, {
 			voiceId: opts.voice_bank?.id,
-			rate: opts.rate ?? VoiceSynthConstants.default_node_speach_rate,
+			rate: opts.rate ?? VoiceSynthConstants.default_node_speach_rate
 		});
 	},
 	speak_export: async (texts: VoiceExportBatchTexts, opts: VoiceOptions) => {
@@ -126,8 +126,8 @@ export const mobile_voice_synth: VoiceSynth = {
 		const native_opts: Parameters<typeof Shumil.exportBatch>[2] & { onJobComplete?: (outputPath: string) => void } = {
 			voiceId: opts.voice_bank?.id,
 			rate: opts.rate ?? VoiceSynthConstants.default_node_speach_rate,
-			onJobComplete: (output_path: string) => { opts.on_data?.(output_path, output_path); },
+			onJobComplete: (output_path: string) => { opts.on_data?.(output_path, output_path); }
 		};
 		await Shumil.exportBatch(texts.map(t => ({ text: t.text, outputPath: t.export_path })), active_engine, native_opts);
-	},
-}
+	}
+};
