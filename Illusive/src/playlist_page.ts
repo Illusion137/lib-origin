@@ -1,5 +1,5 @@
 import { gen_uuid, is_empty, json_catch } from '@common/utils/util';
-import type { MusicServicePlaylist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from './types';
+import type { Continuation, MusicServicePlaylist, NamedUUID, Playlist, SerializedCompactPlaylistData, Track } from './types';
 import { SQLPlaylists } from './sql/sql_playlists';
 import type { ResponseError } from '@common/types';
 import { Illusive } from './illusive';
@@ -103,11 +103,12 @@ export namespace PlaylistPage {
 		};
 	}
 
-	export async function playlist_initial_data_tracks_list(title: string, tracks: Track[]): Promise<PlaylistInitialData> {
+	export async function playlist_initial_data_tracks_list(title: string, tracks: Track[], continuation?: Continuation<Track>): Promise<PlaylistInitialData> {
 		const base_playlist_data: PlaylistInitialData = await playlist_initial_data_default_playlist(title);
 		return {
 			...base_playlist_data,
-			initial_tracks: SQLTracks.add_playback_saved_data_to_tracks(tracks ?? [])
+			initial_tracks: SQLTracks.add_playback_saved_data_to_tracks(tracks ?? []),
+			continuation: continuation ?? null
 		};
 	}
 

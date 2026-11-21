@@ -250,6 +250,7 @@ export interface YTMArtistResult {
 	similar_artists: YTMArtist[];
 	albums_continuation: string | null;
 	singles_continuation: string | null;
+	playlists_continuation: string | null;
 	tracks_continuation: string | null;
 	similar_artists_continuation: string | null;
 }
@@ -276,14 +277,52 @@ function album_type_of(item_type?: string): YTMAlbumType {
 	}
 }
 
+function run_browse_id(run: Misc.TextRun | Misc.EmojiRun): string | undefined {
+	return 'endpoint' in run ? (run.endpoint?.payload as { browseId?: string } | undefined)?.browseId : undefined;
+}
+function column_artist_refs(item: YTNodes.MusicResponsiveListItem, linked: YTMArtistRef[]): YTMArtistRef[] {
+	const first = linked[0]?.browse_id;
+	if (first === undefined) return linked;
+	const runs = item.flex_columns.find(column => column.title.runs?.some(run => run_browse_id(run) === first))?.title.runs;
+	if (runs === undefined) return linked;
+	const refs: YTMArtistRef[] = [];
+	for (const run of runs) {
+		const browse_id = run_browse_id(run);
+		if (browse_id !== undefined) {
+			refs.push({ name: run.text, browse_id });
+			continue;
+		}
+		const [credits] = run.text.split('•');
+		for (const name of credits.split(/,|&/)) if (name.trim() !== '') refs.push({ name: name.trim() });
+		if (run.text.includes('•')) break;
+	}
+	return refs.length >= linked.length ? refs : linked;
+}
+
+function column_views(item: YTNodes.MusicResponsiveListItem): string | undefined {
+	for (const column of item.flex_columns) {
+		const text = column.title.toString().split('•').at(-1)?.trim() ?? '';
+		if (/^[\d.,]+[KMB]?\s*(plays?|views?)$/i.test(text)) return text;
+	}
+	return undefined;
+}
+
+function column_album(item: YTNodes.MusicResponsiveListItem): YTMArtistRef | undefined {
+	for (const column of item.flex_columns) {
+		const run = column.title.runs?.find(run => run_browse_id(run)?.startsWith('MPRE'));
+		if (run !== undefined) return { name: run.text, browse_id: run_browse_id(run) };
+	}
+	return undefined;
+}
+
 export function parse_ytm_track(item: YTNodes.MusicResponsiveListItem): YTMTrack {
 	return {
 		video_id: item.id,
 		title: item.title ?? '',
-		artists: artist_refs(item.artists ?? item.authors ?? (item.author ? [item.author] : [])),
-		album: item.album ? { name: item.album.name, browse_id: item.album.id } : undefined,
+		artists: column_artist_refs(item, artist_refs(item.artists ?? item.authors ?? (item.author ? [item.author] : []))),
+		album: item.album ? { name: item.album.name, browse_id: item.album.id } : column_album(item),
 		duration_seconds: item.duration?.seconds,
-		views: views_number(item.views),
+		views: views_number(item.views ?? column_views(item)),
 		explicit: has_explicit(item.badges),
 		thumbnails: thumbs(item.thumbnails)
 	};

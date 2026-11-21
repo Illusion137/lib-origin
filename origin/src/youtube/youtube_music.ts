@@ -56,17 +56,24 @@ export namespace YouTubeMusic {
 		return register_more(() => fetch_grid(session, () => session.actions.execute('/browse', { browseId: payload.browseId, params: payload.params, client: 'YTMUSIC', parse: true }), parse));
 	}
 
+	function continuation_item_token(contents: YTNode[]): string | null {
+		const item = contents.filter(node => node.is(YTNodes.ContinuationItem)).at(-1)?.as(YTNodes.ContinuationItem);
+		return (item?.endpoint.payload as { token?: string } | undefined)?.token ?? null;
+	}
+
 	async function fetch_songs(session: Innertube, call: () => Promise<{ contents?: YTNode[]; continuation?: string | null } | undefined>): Promise<Page<YTMTrack[]>> {
 		const shelf = await call();
-		const tracks = (shelf?.contents ?? []).filter(item => item.is(YTNodes.MusicResponsiveListItem)).map(item => Parser.parse_ytm_track(item.as(YTNodes.MusicResponsiveListItem)));
-		const token = shelf?.continuation ?? null;
+		const contents = shelf?.contents ?? [];
+		const tracks = contents.filter(item => item.is(YTNodes.MusicResponsiveListItem)).map(item => Parser.parse_ytm_track(item.as(YTNodes.MusicResponsiveListItem)));
+		const token = shelf?.continuation ?? continuation_item_token(contents);
 		const continuation = token === null
 			? null
 			: register_more(() => fetch_songs(session, async () => {
 					const page = await session.actions.execute('/browse', { continuation: token, client: 'YTMUSIC', parse: true });
+					const memo = page.continuation_contents_memo ?? page.on_response_received_actions_memo;
 					const cc = page.continuation_contents;
 					const next = cc !== null && cc !== undefined && 'continuation' in cc && typeof cc.continuation === 'string' ? cc.continuation : null;
-					return { contents: page.continuation_contents_memo?.getType(YTNodes.MusicResponsiveListItem) ?? [], continuation: next };
+					return { contents: [...(memo?.getType(YTNodes.MusicResponsiveListItem) ?? []), ...(memo?.getType(YTNodes.ContinuationItem) ?? [])], continuation: next };
 				}));
 		return { data: tracks, continuation };
 	}
@@ -174,14 +181,23 @@ export namespace YouTubeMusic {
 		} catch (error) { return generror_catch(error, 'Failed to search YouTube Music', 'MEDIUM', { search_query }); }
 	}
 
+	function album_result(album: YTMusic.Album, browse_id: string): YTMPlaylistResult {
+		const header = playlist_header(album.header);
+		const album_ref = { name: header.title, browse_id };
+		const tracks = album.contents.map(Parser.parse_ytm_track).map(track => ({
+			...track,
+			artists: track.artists.length > 0 ? track.artists : header.artists,
+			album: track.album ?? album_ref,
+			thumbnails: track.thumbnails.length > 0 ? track.thumbnails : header.thumbnails
+		}));
+		return { header, tracks };
+	}
+
 	export async function get_playlist(opts: Opts, playlist_id: string): PromiseResult<Page<YTMPlaylistResult>> {
 		try {
 			const session = await YouTubeSession.get(opts);
 			const id = playlist_urlid(playlist_id);
-			if (id.startsWith('MPRE')) {
-				const album = await session.music.getAlbum(id);
-				return { data: { header: playlist_header(album.header), tracks: album.contents.map(Parser.parse_ytm_track) }, continuation: null };
-			}
+			if (id.startsWith('MPRE')) return { data: album_result(await session.music.getAlbum(id), id), continuation: null };
 			const playlist = await session.music.getPlaylist(id);
 			return make_page(playlist, parse_playlist);
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music playlist', 'MEDIUM', { playlist_id }); }
@@ -189,11 +205,7 @@ export namespace YouTubeMusic {
 
 	export async function get_album(opts: Opts, album_id: string): PromiseResult<YTMPlaylistResult> {
 		try {
-			const album = await (await YouTubeSession.get(opts)).music.getAlbum(album_id);
-			return {
-				header: playlist_header(album.header),
-				tracks: album.contents.map(Parser.parse_ytm_track)
-			};
+			return album_result(await (await YouTubeSession.get(opts)).music.getAlbum(album_id), album_id);
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music album', 'MEDIUM', { album_id }); }
 	}
 
@@ -211,6 +223,11 @@ export namespace YouTubeMusic {
 
 	function parse_artist(session: Innertube, artist: YTMusic.Artist, artist_id: string): YTMArtistResult {
 		const header = reinterpret_cast<MusicHeaderLike | undefined>(artist.header);
+		const artist_ref: YTMArtistRef = { name: header?.title?.text ?? '', browse_id: artist_id };
+		const parse_release = (item: YTNodes.MusicTwoRowItem): YTMAlbum => {
+			const album = Parser.parse_ytm_two_row_album(item);
+			return album.artists.length > 0 ? album : { ...album, artists: [artist_ref] };
+		};
 		const result: YTMArtistResult = {
 			artist: {
 				browse_id: artist_id,
@@ -227,6 +244,7 @@ export namespace YouTubeMusic {
 			similar_artists: [],
 			albums_continuation: null,
 			singles_continuation: null,
+			playlists_continuation: null,
 			tracks_continuation: null,
 			similar_artists_continuation: null
 		};
@@ -245,8 +263,8 @@ export namespace YouTubeMusic {
 				if (!item.is(YTNodes.MusicTwoRowItem)) continue;
 				const two_row = item.as(YTNodes.MusicTwoRowItem);
 				switch (kind) {
-					case 'albums': result.albums.push(Parser.parse_ytm_two_row_album(two_row)); break;
-					case 'singles': result.singles.push(Parser.parse_ytm_two_row_album(two_row)); break;
+					case 'albums': result.albums.push(parse_release(two_row)); break;
+					case 'singles': result.singles.push(parse_release(two_row)); break;
 					case 'videos': result.videos.push(Parser.parse_ytm_two_row_video(two_row)); break;
 					case 'playlists': result.playlists.push(Parser.parse_ytm_two_row_album(two_row)); break;
 					case 'appears_on': result.appears_on.push(Parser.parse_ytm_two_row_album(two_row)); break;
@@ -254,8 +272,9 @@ export namespace YouTubeMusic {
 					default: break;
 				}
 			}
-			if (kind === 'albums') result.albums_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_album);
-			else if (kind === 'singles') result.singles_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_album);
+			if (kind === 'albums') result.albums_continuation = register_grid(session, more_endpoint, parse_release);
+			else if (kind === 'singles') result.singles_continuation = register_grid(session, more_endpoint, parse_release);
+			else if (kind === 'playlists') result.playlists_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_album);
 			else if (kind === 'similar') result.similar_artists_continuation = register_grid(session, more_endpoint, Parser.parse_ytm_two_row_artist);
 		}
 		if (result.top_tracks.length > 0) result.tracks_continuation = register_more(() => fetch_songs(session, () => artist.getAllSongs()));

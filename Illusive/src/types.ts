@@ -415,14 +415,17 @@ export interface MusicServiceRelated {
 	tracks: Track[];
 	error?: ResponseError;
 }
+export interface ContinuationPage<T> { items: T[]; next?: Continuation<T> }
+export type Continuation<T> = () => Promise<ContinuationPage<T>>;
 export interface MusicServiceArtist {
 	name: string;
 	latest_release?: CompactPlaylist;
 	tracks: Track[];
-	tracks_continuation?: () => Promise<Track[]>;
-	albums_continuation?: () => Promise<CompactPlaylist[]>;
-	singles_eps_continuation?: () => Promise<CompactPlaylist[]>;
-	similar_artists_continuation?: () => Promise<CompactArtist[]>;
+	tracks_continuation?: Continuation<Track>;
+	albums_continuation?: Continuation<CompactPlaylist>;
+	singles_eps_continuation?: Continuation<CompactPlaylist>;
+	playlists_continuation?: Continuation<CompactPlaylist>;
+	similar_artists_continuation?: Continuation<CompactArtist>;
 	playlists: CompactPlaylist[];
 	albums: CompactPlaylist[];
 	singles_eps: CompactPlaylist[];

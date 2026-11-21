@@ -1,6 +1,6 @@
 import { AppleMusic, SoundCloud, Spotify, YouTube, YouTubeMusic } from '@origin/index';
 import { CookieJar } from '@common/utils/cookie_util';
-import type { ResponseError } from '@common/types';
+import type { PromiseResult, ResponseError } from '@common/types';
 import { urlid } from '@common/utils/util';
 import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, parse_apple_music_artist_similar_artist, parse_apple_music_artist_track, parse_apple_music_artwork } from '@illusive/parsers/apple_music_parser';
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from '@illusive/parsers/soundcloud_parser';
@@ -8,7 +8,7 @@ import { ytm_album, ytm_artist, ytm_track } from '@illusive/parsers/youtube_musi
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { best_thumbnail, create_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import type { ArtistOpts, CompactArtist, CompactPlaylist, MusicServiceArtist, NamedUUID, Track } from '@illusive/types';
+import type { ArtistOpts, CompactArtist, CompactPlaylist, Continuation, ContinuationPage, MusicServiceArtist, NamedUUID, Track } from '@illusive/types';
 import type { YTChannelResult, YTCompactPlaylist, YTMAlbum, YTMArtist, YTMTrack, YTTrack } from '@origin/youtube/parser';
 import { Constants } from './constants';
 import { GLOBALS } from './globals';
@@ -20,6 +20,7 @@ import { catch_log } from '@common/utils/error_util';
 import { Illusi } from '@origin/illusi/illusi';
 import { IllusiAccount } from './db/sync/illusi_account';
 import { IllusiViews } from './illusi_views';
+import { compact_artist_key, compact_playlist_key, continue_once, track_key } from './continuation';
 
 function get_cookie_jar(pref_opt: Prefs.PrefOptions) {
 	return Prefs.get_pref('use_cookies_on_artist') ? Prefs.get_pref(pref_opt) as CookieJar : new CookieJar([]);
@@ -47,20 +48,49 @@ function default_artist(error?: ResponseError): MusicServiceArtist {
 	};
 }
 
-function ytm_artist_continuation<O, R>(token: string | null, map: (item: O) => R): (() => Promise<R[]>) | undefined {
+type ContinuationFetch = (token: string) => PromiseResult<{ data: unknown; continuation: string | null }>;
+
+function artist_continuation<O, R>(token: string | null, fetch: ContinuationFetch, map: (items: O[]) => R[]): Continuation<R> | undefined {
 	if (token === null) return undefined;
-	return async () => {
-		const items: R[] = [];
-		const cookie_jar = get_cookie_jar('youtube_music_cookie_jar');
-		let next: string | null = token;
-		while (next !== null) {
-			const page = await YouTubeMusic.get_continuation({ cookie_jar }, next);
-			if ('error' in page) break;
-			items.push(...(page.data as O[]).map(map));
-			next = page.continuation;
-		}
-		return items;
+	let pending: Promise<ContinuationPage<R>> | undefined;
+	return () => pending ??= fetch(token).then((page) => {
+		if ('error' in page) throw page.error;
+		return { items: map(page.data as O[]), next: artist_continuation(page.continuation, fetch, map) };
+	});
+}
+
+export async function load_artist_first_pages(artist: MusicServiceArtist): Promise<MusicServiceArtist> {
+	const [tracks, albums, singles_eps, playlists, similar_artists] = await Promise.all([
+		continue_once(artist.tracks, artist.tracks_continuation, track_key),
+		continue_once(artist.albums, artist.albums_continuation, compact_playlist_key),
+		continue_once(artist.singles_eps, artist.singles_eps_continuation, compact_playlist_key),
+		continue_once(artist.playlists, artist.playlists_continuation, compact_playlist_key),
+		continue_once(artist.similar_artists, artist.similar_artists_continuation, compact_artist_key)
+	]);
+	return {
+		...artist,
+		tracks: tracks.items,
+		tracks_continuation: tracks.continuation,
+		albums: albums.items,
+		albums_continuation: albums.continuation,
+		singles_eps: singles_eps.items,
+		singles_eps_continuation: singles_eps.continuation,
+		playlists: playlists.items,
+		playlists_continuation: playlists.continuation,
+		similar_artists: similar_artists.items,
+		similar_artists_continuation: similar_artists.continuation
 	};
+}
+
+function remember_artist_artwork(artists: CompactArtist[]): CompactArtist[] {
+	artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach((artist) => {
+		SQLArtists.insert_sql_artists({
+			artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
+			name: artist.name.name,
+			uri: artist.name.uri!
+		}).catch(catch_log);
+	});
+	return artists;
 }
 
 export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): Promise<MusicServiceArtist> {
@@ -71,7 +101,8 @@ export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): 
 	const background_thumbnail = best_thumbnail(artist_response.artist.thumbnails)?.url;
 	const albums = artist_response.albums.map(album => ytm_album(album, 'ALBUM'));
 	const singles_eps = artist_response.singles.map(single => ytm_album(single, 'ALBUM'));
-	const similar_artists = artist_response.similar_artists.map(ytm_artist);
+	const similar_artists = remember_artist_artwork(artist_response.similar_artists.map(ytm_artist));
+	const ytm_continuation: ContinuationFetch = token => YouTubeMusic.get_continuation({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, token);
 
 	if (background_thumbnail) {
 		SQLArtists.insert_sql_artists({
@@ -80,13 +111,6 @@ export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): 
 			uri: create_uri('youtubemusic', id)
 		}).catch(catch_log);
 	}
-	similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach((artist) => {
-		SQLArtists.insert_sql_artists({
-			artwork_url: reinterpret_cast<string>(artist.profile_artwork_url),
-			name: artist.name.name,
-			uri: artist.name.uri!
-		}).catch(catch_log);
-	});
 
 	return {
 		name: name,
@@ -97,31 +121,16 @@ export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): 
 		latest_release: albums[0] ?? singles_eps[0],
 		similar_artists: similar_artists,
 		tracks: artist_response.top_tracks.map(ytm_track),
-		albums_continuation: ytm_artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.albums_continuation, album => ytm_album(album, 'ALBUM')),
-		singles_eps_continuation: ytm_artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.singles_continuation, single => ytm_album(single, 'ALBUM')),
-		tracks_continuation: ytm_artist_continuation<YTMTrack, Track>(artist_response.tracks_continuation, ytm_track),
-		similar_artists_continuation: ytm_artist_continuation<YTMArtist, CompactArtist>(artist_response.similar_artists_continuation, ytm_artist),
+		albums_continuation: artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.albums_continuation, ytm_continuation, albums => albums.map(album => ytm_album(album, 'ALBUM'))),
+		singles_eps_continuation: artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.singles_continuation, ytm_continuation, singles => singles.map(single => ytm_album(single, 'ALBUM'))),
+		playlists_continuation: artist_continuation<YTMAlbum, CompactPlaylist>(artist_response.playlists_continuation, ytm_continuation, playlists => playlists.map(playlist => ytm_album(playlist, 'PLAYLIST'))),
+		tracks_continuation: artist_continuation<YTMTrack, Track>(artist_response.tracks_continuation, ytm_continuation, tracks => tracks.map(ytm_track)),
+		similar_artists_continuation: artist_continuation<YTMArtist, CompactArtist>(artist_response.similar_artists_continuation, ytm_continuation, artists => remember_artist_artwork(artists.map(ytm_artist))),
 		background_artwork_url: background_thumbnail,
 		profile_artwork_url: undefined,
 		is_following: undefined,
 		follow: empty_async_call,
 		unfollow: empty_async_call
-	};
-}
-
-function youtube_artist_continuation<O, R>(token: string | null, map: (items: O[]) => R[]): (() => Promise<R[]>) | undefined {
-	if (token === null) return undefined;
-	return async () => {
-		const items: R[] = [];
-		const cookie_jar = get_cookie_jar('youtube_cookie_jar');
-		let next: string | null = token;
-		while (next !== null) {
-			const page = await YouTube.get_continuation({ cookie_jar }, next);
-			if ('error' in page) break;
-			items.push(...map(page.data as O[]));
-			next = page.continuation;
-		}
-		return items;
 	};
 }
 
@@ -134,6 +143,7 @@ export async function youtube_get_artist(id: string, _opts?: ArtistOpts): Promis
 	const albums = youtube_parse_playlists(artist_response.albums);
 	const tracks = youtube_parse_videos(artist_response.tracks);
 	const similar_artists = youtube_parse_channels(artist_response.similar_artists);
+	const youtube_continuation: ContinuationFetch = token => YouTube.get_continuation({ cookie_jar: get_cookie_jar('youtube_cookie_jar') }, token);
 
 	if (background_thumbnail) {
 		SQLArtists.insert_sql_artists({
@@ -151,9 +161,9 @@ export async function youtube_get_artist(id: string, _opts?: ArtistOpts): Promis
 		latest_release: albums[0],
 		similar_artists: similar_artists,
 		tracks: tracks,
-		albums_continuation: youtube_artist_continuation<YTCompactPlaylist, CompactPlaylist>(artist_response.albums_continuation, youtube_parse_playlists),
-		tracks_continuation: youtube_artist_continuation<YTTrack, Track>(artist_response.tracks_continuation, youtube_parse_videos),
-		similar_artists_continuation: youtube_artist_continuation<YTChannelResult, CompactArtist>(artist_response.similar_artists_continuation, youtube_parse_channels),
+		albums_continuation: artist_continuation<YTCompactPlaylist, CompactPlaylist>(artist_response.albums_continuation, youtube_continuation, youtube_parse_playlists),
+		tracks_continuation: artist_continuation<YTTrack, Track>(artist_response.tracks_continuation, youtube_continuation, youtube_parse_videos),
+		similar_artists_continuation: artist_continuation<YTChannelResult, CompactArtist>(artist_response.similar_artists_continuation, youtube_continuation, youtube_parse_channels),
 		background_artwork_url: background_thumbnail,
 		profile_artwork_url: undefined,
 		is_following: undefined,
