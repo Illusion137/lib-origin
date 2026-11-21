@@ -486,6 +486,10 @@ export namespace Illusi {
 		export async function genius(action: ActionOf<'CHECK_GENIUS'>, preloaded_state: LyricsPreloadedState) {
 			return call('POST /ingest/genius', { body: { token: action.token, track_id: action.track_id, preloaded_state } });
 		}
+		/** A page found without being asked; the server still matches it against the track */
+		export async function genius_found(track_id: IllusiId, preloaded_state: LyricsPreloadedState) {
+			return call('POST /ingest/genius', { body: { track_id, preloaded_state } });
+		}
 		export async function genius_not_found(action: ActionOf<'CHECK_GENIUS'>) {
 			return call('POST /ingest/genius', { body: { token: action.token, track_id: action.track_id, result: 'NOT_FOUND' } });
 		}

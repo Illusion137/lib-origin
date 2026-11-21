@@ -117,7 +117,7 @@ export namespace IllusiActions {
 		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
 	}
 
-	function title_artist_match(title: string, artists: string, track: Track | undefined): boolean {
+	export function title_artist_match(title: string, artists: string, track: Track | undefined): boolean {
 		if (track === undefined) return true;
 		const title_result = fuzzysort.single(clean_track_info(title).trim(), clean_track_info(track.title).trim());
 		const artist_result = fuzzysort.single(clean_track_info(artists).trim(), clean_track_info(artist_string(track)).trim());

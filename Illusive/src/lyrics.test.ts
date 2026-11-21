@@ -1,17 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Illusi } from '@origin/illusi/illusi';
+import { Genius } from '@origin/genius/genius';
 import type { ParsedLyrics, TrackAlignment, TrackVocals } from '@origin/illusi/types';
 import type { Track } from './types';
 import { Translate } from '@roze/translate';
 import { LetterSync } from './letter_sync';
 import { Lyrics } from './lyrics';
 import { LyricsAlign } from './lyrics_align';
+import { RequestQueue } from './db/sync/request_queue';
 
 // Native and app-side modules the lookup doesn't use here
 vi.mock('@native/fs/fs', () => ({ fs: () => ({}) }));
 vi.mock('./sql/sql_fs', () => ({ SQLfs: {} }));
 vi.mock('@roze/translate', () => ({ Translate: { google_translate_html: vi.fn() } }));
-vi.mock('./db/sync/illusi_actions', () => ({ IllusiActions: { handle: vi.fn(), check_genius: vi.fn(), check_youtube_music: vi.fn() } }));
+vi.mock('./db/sync/illusi_actions', () => ({ IllusiActions: { handle: vi.fn(), check_genius: vi.fn(), check_youtube_music: vi.fn(), title_artist_match: () => true } }));
+vi.mock('./db/sync/request_queue', () => ({ RequestQueue: { send: vi.fn().mockResolvedValue({}) } }));
+vi.mock('@origin/genius/genius', () => ({ Genius: { search_songs: vi.fn(), get_lyrics: vi.fn() } }));
 
 const track = (overrides: Partial<Track> = {}): Track => ({
 	uid: 'local1',
@@ -70,8 +74,18 @@ describe('Lyrics.get_track_lyrics', () => {
 
 	it('needs an Illusi account', async () => {
 		vi.mocked(Illusi.get_session).mockReturnValue(null);
+		vi.mocked(Genius.search_songs).mockResolvedValue([]);
 		const result = await Lyrics.get_track_lyrics(track({ illusi_id: 'ill1' }));
 		expect('error' in result).toBe(true);
+	});
+
+	it('falls back to Genius when the server fails', async () => {
+		vi.spyOn(Illusi.Tracks, 'lyrics').mockResolvedValue({ error: new Error('down'), status: 500 } as never);
+		vi.mocked(Genius.search_songs).mockResolvedValue([{ result: { title: 'Knots', artist_names: 'Some Artist' } }] as never);
+		vi.mocked(Genius.get_lyrics).mockResolvedValue({ lyrics: '\n[Verse 1]\nfirst\n', preloaded_state: { page: 1 } } as never);
+		expect(await Lyrics.get_track_lyrics(track({ illusi_id: 'ill1' }))).toEqual({ sync_status: 'NONE', plain: '[Verse 1]\nfirst' });
+		expect(Genius.search_songs).toHaveBeenCalledWith('Some Artist Knots', {});
+		await vi.waitFor(() => expect(RequestQueue.send).toHaveBeenCalledWith('genius_found', 'ill1', { page: 1 }));
 	});
 });
 

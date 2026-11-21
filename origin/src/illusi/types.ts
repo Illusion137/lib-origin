@@ -640,9 +640,9 @@ export interface IngestAccepted {
 
 export interface NotFoundReport { result: 'NOT_FOUND' }
 
-export type GeniusIngestBody = { token: string; track_id: IllusiId } & (
-	| { preloaded_state: LyricsPreloadedState; result?: never }
-	| NotFoundReport
+export type GeniusIngestBody = { track_id: IllusiId } & (
+	| { token?: string; preloaded_state: LyricsPreloadedState; result?: never }
+	| ({ token: string } & NotFoundReport)
 );
 
 /** Lyrics exactly as YouTube Music returned them: a plain string or its JSON payload */

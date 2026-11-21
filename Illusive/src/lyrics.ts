@@ -1,6 +1,6 @@
 import fuzzysort from 'fuzzysort';
 import { small_track } from './illusive_utils';
-import { generror } from '@common/utils/error_util';
+import { catch_log, generror } from '@common/utils/error_util';
 import type { Track } from './types';
 import type { PromiseResult, ResponseError } from '@common/types';
 import { remove_topic } from '@common/utils/clean_util';
@@ -9,10 +9,13 @@ import { fs } from '@native/fs/fs';
 import { SQLfs } from './sql/sql_fs';
 import { Translate } from '@roze/translate';
 import { Illusi } from '@origin/illusi/illusi';
+import { Genius } from '@origin/genius/genius';
+import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
 import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics } from '@origin/illusi/types';
 import { LetterSync } from './letter_sync';
 import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
+import { RequestQueue } from './db/sync/request_queue';
 import { server_service_ids, track_graph } from './db/sync/push';
 import { deterministic_uuid } from './db/v2/keys';
 import { encode_track } from './db/v2/track_codec';
@@ -137,7 +140,38 @@ export namespace Lyrics {
 		return synced === unsynced ? null : synced;
 	}
 
+	async function genius_lyrics(track: Track): PromiseResult<{ lyrics: TrackLyrics; preloaded_state: LyricsPreloadedState }> {
+		const artist = track.artists[0]?.name;
+		const hits = await Genius.search_songs(`${artist === undefined ? '' : remove_topic(artist)} ${track.title}`.trim(), {});
+		if ('error' in hits) return hits;
+		const hit = hits.find(h => IllusiActions.title_artist_match(h.result.title, h.result.artist_names, track));
+		if (hit === undefined) return generror('No lyrics found on Genius', 'INFO', { track: small_track(track) });
+		const result = await Genius.get_lyrics(hit.result, {});
+		if ('error' in result) return result;
+		if (typeof result.lyrics === 'object') return result.lyrics;
+		const plain = result.lyrics.trim();
+		if (plain === '') return generror('No lyrics found on Genius', 'INFO', { track: small_track(track) });
+		return { lyrics: { sync_status: 'NONE', plain }, preloaded_state: result.preloaded_state };
+	}
+
+	async function contribute_genius(track: Track, preloaded_state: LyricsPreloadedState) {
+		if (Illusi.get_session() === null) return;
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return catch_log(id.error);
+		const result = await RequestQueue.send('genius_found', id, preloaded_state);
+		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
+	}
+
 	export async function get_track_lyrics(track: Track): PromiseResult<TrackLyrics> {
+		const lyrics = await server_track_lyrics(track);
+		if (!('error' in lyrics)) return lyrics;
+		const genius = await genius_lyrics(track);
+		if ('error' in genius) return lyrics;
+		contribute_genius(track, genius.preloaded_state).catch(catch_log);
+		return genius.lyrics;
+	}
+
+	async function server_track_lyrics(track: Track): PromiseResult<TrackLyrics> {
 		if (Illusi.get_session() === null) return generror('Log in to Illusi to get lyrics', 'INFO', { track: small_track(track) });
 		const id = await server_track_id(track);
 		if (typeof id !== 'string') return id;
