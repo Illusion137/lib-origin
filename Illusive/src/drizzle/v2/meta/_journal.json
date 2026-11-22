@@ -29,6 +29,13 @@
       "when": 1795327933844,
       "tag": "0003_user_track_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795340226950,
+      "tag": "0004_report_downloads",
+      "breakpoints": true
     }
   ]
 }

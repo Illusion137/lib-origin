@@ -15,6 +15,8 @@ import { user_tracks_table } from '@illusive/db/schema';
 import { eq } from 'drizzle-orm';
 import { decode_track } from '../v2/track_codec';
 import { release_graph, type ReleaseAlbum } from './release_graph';
+import { Outbox } from '../v2/outbox';
+import { Store } from '@illusive/db/store';
 import { RequestQueue } from './request_queue';
 import { milliseconds_of } from '@common/utils/util';
 
@@ -81,11 +83,20 @@ export namespace IllusiActions {
 	export async function upload_media(action: ActionOf<'UPLOAD_MEDIA'>) {
 		if (Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()) return;
 		const track = await local_track(action.track_id);
-		const media_uri = track?.media_uri ?? '';
-		if (media_uri === '') return;
+		if (track === undefined) return;
+		const media_uri = track.media_uri ?? '';
+		// The server thinks this device has the file. Tell it otherwise, or it keeps asking on every sync.
+		if (media_uri === '') {
+			await Outbox.enqueue(db, 'user_track', [track.uid]);
+			return;
+		}
 		const path = SQLfs.media_directory(media_uri);
 		const info = await SQLfs.info(path);
-		if (!info.exists) return;
+		if (!info.exists) {
+			// Deleted outside the app: forget it here, which reports it like any removed download
+			await Store.write(async repos => repos.tracks.patch(track.uid, { media_uri: '' }));
+			return;
+		}
 		const extension = media_uri.slice(media_uri.lastIndexOf('.') + 1).toLowerCase();
 		const result = await RequestQueue.send('media_fulfil', action, { uri: path, name: media_uri, type: MEDIA_TYPES[extension] ?? 'application/octet-stream' });
 		if (result !== null && Illusi.is_error(result)) catch_log(result.error);

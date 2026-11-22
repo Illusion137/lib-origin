@@ -19,7 +19,14 @@ const USER_SYNCED_FIELDS = ['title', 'downloaded_at', 'start_at', 'end_at', 'del
 
 function user_changed(before: UserTrackRow | undefined, after: UserTrackInsert): boolean {
 	if (before === undefined) return true;
-	return USER_SYNCED_FIELDS.some(field => (before[field] ?? null) !== (after[field] ?? null));
+	return download_changed(before, after) || USER_SYNCED_FIELDS.some(field => (before[field] ?? null) !== (after[field] ?? null));
+}
+
+/** Gaining or losing the file is reported even by writes that don't sync otherwise: the server asks this device for uploads by it. */
+function download_changed(before: UserTrackRow | undefined, after: UserTrackInsert): boolean {
+	const had = (before?.media_uri ?? '') !== '';
+	const has = (after.media_uri ?? '') !== '';
+	return had !== has;
 }
 
 async function save_tracks(ex: DrizzleDB, tracks: readonly Track[], mode: 'insert' | 'update', sync = true) {
@@ -29,6 +36,7 @@ async function save_tracks(ex: DrizzleDB, tracks: readonly Track[], mode: 'inser
 	const holders = await uids_by_illusi_id(ex, tracks.flatMap(track => (track.illusi_id ? [track.illusi_id] : [])));
 	const rows: UserTrackInsert[] = [];
 	const changed: string[] = [];
+	const downloads: string[] = [];
 	for (const track of tracks) {
 		const before = users.get(track.uid);
 		const row = encode_track(track, { now, title_is_catalog: before?.illusi_id == null, previous: before });
@@ -39,12 +47,13 @@ async function save_tracks(ex: DrizzleDB, tracks: readonly Track[], mode: 'inser
 			row.deleted = before.deleted;
 			row.created_at = before.created_at;
 		}
+		if (download_changed(before, row)) downloads.push(track.uid);
 		if (user_changed(before, row)) changed.push(track.uid);
 		else row.edited_at = before!.edited_at;
 		rows.push(row);
 	}
 	await write_user_tracks(ex, rows);
-	if (sync) await Outbox.enqueue(ex, 'user_track', changed);
+	await Outbox.enqueue(ex, 'user_track', sync ? changed : downloads);
 }
 
 async function track_by_uid(ex: DrizzleDB, uid: string): Promise<Track | undefined> {
@@ -127,7 +136,7 @@ const tracks: TracksRepo = {
 					await tx.update(user_tracks_table).set({ downloaded_at: null, edited_at: now, modified_at: now })
 						.where(and(inArray(user_tracks_table.uid, chunk), sql`${user_tracks_table.downloaded_at} is not null`));
 				}
-				if (sync) await Outbox.enqueue(tx, 'user_track', affected_uids);
+				await Outbox.enqueue(tx, 'user_track', affected_uids);
 			}
 			if (rest.length === 0) return;
 			const current = await read_tracks(tx, affected_uids);

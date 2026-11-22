@@ -423,6 +423,8 @@ export interface PushUserTrack {
 	artists?: CreditRef[] | null;
 	album?: CreditRef | null;
 	downloaded_at?: TimeInput | null;
+	/** Whether this device has the file now: the server only asks a device that has it to upload it */
+	downloaded?: boolean;
 	start_at?: number | null;
 	end_at?: number | null;
 	deleted?: boolean;

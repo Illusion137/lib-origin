@@ -2,6 +2,7 @@ import Database from 'better-sqlite3-node25';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { eq } from 'drizzle-orm';
+import { readFileSync } from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DrizzleDB } from '@native/sqlite/sqlite.base';
@@ -14,7 +15,9 @@ import { Outbox } from '../v2/outbox';
 import { encode_track, encode_user_edit } from '../v2/track_codec';
 import { read_tracks, write_user_tracks } from '../v2/tracks';
 import { apply_rows } from './apply';
-import { apply_push_result, build_push, MAX_ATTEMPTS } from './push';
+import { use_database } from '@illusive/db/database';
+import { v2_repos } from '../v2/repos';
+import { apply_push_result, build_push, MAX_ATTEMPTS, report_downloads } from './push';
 
 const V2_MIGRATIONS = path.resolve(__dirname, '../../drizzle/v2');
 const clients: InstanceType<typeof Database>[] = [];
@@ -423,5 +426,50 @@ describe('contribution_source', () => {
 		expect(contribution_source({ spotify_id: 'a', deezer_id: '1' })).toBeNull();
 		expect(contribution_source({ youtube_id: 'v', spotify_id: 'a' })).toBeNull();
 		expect(contribution_source({})).toBeNull();
+	});
+});
+
+describe('downloads', () => {
+	const pending = async (ex: DrizzleDB) => (await ex.select().from(outbox_table)).filter(o => o.kind === 'user_track').map(o => o.key).sort();
+
+	it('tells the server whether this device has the file, including when it goes away', async () => {
+		const ex = open_db();
+		use_database(ex);
+		await add_tracks(ex, [make_track('u1'), make_track('u2', { media_uri: '' })]);
+		await Outbox.enqueue(ex, 'user_track', ['u1', 'u2']);
+		const pushed = (await build_push(ex))!.changes.user_tracks!;
+		expect(pushed.map(r => [r.track_id, r.downloaded])).toEqual([['u1', true], ['u2', false]]);
+
+		await ex.delete(outbox_table);
+		// Even through a write that otherwise doesn't sync
+		await v2_repos.tracks.patch('u1', { media_uri: '' }, false);
+		await v2_repos.tracks.patch('u2', { thumbnail_uri: 'thumb.jpg' }, false);
+		expect(await pending(ex)).toEqual(['u1']);
+		expect((await build_push(ex))!.changes.user_tracks![0]).toMatchObject({ track_id: 'u1', downloaded: false });
+	});
+
+	it('reports removing every download', async () => {
+		const ex = open_db();
+		use_database(ex);
+		await add_tracks(ex, [make_track('u1'), make_track('u2')]);
+		await v2_repos.tracks.patch_all({ media_uri: '' }, ['u1', 'u2'], false);
+		expect(await pending(ex)).toEqual(['u1', 'u2']);
+	});
+
+	it('re-reports downloads once after updating, correcting ones credited to this device without the file', async () => {
+		const ex = open_db();
+		await add_tracks(ex, [make_track('u1'), make_track('u2', { media_uri: '' }), make_track('u3', { media_uri: '' })]);
+		await ex.update(user_tracks_table).set({ downloaded_at: NOW }).where(eq(user_tracks_table.uid, 'u2'));
+		await Outbox.enqueue(ex, 'user_track', ['u1']);
+		clients[clients.length - 1].exec(readFileSync(path.join(V2_MIGRATIONS, '0004_report_downloads.sql'), 'utf8'));
+		expect(await pending(ex)).toEqual(['u1', 'u2']);
+		expect((await ex.select().from(outbox_table).where(eq(outbox_table.key, 'u1')))[0].version).toBe(2);
+	});
+
+	it('queues every downloaded track for a new login', async () => {
+		const ex = open_db();
+		await add_tracks(ex, [make_track('u1'), make_track('u2', { media_uri: '' })]);
+		await report_downloads(ex);
+		expect(await pending(ex)).toEqual(['u1']);
 	});
 });

@@ -1,9 +1,11 @@
-import type { PromiseResult } from '@common/types';
+import type { PromiseResult, ResponseError } from '@common/types';
 import { catch_log, generror } from '@common/utils/error_util';
 import { fs } from '@native/fs/fs';
 import { Illusi } from '@origin/illusi/illusi';
 import type { ExportJob, LoginBody, Me, RegisterBody, TokenPair } from '@origin/illusi/types';
 import { Prefs } from '@illusive/prefs';
+import { db } from '@illusive/db/database';
+import { report_downloads } from './push';
 
 /** The Illusi account this device syncs with. The session is kept in prefs so it survives restarts. */
 export namespace IllusiAccount {
@@ -50,13 +52,18 @@ export namespace IllusiAccount {
 		return () => listeners.delete(listener);
 	}
 
+	/** The server knows downloads per login, so a fresh one starts by hearing what this device has */
+	async function logged_in(result: TokenPair | ResponseError) {
+		if (!Illusi.is_error(result)) await report_downloads(db).catch(catch_log);
+		return result;
+	}
 	export async function register(body: RegisterBody): PromiseResult<TokenPair> {
 		configure();
-		return Illusi.Auth.register(body);
+		return logged_in(await Illusi.Auth.register(body));
 	}
 	export async function login(body: LoginBody): PromiseResult<TokenPair> {
 		configure();
-		return Illusi.Auth.login(body);
+		return logged_in(await Illusi.Auth.login(body));
 	}
 	export async function logout() {
 		const result = await Illusi.Auth.logout();

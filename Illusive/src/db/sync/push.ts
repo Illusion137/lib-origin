@@ -6,7 +6,7 @@ import {
 	playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table,
 	type OutboxKind, type OutboxRow, type SnapshotNamed, type TrackSnapshot, type UserTrackInsert
 } from '@illusive/db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 import { split_playlist_track_key } from '../v2/keys';
 import { Outbox } from '../v2/outbox';
 import { IDS_PER_QUERY } from '../v2/sqlite';
@@ -72,6 +72,12 @@ export function contribution_source(service_ids: ServiceIds): ContributionSource
 	if ('youtube_id' in service_ids) return null;
 	const sources = new Set(Object.keys(service_ids).map(c => SOURCE_OF_COLUMN[c as keyof ServiceIds]).filter(s => s !== undefined));
 	return sources.size === 1 ? [...sources][0] : null;
+}
+
+/** Queues every downloaded track, so a new login (a new device to the server) is asked for the files it has. */
+export async function report_downloads(ex: DrizzleDB) {
+	const rows = await ex.select({ uid: user_tracks_table.uid }).from(user_tracks_table).where(ne(user_tracks_table.media_uri, ''));
+	await Outbox.enqueue(ex, 'user_track', rows.map(row => row.uid));
 }
 
 /** A contribution of tracks the server doesn't know yet, keyed by their local uid as the temp ref */
@@ -200,8 +206,10 @@ export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_e
 					track_id: ref, title: row.title, start_at: row.start_at, end_at: row.end_at, deleted: row.deleted, edited_at: row.edited_at,
 					artists: row.artists_override?.map(credit_ref) ?? null,
 					album: row.album_override === null ? null : credit_ref(row.album_override),
-					// Only a device with the file says it's downloaded; others leave the stored value alone
-					...(row.downloaded_at === null ? {} : { downloaded_at: row.downloaded_at })
+					// The library's "downloaded" date is user-wide: a device without the file leaves it alone. Whether this
+					// device has the file is its own, and removing it is reported too.
+					...(row.downloaded_at === null ? {} : { downloaded_at: row.downloaded_at }),
+					downloaded: row.media_uri !== ''
 				});
 				break;
 			}
