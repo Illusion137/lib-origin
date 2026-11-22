@@ -12,18 +12,19 @@ import type { BasePref } from '@native/mmkv/mmkv_utils';
 
 export { artist_string, best_thumbnail, tracks_exclude, tracks_include, tracks_intersection, tracks_mask };
 
-export function duration_to_string(track_duration: number): string {
-	if (isNaN(track_duration) || track_duration <= 0) return '';
-	if (track_duration / 3600 >= 1) {
-		const hours = Math.floor(track_duration / 3600);
-		const minutes = Math.floor((track_duration % 3600) / 60);
-		const seconds = Math.floor((track_duration % 3600) % 60);
+export function duration_to_string(track_duration_sec: number): string {
+	track_duration_sec = Math.round(track_duration_sec);
+	if (isNaN(track_duration_sec) || track_duration_sec <= 0) return '';
+	if (track_duration_sec / 3600 >= 1) {
+		const hours = Math.floor(track_duration_sec / 3600);
+		const minutes = Math.floor((track_duration_sec % 3600) / 60);
+		const seconds = Math.floor((track_duration_sec % 3600) % 60);
 		return `${String(hours)}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-	} else if (track_duration / 60 >= 1) {
-		const minutes = Math.floor(track_duration / 60);
-		const seconds = Math.floor(track_duration % 60);
+	} else if (track_duration_sec / 60 >= 1) {
+		const minutes = Math.floor(track_duration_sec / 60);
+		const seconds = Math.floor(track_duration_sec % 60);
 		return `${String(minutes)}:${String(seconds).padStart(2, '0')}`;
-	} else return `0:${String(track_duration).padStart(2, '0')}`;
+	} else return `0:${String(track_duration_sec).padStart(2, '0')}`;
 }
 export function playlist_duration_to_string(playlist_duration: number): string {
 	if (playlist_duration / 3600 >= 1) return `${Math.floor(playlist_duration / 3600).toString()}h ${Math.floor((playlist_duration % 3600) / 60).toString()}m`;
