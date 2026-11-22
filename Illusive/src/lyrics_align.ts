@@ -3,6 +3,8 @@ import type { HeardWord, LyricsLine, LyricsSegment, ParsedLyrics, TrackVocals } 
 export namespace LyricsAlign {
 	export type VocalActivity = Pick<TrackVocals, 'hop_ms' | 'window_ms' | 'duration_ms' | 'voice' | 'segments'>;
 	export type HeardVocals = VocalActivity & Pick<TrackVocals, 'rhythm' | 'words' | 'speech' | 'beat_grid'>;
+	/** Parsed lyrics whose lines may carry more than a LyricsLine, such as a translation */
+	export type Lined<L extends LyricsLine = LyricsLine> = Omit<ParsedLyrics, 'lines'> & { lines: L[] };
 
 	const STEP_MS = 250;
 	const VOICE_LOW = 0.3;
@@ -29,6 +31,10 @@ export namespace LyricsAlign {
 	const MAX_MEAN_LINE_COST = 1.2;
 	const MAX_VOICED_SHARE = 0.875;
 	const MIN_WORD_SYNCED_LINES = 0.75;
+	/** Lines often run on into a pause before the next one, so the singing rate is read from the quicker lines */
+	const SYLLABLE_RATE_QUANTILE = 0.25;
+	const MIN_ESTIMATED_MS_PER_SYLLABLE = 150;
+	const MAX_ESTIMATED_MS_PER_SYLLABLE = 450;
 
 	const HEADER = /^\s*\[[^\]]*\]\s*$/;
 	const CJK_CHAR = /[぀-ヿ㐀-䶿一-鿿가-힯豈-﫿]/;
@@ -342,7 +348,7 @@ export namespace LyricsAlign {
 	 * Word timings for line synced lyrics, or null when too few lines fit the vocals. A line's words share the voiced
 	 * time between its start and where its singing stops, in proportion to their syllables.
 	 */
-	export function word_sync(lyrics: ParsedLyrics, vocals: VocalActivity): ParsedLyrics | null {
+	export function word_sync<L extends LyricsLine>(lyrics: Lined<L>, vocals: VocalActivity): Lined<L> | null {
 		if (vocals.voice.length === 0) return null;
 		const timed = lyrics.lines.map((line, index) => ({ line, index })).filter(({ line }) => line.start_ms !== null && !is_header(line.text) && line.text.trim() !== '');
 		if (timed.length === 0) return null;
@@ -385,6 +391,50 @@ export namespace LyricsAlign {
 			lines[index].end_ms ??= Math.round(end);
 		}
 		if (fitting / timed.length < MIN_WORD_SYNCED_LINES) return null;
+		return { ...lyrics, sync_type: 'WORD', lines };
+	}
+
+	/** Word timings that split `start_ms`-`end_ms` between the words by their syllables */
+	function even_words(words: string[], start_ms: number, end_ms: number): LyricsSegment[] {
+		const weights = words.map(word => Math.max(0.5, word_syllables(word)));
+		const total = weights.reduce((a, b) => a + b, 0);
+		const segments: LyricsSegment[] = [];
+		let before = 0;
+		for (let i = 0; i < words.length; i++) {
+			const start = Math.round(start_ms + (end_ms - start_ms) * before / total);
+			before += weights[i];
+			segments.push({ text: words[i], start_ms: start, end_ms: Math.round(start_ms + (end_ms - start_ms) * before / total) });
+		}
+		return segments;
+	}
+
+	/**
+	 * Word timings for line synced lyrics from their syllables alone, for when there are no vocals to go by. A line
+	 * is sung at the song's rate from its start, or over its own span when the source gives its end.
+	 */
+	export function syllable_word_sync<L extends LyricsLine>(lyrics: Lined<L>): Lined<L> | null {
+		const timed = lyrics.lines.map((line, index) => ({ line, index })).filter(({ line }) => line.start_ms !== null && !is_header(line.text) && line.text.trim() !== '');
+		if (timed.length === 0) return null;
+		const own_end = (k: number) => {
+			const { start_ms, end_ms } = timed[k].line;
+			const next = timed[k + 1]?.line.start_ms ?? Infinity;
+			return end_ms !== null && end_ms > start_ms! && end_ms <= next ? end_ms : null;
+		};
+		const span_end = (k: number) => own_end(k) ?? timed[k + 1]?.line.start_ms ?? Infinity;
+
+		const rates = timed.map(({ line }, k) => (span_end(k) - line.start_ms!) / line_syllables(line.text)).filter(rate => Number.isFinite(rate) && rate > 0).sort((a, b) => a - b);
+		const quantile = rates[Math.floor(SYLLABLE_RATE_QUANTILE * (rates.length - 1))] ?? DEFAULT_MS_PER_SYLLABLE;
+		const ms_per_syllable = Math.min(MAX_ESTIMATED_MS_PER_SYLLABLE, Math.max(MIN_ESTIMATED_MS_PER_SYLLABLE, quantile));
+
+		const lines = lyrics.lines.map(line => ({ ...line }));
+		for (let k = 0; k < timed.length; k++) {
+			const { line, index } = timed[k];
+			const start = line.start_ms!;
+			const syllables = line_syllables(line.text);
+			const end = own_end(k) ?? Math.min(span_end(k), start + syllables * Math.max(ms_per_syllable, MIN_MS_PER_SYLLABLE));
+			lines[index].segments = even_words(line_words(line.text), start, Math.max(end, start + STEP_MS));
+			lines[index].end_ms ??= Math.round(end);
+		}
 		return { ...lyrics, sync_type: 'WORD', lines };
 	}
 

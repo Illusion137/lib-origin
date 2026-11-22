@@ -2,7 +2,7 @@ import type { PromiseResult, ResponseError } from '@common/types';
 import { catch_log, generror } from '@common/utils/error_util';
 import { fs } from '@native/fs/fs';
 import { Illusi } from '@origin/illusi/illusi';
-import type { AuthMe, ChangeEmailResult, ExportJob, LoginBody, Me, RegisterBody, ResetPasswordBody, SessionResponse, TokenPair } from '@origin/illusi/types';
+import type { ArtworkFile, AuthMe, AvatarResult, ChangeEmailResult, ExportJob, LoginBody, Me, RegisterBody, ResetPasswordBody, SessionResponse, TokenPair } from '@origin/illusi/types';
 import { Prefs } from '@illusive/prefs';
 import { db } from '@illusive/db/database';
 import { report_downloads } from './push';
@@ -142,6 +142,18 @@ export namespace IllusiAccount {
 	 */
 	export async function delete_account(password: string): PromiseResult<null> {
 		return Illusi.Account.delete_account(password);
+	}
+
+	/** JPEG, PNG or WebP up to 10 MB; replaces the current avatar */
+	export async function set_avatar(file: ArtworkFile): PromiseResult<AvatarResult> {
+		return Illusi.Account.set_avatar(file);
+	}
+	export async function remove_avatar(): PromiseResult<AvatarResult> {
+		return Illusi.Account.remove_avatar();
+	}
+	/** An image source for an avatar (expo-image and the like); the id changes with every new avatar, so it caches forever */
+	export function avatar_source(avatar_id: string): { uri: string; headers: Record<string, string> } {
+		return { uri: Illusi.Account.avatar_url(avatar_id), headers: Illusi.file_headers() };
 	}
 
 	function job_from_error(error: Illusi.IllusiError): ExportJob | undefined {

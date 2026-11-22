@@ -121,6 +121,8 @@ export interface AuthMe {
 	id: UUID;
 	email: string;
 	username: string;
+	/** Account.avatar_url(avatar_id) */
+	avatar_id: string | null;
 	email_verified: boolean;
 }
 /** Ends the login the refresh token belongs to; works without an access token (e.g. after logging out offline) */
@@ -326,6 +328,8 @@ export interface User extends Timestamps {
 	username: string;
 	email: string;
 	role: UserRole;
+	/** Account.avatar_url(avatar_id) */
+	avatar_id: string | null;
 	edited_at: ISODateString | null;
 }
 export interface UserTrack extends Timestamps {
@@ -891,7 +895,7 @@ export interface ArtistView extends Artist, Redirected {
 	in_library: boolean;
 }
 export interface PlaylistView extends Playlist {
-	owner: { id: UUID; username: string };
+	owner: { id: UUID; username: string; avatar_id: string | null };
 	is_owner: boolean;
 	track_count: number;
 	thumbnails: Thumbnail[];
@@ -1041,6 +1045,7 @@ export interface ArtworkResult {
 	playlist: Playlist;
 }
 export type ArtworkFile = MediaFile;
+export interface AvatarResult { avatar_id: string | null }
 
 export interface SearchSuggestionsQuery {
 	q: string;

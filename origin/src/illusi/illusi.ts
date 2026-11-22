@@ -6,7 +6,7 @@ import { generror } from '@common/utils/error_util';
 import { encode_params } from '@common/utils/fetch_util';
 import type {
 	Action, ActionOf, ActionType, AlbumDetail, AlbumView, ApiErrorBody, ArtistAlbumsQuery, ArtistTracksQuery, ArtistView, ArtworkFile,
-	ArtworkResult, AuthMe, BackpackRequestsQuery, ChangeEmailBody, ChangeEmailResult, ChangePasswordBody, ContributionGraph, ContributionPayload, ContributionResult, CopiedPlaylist, Cursor, DeleteAccountBody,
+	ArtworkResult, AuthMe, AvatarResult, BackpackRequestsQuery, ChangeEmailBody, ChangeEmailResult, ChangePasswordBody, ContributionGraph, ContributionPayload, ContributionResult, CopiedPlaylist, Cursor, DeleteAccountBody,
 	CatalogIngestBody, CatalogIngestResult, CatalogItem, EntityPatchBody, EntityPatchResult, ExportJob, ForgotPasswordBody, GeniusIngestBody, LogoutBody, ResetPasswordBody, SessionResponse, IllusiId, IngestAccepted, LibraryQuery, LinkedPlaylist, LoginBody, LyricsResponse, Me, MediaFile,
 	MediaRequestsQuery, MediaUploadOpts, MediaUploadResult, MyPlaylistsQuery, NewReleases, NewReleasesIngestBody, NewReleasesIngestResult,
 	NewReleasesQuery, Page, PageQuery, PlaylistView, PlayView, PublicPlaylistsQuery, PullBody, PullResponse, PushBody, PushChanges,
@@ -78,6 +78,8 @@ export namespace Illusi {
 		'POST /me/export': { response: ExportJob };
 		'GET /me/exports': { response: { items: ExportJob[] } };
 		'GET /me/export/:id': { response: ExportJob };
+		'PUT /me/avatar': { body: FormData; response: AvatarResult };
+		'DELETE /me/avatar': { response: AvatarResult };
 
 		'GET /playlists/public': { query: PublicPlaylistsQuery; response: Page<PlaylistView> };
 		'GET /playlists/:id': { response: PlaylistView };
@@ -453,6 +455,25 @@ export namespace Illusi {
 		}
 		export async function download_export(export_id: UUID) {
 			return download_file('GET /me/export/:id/file', export_file_url(export_id));
+		}
+		/** JPEG, PNG or WebP up to 10 MB, stored as a WebP of at most 512 px a side; replaces the current avatar */
+		export async function set_avatar(file: ArtworkFile) {
+			const form = new FormData();
+			await append_file(form, file);
+			return call('PUT /me/avatar', { body: form });
+		}
+		export async function remove_avatar() {
+			return call('DELETE /me/avatar');
+		}
+		/**
+		 * Needs file_headers(); avatar files never change (a new avatar gets a new id), so a downloaded copy can be kept
+		 * forever. Others' avatars are visible where they are: next to a playlist of theirs.
+		 */
+		export function avatar_url(avatar_id: string): string {
+			return api_url(`/avatars/${encodeURIComponent(avatar_id)}`);
+		}
+		export async function download_avatar(avatar_id: string) {
+			return download_file('GET /avatars/:avatar_id', avatar_url(avatar_id));
 		}
 		/** Asks for the password again even with a valid session; the local session is cleared on success */
 		export async function delete_account(password: string) {

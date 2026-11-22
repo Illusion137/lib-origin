@@ -106,6 +106,45 @@ describe('Lyrics.get_track_lyrics', () => {
 	});
 });
 
+describe('Lyrics.vocal_line_sync', () => {
+	const plain = (id: string): Lyrics.TranslatedLyrics => ({
+		sync_type: 'NONE',
+		lines: [
+			{ text: '[Verse 1]', start_ms: null, end_ms: null },
+			{ text: 'first', start_ms: null, end_ms: null, translated: 'premier' },
+			{ text: 'second', start_ms: null, end_ms: null, translated: id }
+		]
+	});
+	const aligned: ParsedLyrics = { sync_type: 'LINE', lines: [{ text: 'first', start_ms: 1000, end_ms: null }, { text: 'second', start_ms: 2500, end_ms: null }] };
+
+	it('picks up an alignment that lands after the lyrics were saved, keeping translations', async () => {
+		const line_sync = vi.spyOn(LetterSync, 'line_sync').mockReturnValue(aligned);
+		const lyrics = plain('second!');
+		expect(await Lyrics.vocal_line_sync(track({ illusi_id: 'late1' }), lyrics)).toBeNull();
+		vi.mocked(Illusi.Tracks.alignment).mockResolvedValue({ duration_ms: 200_000 } as TrackAlignment);
+		expect(await Lyrics.vocal_line_sync(track({ illusi_id: 'late1' }), lyrics)).toEqual({
+			sync_type: 'LINE',
+			lines: [{ text: 'first', start_ms: 1000, end_ms: null, translated: 'premier' }, { text: 'second', start_ms: 2500, end_ms: null, translated: 'second!' }]
+		});
+		expect(line_sync).toHaveBeenCalledWith('[Verse 1]\nfirst\nsecond', { duration_ms: 200_000 });
+	});
+
+	it('keeps the alignment for the next renders', async () => {
+		vi.mocked(Illusi.Tracks.alignment).mockResolvedValue({ duration_ms: 200_000 } as TrackAlignment);
+		vi.spyOn(LetterSync, 'line_sync').mockReturnValue(aligned);
+		await Lyrics.vocal_line_sync(track({ illusi_id: 'kept1' }), plain('a'));
+		await Lyrics.vocal_line_sync(track({ illusi_id: 'kept1' }), plain('b'));
+		expect(Illusi.Tracks.alignment).toHaveBeenCalledTimes(1);
+	});
+
+	it('leaves synced lyrics alone, and needs an Illusi account', async () => {
+		expect(await Lyrics.vocal_line_sync(track({ illusi_id: 'none1' }), parsed)).toBeNull();
+		vi.mocked(Illusi.get_session).mockReturnValue(null);
+		expect(await Lyrics.vocal_line_sync(track({ illusi_id: 'none1' }), plain('a'))).toBeNull();
+		expect(Illusi.Tracks.alignment).not.toHaveBeenCalled();
+	});
+});
+
 describe('Lyrics.with_vocal_sync', () => {
 	const LINES = ['Morning rises over silver mountains', 'Rivers carry whispers through the valley', 'Lanterns flicker gently in the harbor', 'Shadows wander quietly past midnight', 'Thunder rolling somewhere far behind us', 'Painted windows glowing amber golden', 'Travelers remember every highway', 'Sparrows gather softly on the rooftops'];
 	const unsynced: ParsedLyrics = { sync_type: 'NONE', lines: LINES.map(text => ({ text, start_ms: null, end_ms: null })) };
@@ -170,6 +209,21 @@ describe('Lyrics.with_vocal_sync', () => {
 		expect(line_sync).not.toHaveBeenCalled();
 	});
 
+	it('leaves line synced lyrics for the display to word sync', async () => {
+		const lined: ParsedLyrics = { sync_type: 'LINE', lines: LINES.map((text, i) => ({ text, start_ms: start(i), end_ms: null })) };
+		vi.mocked(Illusi.Tracks.vocals).mockResolvedValue(vocals());
+		expect(await Lyrics.with_vocal_sync('ill1', lined)).toBe(lined);
+		const worded = await Lyrics.vocal_word_sync(track({ illusi_id: 'ill-words', duration: 0 }), { ...lined, lines: lined.lines.map(line => ({ ...line, translated: 'x' })) });
+		expect(worded?.sync_type).toBe('WORD');
+		worded!.lines.forEach((line, i) => {
+			expect(line.translated).toBe('x');
+			expect(line.segments!.map(segment => segment.text).join('').trim()).toBe(line.text);
+			expect(line.segments![0].start_ms).toBeGreaterThanOrEqual(start(i));
+		});
+		vi.mocked(Illusi.get_session).mockReturnValue(null);
+		expect(await Lyrics.vocal_word_sync(track({ illusi_id: 'ill-words', duration: 0 }), lined)).toBeNull();
+	});
+
 	it('uses the vocal curve alone for files analyzed before transcription', async () => {
 		vi.mocked(Illusi.Tracks.vocals).mockResolvedValue({ ...vocals(), words: null });
 		const line_sync = vi.spyOn(LyricsAlign, 'line_sync');
@@ -230,5 +284,30 @@ describe('Lyrics translation', () => {
 		vi.mocked(Translate.google_translate_html).mockResolvedValue(['Night sky']);
 		const line = { text: '夜空', interval: { from: 1, to: 2 }, segments: [{ text: '夜', interval: { from: 1 } }, { text: '空', interval: { from: 1.5 } }] };
 		expect(await Lyrics.translate_synced_lyrics([line])).toEqual([{ ...line, translated: 'Night sky' }]);
+	});
+});
+
+describe('Lyrics.syllable_word_sync', () => {
+	it('spreads each line\'s words over its syllables, before the next line starts', () => {
+		const lined: ParsedLyrics = { sync_type: 'LINE', lines: [
+			{ text: '[Chorus]', start_ms: null, end_ms: null },
+			{ text: 'hello beautiful world', start_ms: 1_000, end_ms: null },
+			{ text: 'go', start_ms: 3_000, end_ms: null },
+			{ text: 'own end given here', start_ms: 20_000, end_ms: 22_000 }
+		] };
+		const worded = Lyrics.syllable_word_sync(lined)!;
+		expect(worded.sync_type).toBe('WORD');
+		expect(worded.lines[0].segments).toBeUndefined();
+		const [hello, beautiful, world] = worded.lines[1].segments!;
+		expect(hello).toMatchObject({ text: 'hello ', start_ms: 1_000 });
+		expect(beautiful.end_ms! - beautiful.start_ms).toBeGreaterThan(hello.end_ms! - hello.start_ms);
+		expect(world.end_ms).toBeLessThanOrEqual(3_000);
+		expect(worded.lines[2].end_ms).toBeLessThan(20_000);
+		expect(worded.lines[3].segments!.at(-1)!.end_ms).toBe(22_000);
+		expect(lined.lines[1].segments).toBeUndefined();
+	});
+
+	it('only word syncs line synced lyrics', () => {
+		expect(Lyrics.syllable_word_sync(Lyrics.from_plain('a\nb'))).toBeNull();
 	});
 });

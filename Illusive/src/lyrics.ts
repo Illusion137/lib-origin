@@ -11,7 +11,7 @@ import { Translate } from '@roze/translate';
 import { Illusi } from '@origin/illusi/illusi';
 import { Genius } from '@origin/genius/genius';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
-import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics, UserLyricsBody } from '@origin/illusi/types';
+import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics, TrackAlignment, TrackVocals, UserLyricsBody } from '@origin/illusi/types';
 import { LetterSync } from './letter_sync';
 import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
@@ -84,29 +84,103 @@ export namespace Lyrics {
 		});
 	}
 
-	async function letter_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number): Promise<ParsedLyrics | null | undefined> {
-		const alignment = await Illusi.Tracks.alignment(track_id);
-		if (Illusi.is_error(alignment)) return undefined;
-		if (duration_s !== undefined && duration_s > 0 && Math.abs(alignment.duration_ms - duration_s * 1000) > VOCALS_DURATION_TOLERANCE_MS) return undefined;
+	function fits_track(analysis: { duration_ms: number }, duration_s?: number) {
+		return duration_s === undefined || duration_s <= 0 || Math.abs(analysis.duration_ms - duration_s * 1000) <= VOCALS_DURATION_TOLERANCE_MS;
+	}
+
+	/** A track's analysis from Illusi, kept for the next few renders (single-flight); null while Illusi has none */
+	function analysis_cache<T>(fetch: (track_id: string) => PromiseResult<T>, max: number) {
+		const cached = new Map<string, T>();
+		const fetching = new Map<string, Promise<T | null>>();
+		return async (track_id: string): Promise<T | null> => {
+			const hit = cached.get(track_id);
+			if (hit !== undefined) return hit;
+			let pending = fetching.get(track_id);
+			if (pending === undefined) {
+				pending = fetch(track_id).then(result => (Illusi.is_error(result) ? null : result));
+				fetching.set(track_id, pending);
+			}
+			try {
+				const value = await pending;
+				if (value === null) return null;
+				if (cached.size >= max) cached.delete(cached.keys().next().value!);
+				cached.set(track_id, value);
+				return value;
+			} finally {
+				fetching.delete(track_id);
+			}
+		};
+	}
+	interface Analysis {
+		alignment: (track_id: string) => Promise<TrackAlignment | null>;
+		vocals: (track_id: string) => Promise<TrackVocals | null>;
+	}
+	const ok = async <T>(result: PromiseResult<T>): Promise<T | null> => {
+		const value = await result;
+		return Illusi.is_error(value) ? null : value;
+	};
+	/** Asked fresh: lyrics are saved once with what Illusi has right now */
+	const fetched: Analysis = { alignment: async id => ok(Illusi.Tracks.alignment(id)), vocals: async id => ok(Illusi.Tracks.vocals(id)) };
+	/** Kept for the next few renders: shown lyrics are synced again on every display */
+	const cached: Analysis = {
+		// Hundreds of kilobytes each (letter probabilities per frame)
+		alignment: analysis_cache(async (track_id: string) => Illusi.Tracks.alignment(track_id), 2),
+		vocals: analysis_cache(async (track_id: string) => Illusi.Tracks.vocals(track_id), 8)
+	};
+
+	async function letter_sync(track_id: string, lyrics: ParsedLyrics, duration_s: number | undefined, analysis: Analysis): Promise<ParsedLyrics | null | undefined> {
+		const alignment = await analysis.alignment(track_id);
+		if (alignment === null || !fits_track(alignment, duration_s)) return undefined;
 		return LetterSync.line_sync(to_plain(lyrics), alignment);
 	}
 
-	export async function with_vocal_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number): Promise<ParsedLyrics> {
-		if (lyrics.sync_type === 'WORD' || lyrics.sync_type === 'SYLLABLE') return lyrics;
-		if (lyrics.sync_type === 'NONE') {
-			const aligned = await letter_sync(track_id, lyrics, duration_s);
-			if (aligned !== undefined) return aligned ?? lyrics;
-		}
-		const vocals = await Illusi.Tracks.vocals(track_id);
-		if (Illusi.is_error(vocals)) return lyrics;
-		if (duration_s !== undefined && duration_s > 0 && Math.abs(vocals.duration_ms - duration_s * 1000) > VOCALS_DURATION_TOLERANCE_MS) return lyrics;
-		let lined: ParsedLyrics | null = lyrics;
-		if (lyrics.sync_type === 'NONE') {
-			const plain = lyrics.lines.map(line => line.text).join('\n');
-			lined = LyricsAlign.can_hear(plain, vocals) ? LyricsAlign.heard_line_sync(plain, vocals)?.lyrics ?? null : LyricsAlign.line_sync(plain, vocals);
-		}
-		if (lined === null) return lyrics;
-		return LyricsAlign.word_sync(lined, vocals) ?? lined;
+	/** Line timings for plain lyrics from the track's vocals; synced lyrics are kept as they are */
+	export async function with_vocal_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number, analysis: Analysis = fetched): Promise<ParsedLyrics> {
+		if (lyrics.sync_type !== 'NONE') return lyrics;
+		const aligned = await letter_sync(track_id, lyrics, duration_s, analysis);
+		if (aligned !== undefined) return aligned ?? lyrics;
+		const vocals = await analysis.vocals(track_id);
+		if (vocals === null || !fits_track(vocals, duration_s)) return lyrics;
+		const plain = to_plain(lyrics);
+		return (LyricsAlign.can_hear(plain, vocals) ? LyricsAlign.heard_line_sync(plain, vocals)?.lyrics : LyricsAlign.line_sync(plain, vocals)) ?? lyrics;
+	}
+
+	/**
+	 * Plain lyrics with line timings from the track's alignment, else its vocals, or null while Illusi has neither (or
+	 * they don't fit). Asked whenever the lyrics are shown, so analysis that lands after the lyrics were saved is used.
+	 * Translations stay on the lines they belong to.
+	 */
+	export async function vocal_line_sync(track: Track, lyrics: TranslatedLyrics): Promise<TranslatedLyrics | null> {
+		if (lyrics.sync_type !== 'NONE' || Illusi.get_session() === null) return null;
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return null;
+		const synced = await with_vocal_sync(id, lyrics, track.duration, cached);
+		return synced === lyrics ? null : { ...synced, lines: carry_translations(lyrics.lines, synced.lines) };
+	}
+
+	/** Puts each line's translation back on the synced line with the same text; synced lines keep their order */
+	function carry_translations(from: readonly TranslatedLine<LyricsLine>[], to: readonly LyricsLine[]): TranslatedLine<LyricsLine>[] {
+		let i = 0;
+		return to.map((line) => {
+			const at = from.findIndex((source, j) => j >= i && source.text.trim() === line.text.trim());
+			if (at < 0) return line;
+			i = at + 1;
+			return from[at].translated === undefined ? line : { ...line, translated: from[at].translated };
+		});
+	}
+
+	/** Line synced lyrics with word timings estimated from the track's vocals, or null when Illusi has no vocals that fit */
+	export async function vocal_word_sync<L extends LyricsLine>(track: Track, lyrics: LyricsAlign.Lined<L>): Promise<LyricsAlign.Lined<L> | null> {
+		if (lyrics.sync_type !== 'LINE' || Illusi.get_session() === null) return null;
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return null;
+		const vocals = await cached.vocals(id);
+		return vocals === null || !fits_track(vocals, track.duration) ? null : LyricsAlign.word_sync(lyrics, vocals);
+	}
+
+	/** Line synced lyrics with word timings from their syllables, or null when they aren't line synced */
+	export function syllable_word_sync<L extends LyricsLine>(lyrics: LyricsAlign.Lined<L>): LyricsAlign.Lined<L> | null {
+		return lyrics.sync_type === 'LINE' ? LyricsAlign.syllable_word_sync(lyrics) : null;
 	}
 	const resolved_ids = new Map<string, string>();
 	async function server_track_id(track: Track): PromiseResult<string> {
@@ -190,12 +264,11 @@ export namespace Lyrics {
 	}
 
 	async function with_experimental_sync(track: Track, lyrics: TrackLyrics): Promise<TrackLyrics> {
-		if (lyrics.sync_status === 'WORD' || lyrics.sync_status === 'SYLLABLE') return lyrics;
-		if (lyrics.sync_status === 'NONE' && lyrics.plain.trim() === '') return lyrics;
+		if (lyrics.sync_status !== 'NONE' || lyrics.plain.trim() === '') return lyrics;
 		if (Illusi.get_session() === null) return lyrics;
 		const id = await server_track_id(track);
 		if (typeof id !== 'string') return lyrics;
-		const parsed = lyrics.sync_status === 'NONE' ? from_plain(lyrics.plain) : lyrics.lyrics;
+		const parsed = from_plain(lyrics.plain);
 		const synced = await with_vocal_sync(id, parsed, track.duration);
 		return synced === parsed ? lyrics : to_track_lyrics(synced);
 	}

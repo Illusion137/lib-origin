@@ -82,7 +82,7 @@ describe('IllusiViews compact views', () => {
 	it('builds playlists, albums and SoundCloud singles', () => {
 		const playlist = IllusiViews.playlist({
 			id: 'p1', user_id: 'u1', title: 'Mix', description: null, pinned: false, archived: false, public: true, sort_mode: 'OLDEST', deleted: false,
-			edited_at: null, artwork_id: null, artwork_edited_at: null, created_at: T, modified_at: T, owner: { id: 'u1', username: 'sumi' }, is_owner: false, track_count: 3,
+			edited_at: null, artwork_id: null, artwork_edited_at: null, created_at: T, modified_at: T, owner: { id: 'u1', username: 'sumi', avatar_id: null }, is_owner: false, track_count: 3,
 			thumbnails: []
 		} satisfies PlaylistView);
 		expect(playlist).toMatchObject({ title: { name: 'Mix', uri: 'illusi:p1' }, artist: [{ name: 'sumi', uri: null }], type: 'PLAYLIST' });
