@@ -18,7 +18,7 @@ export async function get_youtube_music_track_mix(video_id: string): Promise<Tra
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
 	const watch_next = await Origin.YouTubeMusic.get_watch_next({ cookie_jar }, video_id);
 	if ('error' in watch_next) return { tracks: [], error: watch_next.error };
-	return { tracks: watch_next.data.map(ytm_track) };
+	return { tracks: watch_next.data.map(ytm_track).slice(1) };
 }
 
 export async function get_youtube_track_mix(video_id: string): Promise<TrackMix> {
@@ -28,6 +28,6 @@ export async function get_youtube_track_mix(video_id: string): Promise<TrackMix>
 	const mix_response = await Origin.YouTube.get_youtube_mix({ cookie_jar: cookie_jar }, video_id);
 	if ('error' in mix_response) return { tracks: [], error: mix_response.error };
 	return {
-		tracks: youtube_parse_videos(mix_response.data)
+		tracks: youtube_parse_videos(mix_response.data).slice(1)
 	};
 }

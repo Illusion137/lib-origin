@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { DrizzleDB } from '@native/sqlite/sqlite.base';
 import type { Track } from '@illusive/types';
 import type { PushResponse, SyncRows } from '@origin/illusi/types';
+import { contribution_source } from './push';
 import { outbox_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table } from '@illusive/db/schema';
 import { playlist_track_key } from '../v2/keys';
 import { Outbox } from '../v2/outbox';
@@ -412,5 +413,15 @@ describe('apply_rows', () => {
 		const [user] = await ex.select().from(user_tracks_table);
 		expect(user.plays).toBe(8);
 		expect(user.last_played_at).toBe(NOW + 10);
+	});
+});
+
+describe('contribution_source', () => {
+	it('names the service only when the ids point at exactly one', () => {
+		expect(contribution_source({ spotify_id: 'a', isrc: 'USX' })).toBe('Spotify');
+		expect(contribution_source({ soundcloud_id: 1, soundcloud_permalink: 'a/b' })).toBe('SoundCloud');
+		expect(contribution_source({ spotify_id: 'a', deezer_id: '1' })).toBeNull();
+		expect(contribution_source({ youtube_id: 'v', spotify_id: 'a' })).toBeNull();
+		expect(contribution_source({})).toBeNull();
 	});
 });

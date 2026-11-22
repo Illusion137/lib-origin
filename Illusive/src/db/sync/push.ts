@@ -1,6 +1,6 @@
 import type { DrizzleDB } from '@native/sqlite/sqlite.base';
 import type {
-	ContributedAlbum, ContributedArtist, ContributedTrack, ContributionGraph, CreditRef, PushChanges, PushResponse, PushTable, ServiceIds
+	ContributedAlbum, ContributedArtist, ContributedTrack, ContributionGraph, ContributionSource, CreditRef, PushChanges, PushResponse, PushTable, ServiceIds
 } from '@origin/illusi/types';
 import {
 	playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table,
@@ -59,6 +59,21 @@ export function server_service_ids(snapshot: TrackSnapshot): ServiceIds {
 	return service_ids;
 }
 
+const SOURCE_OF_COLUMN: Partial<Record<keyof ServiceIds, ContributionSource>> = {
+	spotify_id: 'Spotify', soundcloud_id: 'SoundCloud', soundcloud_permalink: 'SoundCloud', amazonmusic_id: 'Amazon Music', applemusic_id: 'Apple Music',
+	bandlab_id: 'BandLab', audiomack_id: 'Audiomack', deezer_id: 'Deezer', pandora_id: 'Pandora', tidal_id: 'Tidal'
+};
+
+/**
+ * The service a track came from, when its ids name exactly one. A `youtube_id` alone says nothing: YouTube and
+ * YouTube Music share it, and the server weighs their explicit flags differently.
+ */
+export function contribution_source(service_ids: ServiceIds): ContributionSource | null {
+	if ('youtube_id' in service_ids) return null;
+	const sources = new Set(Object.keys(service_ids).map(c => SOURCE_OF_COLUMN[c as keyof ServiceIds]).filter(s => s !== undefined));
+	return sources.size === 1 ? [...sources][0] : null;
+}
+
 /** A contribution of tracks the server doesn't know yet, keyed by their local uid as the temp ref */
 function credit_ref(entry: SnapshotNamed): CreditRef {
 	return entry.illusi_id === undefined ? { name: entry.name } : { id: entry.illusi_id, name: entry.name };
@@ -92,6 +107,7 @@ export function track_graph(rows: readonly Pick<UserTrackInsert, 'uid' | 'title'
 			duration_ms: snapshot.duration_ms,
 			explicit: snapshot.explicit,
 			imported: snapshot.imported,
+			source: contribution_source(service_ids),
 			service_ids,
 			thumbnails: snapshot.thumbnails.slice(0, 32)
 		});

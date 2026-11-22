@@ -10,7 +10,7 @@ import { reinterpret_cast } from '@common/cast';
 function downloadable_fields(): DownloadableMusicService['id_field'][] {
 	const fields: DownloadableMusicService['id_field'][] = [];
 	for (const [, service] of Illusive.music_service) {
-		if (service.downloadable !== undefined) fields.push(service.downloadable.id_field);
+		if (service.downloadable !== undefined && service.downloadable.id_field !== 'illusi_id') fields.push(service.downloadable.id_field);
 	}
 	return fields;
 }

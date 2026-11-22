@@ -600,6 +600,18 @@ export namespace Illusi {
 		export function stream_headers(): Record<string, string> {
 			return file_headers();
 		}
+		/** Where url(resource_id) streams from: media moved to the public bucket redirects there and needs no headers */
+		export async function resolve(resource_id: string, retry_on_401 = true): PromiseResult<{ url: string; headers: Record<string, string> }> {
+			const route = 'GET /media/:resource_id';
+			if (session === null) return api_error(route, 'not logged in', 'LOW', 401);
+			const media_url = url(resource_id);
+			const response = await rozfetch<unknown>(media_url, { ...config.fetch_opts, method: 'GET', headers: { ...file_headers(), Range: 'bytes=0-0' }, ignore_fail_request: true });
+			if ('error' in response) return response;
+			if (response.status === 401 && retry_on_401 && await refresh_session()) return resolve(resource_id, false);
+			if (!response.ok) return error_from_response(route, response);
+			if (response.url === '' || response.url === media_url) return { url: media_url, headers: stream_headers() };
+			return { url: response.url, headers: {} };
+		}
 		export async function download(resource_id: string, range?: { start: number; end?: number }): PromiseResult<ArrayBuffer> {
 			return download_file('GET /media/:resource_id', url(resource_id), range === undefined ? {} : { Range: `bytes=${range.start}-${range.end ?? ''}` });
 		}

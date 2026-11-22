@@ -257,7 +257,7 @@ export interface Track {
 	analysis?: TrackAnalysisData;
 }
 
-export type DownloadableMusicServiceTrackField = 'youtube_id' | 'soundcloud_permalink' | 'bandlab_id' | 'audiomack_id';
+export type DownloadableMusicServiceTrackField = 'youtube_id' | 'soundcloud_permalink' | 'bandlab_id' | 'audiomack_id' | 'illusi_id';
 export interface DownloadableMusicService {
 	download_from_id: (id: string, retry_track?: Track) => Promise<DownloadFromIdResult | ResponseError>;
 	id_field: DownloadableMusicServiceTrackField;
@@ -452,6 +452,7 @@ export interface DownloadFromIdResult {
 		songs?: YTDescriptionSong[];
 	};
 	duration?: number;
+	headers?: Record<string, string>;
 	sabr_params?: ExtendedSabrStreamConfig;
 }
 

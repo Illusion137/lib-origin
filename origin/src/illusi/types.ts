@@ -542,6 +542,9 @@ export interface ContributedAlbum {
 	service_ids?: ServiceIds;
 	thumbnails?: Thumbnail[];
 }
+/** The service a contributed track came from; the server weighs its `explicit` by it (YouTube videos don't count). */
+export type ContributionSource
+	= 'Illusi' | 'Musi' | 'YouTube' | 'YouTube Music' | 'Spotify' | 'Amazon Music' | 'Apple Music' | 'SoundCloud' | 'BandLab' | 'Audiomack' | 'Deezer' | 'Tidal' | 'Pandora' | 'API';
 export interface ContributedTrack {
 	ref: Ref;
 	title: string;
@@ -549,6 +552,7 @@ export interface ContributedTrack {
 	duration_ms?: number | null;
 	explicit?: boolean | null;
 	imported?: boolean | null;
+	source?: ContributionSource | null;
 	service_ids?: ServiceIds;
 	thumbnails?: Thumbnail[];
 }
@@ -823,6 +827,8 @@ export interface TrackView extends Track, Redirected {
 	sample_data: SampleData | null;
 	producers: { id: number; name: string | null }[];
 	has_media: boolean;
+	/** The track's newest media, for MediaFiles.url / resolve; null when has_media is false */
+	resource_id: string | null;
 	has_lyrics: boolean;
 	/** Null when the track isn't in the caller's library */
 	user: UserTrackOverlay | null;

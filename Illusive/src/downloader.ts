@@ -97,6 +97,12 @@ export async function handle_new_track_data(track: Track, dl_uri: Awaited<Return
 	return SQLTracks.add_playback_saved_data_to_track(track);
 }
 
+function ffmpeg_header_args(headers?: Record<string, string>): string[] {
+	const entries = Object.entries(headers ?? {});
+	if (entries.length === 0) return [];
+	return ['-headers', entries.map(([key, value]) => `${key}: ${value}\r\n`).join('')];
+}
+
 async function download_track_base(downloading: Downloading): Promise<DownloadTrackResult> {
 	const is_redownloading = (is_empty(downloading.track.media_uri) && !Illusive.is_youtube(downloading.track)) || (downloading.redownload && !Illusive.is_youtube(downloading.track));
 	if (is_redownloading) {
@@ -152,6 +158,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 		for (let i = 0; i < 2 && retcode !== 0; i++) {
 			const ffmpeg_result = await ffmpeg().execute_args([
 				'-y',
+				...ffmpeg_header_args(download_uri.headers),
 				'-i',
 				download_uri.url,
 				'-vn',

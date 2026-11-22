@@ -26,6 +26,7 @@ function track_view(overrides: Partial<TrackView> = {}): TrackView {
 		sample_data: null,
 		producers: [],
 		has_media: false,
+		resource_id: null,
 		has_lyrics: false,
 		user: null,
 		...overrides

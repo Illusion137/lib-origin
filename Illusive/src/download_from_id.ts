@@ -2,10 +2,11 @@ import * as Origin from '@origin/index';
 import type { ResponseError } from '@common/types';
 import { Prefs } from '@illusive/prefs';
 import type { DownloadFromIdResult, Track } from '@illusive/types';
-import { generror_catch } from '@common/utils/error_util';
+import { generror, generror_catch } from '@common/utils/error_util';
 import { milliseconds_of } from '@common/utils/util';
 import { youtube_search } from './search';
 import { number_epsilon_distance } from './illusive_utils';
+import { IllusiAccount } from './db/sync/illusi_account';
 
 async function youtube_download_from_id_retry(old_error: ResponseError, retry_track?: Track) {
 	if (retry_track === undefined) return old_error;
@@ -58,5 +59,19 @@ export async function bandlab_download_from_id(song_id: string): Promise<Downloa
 	if (typeof url_response === 'object') return url_response;
 	return {
 		url: url_response
+	};
+}
+
+export async function illusi_download_from_id(illusi_id: string): Promise<DownloadFromIdResult | ResponseError> {
+	if (!IllusiAccount.is_logged_in()) return generror('Not logged in', 'INFO', { illusi_id });
+	const result = await Origin.Illusi.Tracks.get(illusi_id);
+	if (Origin.Illusi.is_error(result)) return result;
+	if (result.resource_id === null) return generror('Track has no media', 'INFO', { illusi_id });
+	const media = await Origin.Illusi.MediaFiles.resolve(result.resource_id);
+	if (Origin.Illusi.is_error(media)) return media;
+	return {
+		url: media.url,
+		headers: media.headers,
+		...(result.duration_ms === null ? {} : { duration: result.duration_ms / 1000 })
 	};
 }
