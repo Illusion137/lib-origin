@@ -7,7 +7,6 @@ export interface PlayerOptions {
 	deafenOnJoin?: boolean;
 	timeout?: number;
 	volume?: number;
-	yt_quality?: any;
 	localAddress?: string;
 	useCookies?: boolean;
 }
