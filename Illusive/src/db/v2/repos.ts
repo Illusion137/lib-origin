@@ -12,7 +12,7 @@ import { and, asc, desc, eq, gt, inArray, lt, max, sql } from 'drizzle-orm';
 import { playlist_track_key } from './keys';
 import { Outbox } from './outbox';
 import { IDS_PER_QUERY, raw, transaction } from './sqlite';
-import { decode_track, encode_track, TRACK_SERVICE_ID_FIELDS, unavailable_service } from './track_codec';
+import { decode_track, encode_track, encode_user_edit, TRACK_SERVICE_ID_FIELDS, unavailable_service } from './track_codec';
 import { read_rows, read_tracks, read_user_tracks, uid_by_service_id, uids_by_illusi_id, write_user_tracks } from './tracks';
 
 const USER_SYNCED_FIELDS = ['title', 'downloaded_at', 'start_at', 'end_at', 'deleted'] as const satisfies readonly (keyof UserTrackRow)[];
@@ -98,6 +98,16 @@ const tracks: TracksRepo = {
 	},
 	async update(_uid, track) {
 		await transaction(db, async tx => save_tracks(tx, [track], 'update'));
+	},
+	async edit(uid, edit) {
+		return transaction(db, async (tx) => {
+			const [row] = await read_rows(tx, [uid]);
+			if (row === undefined) return undefined;
+			const now = Date.now();
+			await tx.update(user_tracks_table).set({ ...encode_user_edit(row, edit), edited_at: now, modified_at: now }).where(eq(user_tracks_table.uid, uid));
+			await Outbox.enqueue(tx, 'user_track', [uid]);
+			return track_by_uid(tx, uid);
+		});
 	},
 	async patch(uid, fields, sync = true) {
 		await transaction(db, async (tx) => {

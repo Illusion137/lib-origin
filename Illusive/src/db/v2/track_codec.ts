@@ -85,13 +85,39 @@ function keep_illusi_id(entry: SnapshotNamed, previous: readonly SnapshotNamed[]
 	return match === undefined ? entry : { ...entry, illusi_id: match.illusi_id };
 }
 
+function same_names(a: readonly SnapshotNamed[], b: readonly SnapshotNamed[]): boolean {
+	return a.length === b.length && a.every((entry, i) => entry.name.trim().toLowerCase() === b[i].name.trim().toLowerCase());
+}
+
+/**
+ * The user's own title and credits for a track: each is null where it matches the catalog snapshot, keeping the
+ * illusi_id of an entry that names an artist or album the track already credits.
+ */
+export function encode_user_edit(row: UserTrackRow, edit: { title: string; artists: readonly NamedUUID[]; album: NamedUUID | null }): Pick<UserTrackRow, 'title' | 'artists_override' | 'album_override'> {
+	const snapshot = row.track;
+	const known = [...snapshot.artists, ...row.artists_override ?? []];
+	const artists = edit.artists.filter(artist => artist.name.trim() !== '').map(artist => keep_illusi_id(named_entry(artist), known));
+	const album_name = edit.album?.name.trim() ?? '';
+	let album: SnapshotNamed | null = album_name === '' ? null : named_entry(edit.album!);
+	if (album !== null) {
+		const match = [snapshot.album, row.album_override].find(entry => entry?.illusi_id !== undefined && entry.name.trim().toLowerCase() === album_name.toLowerCase());
+		if (match) album = { ...album, illusi_id: match.illusi_id };
+	}
+	const title = edit.title.trim();
+	return {
+		title: title === '' || title === snapshot.title ? null : title,
+		artists_override: artists.length === 0 || same_names(artists, snapshot.artists) ? null : artists,
+		album_override: album === null || (snapshot.album !== null && same_names([album], [snapshot.album])) ? null : album
+	};
+}
+
 export function encode_track(track: Track, opts: { now: number; title_is_catalog: boolean; previous?: UserTrackRow }): UserTrackInsert {
 	const { now, previous } = opts;
 	const before = previous?.track;
 	const meta = (track.meta ?? {}) as Partial<TrackMetaData>;
 
 	const seen = new Set<string>();
-	const artists: SnapshotNamed[] = [];
+	let artists: SnapshotNamed[] = [];
 	for (const named of valid_artists(track)) {
 		const entry = keep_illusi_id(named_entry(named), before?.artists ?? []);
 		const key = entry.illusi_id ?? artist_id_for(named);
@@ -105,6 +131,9 @@ export function encode_track(track: Track, opts: { now: number; title_is_catalog
 		album = named_entry(album_named);
 		if (before?.album?.illusi_id !== undefined && before.album.name.trim().toLowerCase() === album.name.toLowerCase()) album.illusi_id = before.album.illusi_id;
 	}
+	// A track decoded with the user's own credits must not write them into the catalog snapshot
+	if (before !== undefined && previous?.artists_override && same_names(artists, previous.artists_override)) artists = before.artists;
+	if (before !== undefined && previous?.album_override && album !== null && same_names([album], [previous.album_override])) album = before.album;
 
 	const meta_extra: Partial<TrackMetaData> = {};
 	for (const [key, value] of Object.entries(meta) as [keyof TrackMetaData, unknown][]) {
@@ -188,12 +217,12 @@ export function decode_track(row: UserTrackRow): Track {
 		uid: row.uid,
 		title: row.title ?? snapshot.title,
 		alt_title: snapshot.alt_title,
-		artists: snapshot.artists.map(named_of),
+		artists: (row.artists_override ?? snapshot.artists).map(named_of),
 		duration: snapshot.duration_ms === null ? 0 : snapshot.duration_ms / 1000,
 		prods: snapshot.prods,
 		explicit: bool_to_explicit(snapshot.explicit),
 		unreleased: snapshot.unreleased,
-		album: snapshot.album ? named_of(snapshot.album) : { name: '', uri: null },
+		album: (row.album_override ?? snapshot.album) ? named_of(row.album_override ?? snapshot.album!) : { name: '', uri: null },
 		service_plays: snapshot.views,
 		imported_id: snapshot.imported_id,
 		illusi_id: row.illusi_id ?? '',

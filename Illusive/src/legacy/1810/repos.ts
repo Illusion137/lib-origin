@@ -106,6 +106,10 @@ const tracks: TracksRepo = {
 		await db.update(tracks_table).set({ ...sanitize(track), sync_error: null }).where(eq(tracks_table.uid, uid));
 		await ChangeTracker.log_change('tracks', 'update', uid, track);
 	},
+	async edit(uid, edit) {
+		await tracks.patch(uid, { title: edit.title, artists: edit.artists, album: edit.album ?? { name: '', uri: null } });
+		return tracks.by_uid(uid);
+	},
 	async patch(uid, fields, sync = true) {
 		const columns = to_columns(fields);
 		await db.update(tracks_table).set(sync ? { ...columns, sync_error: null } : columns).where(eq(tracks_table.uid, uid));

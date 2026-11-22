@@ -1,4 +1,10 @@
-import type { Playlist, PlaylistsTracks, Track } from '@illusive/types';
+import type { NamedUUID, Playlist, PlaylistsTracks, Track } from '@illusive/types';
+
+export interface TrackEdit {
+	title: string;
+	artists: NamedUUID[];
+	album: NamedUUID | null;
+}
 
 export interface TracksRepo {
 	load_library(): Promise<Track[]>;
@@ -9,6 +15,8 @@ export interface TracksRepo {
 	exists(uid: string): Promise<boolean>;
 	insert(tracks: Track[]): Promise<void>;
 	update(uid: string, track: Track): Promise<void>;
+	/** The user's own title, artists and album for the track, kept apart from its catalog data */
+	edit(uid: string, edit: TrackEdit): Promise<Track | undefined>;
 	/** sync: whether this change should reach other devices (thumbnail caching, for example, shouldn't) */
 	patch(uid: string, fields: Partial<Track>, sync?: boolean): Promise<void>;
 	patch_all(fields: Partial<Track>, affected_uids: readonly string[], sync?: boolean): Promise<void>;

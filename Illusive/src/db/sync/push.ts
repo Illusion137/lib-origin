@@ -1,10 +1,10 @@
 import type { DrizzleDB } from '@native/sqlite/sqlite.base';
 import type {
-	ContributedAlbum, ContributedArtist, ContributedTrack, ContributionGraph, PushChanges, PushResponse, PushTable, ServiceIds
+	ContributedAlbum, ContributedArtist, ContributedTrack, ContributionGraph, CreditRef, PushChanges, PushResponse, PushTable, ServiceIds
 } from '@origin/illusi/types';
 import {
 	playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table,
-	type OutboxKind, type OutboxRow, type TrackSnapshot, type UserTrackInsert
+	type OutboxKind, type OutboxRow, type SnapshotNamed, type TrackSnapshot, type UserTrackInsert
 } from '@illusive/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { split_playlist_track_key } from '../v2/keys';
@@ -60,6 +60,10 @@ export function server_service_ids(snapshot: TrackSnapshot): ServiceIds {
 }
 
 /** A contribution of tracks the server doesn't know yet, keyed by their local uid as the temp ref */
+function credit_ref(entry: SnapshotNamed): CreditRef {
+	return entry.illusi_id === undefined ? { name: entry.name } : { id: entry.illusi_id, name: entry.name };
+}
+
 export function track_graph(rows: readonly Pick<UserTrackInsert, 'uid' | 'title' | 'track'>[]): ContributionGraph {
 	const artists = new Map<string, ContributedArtist>();
 	const albums = new Map<string, ContributedAlbum>();
@@ -178,6 +182,8 @@ export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_e
 				}
 				add('user_tracks', entry, {
 					track_id: ref, title: row.title, start_at: row.start_at, end_at: row.end_at, deleted: row.deleted, edited_at: row.edited_at,
+					artists: row.artists_override?.map(credit_ref) ?? null,
+					album: row.album_override === null ? null : credit_ref(row.album_override),
 					// Only a device with the file says it's downloaded; others leave the stored value alone
 					...(row.downloaded_at === null ? {} : { downloaded_at: row.downloaded_at })
 				});

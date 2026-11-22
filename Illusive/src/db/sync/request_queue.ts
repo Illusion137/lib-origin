@@ -20,6 +20,7 @@ export namespace RequestQueue {
 		track_research: async (...args: Parameters<typeof Illusi.Ingest.track_research>) => Illusi.Ingest.track_research(...args),
 		track_research_not_found: async (...args: Parameters<typeof Illusi.Ingest.track_research_not_found>) => Illusi.Ingest.track_research_not_found(...args),
 		genius: async (...args: Parameters<typeof Illusi.Ingest.genius>) => Illusi.Ingest.genius(...args),
+		user_lyrics: async (...args: Parameters<typeof Illusi.Tracks.user_lyrics>) => Illusi.Tracks.user_lyrics(...args),
 		genius_found: async (...args: Parameters<typeof Illusi.Ingest.genius_found>) => Illusi.Ingest.genius_found(...args),
 		genius_not_found: async (...args: Parameters<typeof Illusi.Ingest.genius_not_found>) => Illusi.Ingest.genius_not_found(...args),
 		youtube_music_lyrics: async (...args: Parameters<typeof Illusi.Ingest.youtube_music_lyrics>) => Illusi.Ingest.youtube_music_lyrics(...args),

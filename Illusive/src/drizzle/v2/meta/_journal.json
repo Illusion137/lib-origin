@@ -22,6 +22,13 @@
       "when": 1793496705917,
       "tag": "0002_drop_synced_lyrics_uri",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795327933844,
+      "tag": "0003_user_track_credits",
+      "breakpoints": true
     }
   ]
 }

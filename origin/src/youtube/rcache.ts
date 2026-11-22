@@ -9,12 +9,15 @@ const rcache_lifespan = milliseconds_of({ minutes: 30 });
 export class RCache implements Types.ICache {
 	readonly cache_dir: string;
 	readonly use_fscache: boolean;
-	constructor(persistant: boolean, persistent_dir?: string) {
+	readonly namespace: string;
+	constructor(persistant: boolean, persistent_dir?: string, namespace = '') {
 		this.cache_dir = persistent_dir ?? '';
 		this.use_fscache = persistant;
+		this.namespace = namespace;
 	}
 
 	async get(key: string): Promise<ArrayBuffer | undefined> {
+		key = this.namespace + key;
 		const memcache_result = rcache.get(key);
 		if (memcache_result) return memcache_result;
 		if (this.use_fscache && !is_empty(this.cache_dir)) {
@@ -25,6 +28,7 @@ export class RCache implements Types.ICache {
 	}
 
 	async set(key: string, value: ArrayBuffer): Promise<void> {
+		key = this.namespace + key;
 		rcache.update(key, value, rcache_lifespan);
 		if (this.use_fscache && !is_empty(this.cache_dir)) {
 			await FSCache.insert_cache(key, value, { directory: this.cache_dir, serial_type: 'arraybuffer' });
@@ -32,6 +36,7 @@ export class RCache implements Types.ICache {
 	}
 
 	async remove(key: string): Promise<void> {
+		key = this.namespace + key;
 		rcache.remove(key);
 		if (this.use_fscache && !is_empty(this.cache_dir)) {
 			await FSCache.clear_cache(key, { directory: this.cache_dir });

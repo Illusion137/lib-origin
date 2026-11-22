@@ -11,7 +11,7 @@ import { Translate } from '@roze/translate';
 import { Illusi } from '@origin/illusi/illusi';
 import { Genius } from '@origin/genius/genius';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
-import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics } from '@origin/illusi/types';
+import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics, UserLyricsBody } from '@origin/illusi/types';
 import { LetterSync } from './letter_sync';
 import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
@@ -167,6 +167,25 @@ export namespace Lyrics {
 		const id = await server_track_id(track);
 		if (typeof id !== 'string') return catch_log(id.error);
 		const result = await RequestQueue.send('genius_found', id, preloaded_state);
+		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
+	}
+
+	export function user_lyrics_body(lyrics: TrackLyrics): UserLyricsBody | null {
+		if (lyrics.sync_status === 'NONE') return lyrics.plain.trim() === '' ? null : { format: 'PLAIN', sync_type: 'NONE', raw_content: lyrics.plain };
+		const lrc = to_lrc(lyrics.lyrics);
+		if (lrc.trim() === '') return null;
+		const worded = lyrics.lyrics.lines.some(line => (line.segments?.length ?? 0) > 0);
+		return worded ? { format: 'ELRC', sync_type: 'WORD', raw_content: lrc } : { format: 'LRC', sync_type: 'LINE', raw_content: lrc };
+	}
+
+	/** The user's edit becomes their one version of the track's lyrics on the server, ranked with the rest */
+	export async function contribute_user(track: Track, lyrics: TrackLyrics) {
+		if (Illusi.get_session() === null) return;
+		const body = user_lyrics_body(lyrics);
+		if (body === null) return;
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return catch_log(id.error);
+		const result = await RequestQueue.send('user_lyrics', id, body);
 		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
 	}
 

@@ -81,6 +81,58 @@ export function filter_with_query_flags<T>(query: string, obj: T[], query_flags:
 }
 
 const QUERY_SPLIT_OR = ' OR ';
+
+type SearchKey = 'title' | 'alt_title' | 'artist' | 'album';
+const SEARCH_KEYS: SearchKey[] = ['title', 'alt_title', 'artist', 'album'];
+const SEARCH_KEY_WEIGHTS: Record<SearchKey, number> = { title: 1, alt_title: 0.95, artist: 0.85, album: 0.6 };
+
+const MATCH_TIER = { FUZZY: 0, SUBSTRING: 1, WORD_PREFIX: 2, TITLE_PREFIX: 3, TITLE_EXACT: 4 } as const;
+type MatchTier = typeof MATCH_TIER[keyof typeof MATCH_TIER];
+
+function normalize_search_text(text: string): string {
+	return text
+		.replace(/\p{Script=Latin}+/gu, match => match.normalize('NFD'))
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, ' ')
+		.trim();
+}
+
+function search_key_text(track: Track, key: SearchKey): string {
+	switch (key) {
+		case 'title': return track.title ?? '';
+		case 'alt_title': return track.alt_title ?? '';
+		case 'artist': return artist_string(track);
+		case 'album': return track.album?.name ?? '';
+	}
+}
+
+function match_tier(track: Track, normalized_query: string, query_tokens: string[]): MatchTier {
+	const titles = [track.title, track.alt_title].filter(Boolean).map(title => normalize_search_text(title!));
+	if (titles.some(title => title === normalized_query)) return MATCH_TIER.TITLE_EXACT;
+	if (titles.some(title => title.startsWith(normalized_query))) return MATCH_TIER.TITLE_PREFIX;
+
+	const haystack = SEARCH_KEYS.map(key => normalize_search_text(search_key_text(track, key))).join(' ');
+	const words = haystack.split(' ');
+	if (query_tokens.every(token => words.some(word => word.startsWith(token)))) return MATCH_TIER.WORD_PREFIX;
+	if (query_tokens.every(token => haystack.includes(token))) return MATCH_TIER.SUBSTRING;
+	return MATCH_TIER.FUZZY;
+}
+
+function text_relevance(result: Fuzzysort.KeysResult<Track>, multi_word: boolean): number {
+	if (multi_word) return result.score;
+	return Math.max(...SEARCH_KEYS.map((key, i) => result[i].score * SEARCH_KEY_WEIGHTS[key]));
+}
+
+function engagement_multiplier(track: Track, max_plays: number): number {
+	const plays = track.meta?.plays ?? 0;
+	const plays_boost = max_plays > 0 ? 0.15 * Math.log1p(plays) / Math.log1p(max_plays) : 0;
+	const last_played = track.meta?.last_played_date ? new Date(track.meta.last_played_date).getTime() : NaN;
+	const days_since_played = (Date.now() - last_played) / (1000 * 60 * 60 * 24);
+	const recency_boost = Number.isFinite(days_since_played) ? 0.1 * Math.max(0, 1 - days_since_played / 30) : 0;
+	return 1 + plays_boost + recency_boost;
+}
+
 /** @param fuzzy_search_threshold 0-100 (the `fuzzy_search_threshold` pref) */
 export function track_query_filter(tracks: Track[], query?: string, fuzzy_search_threshold: number = DEFAULT_FUZZY_SEARCH_THRESHOLD): Track[] {
 	if (is_empty(query)) return tracks;
@@ -91,23 +143,29 @@ export function track_query_filter(tracks: Track[], query?: string, fuzzy_search
 			.reduce((tracks_a, tracks_b) => tracks_include(tracks_a, tracks_b));
 	}
 
-	const max_plays = Math.max(...tracks.map(t => t.meta?.plays ?? 0));
-
 	const queried_result = filter_with_query_flags(query!, tracks, TRACK_QUERY_FLAGS);
 
-	query = queried_result.new_query;
+	query = queried_result.new_query.trim();
 	tracks = queried_result.filtered_data;
 
 	if (is_empty(query)) return tracks;
 
+	const normalized_query = normalize_search_text(query);
+	const query_tokens = normalized_query.split(' ').filter(Boolean);
+	const multi_word = query_tokens.length > 1;
+	const threshold = fuzzy_search_threshold / 100;
+	const max_plays = tracks.reduce((max, track) => Math.max(max, track.meta?.plays ?? 0), 0);
+
 	return fuzzysort
-		.go(query, tracks, {
-			all: false,
-			keys: ['title', obj => artist_string(obj), obj => obj.album?.name ?? '---------'],
-			threshold: fuzzy_search_threshold / 100,
-			scoreFn: r => r.score * times_played_multiplier(r.obj.meta?.plays ?? 0, max_plays) * time_since_last_played_multiplier(r.obj.meta?.last_played_date ? new Date(r.obj.meta.last_played_date) : new Date())
+		.go(query, tracks, { all: false, keys: SEARCH_KEYS.map(key => (track: Track) => search_key_text(track, key)) })
+		.map((result) => {
+			const tier = query_tokens.length > 0 ? match_tier(result.obj, normalized_query, query_tokens) : MATCH_TIER.FUZZY;
+			const relevance = text_relevance(result, multi_word);
+			return { track: result.obj, tier, relevance, score: relevance * engagement_multiplier(result.obj, max_plays) };
 		})
-		.map(r => r.obj);
+		.filter(({ tier, relevance }) => tier !== MATCH_TIER.FUZZY || relevance >= threshold)
+		.sort((a, b) => b.tier - a.tier || b.score - a.score)
+		.map(({ track }) => track);
 }
 
 function date_time(date?: string): number {

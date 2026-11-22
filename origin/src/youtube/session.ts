@@ -6,7 +6,7 @@ import { fs, load_native_fs } from '@native/fs/fs';
 
 export namespace YouTubeSession {
 	export interface Opts { cookie_jar?: CookieJar; fetch_opts?: RoZFetchRequestInit }
-	export interface Config { retrieve_player?: boolean }
+	export interface Config { retrieve_player?: boolean; user_agent?: string }
 
 	let preloaded_cookies: string | undefined;
 	const session_cache = new Map<string, Promise<Innertube>>();
@@ -21,28 +21,28 @@ export namespace YouTubeSession {
 		return jar !== undefined && jar !== '' ? jar : preloaded_cookies;
 	}
 
-	function cache_key(cookie: string | undefined, client_type: ClientType, retrieve_player: boolean): string {
-		return `${client_type}|${retrieve_player ? 'p' : ''}|${cookie ?? ''}`;
+	function cache_key(cookie: string | undefined, client_type: ClientType, config: Config): string {
+		return `${client_type}|${config.retrieve_player ? 'p' : ''}|${config.user_agent ?? ''}|${cookie ?? ''}`;
 	}
 
-	async function create_session(opts: Opts, client_type: ClientType, retrieve_player: boolean): Promise<Innertube> {
+	async function create_session(opts: Opts, client_type: ClientType, config: Config): Promise<Innertube> {
 		Log.setLevel(Log.Level.NONE);
 		await load_native_fs();
 		const cookie = resolve_cookie(opts);
 		return await Innertube.create({
 			client_type,
-			cache: new RCache(true, await fs().temp_directory()),
+			cache: new RCache(true, await fs().temp_directory(), config.user_agent === undefined ? '' : `${config.user_agent}|`),
 			cookie,
-			retrieve_player
+			retrieve_player: config.retrieve_player ?? false,
+			user_agent: config.user_agent
 		});
 	}
 
 	export async function get(opts: Opts, client_type: ClientType = ClientType.WEB, config: Config = {}): Promise<Innertube> {
-		const retrieve_player = config.retrieve_player ?? false;
-		const key = cache_key(resolve_cookie(opts), client_type, retrieve_player);
+		const key = cache_key(resolve_cookie(opts), client_type, config);
 		let session = session_cache.get(key);
 		if (session === undefined) {
-			session = create_session(opts, client_type, retrieve_player);
+			session = create_session(opts, client_type, config);
 			session_cache.set(key, session);
 		}
 		botguard_cache.set(key, (await session).botguard);
@@ -50,8 +50,7 @@ export namespace YouTubeSession {
 	}
 
 	export async function get_botguard(opts: Opts, client_type: ClientType = ClientType.WEB, config: Config = {}): Promise<Innertube['botguard']> {
-		const retrieve_player = config.retrieve_player ?? false;
-		const key = cache_key(resolve_cookie(opts), client_type, retrieve_player);
+		const key = cache_key(resolve_cookie(opts), client_type, config);
 		let botguard = botguard_cache.get(key);
 		if (!botguard) {
 			await get(opts, client_type, config);
@@ -75,7 +74,7 @@ export namespace YouTubeSession {
 	}
 
 	export function refresh(opts: Opts, client_type: ClientType = ClientType.WEB, config: Config = {}) {
-		session_cache.delete(cache_key(resolve_cookie(opts), client_type, config.retrieve_player ?? false));
+		session_cache.delete(cache_key(resolve_cookie(opts), client_type, config));
 	}
 
 	export function clear() {

@@ -31,6 +31,8 @@ export namespace YouTubeDL {
 	export interface Chapter { title: string; start_time: number }
 	let preloaded_cookies: string | undefined;
 
+	const SABR_PLAYER_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+
 	const UNAVAILABLE_ERROR_NAME = 'YouTubeUnavailableError';
 	const UNAVAILABLE_STATUSES = new Set(['ERROR', 'UNPLAYABLE']);
 
@@ -62,6 +64,11 @@ export namespace YouTubeDL {
 	export async function get_innertube_client(client_type?: ClientType, cookie?: string): Promise<Innertube> {
 		await load_native_jseval();
 		return await YouTubeSession.get(session_opts(cookie), client_type, { retrieve_player: true });
+	}
+
+	async function get_sabr_client(cookie?: string): Promise<Innertube> {
+		await load_native_jseval();
+		return await YouTubeSession.get(session_opts(cookie), undefined, { retrieve_player: true, user_agent: SABR_PLAYER_USER_AGENT });
 	}
 
 	export function get_chapters(info: VideoInfo) {
@@ -110,7 +117,7 @@ export namespace YouTubeDL {
 	}
 
 	export async function get_streaming_data(video_id: string) {
-		const client = await get_innertube_client();
+		const client = await get_sabr_client();
 		const player = await make_player_request(client, video_id);
 		return { streaming_data: player.streaming_data, placeholder_token: generate_placeholder_potoken(video_id) };
 	}
@@ -128,7 +135,7 @@ export namespace YouTubeDL {
 
 	async function resolve_sabr_info_attempt(video_id: string): Promise<ExtendedSabrStreamConfig | ResponseError> {
 		video_id = urlid(video_id, 'youtube.com/', 'playlist?list=', 'watch?v=', /&.+/);
-		const client = await get_innertube_client();
+		const client = await get_sabr_client();
 		fetch_potoken(video_id).catch(catch_error_log);
 
 		const player_response = await make_player_request(client, video_id);
@@ -170,7 +177,7 @@ export namespace YouTubeDL {
 			callbacks: {
 				onMintPoToken: async () => fetch_potoken_bytes(video_id),
 				onReloadPlayerResponse: async (playback_context) => {
-					const client = await get_innertube_client();
+					const client = await get_sabr_client();
 					const player_response = await make_player_request(client, video_id, playback_context);
 					const server_abr_streaming_url = await client.session.player?.decipher(player_response.streaming_data?.server_abr_streaming_url);
 					const video_playback_ustreamer_config = player_response.player_config?.media_common_config.media_ustreamer_request_config?.video_playback_ustreamer_config;

@@ -10,7 +10,7 @@ import type { PushResponse, SyncRows } from '@origin/illusi/types';
 import { outbox_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table } from '@illusive/db/schema';
 import { playlist_track_key } from '../v2/keys';
 import { Outbox } from '../v2/outbox';
-import { encode_track } from '../v2/track_codec';
+import { encode_track, encode_user_edit } from '../v2/track_codec';
 import { read_tracks, write_user_tracks } from '../v2/tracks';
 import { apply_rows } from './apply';
 import { apply_push_result, build_push, MAX_ATTEMPTS } from './push';
@@ -229,7 +229,7 @@ describe('push', () => {
 
 describe('apply_rows', () => {
 	const server_user_track = (edited_at: number, title: string) => ({
-		user_id: 'u', track_id: 'ill_track', title, downloaded_at: null, start_at: null, end_at: null, deleted: false, edited_at: iso(edited_at),
+		user_id: 'u', track_id: 'ill_track', title, artist_ids: null, album_id: null, downloaded_at: null, start_at: null, end_at: null, deleted: false, edited_at: iso(edited_at),
 		created_at: iso(NOW), modified_at: iso(edited_at)
 	});
 
@@ -299,6 +299,46 @@ describe('apply_rows', () => {
 		const rows = await ex.select().from(user_tracks_table);
 		expect(rows).toHaveLength(1);
 		expect(rows[0].track.service_ids).toMatchObject({ youtube_id: 'yt_u1', isrc: 'US123' });
+	});
+
+	it('keeps the user\'s own credits apart from the catalog snapshot', async () => {
+		const ex = open_db();
+		await add_tracks(ex, [make_track('u1')]);
+		await ex.update(user_tracks_table).set({ illusi_id: 'ill_track' });
+		let [row] = await ex.select().from(user_tracks_table);
+		row = { ...row, track: { ...row.track, artists: row.track.artists.map((a, i) => (i === 0 ? { ...a, illusi_id: 'ill_artist' } : a)) } };
+		const edit = encode_user_edit(row, { title: 'Title u1', artists: [{ name: 'some artist', uri: null }, { name: 'New Guest', uri: null }], album: { name: 'The Album', uri: null } });
+		expect(edit.title).toBeNull();
+		expect(edit.album_override).toBeNull();
+		expect(edit.artists_override).toEqual([{ name: 'some artist', illusi_id: 'ill_artist' }, { name: 'New Guest' }]);
+		expect(encode_user_edit(row, { title: 'Mine', artists: [{ name: 'Some Artist', uri: null }, { name: 'Feature', uri: null }], album: { name: 'Other', uri: null } }))
+			.toEqual({ title: 'Mine', artists_override: null, album_override: { name: 'Other' } });
+
+		await ex.update(user_tracks_table).set({ track: row.track, ...edit, edited_at: NOW + 10 });
+		await Outbox.enqueue(ex, 'user_track', ['u1']);
+		let [track] = await read_tracks(ex, ['u1']);
+		expect(track.artists.map(a => a.name)).toEqual(['some artist', 'New Guest']);
+		// Saving the decoded track again leaves the snapshot's credits alone
+		[row] = await ex.select().from(user_tracks_table);
+		await write_user_tracks(ex, [encode_track(track, { now: NOW + 20, title_is_catalog: false, previous: row })]);
+		[row] = await ex.select().from(user_tracks_table);
+		expect(row.track.artists.map(a => a.name)).toEqual(['Some Artist', 'Feature']);
+
+		const batch = (await build_push(ex))!;
+		expect(batch.changes.user_tracks?.[0]).toMatchObject({ artists: [{ id: 'ill_artist', name: 'some artist' }, { name: 'New Guest' }], album: null });
+
+		await apply_rows(ex, {
+			artists: [{ id: 'ill_guest', name: 'New Guest', description: null, primary_genre_name: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			user_tracks: [{ ...server_user_track(NOW + 30, 'Title u1'), artist_ids: ['ill_artist', 'ill_guest'] }]
+		});
+		[track] = await read_tracks(ex, ['u1']);
+		expect(track.artists.map(a => a.name)).toEqual(['some artist', 'New Guest']);
+		[row] = await ex.select().from(user_tracks_table);
+		expect(row.artists_override?.map(a => a.illusi_id)).toEqual(['ill_artist', 'ill_guest']);
+
+		await apply_rows(ex, { user_tracks: [server_user_track(NOW + 40, 'Title u1')] });
+		[track] = await read_tracks(ex, ['u1']);
+		expect(track.artists.map(a => a.name)).toEqual(['Some Artist', 'Feature']);
 	});
 
 	it('stores producers with their ids', async () => {

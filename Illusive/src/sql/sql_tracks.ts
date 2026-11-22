@@ -14,6 +14,7 @@ import { fs } from '@native/fs/fs';
 import { SQLfs } from './sql_fs';
 import { SQLGlobal } from './sql_global';
 import { Store } from '@illusive/db/store';
+import type { TrackEdit } from '@illusive/db/repos';
 import type { Lyrics } from '@illusive/lyrics';
 import type { ParsedLyrics } from '@origin/illusi/types';
 
@@ -287,6 +288,11 @@ export namespace SQLTracks {
 	export async function update_track(track_uid: Track['uid'], new_track: Track) {
 		await Store.write(async repos => repos.tracks.update(track_uid, { ...new_track, uid: track_uid }));
 		SQLGlobal.update_global_track_item(track_uid, new_track);
+	}
+	export async function edit_track(track_uid: Track['uid'], edit: TrackEdit) {
+		const track = await Store.write(async repos => repos.tracks.edit(track_uid, edit));
+		if (track !== undefined) SQLGlobal.update_global_track_item(track_uid, track);
+		return track;
 	}
 	export async function update_track_meta_data(track_uid: Track['uid'], new_meta: TrackMetaData) {
 		await Store.write(async repos => repos.tracks.patch(track_uid, { meta: new_meta }));

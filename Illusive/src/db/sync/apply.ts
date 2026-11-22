@@ -207,6 +207,12 @@ async function redirect_entries(ex: DrizzleDB, old_id: string, new_id: string) {
 		snapshots.set(uid, { ...snapshot, artists, album: snapshot.album === null ? null : swap(snapshot.album) });
 	}
 	await snapshots.flush(Date.now());
+	const credited = await ex.select({ uid: user_tracks_table.uid, artists: user_tracks_table.artists_override, album: user_tracks_table.album_override }).from(user_tracks_table)
+		.where(sql`${user_tracks_table.artists_override} LIKE ${`%${old_id}%`} OR ${user_tracks_table.album_override} LIKE ${`%${old_id}%`}`);
+	for (const row of credited) {
+		const swap = (entry: SnapshotNamed): SnapshotNamed => (entry.illusi_id === old_id ? { ...entry, illusi_id: new_id } : entry);
+		await ex.update(user_tracks_table).set({ artists_override: row.artists?.map(swap) ?? null, album_override: row.album === null ? null : swap(row.album) }).where(eq(user_tracks_table.uid, row.uid));
+	}
 }
 
 export async function apply_redirects(ex: DrizzleDB, redirects: readonly Redirect[]) {
@@ -374,6 +380,28 @@ async function apply_catalog(ex: DrizzleDB, rows: Partial<SyncRows>, now: number
 	return changed;
 }
 
+/** Names for the artists and albums users credit their tracks with: from the rows, else as the library already names them */
+async function credit_names(ex: DrizzleDB, rows: Partial<SyncRows>, locals: readonly UserTrackRow[]) {
+	const artist_ids = (rows.user_tracks ?? []).flatMap(r => r.artist_ids ?? []);
+	const album_ids = (rows.user_tracks ?? []).flatMap(r => (r.album_id == null ? [] : [r.album_id]));
+	const names = {
+		artists: new Map<string, string>((rows.artists ?? []).map(a => [a.id, a.name])),
+		albums: new Map<string, string>((rows.albums ?? []).map(a => [a.id, a.name]))
+	};
+	const fallback = { artists: new Map<string, string>(), albums: new Map<string, string>() };
+	for (const local of locals) {
+		for (const entry of local.artists_override ?? []) if (entry.illusi_id !== undefined) fallback.artists.set(entry.illusi_id, entry.name);
+		const album = local.album_override;
+		if (album?.illusi_id !== undefined) fallback.albums.set(album.illusi_id, album.name);
+	}
+	for (const kind of ['artists', 'albums'] as const) {
+		const missing = (kind === 'artists' ? artist_ids : album_ids).filter(id => !names[kind].has(id) && !fallback[kind].has(id));
+		for (const [id, entry] of await known_entries(ex, kind, missing)) fallback[kind].set(id, entry.name);
+	}
+	const entry = (kind: 'artists' | 'albums') => (illusi_id: string): SnapshotNamed => ({ name: names[kind].get(illusi_id) ?? fallback[kind].get(illusi_id) ?? '', illusi_id });
+	return { artists: entry('artists'), albums: entry('albums') };
+}
+
 export async function apply_rows(ex: DrizzleDB, rows: Partial<SyncRows>): Promise<ApplyResult> {
 	const now = Date.now();
 	let library_changed = false;
@@ -388,13 +416,16 @@ export async function apply_rows(ex: DrizzleDB, rows: Partial<SyncRows>): Promis
 		const keys = await ensure_rows(ex, rows.user_tracks.map(r => r.track_id));
 		const uids = rows.user_tracks.map(r => keys.get(r.track_id)!);
 		const waiting = await pending(ex, 'user_track', uids);
-		const locals = new Map([...await read_user_tracks(ex, uids)].map(([uid, row]) => [uid, row.edited_at]));
+		const locals = await read_user_tracks(ex, uids);
+		const credits = await credit_names(ex, rows, [...locals.values()]);
 		for (const row of rows.user_tracks) {
 			const uid = keys.get(row.track_id)!;
 			const edited_at = time(row.edited_at) ?? time(row.modified_at)!;
-			if (local_wins(locals.get(uid), edited_at, waiting.has(uid))) continue;
+			if (local_wins(locals.get(uid)?.edited_at, edited_at, waiting.has(uid))) continue;
 			await ex.update(user_tracks_table).set({
 				title: row.title, downloaded_at: time(row.downloaded_at), start_at: row.start_at, end_at: row.end_at, deleted: row.deleted, edited_at,
+				artists_override: row.artist_ids?.map(id => credits.artists(id)) ?? null,
+				album_override: row.album_id == null ? null : credits.albums(row.album_id),
 				created_at: time(row.created_at)!, modified_at: now
 			}).where(eq(user_tracks_table.uid, uid));
 		}

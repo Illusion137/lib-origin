@@ -59,6 +59,9 @@ export const user_tracks_table = sqliteTable('user_tracks', {
 	track: text({ mode: 'json' }).notNull().$type<TrackSnapshot>(),
 	/** The user's own title for the track */
 	title: text(),
+	/** The user's own credits in place of the snapshot's; null keeps the snapshot's */
+	artists_override: text({ mode: 'json' }).$type<SnapshotNamed[]>(),
+	album_override: text({ mode: 'json' }).$type<SnapshotNamed>(),
 	downloaded_at: int(),
 	start_at: int(),
 	end_at: int(),

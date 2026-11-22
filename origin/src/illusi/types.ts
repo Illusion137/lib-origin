@@ -13,7 +13,7 @@ export type Ref = string;
 export type Cursor = string;
 
 export type ITunesExplicitness = 'explicit' | 'cleaned' | 'notExplicit';
-export type LyricsService = 'BINILYRICS' | 'LRCLIB' | 'UNISON' | 'QQMUSIC' | 'KUGOU' | 'LRCRED' | 'YOUTUBE_MUSIC' | 'GENIUS';
+export type LyricsService = 'BINILYRICS' | 'LRCLIB' | 'UNISON' | 'QQMUSIC' | 'KUGOU' | 'LRCRED' | 'YOUTUBE_MUSIC' | 'GENIUS' | 'USER';
 export type LyricsSyncType = 'NONE' | 'LINE' | 'WORD' | 'SYLLABLE';
 export type AlbumType = 'SINGLE' | 'ALBUM' | 'EP';
 export type InheritanceMode = 'INCLUDE' | 'EXCLUDE' | 'MASK' | 'INTERSECTION';
@@ -303,6 +303,9 @@ export interface UserTrack extends Timestamps {
 	user_id: UUID;
 	track_id: IllusiId;
 	title: string | null;
+	/** The user's own credits in place of the catalog's; null keeps the catalog's */
+	artist_ids: IllusiId[] | null;
+	album_id: IllusiId | null;
 	downloaded_at: ISODateString | null;
 	start_at: number | null;
 	end_at: number | null;
@@ -408,9 +411,17 @@ export interface PullResponse extends SyncRows, WithActions {
 }
 
 /** User-owned rows carry the client's edit time for row-level last-write-wins; omitted fields keep the stored value */
+/** An artist or album a user credits a track with: an existing id, or a name the server links or creates */
+export interface CreditRef {
+	id?: IllusiId;
+	name: string;
+}
 export interface PushUserTrack {
 	track_id: Ref;
 	title?: string | null;
+	/** null goes back to the catalog's credits */
+	artists?: CreditRef[] | null;
+	album?: CreditRef | null;
 	downloaded_at?: TimeInput | null;
 	start_at?: number | null;
 	end_at?: number | null;
@@ -739,6 +750,13 @@ export interface UnavailableReportResult extends Redirected {
 	/** The server has a copy, so the track wasn't flagged; stream it through MediaFiles */
 	has_media: boolean;
 }
+/** A user's edit of a track's lyrics; each user keeps one version per track */
+export interface UserLyricsBody {
+	format: 'LRC' | 'ELRC' | 'PLAIN' | 'TTML';
+	sync_type: LyricsSyncType;
+	raw_content: string;
+}
+
 export interface DurationReportBody {
 	duration_ms: number;
 	/** download: measured from a file this device downloaded; service: the length a streaming service gave */
