@@ -2,12 +2,14 @@ import fs from 'fs/promises';
 import fs_sync from 'fs';
 import os from 'os';
 import path_lib from 'path';
+import { fileURLToPath } from 'url';
 import { gen_uuid } from '@common/utils/util';
 import type { FileSystem, EncodingOpts, NoOverwriteOpts, ResumableDownloadOpts } from '@native/fs/fs.base';
 import type { ReadableStream } from 'stream/web';
 import { generror_catch } from '@common/utils/error_util';
 
 export const node_fs: FileSystem = {
+	file_blob: async (path: string, type: string) => new Blob([await fs.readFile(path.startsWith('file:') ? fileURLToPath(path) : path)], { type }),
 	temp_directory: async (...paths: string[]) => path_lib.join(os.tmpdir(), ...paths),
 	document_directory: async (...paths: string[]) => path_lib.join(os.homedir(), ...paths),
 	read_as_string: async (path: string, opts: EncodingOpts) => {

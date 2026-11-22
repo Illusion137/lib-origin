@@ -13,6 +13,7 @@ function join_uri(base: string, ...paths: string[]): string {
 }
 
 export const mobile_fs: FileSystem = {
+	file_blob: async (path: string) => new File(path) as unknown as Blob,
 	temp_directory: async (...paths: string[]) => join_uri(expo_fs.cacheDirectory!, ...paths),
 	document_directory: async (...paths: string[]) => join_uri(expo_fs.documentDirectory!, ...paths),
 	read_as_string: async (path: string, opts: EncodingOpts) => {

@@ -37,6 +37,7 @@ export interface FileSystem {
 	document_directory: (...paths: string[]) => Promise<string>;
 	read_as_string: (path: string, opts: EncodingOpts) => PromiseResult<string>;
 	read_as_buffer: (path: string) => PromiseResult<ArrayBuffer>;
+	file_blob: (path: string, type: string) => Promise<Blob>;
 	read_as_buffer_range: (path: string, position: number, length: number) => PromiseResult<Uint8Array>;
 	read_directory: (path: string) => Promise<string[] | ResponseError>;
 	get_info: (path: string) => Promise<FileInfo>;
