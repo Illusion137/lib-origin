@@ -22,7 +22,10 @@ function guild_queue(client: DiscordClient, message: DiscordMessage) {
 }
 
 export function track_to_string(track: DiscordTrack) {
-	return `\`${track?.title ?? ''} | ${track?.artists[0].name ?? ''} | ${duration_to_string(track?.duration ?? 0)}\``;
+	const duration = track?.duration ?? 0;
+	const enddur = track?.meta?.enddur;
+	const trimmed = enddur !== undefined && enddur < duration;
+	return `\`${track?.title ?? ''} | ${track?.artists[0].name ?? ''} | ${duration_to_string(trimmed ? enddur : duration)}${trimmed ? ' (trimmed)' : ''}\``;
 }
 
 let channel_id = '';

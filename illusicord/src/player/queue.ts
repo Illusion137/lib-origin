@@ -1,7 +1,7 @@
 import type { Guild, GuildChannel, GuildChannelResolvable, VoiceChannel } from 'discord.js';
 import { DMPErrors, DMPError } from '@illusicord/player/dmp_error';
 import { StreamConnection } from '@illusicord/player/stream_connection';
-import { entersState, joinVoiceChannel, StreamType, VoiceConnectionStatus } from '@discordjs/voice';
+import { AudioPlayerStatus, entersState, joinVoiceChannel, StreamType, VoiceConnectionStatus } from '@discordjs/voice';
 import { Illusive } from '@illusive/illusive';
 import { RepeatMode, type DiscordTrack, type PlayerOptions } from '@illusicord/types';
 import { Constants } from '@illusicord/constants';
@@ -13,9 +13,26 @@ import path from 'path-browserify';
 import { SabrStream } from 'googlevideo/sabr-stream';
 import { Readable } from 'stream';
 import { EnabledTrackTypes } from 'googlevideo/utils';
+import { spawn } from 'child_process';
 
 interface PreparedStream { stream_input: Readable | string; input_type: StreamType }
 type DownloadUrlResult = Awaited<ReturnType<typeof Illusive.get_download_url>>;
+
+function ffmpeg_pcm_with_headers(url: string, headers: Record<string, string>): PreparedStream {
+	const args = [
+		'-analyzeduration', '0',
+		'-loglevel', '0',
+		'-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
+		'-headers', Object.entries(headers).map(([key, value]) => `${key}: ${value}\r\n`).join(''),
+		'-i', url,
+		'-f', 's16le', '-ar', '48000', '-ac', '2',
+		'pipe:1'
+	];
+	const ffmpeg = spawn('ffmpeg', args, { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+	ffmpeg.on('error', err => console.error('[FFmpeg] failed to start:', err));
+	ffmpeg.stdout.on('close', () => ffmpeg.kill());
+	return { stream_input: ffmpeg.stdout, input_type: StreamType.Raw };
+}
 
 export class Queue<T = unknown> {
 	player: Player;
@@ -29,6 +46,7 @@ export class Queue<T = unknown> {
 	destroyed: boolean;
 	// Keyed by track object identity so entries drop out once a track leaves the queue.
 	private readonly preloaded_tracks: WeakMap<DiscordTrack, Promise<PreparedStream | null>>;
+	private enddur_timer?: NodeJS.Timeout;
 
 	constructor(player: Player, guild: Guild, options: PlayerOptions) {
 		this.tracks = [];
@@ -131,6 +149,7 @@ export class Queue<T = unknown> {
 				}
 			})
 			.on('error', err => this.player.emit('error', err.message, this));
+		_connection.player.on('stateChange', () => this.arm_enddur());
 		return this;
 	}
 
@@ -224,11 +243,26 @@ export class Queue<T = unknown> {
 				input_type: StreamType.Arbitrary
 			};
 		} else {
+			if (download_url.headers !== undefined && Object.keys(download_url.headers).length !== 0)
+				return ffmpeg_pcm_with_headers(download_url.url, download_url.headers);
 			return {
 				stream_input: download_url.url.replace(IllusiveConstants.media_archive_path, ''),
 				input_type: StreamType.Arbitrary
 			};
 		}
+	}
+
+	private arm_enddur() {
+		clearTimeout(this.enddur_timer);
+		const connection = this.connection;
+		const enddur = connection?.resource?.metadata?.meta?.enddur;
+		if (this.destroyed || connection === undefined || enddur === undefined || connection.player.state.status !== AudioPlayerStatus.Playing) return;
+		const remaining_ms = enddur * 1000 - connection.time;
+		if (remaining_ms <= 0) {
+			this.skip();
+			return;
+		}
+		this.enddur_timer = setTimeout(() => this.arm_enddur(), remaining_ms);
 	}
 
 	/**

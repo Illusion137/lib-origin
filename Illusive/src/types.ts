@@ -263,13 +263,15 @@ export interface DownloadableMusicService {
 	id_field: DownloadableMusicServiceTrackField;
 }
 
+export type SmallTrackIds = Partial<Record<DownloadableMusicServiceTrackField, string>>;
 export interface SmallTrack {
 	title: Track['title'];
 	artists: string;
 	duration: Track['duration'];
-	downloadable_ids: string[];
+	downloadable_ids: SmallTrackIds | string[];
+	enddur?: number;
 }
-export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['downloadable_ids']];
+export type SmallTrackRaw = [SmallTrack['title'], SmallTrack['artists'], SmallTrack['duration'], SmallTrack['downloadable_ids'], SmallTrack['enddur']?];
 
 export type PlaylistInheritanceMode = 'INCLUDE' | 'EXCLUDE' | 'MASK' | 'INTERSECTION';
 export interface InheritedPlaylist {
