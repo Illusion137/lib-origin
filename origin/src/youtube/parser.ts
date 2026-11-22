@@ -432,6 +432,11 @@ function subtitle_artist_refs(subtitle?: Misc.Text): YTMArtistRef[] {
 		.filter(ref => ref.browse_id !== undefined && (ref.browse_id.startsWith('UC') || ref.browse_id.startsWith('MPAD')));
 }
 
+function subtitle_duration(subtitle?: Misc.Text): number | undefined {
+	const text = text_of(subtitle).split('•').map(part => part.trim()).findLast(part => /^\d+(:\d{2})+$/.test(part));
+	return text === undefined ? undefined : seconds_of({ text });
+}
+
 export function parse_ytm_card_top_result(card: YTNodes.MusicCardShelf): YTMTopResult | undefined {
 	const type_label = (card.subtitle?.runs?.[0]?.text ?? card.subtitle?.text ?? '').trim();
 	const payload = card.on_tap?.payload as { browseId?: string; videoId?: string } | undefined;
@@ -446,7 +451,7 @@ export function parse_ytm_card_top_result(card: YTNodes.MusicCardShelf): YTMTopR
 	const run_endpoint = title_run !== undefined && 'endpoint' in title_run ? title_run.endpoint : undefined;
 	const video_id = payload?.videoId ?? (run_endpoint?.payload as { videoId?: string } | undefined)?.videoId;
 	if (video_id === undefined) return undefined;
-	return { type: 'TRACK', track: { video_id, title: text_of(card.title), artists: subtitle_artist_refs(card.subtitle), duration_seconds: undefined, explicit: has_explicit(card.subtitle_badges), thumbnails: music_thumbs(card.thumbnail) } };
+	return { type: 'TRACK', track: { video_id, title: text_of(card.title), artists: subtitle_artist_refs(card.subtitle), duration_seconds: subtitle_duration(card.subtitle), explicit: has_explicit(card.subtitle_badges), thumbnails: music_thumbs(card.thumbnail) } };
 }
 
 export function parse_ytm_description_lyrics(shelf?: YTNodes.MusicDescriptionShelf): YTMLyrics | undefined {
