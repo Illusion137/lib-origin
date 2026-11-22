@@ -9470,8 +9470,8 @@ react-native-crypto@^2.2.0:
     randomfill "^1.0.3"
 
 "react-native-everything-player@https://github.com/Illusion137/everything-player":
-  version "0.1.0"
-  resolved "https://github.com/Illusion137/everything-player#bf2144563157fce96e808d27830a25b192a49c32"
+  version "0.1.1"
+  resolved "https://github.com/Illusion137/everything-player#9eeb94db99809d415bd4de1f93c2da35ca78b430"
   dependencies:
     "@bufbuild/protobuf" "^2.16.0"
     shaka-player "^5.3.1"
