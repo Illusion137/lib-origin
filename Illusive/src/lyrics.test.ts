@@ -57,18 +57,35 @@ describe('Lyrics.get_track_lyrics', () => {
 	});
 
 	it('contributes a track the server has never seen', async () => {
-		vi.spyOn(Illusi, 'resolve').mockResolvedValue({ local1: null });
-		const contribute = vi.spyOn(Illusi, 'contribute').mockResolvedValue({ refs: { local1: 'ill3' }, created: [], matched: [], conflicts: [], rejected: [] });
+		vi.spyOn(Illusi, 'resolve').mockResolvedValue({ new1: null });
+		const contribute = vi.spyOn(Illusi, 'contribute').mockResolvedValue({ refs: { new1: 'ill3' }, created: [], matched: [], conflicts: [], rejected: [] });
 		const lyrics = vi.spyOn(Illusi.Tracks, 'lyrics').mockResolvedValue({ track_id: 'ill3', lyrics: null, instrumental: true });
-		expect(await Lyrics.get_track_lyrics(track())).toEqual({ sync_status: 'NONE', plain: '' });
-		expect(contribute.mock.calls[0][0].tracks?.[0]).toMatchObject({ ref: 'local1', title: 'Knots' });
+		expect(await Lyrics.get_track_lyrics(track({ uid: 'new1' }))).toEqual({ sync_status: 'NONE', plain: '' });
+		expect(contribute.mock.calls[0][0].tracks?.[0]).toMatchObject({ ref: 'new1', title: 'Knots' });
 		expect(lyrics).toHaveBeenCalledWith('ill3');
 	});
 
-	it('keeps unsynced lyrics plain, leaving any sync to the device', async () => {
+	it('keeps unsynced lyrics plain when the server has no vocals for them', async () => {
 		const unsynced = { sync_type: 'NONE', lines: [{ text: 'first', start_ms: null, end_ms: null }, { text: 'second', start_ms: null, end_ms: null }] };
 		vi.spyOn(Illusi.Tracks, 'lyrics').mockResolvedValue({ track_id: 'ill1', lyrics: unsynced, service: 'GENIUS', sync_type: 'NONE' } as never);
 		expect(await Lyrics.get_track_lyrics(track({ illusi_id: 'ill1' }))).toEqual({ sync_status: 'NONE', plain: 'first\nsecond' });
+		expect(Illusi.Tracks.alignment).toHaveBeenCalledWith('ill1');
+		expect(Illusi.Tracks.vocals).toHaveBeenCalledWith('ill1');
+	});
+
+	it('syncs unsynced lyrics with the server\'s alignment', async () => {
+		const unsynced = { sync_type: 'NONE', lines: [{ text: 'first', start_ms: null, end_ms: null }, { text: 'second', start_ms: null, end_ms: null }] };
+		vi.spyOn(Illusi.Tracks, 'lyrics').mockResolvedValue({ track_id: 'ill1', lyrics: unsynced, service: 'GENIUS', sync_type: 'NONE' } as never);
+		vi.mocked(Illusi.Tracks.alignment).mockResolvedValue({ duration_ms: 200_000 } as TrackAlignment);
+		const line_sync = vi.spyOn(LetterSync, 'line_sync').mockReturnValue(parsed);
+		expect(await Lyrics.get_track_lyrics(track({ illusi_id: 'ill1' }))).toEqual({ sync_status: 'LINE', lyrics: parsed });
+		expect(line_sync).toHaveBeenCalledWith('first\nsecond', { duration_ms: 200_000 });
+	});
+
+	it('leaves word synced lyrics alone', async () => {
+		const word = { sync_type: 'WORD', lines: [{ text: 'first', start_ms: 1000, end_ms: 2000, segments: [{ text: 'first', start_ms: 1000, end_ms: 2000 }] }] };
+		vi.spyOn(Illusi.Tracks, 'lyrics').mockResolvedValue({ track_id: 'ill1', lyrics: word, service: 'LRCLIB', sync_type: 'WORD' } as never);
+		expect(await Lyrics.get_track_lyrics(track({ illusi_id: 'ill1' }))).toEqual({ sync_status: 'WORD', lyrics: word });
 		expect(Illusi.Tracks.vocals).not.toHaveBeenCalled();
 	});
 

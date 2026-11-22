@@ -108,9 +108,17 @@ export namespace Lyrics {
 		if (lined === null) return lyrics;
 		return LyricsAlign.word_sync(lined, vocals) ?? lined;
 	}
-	/** The track's illusi_id: its own, else the server's match for it, contributing the track when there is none */
+	const resolved_ids = new Map<string, string>();
 	async function server_track_id(track: Track): PromiseResult<string> {
 		if (track.illusi_id) return track.illusi_id;
+		const known = resolved_ids.get(track.uid);
+		if (known !== undefined) return known;
+		const id = await find_server_track_id(track);
+		if (typeof id === 'string') resolved_ids.set(track.uid, id);
+		return id;
+	}
+
+	async function find_server_track_id(track: Track): PromiseResult<string> {
 		const row = encode_track(track, { now: Date.now(), title_is_catalog: true });
 		const artist = row.track.artists[0]?.name;
 		const resolved = await Illusi.resolve([{
@@ -162,13 +170,24 @@ export namespace Lyrics {
 		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
 	}
 
+	async function with_experimental_sync(track: Track, lyrics: TrackLyrics): Promise<TrackLyrics> {
+		if (lyrics.sync_status === 'WORD' || lyrics.sync_status === 'SYLLABLE') return lyrics;
+		if (lyrics.sync_status === 'NONE' && lyrics.plain.trim() === '') return lyrics;
+		if (Illusi.get_session() === null) return lyrics;
+		const id = await server_track_id(track);
+		if (typeof id !== 'string') return lyrics;
+		const parsed = lyrics.sync_status === 'NONE' ? from_plain(lyrics.plain) : lyrics.lyrics;
+		const synced = await with_vocal_sync(id, parsed, track.duration);
+		return synced === parsed ? lyrics : to_track_lyrics(synced);
+	}
+
 	export async function get_track_lyrics(track: Track): PromiseResult<TrackLyrics> {
 		const lyrics = await server_track_lyrics(track);
-		if (!('error' in lyrics)) return lyrics;
+		if (!('error' in lyrics)) return with_experimental_sync(track, lyrics);
 		const genius = await genius_lyrics(track);
 		if ('error' in genius) return lyrics;
 		contribute_genius(track, genius.preloaded_state).catch(catch_log);
-		return genius.lyrics;
+		return with_experimental_sync(track, genius.lyrics);
 	}
 
 	async function server_track_lyrics(track: Track): PromiseResult<TrackLyrics> {
@@ -298,6 +317,7 @@ export namespace Lyrics {
 	}
 
 	export type TranslatedLine<T extends { text: string } = { text: string }> = T & { translated?: string };
+	export type TranslatedLyrics = Omit<ParsedLyrics, 'lines'> & { lines: TranslatedLine<LyricsLine>[] };
 
 	async function with_translations<T extends { text: string }>(lines: readonly T[]): PromiseResult<TranslatedLine<T>[]> {
 		const sung = lines.filter(line => line.text.trim() !== '' && !LyricsAlign.is_header(line.text));
@@ -315,7 +335,7 @@ export namespace Lyrics {
 	export async function translate_synced_lyrics(lyrics: readonly SyncedLyric[]): PromiseResult<TranslatedLine<SyncedLyric>[]> {
 		return with_translations(lyrics);
 	}
-	export async function translate_parsed_lyrics(lyrics: ParsedLyrics): PromiseResult<Omit<ParsedLyrics, 'lines'> & { lines: TranslatedLine<LyricsLine>[] }> {
+	export async function translate_parsed_lyrics(lyrics: ParsedLyrics): PromiseResult<TranslatedLyrics> {
 		const lines = await with_translations(lyrics.lines);
 		if ('error' in lines) return lines;
 		return { ...lyrics, lines };

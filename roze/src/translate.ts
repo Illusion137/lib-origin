@@ -42,7 +42,8 @@ export namespace Translate {
 			cache_opts: {
 				cache_ms: milliseconds_of({ years: 1 }),
 				cache_ms_fail: milliseconds_of({ seconds: 5 }),
-				cache_mode: 'file'
+				cache_mode: 'file',
+				cache_on: 'request'
 			},
 			...opts.fetch_opts,
 			method: 'POST',
