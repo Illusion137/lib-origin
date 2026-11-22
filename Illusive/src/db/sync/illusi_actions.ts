@@ -1,5 +1,5 @@
 import fuzzysort from 'fuzzysort';
-import { catch_log } from '@common/utils/error_util';
+import { catch_log, generror } from '@common/utils/error_util';
 import type { Action, ActionOf, LyricsResponse, ReleaseService, ResearchService, UUID } from '@origin/illusi/types';
 import { Illusi } from '@origin/illusi/illusi';
 import * as Origin from '@origin/index';
@@ -12,7 +12,7 @@ import { SQLfs } from '@illusive/sql/sql_fs';
 import { Wifi } from '@illusive/wifi_utils';
 import { db } from '@illusive/db/database';
 import { user_tracks_table } from '@illusive/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 import { decode_track } from '../v2/track_codec';
 import { release_graph, type ReleaseAlbum } from './release_graph';
 import { Outbox } from '../v2/outbox';
@@ -56,50 +56,82 @@ export namespace IllusiActions {
 		return (Object.keys(RELEASE_SERVICES) as ReleaseService[]).filter(service => Illusive.music_service.get(RELEASE_SERVICES[service].type)?.has_credentials() === true);
 	}
 
-	let queue: Promise<void> = Promise.resolve();
+	const UPLOAD_TIMEOUT_MS = 15 * 60_000;
+	const LOOKUP_TIMEOUT_MS = 2 * 60_000;
+	// Uploads and lookups wait in separate lines, so a slow lookup on some service never holds up an upload
+	let uploads: Promise<void> = Promise.resolve();
+	let lookups: Promise<void> = Promise.resolve();
+	/** Tracks with an upload queued or running: every pull asks again until the server has the file */
+	const uploading = new Set<string>();
 
 	/** Runs the actions one after another in the background; callers never wait on them */
 	export function handle(actions: Action[] | undefined) {
 		if (actions === undefined || actions.length === 0) return;
-		queue = queue.then(async () => run(actions)).catch(catch_log);
+		const upload = actions.filter((action): action is ActionOf<'UPLOAD_MEDIA'> => action.type === 'UPLOAD_MEDIA' && !uploading.has(action.track_id));
+		const rest = actions.filter(action => action.type !== 'UPLOAD_MEDIA');
+		for (const action of upload) uploading.add(action.track_id);
+		if (upload.length > 0) {
+			uploads = uploads.then(async () => run(upload, UPLOAD_TIMEOUT_MS)).catch(catch_log)
+				.finally(() => { for (const action of upload) uploading.delete(action.track_id); });
+		}
+		if (rest.length > 0) lookups = lookups.then(async () => run(rest, LOOKUP_TIMEOUT_MS)).catch(catch_log);
 	}
 
-	/** Runs the actions now; resolves once all of them were attempted */
-	export async function run(actions: Action[] | undefined) {
-		await Illusi.handle_actions(actions, {
-			UPLOAD_MEDIA: async action => upload_media(action).catch(catch_log),
-			RESEARCH_TRACK: async action => research_track(action).catch(catch_log),
-			CHECK_GENIUS: async action => check_genius(action).catch(catch_log),
-			CHECK_YOUTUBE_MUSIC: async action => check_youtube_music(action).catch(catch_log),
-			FETCH_NEW_RELEASES: async action => fetch_new_releases(action).catch(catch_log)
+	/** Gives up waiting on work after ms (it keeps running), so one action that never settles can't stall the line */
+	async function bounded(work: Promise<unknown>, ms: number, what: string) {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<void>((resolve) => {
+			timer = setTimeout(() => {
+				generror(`${what} still running after ${ms / 1000} s; moving on`, 'LOW');
+				resolve();
+			}, ms);
 		});
+		await Promise.race([work.then(() => undefined, catch_log), timeout]).finally(() => clearTimeout(timer));
 	}
 
+	/** Runs the actions now, one at a time; resolves once each was attempted or ran out of time */
+	export async function run(actions: Action[] | undefined, timeout_ms = LOOKUP_TIMEOUT_MS) {
+		for (const action of actions ?? []) {
+			await bounded(Illusi.handle_actions([action], {
+				UPLOAD_MEDIA: async action => upload_media(action).catch(catch_log),
+				RESEARCH_TRACK: async action => research_track(action).catch(catch_log),
+				CHECK_GENIUS: async action => check_genius(action).catch(catch_log),
+				CHECK_YOUTUBE_MUSIC: async action => check_youtube_music(action).catch(catch_log),
+				FETCH_NEW_RELEASES: async action => fetch_new_releases(action).catch(catch_log)
+			}), timeout_ms, action.type);
+		}
+	}
+
+	/** The local row of a server track: by its server id, or by its uid (tracks first seen through the server use it) */
 	async function local_track(illusi_id: string): Promise<Track | undefined> {
-		const [row] = await db.select().from(user_tracks_table).where(eq(user_tracks_table.illusi_id, illusi_id));
+		const [row] = await db.select().from(user_tracks_table)
+			.where(or(eq(user_tracks_table.illusi_id, illusi_id), eq(user_tracks_table.uid, illusi_id)))
+			.orderBy(sql`${user_tracks_table.illusi_id} = ${illusi_id} desc`).limit(1);
 		return row === undefined ? undefined : decode_track(row);
 	}
 
 	export async function upload_media(action: ActionOf<'UPLOAD_MEDIA'>) {
-		if (Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()) return;
+		const skip = (reason: string) => { generror(`not uploading media: ${reason}`, 'LOW', { track_id: action.track_id }); };
+		if (Prefs.get_pref('expensive_wifi_only') && !await Wifi.wifi_connected()) return skip('not on Wi-Fi');
 		const track = await local_track(action.track_id);
-		if (track === undefined) return;
+		if (track === undefined) return skip('no local track with this id');
 		const media_uri = track.media_uri ?? '';
 		// The server thinks this device has the file. Tell it otherwise, or it keeps asking on every sync.
 		if (media_uri === '') {
 			await Outbox.enqueue(db, 'user_track', [track.uid]);
-			return;
+			return skip('not downloaded on this device');
 		}
 		const path = SQLfs.media_directory(media_uri);
 		const info = await SQLfs.info(path);
 		if (!info.exists) {
 			// Deleted outside the app: forget it here, which reports it like any removed download
 			await Store.write(async repos => repos.tracks.patch(track.uid, { media_uri: '' }));
-			return;
+			return skip(`file missing at ${path}`);
 		}
 		const extension = media_uri.slice(media_uri.lastIndexOf('.') + 1).toLowerCase();
 		const result = await RequestQueue.send('media_fulfil', action, { uri: path, name: media_uri, type: MEDIA_TYPES[extension] ?? 'application/octet-stream' });
-		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
+		if (result === null) skip('upload failed before reaching the server; queued to retry');
+		else if (Illusi.is_error(result)) catch_log(result.error);
 	}
 
 	/** Looks the track up on the asked service; a wrong-length match is reported as not found */

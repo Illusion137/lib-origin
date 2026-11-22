@@ -318,24 +318,31 @@ export namespace Illusive {
 			return { url: pathlib.join(document_directory, Constants.media_archive_path, track.media_uri!) };
 		const key = track.uid + (track.illusi_id ?? '');
 		if (download_url_timed_cache.get(key)) return download_url_timed_cache.get(key)!;
-		if (!is_empty(track.illusi_id)) {
-			const illusi_response = await music_service.get('Illusi')!.downloadable!.download_from_id(track.illusi_id!, retry_mode ? track : undefined);
-			if (!('error' in illusi_response)) return illusi_response.headers === undefined || Object.keys(illusi_response.headers).length === 0 ? download_url_timed_cache.update(key, illusi_response) : illusi_response;
+		const attempts: [MusicServiceType, string | undefined, Track | undefined][] = [
+			['Illusi', track.illusi_id, undefined],
+			['YouTube', track.youtube_id, retry_mode ? track : undefined],
+			['SoundCloud', track.soundcloud_permalink, track],
+			['BandLab', track.bandlab_id, undefined],
+			['Audiomack', track.audiomack_id, undefined]
+		];
+		let first_error: ResponseError | undefined;
+		for (const [service, id, retry_track] of attempts) {
+			if (is_empty(id)) continue;
+			const response = await music_service.get(service)!.downloadable!.download_from_id(id!, retry_track);
+			if ('error' in response) {
+				first_error ??= response;
+				continue;
+			}
+			return response.headers === undefined || Object.keys(response.headers).length === 0 ? download_url_timed_cache.update(key, response) : response;
 		}
-		if (!is_empty(track.youtube_id))
-			return download_url_timed_cache.update(key, await music_service.get('YouTube')!.downloadable!.download_from_id(track.youtube_id!, retry_mode ? track : undefined));
-		else if (!is_empty(track.soundcloud_permalink))
-			return download_url_timed_cache.update(key, await music_service.get('SoundCloud')!.downloadable!.download_from_id(track.soundcloud_permalink!, retry_mode ? track : undefined));
-		else if (!is_empty(track.bandlab_id))
-			return download_url_timed_cache.update(key, await music_service.get('BandLab')!.downloadable!.download_from_id(track.bandlab_id!, retry_mode ? track : undefined));
-		else if (!is_empty(track.audiomack_id))
-			return download_url_timed_cache.update(key, await music_service.get('Audiomack')!.downloadable!.download_from_id(track.audiomack_id!, retry_mode ? track : undefined));
 		const new_track_data = await convert_track(track, {});
-		if ('error' in new_track_data) return new_track_data;
-		if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return generror('No track data found in getting download_url', 'CRITICAL', { track, redownload_mode });
+		if ('error' in new_track_data) return first_error ?? new_track_data;
+		if (is_empty(new_track_data.track!.youtube_id) && is_empty(new_track_data.track!.soundcloud_id)) return first_error ?? generror('No track data found in getting download_url', 'CRITICAL', { track, redownload_mode });
 		const mode: MusicServiceType = new_track_data.track!.youtube_id ? 'YouTube' : 'SoundCloud';
-		const convert_response = await music_service.get(mode)!.downloadable!.download_from_id(mode === 'YouTube' ? new_track_data.track!.youtube_id! : new_track_data.track!.soundcloud_permalink!);
-		if ('error' in convert_response) return convert_response;
+		const convert_response = mode === 'YouTube'
+			? await music_service.get('YouTube')!.downloadable!.download_from_id(new_track_data.track!.youtube_id!)
+			: await music_service.get('SoundCloud')!.downloadable!.download_from_id(new_track_data.track!.soundcloud_permalink!, new_track_data.track);
+		if ('error' in convert_response) return first_error ?? convert_response;
 		return download_url_timed_cache.update(key, { ...convert_response, metadata: convert_response.metadata, new_track_data: new_track_data.track });
 	}
 

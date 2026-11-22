@@ -104,11 +104,7 @@ function ffmpeg_header_args(headers?: Record<string, string>): string[] {
 }
 
 async function download_track_base(downloading: Downloading): Promise<DownloadTrackResult> {
-	const is_redownloading = (is_empty(downloading.track.media_uri) && !Illusive.is_youtube(downloading.track)) || (downloading.redownload && !Illusive.is_youtube(downloading.track));
-	if (is_redownloading) {
-		downloading.track = { ...downloading.track, youtube_id: '' };
-		if (!is_empty(downloading.track.media_uri)) await SQLTracks.mark_track_undownloaded(downloading.track.uid, downloading.track.media_uri!);
-	}
+	if (downloading.redownload && !Illusive.is_youtube(downloading.track) && !is_empty(downloading.track.media_uri)) await SQLTracks.mark_track_undownloaded(downloading.track.uid, downloading.track.media_uri!);
 	const download_uri = await Illusive.get_download_url(SQLfs.document_directory(''), downloading.track, downloading.redownload);
 	if ('error' in download_uri) {
 		if (YouTubeDL.is_unavailable_error(download_uri)) await SQLBackpack.report_unavailable(downloading.track);

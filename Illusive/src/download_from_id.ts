@@ -22,8 +22,7 @@ async function youtube_download_from_id_retry(old_error: ResponseError, retry_tr
 export async function soundcloud_download_from_id(permalink: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {
 	const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
 	const url = await Origin.SoundCloudDL.get_download_info_from_permalink(permalink, cookie_jar);
-	// fallback as YouTube
-	if (typeof url === 'object') return await youtube_download_from_id_retry(url, retry_track);
+	if (typeof url === 'object') return Origin.SoundCloudDL.is_encrypted_error(url) ? await youtube_download_from_id_retry(url, retry_track) : url;
 	return { url: url };
 }
 export async function youtube_download_from_id(video_id: string, retry_track?: Track): Promise<DownloadFromIdResult | ResponseError> {

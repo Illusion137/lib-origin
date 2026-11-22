@@ -5,9 +5,15 @@ import { SoundCloud } from '@origin/soundcloud/soundcloud';
 import type { HydratableSound } from '@origin/soundcloud/types/Hydration';
 import rozfetch from '@common/rozfetch';
 import { generror } from '@common/utils/error_util';
+import type { ResponseError } from '@common/types';
 
 export namespace SoundCloudDL {
 	const dl_cache = { dls: [] as { permalink: string; url: string }[], enabled: true };
+	const ENCRYPTED_ERROR_NAME = 'SoundCloudEncryptedError';
+
+	export function is_encrypted_error(error: ResponseError) {
+		return error.error.name === ENCRYPTED_ERROR_NAME;
+	}
 
 	export function enable_cache(enable: boolean) { dl_cache.enabled = enable; }
 	export function dl_cache_full() { return dl_cache.enabled; }
@@ -36,8 +42,11 @@ export namespace SoundCloudDL {
 			break;
 		}
 		if (dl_url === undefined) {
-			if (sound_hyrdration.data.media.transcodings.find(transcoding => transcoding.format.protocol.includes('encrypted')))
-				return generror('Only encrypted transcodings', 'LOW', { permalink, cookie_jar, filtered_transcodings });
+			if (sound_hyrdration.data.media.transcodings.find(transcoding => transcoding.format.protocol.includes('encrypted'))) {
+				const encrypted_error = generror('Only encrypted transcodings', 'LOW', { permalink, cookie_jar, filtered_transcodings });
+				encrypted_error.error.name = ENCRYPTED_ERROR_NAME;
+				return encrypted_error;
+			}
 			return generror('Unable to find good transcoding', 'MEDIUM', { permalink, cookie_jar, transcodings: sound_hyrdration.data.media.transcodings });
 		}
 		if (dl_cache_full() && is_empty(dl_cache.dls.find(item => item.permalink === permalink)))
