@@ -1,4 +1,5 @@
 import rozfetch, { type RoZFetchRequestInit } from '@common/rozfetch';
+import { fs, load_native_fs } from '@native/fs/fs';
 import type { PromiseResult, ResponseError } from '@common/types';
 import type { ErrorSeverity } from '@common/utils/error_util';
 import { generror } from '@common/utils/error_util';
@@ -172,6 +173,16 @@ export namespace Illusi {
 		const body = await response.json();
 		const api_body = typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string' ? body as ApiErrorBody : undefined;
 		return api_error(route, api_body?.error ?? response.statusText, response.status === 404 ? 'INFO' : 'LOW', response.status, { code: api_body?.code, issues: api_body?.issues, body: api_body });
+	}
+
+	/** A { uri, name, type } file goes in as a Blob read from disk: the global fetch may only take Blob parts */
+	async function append_file(form: FormData, file: MediaFile) {
+		if (!('uri' in file)) {
+			form.append('file', file);
+			return;
+		}
+		await load_native_fs();
+		form.append('file', await fs().file_blob(file.uri, file.type), file.name);
 	}
 
 	let refreshing: Promise<boolean> | null = null;
@@ -368,7 +379,7 @@ export namespace Illusi {
 		/** JPEG, PNG or WebP up to 10 MB; edited_at is when the change was made on this device */
 		export async function set_artwork(playlist_id: UUID, file: ArtworkFile, edited_at?: Date) {
 			const form = new FormData();
-			form.append('file', file as Blob);
+			await append_file(form, file);
 			if (edited_at !== undefined) form.append('edited_at', edited_at.toISOString());
 			return call('PUT /playlists/:id/artwork', { params: { id: playlist_id }, body: form });
 		}
@@ -582,7 +593,7 @@ export namespace Illusi {
 	export namespace MediaFiles {
 		export async function upload(track_id: IllusiId, file: MediaFile, opts: MediaUploadOpts = {}) {
 			const form = new FormData();
-			form.append('file', file as Blob);
+			await append_file(form, file);
 			if (opts.quality !== undefined) form.append('quality', opts.quality);
 			if (opts.token !== undefined) form.append('token', opts.token);
 			return call('POST /tracks/:id/media', { params: { id: track_id }, body: form });

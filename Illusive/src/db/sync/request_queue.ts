@@ -95,6 +95,8 @@ export namespace RequestQueue {
 	export async function send<O extends Op>(op: O, ...args: Args<O>): Promise<Result<O> | null> {
 		const result = await (OPS[op] as unknown as (...a: Args<O>) => Promise<Result<O>>)(...args);
 		if (!Illusi.is_error(result) || ex === undefined || !is_transient(result as Illusi.IllusiError)) return result;
+		// Said once per request, so a failure that never reaches the server (no status) still shows up somewhere
+		console.warn(`RequestQueue: ${op} failed, queued to retry`, (result as Illusi.IllusiError).error);
 		await enqueue(op, ...args);
 		return null;
 	}
