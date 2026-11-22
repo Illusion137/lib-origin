@@ -179,7 +179,7 @@ async function download_track_base(downloading: Downloading): Promise<DownloadTr
 	if (audio_duration_seconds === -1) return generror('Unable to access audio metadata duration', 'CRITICAL');
 
 	if (Math.round(audio_duration_seconds) < 3) return generror(`Invalid Duration: ${audio_duration_seconds}`, 'CRITICAL');
-	else if (is_empty(downloading.track.duration) || had_empty_duration) {
+	else if (is_empty(downloading.track.duration) || had_empty_duration || downloading.track.duration < audio_duration_seconds) {
 		downloading.track = { ...downloading.track, duration: audio_duration_seconds };
 		await SQLTracks.update_track(downloading.track.uid, downloading.track);
 	} else if (!number_epsilon_distance(audio_duration_seconds, downloading.track.duration, Constants.download_duration_epsilon)) {

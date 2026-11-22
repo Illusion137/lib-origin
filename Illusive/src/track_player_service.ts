@@ -19,9 +19,39 @@ import { YouTubeDL } from '@origin/youtube/youtube_dl';
 import { reinterpret_cast } from '@common/cast';
 import type { Track as EPTrack, QueuedTrack, SabrStreamingInfo } from 'react-native-everything-player';
 import { track_store } from './stores/track_store';
+import { Illusi } from '@origin/illusi/illusi';
+import { RequestQueue } from './db/sync/request_queue';
 import EverythingPlayer, { AppKilledPlaybackBehavior, Capability, EQUALIZER_FREQUENCIES, Event, RepeatMode, State } from 'react-native-everything-player';
 
 export let trackplayer_has_been_setup = false;
+
+function has_duration(seconds: number | undefined): seconds is number {
+	return seconds !== undefined && Number.isFinite(seconds) && seconds > 0;
+}
+
+/** Saves a length the player measured for a track that had none, locally and on the Illusi server */
+async function record_playback_duration(track: Track, seconds: number) {
+	await SQLTracks.update_track_duration(track.uid, seconds);
+	if (!track.illusi_id || Illusi.get_session() === null) return;
+	const result = await RequestQueue.send('duration_report', track.illusi_id, { duration_ms: Math.round(seconds * 1000), source: is_empty(track.media_uri) ? 'service' : 'download' });
+	if (result !== null && Illusi.is_error(result)) catch_log(result.error);
+}
+
+export function watch_playback_duration(track: Track, index: number, on_duration: (seconds: number) => void): () => void {
+	if (has_duration(track.duration)) return () => {};
+	const subscription = EverythingPlayer.addEventListener(Event.PlaybackProgressUpdated, (data) => {
+		if (data.track !== index || !has_duration(data.duration)) return;
+		subscription.remove();
+		const seconds = data.duration;
+		track.duration = seconds;
+		try {
+			EverythingPlayer.updateMetadataForTrack(index, { duration: seconds });
+		} catch (error) { catch_log(error); }
+		record_playback_duration(track, seconds).catch(catch_log);
+		on_duration(seconds);
+	});
+	return () => subscription.remove();
+}
 
 export function track_of_queued(queued: QueuedTrack): Track {
 	const other = reinterpret_cast<Track | undefined>(queued.otherData);

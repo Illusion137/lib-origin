@@ -194,6 +194,10 @@ export namespace SQLTracks {
 		await SQLfs.delete_item(SQLfs.media_directory(media_uri));
 		SQLGlobal.update_global_track_property(track_uid, 'media_uri', '');
 	}
+	export async function update_track_duration(track_uid: Track['uid'], duration: number) {
+		await Store.write(async repos => repos.tracks.patch(track_uid, { duration }));
+		SQLGlobal.update_global_track_property(track_uid, 'duration', duration);
+	}
 	export async function clear_track_youtube(track_uid: Track['uid']) {
 		await Store.write(async repos => repos.tracks.patch(track_uid, { youtube_id: '' }));
 		SQLGlobal.update_global_track_property(track_uid, 'youtube_id', '');
