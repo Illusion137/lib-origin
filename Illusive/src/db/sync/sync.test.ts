@@ -311,6 +311,8 @@ describe('apply_rows', () => {
 		expect(edit.title).toBeNull();
 		expect(edit.album_override).toBeNull();
 		expect(edit.artists_override).toEqual([{ name: 'some artist', illusi_id: 'ill_artist' }, { name: 'New Guest' }]);
+		expect(encode_user_edit(row, { title: 'Title u1', artists: [{ name: 'Picked', uri: 'illusi:0b9f6c1e-3c1d-4a5e-9a51-1d2f3e4a5b6c' }], album: { name: 'Picked Album', uri: 'illusi:album.7c1e2d3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f' } }))
+			.toMatchObject({ artists_override: [{ name: 'Picked', illusi_id: '0b9f6c1e-3c1d-4a5e-9a51-1d2f3e4a5b6c' }], album_override: { name: 'Picked Album', illusi_id: '7c1e2d3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f' } });
 		expect(encode_user_edit(row, { title: 'Mine', artists: [{ name: 'Some Artist', uri: null }, { name: 'Feature', uri: null }], album: { name: 'Other', uri: null } }))
 			.toEqual({ title: 'Mine', artists_override: null, album_override: { name: 'Other' } });
 

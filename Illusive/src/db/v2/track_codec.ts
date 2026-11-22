@@ -89,6 +89,15 @@ function same_names(a: readonly SnapshotNamed[], b: readonly SnapshotNamed[]): b
 	return a.length === b.length && a.every((entry, i) => entry.name.trim().toLowerCase() === b[i].name.trim().toLowerCase());
 }
 
+const CATALOG_ARTIST_URI = 'illusi:';
+const CATALOG_ALBUM_URI = 'illusi:album.';
+
+function catalog_id(named: NamedUUID, prefix: string): string | null {
+	if (!named.uri?.startsWith(prefix)) return null;
+	const id = named.uri.slice(prefix.length);
+	return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+}
+
 /**
  * The user's own title and credits for a track: each is null where it matches the catalog snapshot, keeping the
  * illusi_id of an entry that names an artist or album the track already credits.
@@ -96,10 +105,16 @@ function same_names(a: readonly SnapshotNamed[], b: readonly SnapshotNamed[]): b
 export function encode_user_edit(row: UserTrackRow, edit: { title: string; artists: readonly NamedUUID[]; album: NamedUUID | null }): Pick<UserTrackRow, 'title' | 'artists_override' | 'album_override'> {
 	const snapshot = row.track;
 	const known = [...snapshot.artists, ...row.artists_override ?? []];
-	const artists = edit.artists.filter(artist => artist.name.trim() !== '').map(artist => keep_illusi_id(named_entry(artist), known));
+	const artists = edit.artists.filter(artist => artist.name.trim() !== '').map((artist) => {
+		const picked = catalog_id(artist, CATALOG_ARTIST_URI);
+		return picked === null ? keep_illusi_id(named_entry(artist), known) : { ...named_entry(artist), illusi_id: picked };
+	});
 	const album_name = edit.album?.name.trim() ?? '';
 	let album: SnapshotNamed | null = album_name === '' ? null : named_entry(edit.album!);
-	if (album !== null) {
+	const picked_album = edit.album === null ? null : catalog_id(edit.album, CATALOG_ALBUM_URI);
+	if (album !== null && picked_album !== null) {
+		album = { ...album, illusi_id: picked_album };
+	} else if (album !== null) {
 		const match = [snapshot.album, row.album_override].find(entry => entry?.illusi_id !== undefined && entry.name.trim().toLowerCase() === album_name.toLowerCase());
 		if (match) album = { ...album, illusi_id: match.illusi_id };
 	}
