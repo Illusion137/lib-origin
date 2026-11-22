@@ -17,7 +17,7 @@ import { read_tracks, write_user_tracks } from '../v2/tracks';
 import { apply_rows } from './apply';
 import { use_database } from '@illusive/db/database';
 import { v2_repos } from '../v2/repos';
-import { apply_push_result, build_push, clear_dropped, dropped_changes, MAX_ATTEMPTS, report_downloads } from './push';
+import { apply_push_result, build_push, clear_dropped, dropped_changes, MAX_ATTEMPTS, MAX_PUSH_ENTITIES, report_downloads } from './push';
 
 const V2_MIGRATIONS = path.resolve(__dirname, '../../drizzle/v2');
 const clients: InstanceType<typeof Database>[] = [];
@@ -209,6 +209,23 @@ describe('push', () => {
 		expect(await dropped_changes(ex)).toEqual([expect.objectContaining({ kind: 'user_track', key: 'u1', reason: 'nope' })]);
 		await clear_dropped(ex);
 		expect(await dropped_changes(ex)).toEqual([]);
+	});
+
+	it('sends fewer new tracks when their new credits would make the push too large', async () => {
+		const ex = open_db();
+		// 200 tracks, each with 8 artists of its own and its own album: 2000 new entities in one push
+		const tracks = Array.from({ length: 200 }, (_, i) => make_track(`m${i}`, {
+			artists: Array.from({ length: 8 }, (_, a) => ({ name: `Artist ${i}-${a}`, uri: null })),
+			album: { name: `Album ${i}`, uri: null }
+		}));
+		await add_tracks(ex, tracks);
+		await Outbox.enqueue(ex, 'user_track', tracks.map(t => t.uid));
+		const batch = (await build_push(ex))!;
+		const graph = batch.changes.entities!;
+		expect(graph.tracks!.length).toBeLessThan(200);
+		expect(graph.artists!.length + graph.albums!.length + graph.tracks!.length).toBeLessThanOrEqual(MAX_PUSH_ENTITIES);
+		// The rest stays queued for the next push
+		expect(batch.changes.user_tracks).toHaveLength(graph.tracks!.length);
 	});
 
 	it('sends the date each row was added', async () => {

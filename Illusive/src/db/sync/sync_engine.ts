@@ -20,7 +20,7 @@ import { DatabaseBoot } from '../boot';
 import { NetworkMonitor } from './network_monitor';
 import { PlaylistArtwork } from './playlist_artwork';
 import { RequestQueue } from './request_queue';
-import { apply_push_result, build_push, clear_dropped, dropped_changes, fail_push, MAX_ATTEMPTS, type DroppedChange, type PushBatch } from './push';
+import { apply_push_result, build_push, clear_dropped, dropped_changes, fail_push, MAX_ATTEMPTS, MAX_PUSH_TRACKS, type DroppedChange, type PushBatch } from './push';
 import { chunkify, milliseconds_of } from '@common/utils/util';
 
 // Keeps the v2 database and the Illusi server in step: pushes the outbox, pulls other devices' changes, reports
@@ -37,6 +37,8 @@ const STATE_IMPORTED = 'imported';
 const STATE_ARTWORK_IMPORTED = 'artwork_imported';
 const STATE_ACCOUNT = 'account';
 const STATE_IN_FLIGHT = 'in_flight_push';
+/** New tracks per push after the server refused a push as too large; grows back as pushes succeed */
+const STATE_PUSH_TRACKS = 'push_tracks';
 const STATE_RELEASES_CHECKED = 'releases_checked_at';
 
 interface InFlightPush {
@@ -297,7 +299,7 @@ export namespace SyncEngine {
 	async function push_once(): Promise<ApplyResult | null> {
 		let in_flight = await get_state<InFlightPush>(STATE_IN_FLIGHT);
 		if (in_flight === undefined) {
-			const batch = await build_push(db);
+			const batch = await build_push(db, { max_entities: await get_state<number>(STATE_PUSH_TRACKS) ?? MAX_PUSH_TRACKS });
 			if (batch === null) return null;
 			in_flight = { push_id: Illusi.uuid_v4(), base_cursor: await get_state<Cursor>(STATE_CURSOR) ?? null, batch };
 			if (Object.keys(batch.changes).length === 0) {
@@ -311,6 +313,15 @@ export namespace SyncEngine {
 		if (Illusi.is_error(response)) {
 			const error = response as Illusi.IllusiError;
 			const status = error.status;
+			// Too large for the server: rebuilt with half the new tracks, without counting it against the entries
+			const new_tracks = batch.changes.entities?.tracks?.length ?? 0;
+			if (status === 413 && new_tracks > 1) {
+				await transaction(db, async (tx) => {
+					await set_state(tx, STATE_PUSH_TRACKS, Math.max(1, Math.floor(new_tracks / 2)));
+					await set_state(tx, STATE_IN_FLIGHT, undefined);
+				});
+				return { library_changed: false };
+			}
 			// Someone else's push already used this id (practically never): the same batch goes again under a new one
 			if (status === 409 && error.code === 'PUSH_ID_TAKEN') {
 				await set_state(db, STATE_IN_FLIGHT, { ...in_flight, push_id: Illusi.uuid_v4() });
@@ -339,6 +350,8 @@ export namespace SyncEngine {
 			const applied = await apply_push_result(tx, batch, response);
 			if (response.cursor !== null) await set_state(tx, STATE_CURSOR, response.cursor);
 			await set_state(tx, STATE_IN_FLIGHT, undefined);
+			const cap = await get_state<number>(STATE_PUSH_TRACKS);
+			if (cap !== undefined) await set_state(tx, STATE_PUSH_TRACKS, cap * 2 >= MAX_PUSH_TRACKS ? undefined : cap * 2);
 			return applied;
 		});
 	}

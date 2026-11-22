@@ -309,12 +309,13 @@ const playlists: PlaylistsRepo = {
 				// Time-based, so adds from other devices (ordered by their created_at) interleave by add time
 				const position = Math.max(positions.get(row.uuid) ?? 1, now);
 				positions.set(row.uuid, position + 1);
-				// A revived row moves to the end, as a fresh add would
+				// A revived row moves to the end, as a fresh add would. The add time is the position, so tracks added
+				// together keep their order on devices that order by add time.
 				await tx.insert(playlist_tracks_table)
-					.values({ playlist_uuid: row.uuid, track_uid: row.track_uid, position, deleted: false, edited_at: now, created_at: now, modified_at: now })
+					.values({ playlist_uuid: row.uuid, track_uid: row.track_uid, position, deleted: false, edited_at: now, created_at: position, modified_at: now })
 					.onConflictDoUpdate({
 						target: [playlist_tracks_table.playlist_uuid, playlist_tracks_table.track_uid],
-						set: { deleted: false, position, edited_at: now, modified_at: now }
+						set: { deleted: false, position, created_at: position, edited_at: now, modified_at: now }
 					});
 				keys.push(playlist_track_key(row.uuid, row.track_uid));
 			}

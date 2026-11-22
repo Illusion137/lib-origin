@@ -3,7 +3,7 @@ import {
 	migration_state_table, playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table,
 	recently_played_table, track_plays_table, user_tracks_table, type UserTrackInsert
 } from '@illusive/db/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import { backfill_play_client_id, inherited_local_id, play_client_id } from '../v2/keys';
 import { Outbox } from '../v2/outbox';
 import { raw, ROWS_PER_STATEMENT, transaction } from '../v2/sqlite';
@@ -14,6 +14,7 @@ import {
 	install_change_log, LEGACY_TABLE_ORDER, parse_play_row, parse_playlist_row, parse_playlist_track_row, parse_track_row, read_log, recorded_plays,
 	read_rows_after, read_rows_by_key, remove_change_log, table_exists, trim_log, type LegacyTable, type LegacyTrackRow
 } from './legacy_1810';
+import { fix_legacy_rows, legacy_fixup_done, STATE_FIXUP } from './legacy_fixup';
 
 // Copies the 1810 database into v2 while the app keeps using 1810:
 export type MigrationPhase = 'NONE' | 'COPYING' | 'DONE';
@@ -43,10 +44,29 @@ export async function migration_phase(v2: DrizzleDB): Promise<MigrationPhase> {
 	return (row?.value ?? 'NONE') as MigrationPhase;
 }
 
-/** For installs with nothing to migrate */
+/** Whether this database holds rows copied from 1810 (the copy leaves its per-table counts behind) */
+async function copied_from_legacy(v2: DrizzleDB): Promise<boolean> {
+	const [row] = await v2.select({ key: migration_state_table.key }).from(migration_state_table).where(like(migration_state_table.key, 'count:%')).limit(1);
+	return row !== undefined;
+}
+
+/** For installs with nothing to migrate: there's nothing for the legacy cleanup to do either */
 export async function mark_migration_done(v2: DrizzleDB) {
-	await v2.insert(migration_state_table).values({ key: STATE_PHASE, value: 'DONE' })
-		.onConflictDoUpdate({ target: migration_state_table.key, set: { value: 'DONE' } });
+	const copied = await copied_from_legacy(v2);
+	await transaction(v2, async (tx) => {
+		await tx.insert(migration_state_table).values({ key: STATE_PHASE, value: 'DONE' })
+			.onConflictDoUpdate({ target: migration_state_table.key, set: { value: 'DONE' } });
+		if (!copied) {
+			await tx.insert(migration_state_table).values({ key: STATE_FIXUP, value: true })
+				.onConflictDoUpdate({ target: migration_state_table.key, set: { value: true } });
+		}
+	});
+}
+
+/** The legacy cleanup for installs that finished copying before it existed; a no-op once it has run */
+export async function run_legacy_fixup(v2: DrizzleDB) {
+	if (await migration_phase(v2) !== 'DONE' || await legacy_fixup_done(v2) || !await copied_from_legacy(v2)) return;
+	await transaction(v2, async tx => fix_legacy_rows(tx));
 }
 
 export class LegacyMigration {
@@ -149,7 +169,10 @@ export class LegacyMigration {
 		const reopen = await opts.pause_writes();
 		try {
 			while (await this.catch_up_step() > 0);
-			await transaction(this.v2, async tx => this.set_state(tx, STATE_PHASE, 'DONE'));
+			await transaction(this.v2, async (tx) => {
+				await fix_legacy_rows(tx);
+				await this.set_state(tx, STATE_PHASE, 'DONE');
+			});
 			await opts.swap();
 		} finally {
 			reopen();

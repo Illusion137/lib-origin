@@ -20,6 +20,16 @@ import { apply_rows, assign_entity_ids, assign_track_id, type ApplyResult } from
 /** Entries that failed this many times are dropped so one bad row can't block the outbox */
 export const MAX_ATTEMPTS = 5;
 
+/** New tracks per push by default */
+export const MAX_PUSH_TRACKS = 250;
+/**
+ * New artists, albums and tracks per push, kept under the server's limit (2000): a batch of tracks whose credits
+ * are mostly new artists would otherwise be refused as a whole.
+ */
+export const MAX_PUSH_ENTITIES = 1_500;
+
+const graph_size = (graph: ContributionGraph) => (graph.artists?.length ?? 0) + (graph.albums?.length ?? 0) + (graph.tracks?.length ?? 0);
+
 const PUSH_KINDS: readonly OutboxKind[] = ['playlist', 'user_track', 'playlist_track', 'inherited_search', 'inherited_playlist', 'track_play', 'recent_search'];
 const TABLE_OF: Record<Exclude<OutboxKind, 'unavailable' | 'playlist_artwork' | 'artwork_download'>, PushTable> = {
 	user_track: 'user_tracks',
@@ -134,7 +144,7 @@ async function entity_graph(ex: DrizzleDB, uids: readonly string[]): Promise<Con
 export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_entities?: number } = {}): Promise<PushBatch | null> {
 	const entries = await Outbox.take(ex, opts.max_rows ?? 2000, PUSH_KINDS);
 	if (entries.length === 0) return null;
-	const max_entities = opts.max_entities ?? 250;
+	const max_entities = opts.max_entities ?? MAX_PUSH_TRACKS;
 	const of_kind = (kind: OutboxKind) => entries.filter(entry => entry.kind === kind);
 
 	const user_rows = new Map((await by_keys(of_kind('user_track').map(e => e.key), async chunk => ex.select().from(user_tracks_table).where(inArray(user_tracks_table.uid, chunk)))).map(r => [r.uid, r]));
@@ -277,7 +287,13 @@ export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_e
 
 	const result: PushChanges = {};
 	for (const [table, rows] of Object.entries(changes) as [keyof typeof changes, unknown[]][]) if (rows.length > 0) (result as Record<string, unknown>)[table] = rows;
-	if (entity_uids.size > 0) result.entities = await entity_graph(ex, [...entity_uids]);
+	if (entity_uids.size > 0) {
+		result.entities = await entity_graph(ex, [...entity_uids]);
+		// Too many new credits along with these tracks: build it again with fewer (nothing was written yet)
+		if (graph_size(result.entities) > MAX_PUSH_ENTITIES && entity_uids.size > 1) {
+			return build_push(ex, { ...opts, max_entities: Math.floor(entity_uids.size / 2) });
+		}
+	}
 	if (Object.keys(result).length === 0 && skipped.length === 0) return null;
 	return { changes: result, sent, skipped };
 }

@@ -5,7 +5,7 @@ import * as Legacy from '@illusive/legacy/1810/database';
 import { legacy_repos } from '@illusive/legacy/1810/repos';
 import legacy_migrations from '@illusive/drizzle/mobile/migrations';
 import v2_migrations from '@illusive/drizzle/v2/migrations';
-import { LegacyMigration, mark_migration_done, migration_phase, type MigrationPhase } from './migration/migrator';
+import { LegacyMigration, mark_migration_done, migration_phase, run_legacy_fixup, type MigrationPhase } from './migration/migrator';
 import { Store } from './store';
 import { v2_repos } from './v2/repos';
 import { AccountDatabase } from './account_database';
@@ -38,6 +38,7 @@ export namespace DatabaseBoot {
 			return true;
 		}
 		if (await migration_phase(V2.db) === 'DONE') {
+			await run_legacy_fixup(V2.db).catch(catch_log);
 			Store.set_mode('v2');
 			return true;
 		}

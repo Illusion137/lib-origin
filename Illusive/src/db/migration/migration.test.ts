@@ -15,7 +15,9 @@ import {
 import { Store } from '../store';
 import { read_tracks } from '../v2/tracks';
 import { LOG_TABLE } from './legacy_1810';
-import { LegacyMigration, migration_phase } from './migrator';
+import { added_at, ordered_add_times, SANE_TIME, STATE_FIXUP, strip_topic } from './legacy_fixup';
+import { LegacyMigration, mark_migration_done, migration_phase, run_legacy_fixup } from './migrator';
+import { migration_state_table } from '@illusive/db/schema';
 
 const V2_MIGRATIONS = path.resolve(__dirname, '../../drizzle/v2');
 const LEGACY_MIGRATIONS = path.resolve(__dirname, '../../drizzle/mobile');
@@ -285,5 +287,90 @@ describe('LegacyMigration', () => {
 		const outbox = await v2.db.select().from(outbox_table).where(eq(outbox_table.kind, 'unavailable'));
 		expect(outbox.map(o => [o.key, o.payload])).toEqual([['bp1', { service: 'youtube' }]]);
 		expect(await v2.db.$count(recently_played_table)).toBe(1);
+	});
+
+	it('cleans up copied rows: download dates, " - Topic", missing times and playlist order', async () => {
+		const dir = temp_dir();
+		const legacy = connect(path.join(dir, 'legacy.sqlite3'), LEGACY_MIGRATIONS);
+		const v2 = connect(path.join(dir, 'v2.sqlite3'), V2_MIGRATIONS);
+		const downloaded = new Date(1_680_000_000_000).toISOString();
+		const meta = (extra: object) => ({ added_date: new Date(1_600_000_000_000).toISOString(), last_played_date: new Date(0).toISOString(), plays: 0, ...extra }) as Track['meta'] & object;
+		const tracks = [
+			legacy_track({ uid: 'dl', title: 'Song - Topic', artists: [{ name: 'Singer - Topic', uri: null }, { name: 'Guest', uri: null }], media_uri: 'dl.m4a', created_at: 0, meta: meta({ added_date: new Date(0).toISOString(), downloaded_date: downloaded, plays: 2 }) }),
+			legacy_track({ uid: 'plain', meta: meta({}) }),
+			legacy_track({ uid: 'topic', artists: [{ name: ' - Topic', uri: null }] })
+		];
+		await legacy.db.insert(legacy_schema.tracks_table).values(tracks);
+		await legacy.db.insert(legacy_schema.playlists_table).values({ uuid: 'p', title: 'P', created_at: 1_650_000_000_000, modified_at: 1_650_000_000_000 });
+		// Inserted in this order (1810's order); two never got a time, two share one
+		await legacy.db.insert(legacy_schema.playlists_tracks_table).values([
+			{ uuid: 'p', track_uid: 'topic', created_at: 0, modified_at: 0 },
+			{ uuid: 'p', track_uid: 'dl', created_at: 1_660_000_000_000, modified_at: 1 },
+			{ uuid: 'p', track_uid: 'plain', created_at: 1_660_000_000_000, modified_at: 1 }
+		]);
+		await legacy.db.insert(legacy_schema.recently_played_tracks_table).values(legacy_track({ uid: 'recent', artists: [{ name: 'Band - Topic', uri: null }] }));
+		await new LegacyMigration(legacy.db, v2.db).run(swap_opts);
+
+		const rows = new Map((await v2.db.select().from(user_tracks_table)).map(r => [r.uid, r]));
+		const dl = rows.get('dl')!;
+		expect(dl.created_at).toBe(Date.parse(downloaded));
+		expect(dl.track.title).toBe('Song');
+		expect(dl.track.artists.map(a => a.name)).toEqual(['Singer', 'Guest']);
+		expect(rows.get('plain')!.created_at).toBe(1_600_000_000_000);
+		// Nothing but the suffix: kept (the copy trims names)
+		expect(rows.get('topic')!.track.artists.map(a => a.name)).toEqual(['- Topic']);
+		// Backfilled plays with no time anywhere in 1810 count from the date added
+		const plays = await v2.db.select().from(track_plays_table).where(eq(track_plays_table.track_uid, 'dl'));
+		expect(plays.map(p => p.created_at)).toEqual([dl.created_at, dl.created_at]);
+
+		const order = await v2.db.select().from(playlist_tracks_table).where(eq(playlist_tracks_table.playlist_uuid, 'p'));
+		const by_time = [...order].sort((a, b) => a.created_at - b.created_at).map(r => r.track_uid);
+		expect(by_time).toEqual(['topic', 'dl', 'plain']);
+		expect(order.every(r => r.created_at >= SANE_TIME)).toBe(true);
+
+		const [recent] = await v2.db.select().from(recently_played_table);
+		expect((recent.track as { artists: { name: string }[] }).artists[0].name).toBe('Band');
+	});
+
+	it('runs the cleanup once on installs that finished copying before it existed, and never on fresh ones', async () => {
+		const dir = temp_dir();
+		const migrated = connect(path.join(dir, 'migrated.sqlite3'), V2_MIGRATIONS);
+		await migrated.db.insert(migration_state_table).values([{ key: 'phase', value: 'DONE' }, { key: 'count:tracks', value: 1 }]);
+		await migrated.db.insert(user_tracks_table).values({ uid: 'u', track: { title: 'A - Topic', artists: [] } as never, created_at: 0, modified_at: 1_700_000_000_000 });
+		await run_legacy_fixup(migrated.db);
+		const [row] = await migrated.db.select().from(user_tracks_table);
+		expect(row).toMatchObject({ created_at: 1_700_000_000_000, track: { title: 'A' } });
+		await migrated.db.update(user_tracks_table).set({ track: { title: 'B - Topic', artists: [] } as never });
+		await run_legacy_fixup(migrated.db);
+		expect((await migrated.db.select().from(user_tracks_table))[0].track.title).toBe('B - Topic');
+
+		const fresh = connect(path.join(dir, 'fresh.sqlite3'), V2_MIGRATIONS);
+		await mark_migration_done(fresh.db);
+		await fresh.db.insert(user_tracks_table).values({ uid: 'u', track: { title: 'C - Topic', artists: [] } as never });
+		await run_legacy_fixup(fresh.db);
+		expect((await fresh.db.select().from(user_tracks_table))[0].track.title).toBe('C - Topic');
+		expect(await fresh.db.$count(migration_state_table, eq(migration_state_table.key, STATE_FIXUP))).toBe(1);
+	});
+});
+
+describe('legacy cleanup helpers', () => {
+	it('strips only a trailing " - Topic"', () => {
+		expect(strip_topic('Drake - Topic')).toBe('Drake');
+		expect(strip_topic('Drake - topic')).toBe('Drake');
+		expect(strip_topic('Topic - Drake')).toBe('Topic - Drake');
+		expect(strip_topic('Drake-Topic')).toBe('Drake-Topic');
+	});
+
+	it('dates a track by its download, then its own times', () => {
+		expect(added_at({ downloaded_at: 1_700_000_000_000, created_at: 1_600_000_000_000, modified_at: 0 }, 5)).toBe(1_700_000_000_000);
+		expect(added_at({ downloaded_at: null, created_at: 0, modified_at: 1_650_000_000_000 }, 5)).toBe(1_650_000_000_000);
+		expect(added_at({ downloaded_at: null, created_at: 0, modified_at: 0 }, 1_690_000_000_000)).toBe(1_690_000_000_000);
+	});
+
+	it('makes add times strictly increase in playlist order, filling missing ones', () => {
+		const t = 1_700_000_000_000;
+		expect(ordered_add_times([0, 0, t, t, 0, t - 5], 1)).toEqual([t - 2, t - 1, t, t + 1, t + 2, t + 3]);
+		expect(ordered_add_times([0, 0], t)).toEqual([t - 2, t - 1]);
+		expect(ordered_add_times([], t)).toEqual([]);
 	});
 });
