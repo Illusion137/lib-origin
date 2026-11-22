@@ -158,6 +158,8 @@ export namespace Prefs {
 		p2p_name: { default_value: `sumi!-${generate_new_uid('')}`, current_value: `sumi!-${generate_new_uid('')}`, type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 		recent_rejected_ota_update: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 		illusi_session: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
+		/** JSON array of refresh tokens whose logout didn't reach the server; sent again until it does */
+		illusi_pending_logouts: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 		/** The first account that signed in; the default database holds its library */
 		illusi_owner_account: { default_value: '', current_value: '', type: 'STRING' } as BasePref<string, OtherPrefTypes>,
 		/** Database file the app opens at startup; empty is the default one */
@@ -188,6 +190,7 @@ export namespace Prefs {
 		enable_sampler: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation' } as BasePref<boolean, OtherPrefTypes>,
 		fastpack: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation' } as BasePref<boolean, OtherPrefTypes>,
 		quick_fixer_upper: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Automation', description: 'May slow down app; only use when necessary' } as BasePref<boolean, OtherPrefTypes>,
+		experimental_word_sync: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Visual', description: 'Shows line synced lyrics as word synced, estimated from syllables and the track\'s vocals when Illusi has analyzed them' } as BasePref<boolean, OtherPrefTypes>,
 		use_cookies_on_download: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
 		use_cookies_on_search: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,
 		use_cookies_on_artist: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, show_type: 'EXPERIMENTAL', section: 'Data' } as BasePref<boolean, OtherPrefTypes>,

@@ -36,6 +36,13 @@
       "when": 1795340226950,
       "tag": "0004_report_downloads",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795383121713,
+      "tag": "0005_outbox_retry_at",
+      "breakpoints": true
     }
   ]
 }

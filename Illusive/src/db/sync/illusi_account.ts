@@ -2,7 +2,7 @@ import type { PromiseResult, ResponseError } from '@common/types';
 import { catch_log, generror } from '@common/utils/error_util';
 import { fs } from '@native/fs/fs';
 import { Illusi } from '@origin/illusi/illusi';
-import type { ExportJob, LoginBody, Me, RegisterBody, TokenPair } from '@origin/illusi/types';
+import type { AuthMe, ChangeEmailResult, ExportJob, LoginBody, Me, RegisterBody, ResetPasswordBody, SessionResponse, TokenPair } from '@origin/illusi/types';
 import { Prefs } from '@illusive/prefs';
 import { db } from '@illusive/db/database';
 import { report_downloads } from './push';
@@ -53,26 +53,87 @@ export namespace IllusiAccount {
 	}
 
 	/** The server knows downloads per login, so a fresh one starts by hearing what this device has */
-	async function logged_in(result: TokenPair | ResponseError) {
-		if (!Illusi.is_error(result)) await report_downloads(db).catch(catch_log);
+	async function logged_in(result: SessionResponse | ResponseError) {
+		if (!Illusi.is_error(result)) {
+			email_verified = result.email_verified ?? null;
+			await report_downloads(db).catch(catch_log);
+		}
 		return result;
 	}
-	export async function register(body: RegisterBody): PromiseResult<TokenPair> {
+	export async function register(body: RegisterBody): PromiseResult<SessionResponse> {
 		configure();
 		return logged_in(await Illusi.Auth.register(body));
 	}
-	export async function login(body: LoginBody): PromiseResult<TokenPair> {
+	export async function login(body: LoginBody): PromiseResult<SessionResponse> {
 		configure();
 		return logged_in(await Illusi.Auth.login(body));
 	}
+
+	function pending_logouts(): string[] {
+		try {
+			const parsed: unknown = JSON.parse(Prefs.get_pref('illusi_pending_logouts') || '[]');
+			return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : [];
+		} catch {
+			return [];
+		}
+	}
+	async function save_pending_logouts(tokens: string[]) {
+		await Prefs.save_pref('illusi_pending_logouts', tokens.length === 0 ? '' : JSON.stringify(tokens.slice(-20)));
+	}
+	/** A logout that never reached the server leaves that login alive there; it's ended once the server is reachable */
+	function is_unreached(result: unknown): boolean {
+		if (!Illusi.is_error(result)) return false;
+		const status = (result as Illusi.IllusiError).status;
+		return status === undefined || status === 429 || status >= 500;
+	}
+	export async function flush_pending_logouts() {
+		const tokens = pending_logouts();
+		if (tokens.length === 0) return;
+		const left: string[] = [];
+		for (const token of tokens) if (is_unreached(await Illusi.Auth.logout_token(token))) left.push(token);
+		await save_pending_logouts(left);
+	}
+
+	/** Signs this device out. The local session is cleared at once; the server is told now, or on a later sync if offline. */
 	export async function logout() {
+		const refresh_token = Illusi.get_session()?.refresh_token;
+		email_verified = null;
 		const result = await Illusi.Auth.logout();
-		// The local session is cleared even when the server can't be reached
-		if (Illusi.get_session() !== null) Illusi.set_session(null);
+		if (refresh_token !== undefined && is_unreached(result)) await save_pending_logouts([...pending_logouts(), refresh_token]).catch(catch_log);
 		return result;
 	}
 	export async function me(): PromiseResult<Me> {
 		return Illusi.User.me();
+	}
+
+	/** Null until known. The server refuses everything but /auth until the address is confirmed. */
+	let email_verified: boolean | null = null;
+	export function is_email_verified(): boolean | null {
+		return email_verified;
+	}
+	/** Works before the email is confirmed; refreshes is_email_verified() */
+	export async function account(): PromiseResult<AuthMe> {
+		const result = await Illusi.Auth.me();
+		if (!Illusi.is_error(result)) email_verified = result.email_verified;
+		return result;
+	}
+	export async function resend_verification(): PromiseResult<null> {
+		return Illusi.Auth.resend_verification();
+	}
+	export async function forgot_password(email: string): PromiseResult<null> {
+		configure();
+		return Illusi.Auth.forgot_password(email.trim());
+	}
+	/** Sets the new password with the emailed code and signs this device in */
+	export async function reset_password(body: ResetPasswordBody): PromiseResult<SessionResponse> {
+		configure();
+		return logged_in(await Illusi.Auth.reset_password({ ...body, email: body.email.trim() }));
+	}
+	export async function change_password(current_password: string, new_password: string): PromiseResult<null> {
+		return Illusi.Auth.change_password(current_password, new_password);
+	}
+	export async function change_email(password: string, email: string): PromiseResult<ChangeEmailResult> {
+		return Illusi.Auth.change_email(password, email.trim());
 	}
 
 	/**

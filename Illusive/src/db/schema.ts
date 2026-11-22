@@ -178,6 +178,8 @@ export const outbox_table = sqliteTable('outbox', {
 	version: int().notNull().default(1),
 	attempts: int().notNull().default(0),
 	last_error: text(),
+	/** A failed entry waits until then (ms) before it's sent again; null sends it on the next push */
+	retry_at: int(),
 	created_at: int().notNull().$defaultFn(() => Date.now())
 }, table => [uniqueIndex('outbox_kind_key_idx').on(table.kind, table.key)]);
 export type OutboxRow = typeof outbox_table.$inferSelect;

@@ -3,7 +3,7 @@ import type {
 	ContributedAlbum, ContributedArtist, ContributedTrack, ContributionGraph, ContributionSource, CreditRef, PushChanges, PushResponse, PushTable, ServiceIds
 } from '@origin/illusi/types';
 import {
-	playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, track_plays_table, user_tracks_table,
+	playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, sync_state_table, track_plays_table, user_tracks_table,
 	type OutboxKind, type OutboxRow, type SnapshotNamed, type TrackSnapshot, type UserTrackInsert
 } from '@illusive/db/schema';
 import { and, eq, inArray, ne } from 'drizzle-orm';
@@ -209,7 +209,8 @@ export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_e
 					// The library's "downloaded" date is user-wide: a device without the file leaves it alone. Whether this
 					// device has the file is its own, and removing it is reported too.
 					...(row.downloaded_at === null ? {} : { downloaded_at: row.downloaded_at }),
-					downloaded: row.media_uri !== ''
+					downloaded: row.media_uri !== '',
+					added_at: row.created_at
 				});
 				break;
 			}
@@ -221,7 +222,7 @@ export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_e
 					skipped.push(entry);
 					break;
 				}
-				add('playlist_tracks', entry, { playlist_id: row.playlist_uuid, track_id: ref, deleted: row.deleted, edited_at: row.edited_at });
+				add('playlist_tracks', entry, { playlist_id: row.playlist_uuid, track_id: ref, deleted: row.deleted, added_at: row.created_at, edited_at: row.edited_at });
 				break;
 			}
 			case 'inherited_search': {
@@ -302,22 +303,27 @@ export async function apply_push_result(ex: DrizzleDB, batch: PushBatch, respons
 	}
 	const applied = await apply_rows(ex, response.rows);
 
-	const rejected = new Set<OutboxRow>();
+	const rejected = new Map<OutboxRow, string>();
 	for (const rejection of response.rejected) {
 		if (rejection.table === 'profile') continue;
 		const entry = batch.sent[rejection.table]?.[rejection.index];
-		if (entry !== undefined) rejected.add(entry);
+		if (entry !== undefined) rejected.set(entry, rejection.reason);
 	}
 	const done: OutboxRow[] = [...batch.skipped];
 	const retry: OutboxRow[] = [];
+	const dropped: { entry: OutboxRow; reason: string }[] = [];
 	for (const entries of Object.values(batch.sent)) {
 		for (const entry of entries ?? []) {
-			if (!rejected.has(entry)) done.push(entry);
-			else if (entry.attempts + 1 >= MAX_ATTEMPTS) done.push(entry);
-			else retry.push(entry);
+			const reason = rejected.get(entry);
+			if (reason === undefined) done.push(entry);
+			else if (entry.attempts + 1 >= MAX_ATTEMPTS) {
+				done.push(entry);
+				dropped.push({ entry, reason });
+			} else retry.push(entry);
 		}
 	}
 	await Outbox.ack(ex, done);
+	await record_dropped(ex, dropped);
 	if (retry.length > 0) await Outbox.fail(ex, retry.map(entry => entry.id), response.rejected.map(r => r.reason).join('; '));
 	return applied;
 }
@@ -325,8 +331,33 @@ export async function apply_push_result(ex: DrizzleDB, batch: PushBatch, respons
 /** A push the server refused outright (4xx): count an attempt against every entry, dropping hopeless ones */
 export async function fail_push(ex: DrizzleDB, batch: PushBatch, error: string) {
 	const entries = Object.values(batch.sent).flatMap(entries => entries ?? []);
-	await Outbox.ack(ex, [...batch.skipped, ...entries.filter(entry => entry.attempts + 1 >= MAX_ATTEMPTS)]);
+	const hopeless = entries.filter(entry => entry.attempts + 1 >= MAX_ATTEMPTS);
+	await Outbox.ack(ex, [...batch.skipped, ...hopeless]);
+	await record_dropped(ex, hopeless.map(entry => ({ entry, reason: error })));
 	await Outbox.fail(ex, entries.filter(entry => entry.attempts + 1 < MAX_ATTEMPTS).map(entry => entry.id), error);
+}
+
+export interface DroppedChange { kind: OutboxKind; key: string; reason: string; at: number }
+export const STATE_DROPPED = 'dropped_changes';
+const MAX_DROPPED_KEPT = 100;
+
+/** Changes the server kept refusing are given up on, but remembered (newest last) so the app can say what didn't sync */
+export async function record_dropped(ex: DrizzleDB, dropped: readonly { entry: OutboxRow; reason: string }[]) {
+	if (dropped.length === 0) return;
+	const [row] = await ex.select().from(sync_state_table).where(eq(sync_state_table.key, STATE_DROPPED));
+	const kept = (row?.value as DroppedChange[] | undefined) ?? [];
+	const now = Date.now();
+	const value = [...kept, ...dropped.map(({ entry, reason }) => ({ kind: entry.kind, key: entry.key, reason, at: now }))].slice(-MAX_DROPPED_KEPT);
+	await ex.insert(sync_state_table).values({ key: STATE_DROPPED, value }).onConflictDoUpdate({ target: sync_state_table.key, set: { value } });
+}
+
+export async function dropped_changes(ex: DrizzleDB): Promise<DroppedChange[]> {
+	const [row] = await ex.select().from(sync_state_table).where(eq(sync_state_table.key, STATE_DROPPED));
+	return (row?.value as DroppedChange[] | undefined) ?? [];
+}
+
+export async function clear_dropped(ex: DrizzleDB) {
+	await ex.delete(sync_state_table).where(eq(sync_state_table.key, STATE_DROPPED));
 }
 
 export { TABLE_OF };

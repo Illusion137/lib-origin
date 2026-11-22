@@ -20,7 +20,7 @@ import { DatabaseBoot } from '../boot';
 import { NetworkMonitor } from './network_monitor';
 import { PlaylistArtwork } from './playlist_artwork';
 import { RequestQueue } from './request_queue';
-import { apply_push_result, build_push, fail_push, MAX_ATTEMPTS, type PushBatch } from './push';
+import { apply_push_result, build_push, clear_dropped, dropped_changes, fail_push, MAX_ATTEMPTS, type DroppedChange, type PushBatch } from './push';
 import { chunkify, milliseconds_of } from '@common/utils/util';
 
 // Keeps the v2 database and the Illusi server in step: pushes the outbox, pulls other devices' changes, reports
@@ -43,6 +43,8 @@ interface InFlightPush {
 	push_id: string;
 	base_cursor: Cursor | null;
 	batch: PushBatch;
+	/** Consecutive tries the server failed (5xx); past MAX_ATTEMPTS the batch is failed like a refused one */
+	server_failures?: number;
 }
 
 async function get_state<T>(key: string): Promise<T | undefined> {
@@ -55,8 +57,16 @@ async function set_state(ex: typeof db, key: string, value: unknown) {
 }
 
 export namespace SyncEngine {
-	export type Status = 'IDLE' | 'SYNCING' | 'OFFLINE' | 'LOGGED_OUT' | 'ERROR';
-	export interface Progress { status: Status; pending: number; last_synced_at: number | null; last_error?: string }
+	/** UNVERIFIED: signed in, but the server refuses to sync until the account's email is confirmed */
+	export type Status = 'IDLE' | 'SYNCING' | 'OFFLINE' | 'LOGGED_OUT' | 'UNVERIFIED' | 'ERROR';
+	export interface Progress {
+		status: Status;
+		pending: number;
+		last_synced_at: number | null;
+		last_error?: string;
+		/** Local changes the server kept refusing and that were given up on (see dropped_changes()) */
+		dropped: number;
+	}
 	type ProgressListener = (progress: Progress) => void;
 
 	let started = false;
@@ -67,7 +77,7 @@ export namespace SyncEngine {
 	let unsubscribers: (() => void)[] = [];
 	let library_changed_listener: (() => void) | undefined;
 	const progress_listeners = new Set<ProgressListener>();
-	let progress: Progress = { status: 'IDLE', pending: 0, last_synced_at: null };
+	let progress: Progress = { status: 'IDLE', pending: 0, last_synced_at: null, dropped: 0 };
 
 	function set_progress(update: Partial<Progress>) {
 		progress = { ...progress, ...update };
@@ -140,12 +150,18 @@ export namespace SyncEngine {
 	}
 
 	async function sync_once() {
-		if (!IllusiAccount.has_server() || !IllusiAccount.is_logged_in()) {
+		if (!IllusiAccount.has_server()) {
 			set_progress({ status: 'LOGGED_OUT', pending: await Outbox.count(db) });
 			return;
 		}
 		if (!await Wifi.has_internet().catch(() => true)) {
-			set_progress({ status: 'OFFLINE' });
+			set_progress({ status: IllusiAccount.is_logged_in() ? 'OFFLINE' : 'LOGGED_OUT' });
+			return;
+		}
+		// Logins ended while offline are ended on the server too, signed in or not
+		await IllusiAccount.flush_pending_logouts().catch(catch_log);
+		if (!IllusiAccount.is_logged_in()) {
+			set_progress({ status: 'LOGGED_OUT', pending: await Outbox.count(db) });
 			return;
 		}
 		set_progress({ status: 'SYNCING', last_error: undefined });
@@ -156,13 +172,20 @@ export namespace SyncEngine {
 
 		let changed = false;
 		let drained = false;
-		for (let round = 0; round < PUSH_ROUNDS_PER_SYNC; round++) {
-			const pushed = await push_once();
-			if (pushed === null) {
-				drained = true;
-				break;
+		// A push that keeps failing must not stop this device from hearing other devices' changes
+		let push_error: unknown;
+		try {
+			for (let round = 0; round < PUSH_ROUNDS_PER_SYNC; round++) {
+				const pushed = await push_once();
+				if (pushed === null) {
+					drained = true;
+					break;
+				}
+				changed ||= pushed.library_changed;
 			}
-			changed ||= pushed.library_changed;
+		} catch (error) {
+			push_error = error;
+			drained = true;
 		}
 		// A big first import continues in the next run, after a pull
 		if (!drained) again = true;
@@ -174,7 +197,18 @@ export namespace SyncEngine {
 		await report_unavailable();
 		await request_release_checks().catch(catch_log);
 		if (changed) library_changed_listener?.();
-		set_progress({ status: 'IDLE', pending: await Outbox.count(db), last_synced_at: Date.now() });
+		const dropped = (await dropped_changes(db)).length;
+		if (push_error !== undefined) throw push_error;
+		set_progress({ status: 'IDLE', pending: await Outbox.count(db), last_synced_at: Date.now(), dropped });
+	}
+
+	/** Changes the server kept refusing, newest last, for showing the user what didn't sync */
+	export async function dropped(): Promise<DroppedChange[]> {
+		return dropped_changes(db);
+	}
+	export async function dismiss_dropped() {
+		await clear_dropped(db);
+		set_progress({ dropped: 0 });
 	}
 
 	/**
@@ -199,6 +233,12 @@ export namespace SyncEngine {
 	async function check_account(): Promise<boolean> {
 		const me = await IllusiAccount.me();
 		if (Illusi.is_error(me)) {
+			const error = me as Illusi.IllusiError;
+			if (error.status === 403 && error.code === 'EMAIL_NOT_VERIFIED') {
+				await IllusiAccount.account().catch(catch_log);
+				set_progress({ status: 'UNVERIFIED', last_error: undefined, pending: await Outbox.count(db) });
+				return false;
+			}
 			set_progress({ status: 'ERROR', last_error: me.error.message });
 			return false;
 		}
@@ -269,9 +309,26 @@ export namespace SyncEngine {
 		const { push_id, base_cursor, batch } = in_flight;
 		const response = await Illusi.Sync.push(batch.changes, base_cursor, push_id);
 		if (Illusi.is_error(response)) {
-			const status = (response as Illusi.IllusiError).status;
-			// Network errors, 5xx and auth errors are retried later with the same push
-			if (status === undefined || status >= 500 || status === 401 || status === 409 || status === 429) throw response.error;
+			const error = response as Illusi.IllusiError;
+			const status = error.status;
+			// Someone else's push already used this id (practically never): the same batch goes again under a new one
+			if (status === 409 && error.code === 'PUSH_ID_TAKEN') {
+				await set_state(db, STATE_IN_FLIGHT, { ...in_flight, push_id: Illusi.uuid_v4() });
+				return { library_changed: false };
+			}
+			// The server failing the same push over and over: give it up like a refused one, so the rest can sync
+			if (status !== undefined && status >= 500 && (in_flight.server_failures ?? 0) + 1 >= MAX_ATTEMPTS) {
+				await transaction(db, async (tx) => {
+					await fail_push(tx, batch, response.error.message);
+					await set_state(tx, STATE_IN_FLIGHT, undefined);
+				});
+				return { library_changed: false };
+			}
+			// Network errors, 5xx, auth and rate limiting are retried later with the same push
+			if (status === undefined || status >= 500 || status === 401 || status === 429) {
+				if (status !== undefined && status >= 500) await set_state(db, STATE_IN_FLIGHT, { ...in_flight, server_failures: (in_flight.server_failures ?? 0) + 1 });
+				throw response.error;
+			}
 			await transaction(db, async (tx) => {
 				await fail_push(tx, batch, response.error.message);
 				await set_state(tx, STATE_IN_FLIGHT, undefined);

@@ -1,0 +1,1 @@
+ALTER TABLE `outbox` ADD `retry_at` integer;

@@ -17,7 +17,7 @@ import { read_tracks, write_user_tracks } from '../v2/tracks';
 import { apply_rows } from './apply';
 import { use_database } from '@illusive/db/database';
 import { v2_repos } from '../v2/repos';
-import { apply_push_result, build_push, MAX_ATTEMPTS, report_downloads } from './push';
+import { apply_push_result, build_push, clear_dropped, dropped_changes, MAX_ATTEMPTS, report_downloads } from './push';
 
 const V2_MIGRATIONS = path.resolve(__dirname, '../../drizzle/v2');
 const clients: InstanceType<typeof Database>[] = [];
@@ -184,18 +184,40 @@ describe('push', () => {
 		expect(next.changes.user_tracks?.[0]).toMatchObject({ track_id: 'ill_track', title: 'Mine' });
 	});
 
-	it('retries rejected rows and drops them after repeated failures', async () => {
+	it('retries rejected rows with a growing delay, then drops and remembers them', async () => {
 		const ex = open_db();
 		await add_tracks(ex, [make_track('u1')]);
 		await ex.update(user_tracks_table).set({ illusi_id: 'ill_track' });
 		await Outbox.enqueue(ex, 'user_track', ['u1']);
+		let last_delay = 0;
 		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 			const batch = (await build_push(ex))!;
 			await apply_push_result(ex, batch, empty_response({ rejected: [{ table: 'user_tracks', index: 0, reason: 'nope' }] }));
 			const left = await ex.select().from(outbox_table);
-			if (attempt < MAX_ATTEMPTS) expect(left[0]).toMatchObject({ attempts: attempt, last_error: 'nope' });
-			else expect(left).toHaveLength(0);
+			if (attempt < MAX_ATTEMPTS) {
+				expect(left[0]).toMatchObject({ attempts: attempt, last_error: 'nope' });
+				const delay = left[0].retry_at! - Date.now();
+				expect(delay).toBeGreaterThan(last_delay);
+				last_delay = delay;
+				// Held back until it's due
+				expect(await build_push(ex)).toBeNull();
+				await ex.update(outbox_table).set({ retry_at: Date.now() - 1 });
+			} else {
+				expect(left).toHaveLength(0);
+			}
 		}
+		expect(await dropped_changes(ex)).toEqual([expect.objectContaining({ kind: 'user_track', key: 'u1', reason: 'nope' })]);
+		await clear_dropped(ex);
+		expect(await dropped_changes(ex)).toEqual([]);
+	});
+
+	it('sends the date each row was added', async () => {
+		const ex = open_db();
+		await add_tracks(ex, [make_track('u1')]);
+		await ex.update(user_tracks_table).set({ illusi_id: 'ill_track', created_at: 1_600_000_000_000 });
+		await Outbox.enqueue(ex, 'user_track', ['u1']);
+		const batch = (await build_push(ex))!;
+		expect(batch.changes.user_tracks?.[0]).toMatchObject({ added_at: 1_600_000_000_000 });
 	});
 
 	it('pushes recent searches from their outbox payload', async () => {

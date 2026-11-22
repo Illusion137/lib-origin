@@ -131,7 +131,8 @@ export namespace IllusiActions {
 		const extension = media_uri.slice(media_uri.lastIndexOf('.') + 1).toLowerCase();
 		const result = await RequestQueue.send('media_fulfil', action, { uri: path, name: media_uri, type: MEDIA_TYPES[extension] ?? 'application/octet-stream' });
 		if (result === null) skip('upload failed before reaching the server; queued to retry');
-		else if (Illusi.is_error(result)) catch_log(result.error);
+		// TRACK_HAS_MEDIA: someone else's copy got there first, which is all the server wanted
+		else if (Illusi.is_error(result) && (result as Illusi.IllusiError).code !== 'TRACK_HAS_MEDIA') catch_log(result.error);
 	}
 
 	/** Looks the track up on the asked service; a wrong-length match is reported as not found */

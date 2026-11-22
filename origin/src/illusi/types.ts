@@ -114,6 +114,35 @@ export interface TokenPair {
 	access_token: string;
 	refresh_token: string;
 }
+/** Login, registration and password reset also say whether the account's email is confirmed */
+export interface SessionResponse extends TokenPair { email_verified?: boolean }
+/** GET /auth/me: works before the email is confirmed (everything outside /auth answers 403 EMAIL_NOT_VERIFIED until then) */
+export interface AuthMe {
+	id: UUID;
+	email: string;
+	username: string;
+	email_verified: boolean;
+}
+/** Ends the login the refresh token belongs to; works without an access token (e.g. after logging out offline) */
+export interface LogoutBody { refresh_token?: string }
+export interface ForgotPasswordBody { email: string }
+export interface ResetPasswordBody {
+	email: string;
+	/** The 6-digit code from the email */
+	code: string;
+	password: string;
+	device_name?: string;
+}
+export interface ChangePasswordBody {
+	current_password: string;
+	new_password: string;
+}
+/** The new address gets a confirmation link; it becomes the account email once that's followed */
+export interface ChangeEmailBody {
+	password: string;
+	email: string;
+}
+export interface ChangeEmailResult { pending_email: string }
 
 export interface Artist extends Timestamps {
 	id: IllusiId;
@@ -428,6 +457,8 @@ export interface PushUserTrack {
 	start_at?: number | null;
 	end_at?: number | null;
 	deleted?: boolean;
+	/** When the track was added to the library on this device (the "date added" other devices see) */
+	added_at?: TimeInput;
 	edited_at: TimeInput;
 }
 export interface PushPlaylist {
@@ -445,6 +476,8 @@ export interface PushPlaylistTrack {
 	playlist_id: UUID;
 	track_id: Ref;
 	deleted?: boolean;
+	/** When the track was added to the playlist on this device; orders the playlist everywhere */
+	added_at?: TimeInput;
 	edited_at: TimeInput;
 }
 /** Existing rows send their server id; new rows send a temp_id instead */
@@ -497,6 +530,8 @@ export interface PushBody {
 	/** Client UUID; a retried push is applied once */
 	push_id: UUID;
 	base_cursor?: Cursor | null;
+	/** This device's clock when sending; the server corrects every device time in the push by the difference */
+	client_now?: TimeInput;
 	changes: PushChanges;
 }
 export interface PushRejection {
@@ -731,6 +766,11 @@ export interface MediaUploadResult {
 	/** True when this track already had media with the same content */
 	duplicate: boolean;
 }
+/**
+ * Error codes of a refused upload, sent before the body is read: TRACK_HAS_MEDIA (409; the first upload sticks, so the
+ * server needs nothing more), NOT_IN_LIBRARY (403; an upload without a token must be for a track in your library)
+ */
+export type MediaUploadErrorCode = 'TRACK_HAS_MEDIA' | 'NOT_IN_LIBRARY';
 /** A web/Node Blob, or React Native's { uri, name, type } FormData file descriptor */
 export type MediaFile = Blob | { uri: string; name: string; type: string };
 export interface MediaUploadOpts {

@@ -6,8 +6,8 @@ import { generror } from '@common/utils/error_util';
 import { encode_params } from '@common/utils/fetch_util';
 import type {
 	Action, ActionOf, ActionType, AlbumDetail, AlbumView, ApiErrorBody, ArtistAlbumsQuery, ArtistTracksQuery, ArtistView, ArtworkFile,
-	ArtworkResult, BackpackRequestsQuery, ContributionGraph, ContributionPayload, ContributionResult, CopiedPlaylist, Cursor, DeleteAccountBody,
-	CatalogIngestBody, CatalogIngestResult, CatalogItem, EntityPatchBody, EntityPatchResult, ExportJob, GeniusIngestBody, IllusiId, IngestAccepted, LibraryQuery, LinkedPlaylist, LoginBody, LyricsResponse, Me, MediaFile,
+	ArtworkResult, AuthMe, BackpackRequestsQuery, ChangeEmailBody, ChangeEmailResult, ChangePasswordBody, ContributionGraph, ContributionPayload, ContributionResult, CopiedPlaylist, Cursor, DeleteAccountBody,
+	CatalogIngestBody, CatalogIngestResult, CatalogItem, EntityPatchBody, EntityPatchResult, ExportJob, ForgotPasswordBody, GeniusIngestBody, LogoutBody, ResetPasswordBody, SessionResponse, IllusiId, IngestAccepted, LibraryQuery, LinkedPlaylist, LoginBody, LyricsResponse, Me, MediaFile,
 	MediaRequestsQuery, MediaUploadOpts, MediaUploadResult, MyPlaylistsQuery, NewReleases, NewReleasesIngestBody, NewReleasesIngestResult,
 	NewReleasesQuery, Page, PageQuery, PlaylistView, PlayView, PublicPlaylistsQuery, PullBody, PullResponse, PushBody, PushChanges,
 	PushResponse, RecentSearch, RefreshBody, RegisterBody, ReleaseService, ResearchService, ResolveBody, ResolveItem, ResolveResponse,
@@ -56,11 +56,17 @@ export namespace Illusi {
 	}
 
 	export interface Routes {
-		'POST /auth/register': { body: RegisterBody; response: TokenPair };
-		'POST /auth/login': { body: LoginBody; response: TokenPair };
+		'POST /auth/register': { body: RegisterBody; response: SessionResponse };
+		'POST /auth/login': { body: LoginBody; response: SessionResponse };
 		'POST /auth/refresh': { body: RefreshBody; response: TokenPair };
-		'POST /auth/logout': { response: null };
+		'POST /auth/logout': { body: LogoutBody; response: null };
 		'POST /auth/logout_all': { response: null };
+		'GET /auth/me': { response: AuthMe };
+		'POST /auth/resend_verification': { response: null };
+		'POST /auth/forgot_password': { body: ForgotPasswordBody; response: null };
+		'POST /auth/reset_password': { body: ResetPasswordBody; response: SessionResponse };
+		'POST /auth/change_password': { body: ChangePasswordBody; response: null };
+		'POST /auth/change_email': { body: ChangeEmailBody; response: ChangeEmailResult };
 
 		'GET /me': { response: Me };
 		'GET /me/library': { query: LibraryQuery; response: Page<TrackView> };
@@ -127,7 +133,8 @@ export namespace Illusi {
 	}
 	export type Route = keyof Routes;
 
-	const PUBLIC_ROUTES = new Set<Route>(['POST /auth/register', 'POST /auth/login', 'POST /auth/refresh']);
+	/** Sent without an access token. Logout names its login by refresh token, so it works after logging out offline. */
+	const PUBLIC_ROUTES = new Set<Route>(['POST /auth/register', 'POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout', 'POST /auth/forgot_password', 'POST /auth/reset_password']);
 
 	type RoutePath<R extends string> = R extends `${string} ${infer P}` ? P : never;
 	type PathParamNames<P extends string> = P extends `${string}:${infer Param}/${infer Rest}`
@@ -144,6 +151,7 @@ export namespace Illusi {
 		params?: Record<string, string>;
 		body?: unknown;
 		query?: object;
+		headers?: Record<string, string>;
 	}
 
 	function api_error(route: string, message: string, severity: ErrorSeverity, status?: number, extra: { code?: string; issues?: unknown; body?: unknown } = {}): IllusiError {
@@ -218,6 +226,7 @@ export namespace Illusi {
 			...config.headers,
 			...(input.body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}),
 			...(is_public ? {} : auth_headers()),
+			...input.headers,
 			...extra_headers
 		};
 		const response = await rozfetch<unknown>(`${api_url(path)}${query_string(input.query)}`, {
@@ -313,8 +322,8 @@ export namespace Illusi {
 	}
 
 	export namespace Auth {
-		async function with_session(result: TokenPair | ResponseError) {
-			if (!is_error(result)) set_session(result);
+		async function with_session<T extends TokenPair>(result: T | ResponseError) {
+			if (!is_error(result)) set_session({ access_token: result.access_token, refresh_token: result.refresh_token });
 			return result;
 		}
 		export async function register(body: RegisterBody) {
@@ -323,15 +332,47 @@ export namespace Illusi {
 		export async function login(body: LoginBody) {
 			return with_session(await call('POST /auth/login', { body }));
 		}
+		/**
+		 * Ends this login on the server and clears the local session either way. If the server couldn't be reached, the
+		 * error carries no status: keep the refresh token and call logout_token with it later.
+		 */
 		export async function logout() {
-			const result = await call('POST /auth/logout');
+			const current = session;
+			if (current === null) return null;
 			set_session(null);
-			return result;
+			return logout_token(current.refresh_token);
+		}
+		/** Ends the login a refresh token belongs to, without needing a session */
+		export async function logout_token(refresh_token: string) {
+			return call('POST /auth/logout', { body: { refresh_token } });
 		}
 		export async function logout_all() {
 			const result = await call('POST /auth/logout_all');
 			set_session(null);
 			return result;
+		}
+		/** Works before the email is confirmed */
+		export async function me() {
+			return call('GET /auth/me');
+		}
+		export async function resend_verification() {
+			return call('POST /auth/resend_verification');
+		}
+		/** Emails a 6-digit code if the address has an account (the answer is the same either way) */
+		export async function forgot_password(email: string) {
+			return call('POST /auth/forgot_password', { body: { email } });
+		}
+		/** Sets the new password with the emailed code and signs this device in (every other login is ended) */
+		export async function reset_password(body: ResetPasswordBody) {
+			return with_session(await call('POST /auth/reset_password', { body }));
+		}
+		/** Every other login is ended; this one stays */
+		export async function change_password(current_password: string, new_password: string) {
+			return call('POST /auth/change_password', { body: { current_password, new_password } });
+		}
+		/** The new address gets a confirmation link and replaces the old one once it's followed */
+		export async function change_email(password: string, email: string) {
+			return call('POST /auth/change_email', { body: { password, email } });
 		}
 	}
 
@@ -569,9 +610,9 @@ export namespace Illusi {
 				if (!page.has_more) return page.next_cursor;
 			}
 		}
-		/** Pass a stable push_id when retrying so the server applies it once */
+		/** Pass a stable push_id when retrying so the server applies it once. client_now is read at send time, retries included. */
 		export async function push(changes: PushChanges, base_cursor: Cursor | null, push_id: UUID = uuid_v4()) {
-			return call('POST /sync/push', { body: { push_id, base_cursor, changes } });
+			return call('POST /sync/push', { body: { push_id, base_cursor, client_now: Date.now(), changes } });
 		}
 		export interface ImportChunk {
 			push_id: UUID;
@@ -591,12 +632,17 @@ export namespace Illusi {
 	}
 
 	export namespace MediaFiles {
+		/**
+		 * The token goes in a header (and the fields before the file), so the server refuses an upload it doesn't want
+		 * (TRACK_HAS_MEDIA, NOT_IN_LIBRARY, a bad token) before the file is sent.
+		 */
 		export async function upload(track_id: IllusiId, file: MediaFile, opts: MediaUploadOpts = {}) {
 			const form = new FormData();
-			await append_file(form, file);
 			if (opts.quality !== undefined) form.append('quality', opts.quality);
 			if (opts.token !== undefined) form.append('token', opts.token);
-			return call('POST /tracks/:id/media', { params: { id: track_id }, body: form });
+			await append_file(form, file);
+			const headers = opts.token === undefined ? undefined : { 'X-Action-Token': opts.token };
+			return request('POST /tracks/:id/media', { params: { id: track_id }, body: form, headers }) as PromiseResult<MediaUploadResult>;
 		}
 		export async function fulfil(action: ActionOf<'UPLOAD_MEDIA'>, file: MediaFile, quality?: string) {
 			return upload(action.track_id, file, { quality, token: action.token });
@@ -604,27 +650,31 @@ export namespace Illusi {
 		export async function requests(query: MediaRequestsQuery = {}) {
 			return call('GET /media/requests', { query });
 		}
+		/** Public: a resource id is unguessable, so its URL streams without a session or headers */
 		export function url(resource_id: string): string {
 			return api_url(`/media/${encodeURIComponent(resource_id)}`);
 		}
-		/** Headers needed to stream url(resource_id) with a native player */
+		/** Media needs no headers; kept for callers that pass them to a native player */
 		export function stream_headers(): Record<string, string> {
-			return file_headers();
+			return {};
 		}
-		/** Where url(resource_id) streams from: media moved to the public bucket redirects there and needs no headers */
-		export async function resolve(resource_id: string, retry_on_401 = true): PromiseResult<{ url: string; headers: Record<string, string> }> {
+		/** Where url(resource_id) streams from: media moved to the public bucket redirects there */
+		export async function resolve(resource_id: string): PromiseResult<{ url: string; headers: Record<string, string> }> {
 			const route = 'GET /media/:resource_id';
-			if (session === null) return api_error(route, 'not logged in', 'LOW', 401);
 			const media_url = url(resource_id);
-			const response = await rozfetch<unknown>(media_url, { ...config.fetch_opts, method: 'GET', headers: { ...file_headers(), Range: 'bytes=0-0' }, ignore_fail_request: true });
+			const response = await rozfetch<unknown>(media_url, { ...config.fetch_opts, method: 'GET', headers: { ...config.headers, Range: 'bytes=0-0' }, ignore_fail_request: true });
 			if ('error' in response) return response;
-			if (response.status === 401 && retry_on_401 && await refresh_session()) return resolve(resource_id, false);
 			if (!response.ok) return error_from_response(route, response);
-			if (response.url === '' || response.url === media_url) return { url: media_url, headers: stream_headers() };
-			return { url: response.url, headers: {} };
+			return { url: response.url === '' ? media_url : response.url, headers: {} };
 		}
 		export async function download(resource_id: string, range?: { start: number; end?: number }): PromiseResult<ArrayBuffer> {
-			return download_file('GET /media/:resource_id', url(resource_id), range === undefined ? {} : { Range: `bytes=${range.start}-${range.end ?? ''}` });
+			const route = 'GET /media/:resource_id';
+			const response = await rozfetch<unknown>(url(resource_id), {
+				...config.fetch_opts, method: 'GET', headers: { ...config.headers, ...(range === undefined ? {} : { Range: `bytes=${range.start}-${range.end ?? ''}` }) }, ignore_fail_request: true
+			});
+			if ('error' in response) return response;
+			if (!response.ok) return error_from_response(route, response);
+			return response.arrayBuffer();
 		}
 	}
 
