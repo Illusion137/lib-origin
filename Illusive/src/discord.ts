@@ -1,10 +1,11 @@
 import { Discord } from '@origin/discord/discord';
 import type { ResponseError } from '@common/types';
+import { generror } from '@common/utils/error_util';
 import { generate_new_uid, is_empty } from '@common/utils/util';
 import { artist_string } from '@illusive/illusive_utils';
 import { Illusive } from '@illusive/illusive';
 import type { DownloadableMusicServiceTrackField, IllusiveURI, ISOString, SmallTrackIds, SmallTrackRaw, Track } from '@illusive/types';
-import { compress_object, decompress_object } from '@common/utils/compress_util';
+import { base64_to_url_safe, compress_object, decompress_object, url_safe_to_base64 } from '@common/utils/compress_util';
 import { reinterpret_cast } from '@common/cast';
 
 const LEGACY_DOWNLOADABLE_FIELDS: DownloadableMusicServiceTrackField[] = ['youtube_id', 'soundcloud_permalink', 'bandlab_id', 'audiomack_id'];
@@ -26,12 +27,13 @@ export function encode_track(track: Track) {
 	const payload: SmallTrackRaw = [track.title, artist_string(track), track.duration, downloadable_ids];
 	const enddur = track.meta?.enddur;
 	if (enddur !== undefined && Number.isFinite(enddur)) payload.push(enddur);
-	return compress_object(payload);
+	return base64_to_url_safe(compress_object(payload));
 }
 
 export function decode_track(encoded_track: string): Track | ResponseError {
-	const decompressed = decompress_object<SmallTrackRaw>(encoded_track);
+	const decompressed = decompress_object<SmallTrackRaw>(url_safe_to_base64(encoded_track));
 	if ('error' in decompressed) return decompressed;
+	if (!Array.isArray(decompressed) || typeof decompressed[0] !== 'string') return generror('Not a shared track', 'LOW', { encoded_track });
 	const [title, artist, duration, downloadable_ids, enddur] = decompressed;
 	const track: Track = {
 		uid: generate_new_uid(title),
