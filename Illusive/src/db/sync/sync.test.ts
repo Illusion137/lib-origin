@@ -291,6 +291,20 @@ describe('apply_rows', () => {
 		expect(row.title).toBe('Newer server');
 	});
 
+	it('never overwrites the device\'s added and downloaded dates, but fills them in for a track new to it', async () => {
+		const ex = open_db();
+		await add_tracks(ex, [make_track('u1')]);
+		await ex.update(user_tracks_table).set({ illusi_id: 'ill_track', created_at: 1_600_000_000_000, downloaded_at: 1_600_000_500_000 });
+		const server = { ...server_user_track(NOW + 50, 'Server'), downloaded_at: iso(NOW) };
+		await apply_rows(ex, { user_tracks: [server] });
+		const [row] = await ex.select().from(user_tracks_table).where(eq(user_tracks_table.uid, 'u1'));
+		expect(row).toMatchObject({ title: 'Server', created_at: 1_600_000_000_000, downloaded_at: 1_600_000_500_000 });
+
+		await apply_rows(ex, { user_tracks: [{ ...server, track_id: 'ill_new' }] });
+		const [added] = await ex.select().from(user_tracks_table).where(eq(user_tracks_table.uid, 'ill_new'));
+		expect(added).toMatchObject({ created_at: NOW, downloaded_at: NOW });
+	});
+
 	it('takes server rows when nothing local is pending', async () => {
 		const ex = open_db();
 		await add_tracks(ex, [make_track('u1')]);

@@ -426,13 +426,17 @@ export async function apply_rows(ex: DrizzleDB, rows: Partial<SyncRows>): Promis
 		const credits = await credit_names(ex, rows, [...locals.values()]);
 		for (const row of rows.user_tracks) {
 			const uid = keys.get(row.track_id)!;
+			const local = locals.get(uid);
 			const edited_at = time(row.edited_at) ?? time(row.modified_at)!;
-			if (local_wins(locals.get(uid)?.edited_at, edited_at, waiting.has(uid))) continue;
+			if (local_wins(local?.edited_at, edited_at, waiting.has(uid))) continue;
+			// Added and downloaded dates are this device's: only a bare row (made just now by ensure_rows) takes the server's
+			const bare = local === undefined || (local.deleted && local.edited_at === 0);
 			await ex.update(user_tracks_table).set({
-				title: row.title, downloaded_at: time(row.downloaded_at), start_at: row.start_at, end_at: row.end_at, deleted: row.deleted, edited_at,
+				title: row.title, start_at: row.start_at, end_at: row.end_at, deleted: row.deleted, edited_at,
 				artists_override: row.artist_ids?.map(id => credits.artists(id)) ?? null,
 				album_override: row.album_id == null ? null : credits.albums(row.album_id),
-				created_at: time(row.created_at)!, modified_at: now
+				...(bare ? { created_at: time(row.created_at)!, downloaded_at: time(row.downloaded_at) } : {}),
+				modified_at: now
 			}).where(eq(user_tracks_table.uid, uid));
 		}
 		library_changed = true;

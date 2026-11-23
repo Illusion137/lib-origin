@@ -8,7 +8,7 @@ import { SANE_TIME } from './legacy_fixup';
 // One-time fix for downloaded tracks: the download date becomes the media file's modified date, and the date added
 // becomes that download date. The rows are queued so the server takes the corrected dates.
 
-export const STATE_DOWNLOAD_DATES = 'download_dates_fixup';
+export const STATE_DOWNLOAD_DATES = 'download_dates_fixup_v3';
 const CHUNK = 500;
 
 export async function download_dates_fixed(ex: DrizzleDB): Promise<boolean> {

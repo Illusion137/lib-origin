@@ -131,15 +131,17 @@ export namespace YouTube {
 				thumbnails: (channel.metadata.thumbnail ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }))
 			};
 			const topic_releases = register_topic_releases(session, channel);
+			const parse_track = Parser.channel_track_parser(artist);
+			const parse_playlist = Parser.channel_playlist_parser(artist);
 			return {
 				artist,
-				tracks: channel.videos.map(Parser.parse_track_node).filter((t): t is YTTrack => t !== undefined),
+				tracks: channel.videos.map(parse_track).filter((t): t is YTTrack => t !== undefined),
 				albums: [],
-				playlists: topic_releases !== null ? [] : channel.playlists.map(Parser.parse_playlist_node).filter((p): p is YTCompactPlaylist => p !== undefined),
+				playlists: topic_releases !== null ? [] : channel.playlists.map(parse_playlist).filter((p): p is YTCompactPlaylist => p !== undefined),
 				similar_artists: channel.channels.map(c => c.is(YTNodes.Channel) ? Parser.parse_channel(c.as(YTNodes.Channel)) : undefined).filter((a): a is YTChannelResult => a !== undefined),
-				tracks_continuation: register_channel_tab(channel, ch => ch.getVideos(), f => f.videos, Parser.parse_track_node, channel.has_videos),
-				albums_continuation: topic_releases ?? register_channel_tab(channel, ch => ch.getReleases(), f => f.playlists, Parser.parse_playlist_node, channel.has_releases),
-				playlists_continuation: register_channel_tab(channel, ch => ch.getPlaylists(), f => f.playlists, Parser.parse_playlist_node, channel.has_playlists),
+				tracks_continuation: register_channel_tab(channel, ch => ch.getVideos(), f => f.videos, parse_track, channel.has_videos),
+				albums_continuation: topic_releases ?? register_channel_tab(channel, ch => ch.getReleases(), f => f.playlists, parse_playlist, channel.has_releases),
+				playlists_continuation: register_channel_tab(channel, ch => ch.getPlaylists(), f => f.playlists, parse_playlist, channel.has_playlists),
 				similar_artists_continuation: null
 			};
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube channel', 'MEDIUM', { artist_id }); }

@@ -128,37 +128,50 @@ function lockup_thumbnails(node: YTNodes.LockupView): YTThumbnail[] {
 	if (image?.is(YTNodes.CollectionThumbnailView)) return thumbs(image.as(YTNodes.CollectionThumbnailView).primary_thumbnail?.image);
 	return [];
 }
-function lockup_subtitle(node: YTNodes.LockupView): string {
-	return node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.text ?? '';
+const LOCKUP_TYPE_LABELS = new Set(['playlist', 'album', 'single', 'ep', 'mix', 'podcast', 'course', 'show', 'video', 'short']);
+function strip_type_label(name: string): string {
+	const match = name.match(/^(.*?)\s+·\s+([^·]+)$/);
+	return match !== null && LOCKUP_TYPE_LABELS.has(match[2].trim().toLowerCase()) ? match[1] : name;
 }
-function lockup_subtitle_endpoint(node: YTNodes.LockupView): string | undefined {
-	const parts = node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts;
-	for (const part of parts ?? []) {
+function lockup_artist(node: YTNodes.LockupView, owner?: YTNamed): YTNamed {
+	const parts = (node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts ?? []).flatMap(part => {
 		const text = part.text;
-		if (text === null) continue;
+		if (text === null || text === undefined) return [];
 		const run = text.runs?.[0];
 		const endpoint = text.endpoint ?? (run !== undefined && 'endpoint' in run ? run.endpoint : undefined);
 		const browse_id = (endpoint?.payload as { browseId?: string } | undefined)?.browseId;
-		if (browse_id !== undefined) return browse_id;
-	}
-	return undefined;
+		return [{ name: text.text ?? '', channel_id: browse_id?.startsWith('UC') ? browse_id : undefined }];
+	});
+	const is_label = (name: string) => LOCKUP_TYPE_LABELS.has(name.trim().toLowerCase());
+	const linked = parts.find(part => part.channel_id !== undefined && !is_label(part.name));
+	if (linked !== undefined) return linked;
+	if (owner !== undefined) return { name: owner.name, channel_id: parts.find(part => part.channel_id !== undefined)?.channel_id ?? owner.channel_id };
+	const first = parts[0];
+	if (first === undefined || is_label(first.name)) return { name: '' };
+	return first;
 }
 
-export function parse_lockup_track(node: YTNodes.LockupView): YTTrack {
+function lockup_track(node: YTNodes.LockupView, owner?: YTNamed): YTTrack {
 	return {
 		video_id: node.content_id,
 		title: text_of(node.metadata?.title),
-		artists: [{ name: lockup_subtitle(node), channel_id: lockup_subtitle_endpoint(node) }],
+		artists: [lockup_artist(node, owner)],
 		thumbnails: lockup_thumbnails(node)
 	};
 }
-export function parse_lockup_playlist(node: YTNodes.LockupView): YTCompactPlaylist {
+function lockup_playlist(node: YTNodes.LockupView, owner?: YTNamed): YTCompactPlaylist {
 	return {
 		playlist_id: node.content_id,
 		title: text_of(node.metadata?.title),
-		artists: [{ name: lockup_subtitle(node), channel_id: lockup_subtitle_endpoint(node) }],
+		artists: [lockup_artist(node, owner)],
 		thumbnails: lockup_thumbnails(node)
 	};
+}
+export function parse_lockup_track(node: YTNodes.LockupView): YTTrack {
+	return lockup_track(node);
+}
+export function parse_lockup_playlist(node: YTNodes.LockupView): YTCompactPlaylist {
+	return lockup_playlist(node);
 }
 
 export function parse_grid_playlist(node: YTNodes.GridPlaylist): YTCompactPlaylist {
@@ -174,7 +187,7 @@ export function parse_playlist_renderer(node: YTNodes.Playlist): YTCompactPlayli
 	return {
 		playlist_id: node.id,
 		title: text_of(node.title),
-		artists: ['name' in node.author ? author_named(node.author) : { name: text_of(node.author) }],
+		artists: ['name' in node.author ? { ...author_named(node.author), name: strip_type_label(node.author.name) } : { name: strip_type_label(text_of(node.author)) }],
 		thumbnails: thumbs(node.thumbnails)
 	};
 }
@@ -191,19 +204,30 @@ function is_playlist_content(node: YTNodes.LockupView): boolean {
 	return node.content_type === 'PLAYLIST' || node.content_type === 'ALBUM' || node.content_type === 'SHOW' || node.content_type === 'PODCAST';
 }
 
-export function parse_track_node(node: YTNode): YTTrack | undefined {
+function track_node(node: YTNode, owner?: YTNamed): YTTrack | undefined {
 	if (node.is(YTNodes.Video)) return parse_video(node.as(YTNodes.Video));
 	if (node.is(YTNodes.PlaylistVideo)) return parse_playlist_video(node.as(YTNodes.PlaylistVideo));
 	if (node.is(YTNodes.PlaylistPanelVideo)) return parse_playlist_panel_video(node.as(YTNodes.PlaylistPanelVideo));
-	if (node.is(YTNodes.LockupView) && !is_playlist_content(node.as(YTNodes.LockupView))) return parse_lockup_track(node.as(YTNodes.LockupView));
+	if (node.is(YTNodes.LockupView) && !is_playlist_content(node.as(YTNodes.LockupView))) return lockup_track(node.as(YTNodes.LockupView), owner);
 	return undefined;
 }
-
-export function parse_playlist_node(node: YTNode): YTCompactPlaylist | undefined {
+function playlist_node(node: YTNode, owner?: YTNamed): YTCompactPlaylist | undefined {
 	if (node.is(YTNodes.GridPlaylist)) return parse_grid_playlist(node.as(YTNodes.GridPlaylist));
 	if (node.is(YTNodes.Playlist)) return parse_playlist_renderer(node.as(YTNodes.Playlist));
-	if (node.is(YTNodes.LockupView) && is_playlist_content(node.as(YTNodes.LockupView))) return parse_lockup_playlist(node.as(YTNodes.LockupView));
+	if (node.is(YTNodes.LockupView) && is_playlist_content(node.as(YTNodes.LockupView))) return lockup_playlist(node.as(YTNodes.LockupView), owner);
 	return undefined;
+}
+export function parse_track_node(node: YTNode): YTTrack | undefined {
+	return track_node(node);
+}
+export function parse_playlist_node(node: YTNode): YTCompactPlaylist | undefined {
+	return playlist_node(node);
+}
+export function channel_track_parser(owner: YTNamed): (node: YTNode) => YTTrack | undefined {
+	return node => track_node(node, owner);
+}
+export function channel_playlist_parser(owner: YTNamed): (node: YTNode) => YTCompactPlaylist | undefined {
+	return node => playlist_node(node, owner);
 }
 
 export type YTMAlbumType = 'ALBUM' | 'SINGLE' | 'EP' | 'SONG' | 'PLAYLIST';
