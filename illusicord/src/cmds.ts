@@ -5,7 +5,7 @@ import type { IllusiveURI, MusicServiceType, Track } from '@illusive/types';
 import { is_empty, shuffle_array } from '@common/utils/util';
 import { Illusive } from '@illusive/illusive';
 import { MEDIA } from '@illusicord/media';
-import { play_playliist_discord_recieve, play_track_discord_recieve } from '@illusive/discord';
+import { play_artist_discord_recieve, play_playliist_discord_recieve, play_track_discord_recieve } from '@illusive/discord';
 import { Utils } from '@illusicord/player/utils';
 import { Constants } from '@illusicord/constants';
 import { duration_to_string, split_uri } from '@illusive/illusive_utils';
@@ -125,6 +125,19 @@ const COMMANDS: Record<string, IllusicordCommand> = {
 		}
 		disable_messages = false;
 		if (good) send_message(client, `Added \`${tracks.length}\` Songs from \`${play_playliist_discord_recieve(encoded_playlist_uri)}\``);
+	},
+	illusartist: async (client, message, args) => {
+		const artist_uri = play_artist_discord_recieve(args[0]);
+		const artist_tracks = await Illusive.get_artist_tracks(artist_uri);
+		if ('error' in artist_tracks) {
+			send_message(client, `[ERROR]: ${artist_tracks.error.message}`);
+			return;
+		}
+		const tracks = shuffle_array(artist_tracks.map(Utils.track_to_discord_track));
+		disable_messages = true;
+		await play_base(client, message, tracks);
+		disable_messages = false;
+		send_message(client, `Added \`${tracks.length}\` Songs from \`${artist_uri}\``);
 	},
 	playlist: async (client, message, args) => {
 		disable_messages = true;

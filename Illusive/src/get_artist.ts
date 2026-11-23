@@ -9,6 +9,7 @@ import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos }
 import { best_thumbnail, create_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import type { ArtistOpts, CompactArtist, CompactPlaylist, Continuation, ContinuationPage, MusicServiceArtist, NamedUUID, Track } from '@illusive/types';
+import type { Cursor, Page, PageQuery, PlaylistView, TrackView } from '@origin/illusi/types';
 import type { YTChannelResult, YTCompactPlaylist, YTMAlbum, YTMArtist, YTMTrack, YTTrack } from '@origin/youtube/parser';
 import { Constants } from './constants';
 import { GLOBALS } from './globals';
@@ -335,7 +336,54 @@ export async function illusi_get_artist(id: string): Promise<MusicServiceArtist>
 			unfollow: empty_async_call
 		};
 	}
+	const user_id = IllusiViews.user_id_of(id);
+	if (user_id !== null) return illusi_get_user_artist(user_id);
 	return illusi_get_server_artist(id);
+}
+
+const ILLUSI_USER_PAGE_LIMIT = 50;
+
+function illusi_continuation<V, T>(load: (query: PageQuery) => PromiseResult<Page<V>>, map: (items: V[]) => T[], cursor: Cursor | null): Continuation<T> | undefined {
+	if (cursor === null) return undefined;
+	return async () => {
+		const page = await load({ cursor, limit: ILLUSI_USER_PAGE_LIMIT });
+		if (Illusi.is_error(page)) return { items: [] };
+		const next = illusi_continuation(load, map, page.next_cursor);
+		return { items: map(page.items), ...(next === undefined ? {} : { next }) };
+	};
+}
+
+/** A user as an artist: the tracks they imported, when they're public or the caller's, and their public playlists */
+async function illusi_get_user_artist(user_id: string): Promise<MusicServiceArtist> {
+	if (!IllusiAccount.is_logged_in()) return default_artist();
+	const profile = await Illusi.Users.get(user_id);
+	if (Illusi.is_error(profile)) return default_artist(profile);
+	const load_imports = async (query: PageQuery) => Illusi.Users.imports(user_id, query);
+	const load_playlists = async (query: PageQuery) => Illusi.Playlists.of_user(user_id, query);
+	const map_tracks = (items: TrackView[]) => IllusiViews.prefer_local(items.map(IllusiViews.track), GLOBALS.global_var.sql_tracks);
+	const map_playlists = (items: PlaylistView[]) => items.map(IllusiViews.playlist);
+	const [imports, playlists] = await Promise.all([
+		profile.import_count === null ? null : load_imports({ limit: ILLUSI_USER_PAGE_LIMIT }),
+		load_playlists({ limit: ILLUSI_USER_PAGE_LIMIT })
+	]);
+	const import_page = imports === null || Illusi.is_error(imports) ? null : imports;
+	const playlist_page = Illusi.is_error(playlists) ? null : playlists;
+	const tracks_continuation = illusi_continuation(load_imports, map_tracks, import_page?.next_cursor ?? null);
+	const playlists_continuation = illusi_continuation(load_playlists, map_playlists, playlist_page?.next_cursor ?? null);
+	return {
+		name: profile.username,
+		tracks: import_page === null ? [] : map_tracks(import_page.items),
+		...(tracks_continuation === undefined ? {} : { tracks_continuation }),
+		albums: [],
+		singles_eps: [],
+		playlists: playlist_page === null ? [] : map_playlists(playlist_page.items),
+		...(playlists_continuation === undefined ? {} : { playlists_continuation }),
+		similar_artists: [],
+		...(profile.avatar_id === null ? {} : { profile_artwork_url: Illusi.Account.avatar_url(profile.avatar_id) }),
+		is_following: undefined,
+		follow: empty_async_call,
+		unfollow: empty_async_call
+	};
 }
 
 async function illusi_get_server_artist(id: string): Promise<MusicServiceArtist> {

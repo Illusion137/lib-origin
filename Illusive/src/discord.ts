@@ -88,3 +88,14 @@ export async function play_playlist_discord_send(webhook_url: string, playlist_u
 export function play_playliist_discord_recieve(payload: string): IllusiveURI {
 	return decode_playlist(payload);
 }
+
+export async function play_artist_discord_send(webhook_url: string, artist_uri: IllusiveURI, on_error: (e: ResponseError) => void) {
+	try {
+		await Discord.send_message_webhook(webhook_url, `!illusartist ${encode_playlist(artist_uri)}`);
+	} catch (e) {
+		on_error({ error: e as Error });
+	}
+}
+export function play_artist_discord_recieve(payload: string): IllusiveURI {
+	return decode_playlist(payload);
+}
