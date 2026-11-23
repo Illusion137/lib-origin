@@ -5,7 +5,7 @@ import { Player } from '@illusicord/player/player';
 import { log_session, open_illusi_session } from '@illusicord/illusi_session';
 import { Logger, LogLevel } from 'googlevideo/utils';
 import { catch_log } from '@common/utils/error_util';
-Logger.getInstance().setLogLevels(LogLevel.ALL);
+Logger.getInstance().setLogLevels(LogLevel.ERROR);
 
 console.log('Instantiating bot...');
 
