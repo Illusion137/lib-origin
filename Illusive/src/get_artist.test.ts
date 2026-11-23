@@ -9,7 +9,9 @@ const api = vi.hoisted(() => ({
 	of_user: vi.fn(),
 	artist: vi.fn(),
 	ytm_artist: vi.fn(),
-	sc_user: vi.fn()
+	sc_user: vi.fn(),
+	ytm_search: vi.fn(),
+	set_service_ids: vi.fn()
 }));
 const artists = vi.hoisted(() => ({
 	artists_memo_ready: Promise.resolve(),
@@ -24,6 +26,7 @@ vi.mock('./parsers/youtube_music_parser', () => ({}));
 vi.mock('./parsers/youtube_parser', () => ({}));
 vi.mock('./parsers/spotify_parser', () => ({}));
 vi.mock('./prefs', () => ({ Prefs: { get_pref: () => '' } }));
+vi.mock('./search', () => ({ youtube_music_search: api.ytm_search }));
 vi.mock('@common/sentry_error_handler', () => ({ breadcrumb: vi.fn() }));
 vi.mock('./sql/sql_artists', () => ({ SQLArtists: artists }));
 vi.mock('./globals', () => ({ GLOBALS: { global_var: { sql_tracks: [] } } }));
@@ -32,7 +35,7 @@ vi.mock('@origin/illusi/illusi', () => ({
 	Illusi: {
 		is_error: (result: unknown) => typeof result === 'object' && result !== null && 'error' in result,
 		Users: { get: api.get, imports: api.imports },
-		Artists: { get: api.artist },
+		Artists: { get: api.artist, set_service_ids: api.set_service_ids },
 		Playlists: { of_user: api.of_user, artwork_url: (id: string) => `https://api/artwork/${id}` },
 		Account: { avatar_url: (id: string) => `https://api/avatars/${id}` }
 	}
@@ -134,16 +137,35 @@ describe('load_illusi_artist_artwork', () => {
 describe('service artists', () => {
 	it('lists the services an artist can be opened on, best first', () => {
 		expect(artist_service_uris({ applemusic_id: '1479424', spotify_id: '3TVXtAsR1Inumwj472S9r4', youtube_id: 'UCabc', soundcloud_id: 42, soundcloud_permalink: 'ryc', deezer_id: null }))
-			.toEqual(['youtubemusic:UCabc', 'youtube:UCabc', 'soundcloud:soundcloud.com/ryc', 'soundcloud:42', 'spotify:3TVXtAsR1Inumwj472S9r4', 'applemusic:1479424']);
+			.toEqual(['youtubemusic:UCabc', 'youtube:UCabc', 'soundcloud:soundcloud.com/ryc', 'soundcloud:42', 'spotify:3TVXtAsR1Inumwj472S9r4']);
 		expect(artist_service_uris({})).toEqual([]);
 	});
 
-	it('keeps the catalog artist when no service loads', async () => {
+	it('keeps the catalog artist when no service loads and the search finds no match', async () => {
+		api.ytm_search.mockResolvedValue({ tracks: [], albums: [], playlists: [], continuation: null, artists: [{ name: { name: 'A Different Artist', uri: 'youtubemusic:UCother' } }] });
 		api.ytm_artist.mockResolvedValue({ error: new Error('blocked') });
 		api.sc_user.mockResolvedValue({ error: new Error('gone') });
 		const artist = { name: 'A', tracks: [], albums: [], singles_eps: [], playlists: [], similar_artists: [], service_uris: ['youtubemusic:UCabc' as const, 'soundcloud:42' as const], follow: vi.fn(), unfollow: vi.fn() };
 		expect(await load_service_artist(artist)).toBeNull();
 		expect(api.ytm_artist).toHaveBeenCalledTimes(1);
 		expect(api.sc_user).toHaveBeenCalledWith(expect.objectContaining({ user_id: '42' }));
+		expect(api.ytm_search).toHaveBeenCalledWith('A');
+		expect(api.set_service_ids).not.toHaveBeenCalled();
+	});
+});
+
+describe('youtube music search fallback', () => {
+	const catalog = (overrides = {}) => ({ name: 'Ryc - Topic', tracks: [], albums: [], singles_eps: [], playlists: [], similar_artists: [], service_uris: [], follow: vi.fn(), unfollow: vi.fn(), ...overrides });
+
+	it('only opens candidates whose name matches, and skips the search for non-catalog artists', async () => {
+		api.ytm_search.mockResolvedValue({ tracks: [{ artists: [{ name: 'ryc', uri: 'youtubemusic:UCryc' }] }], albums: [], playlists: [], continuation: null, artists: [{ name: { name: 'Rycho', uri: 'youtubemusic:UCrycho' } }] });
+		api.ytm_artist.mockResolvedValue({ error: new Error('blocked') });
+		expect(await load_service_artist(catalog(), 'a1')).toBeNull();
+		expect(api.ytm_search).toHaveBeenCalledWith('Ryc');
+		expect(api.ytm_artist.mock.calls.map(([, id]) => id as string)).toEqual(['UCryc']);
+
+		vi.clearAllMocks();
+		expect(await load_service_artist(catalog({ service_uris: undefined }), 'a1')).toBeNull();
+		expect(api.ytm_search).not.toHaveBeenCalled();
 	});
 });

@@ -134,7 +134,8 @@ export function parse_apple_music_artist_album(album: ArtistSectionItem, artist:
 		date: safe_date_iso(date) as ISOString
 	}, album);
 }
-export function parse_apple_music_artist_latest_album(album?: PinnedLeadingItemItem, artist?: NamedUUID, force_album_type?: CompactPlaylist['album_type']): CompactPlaylist | undefined {
+export type LatestRelease = Partial<Pick<PinnedLeadingItemItem, 'title' | 'headline' | 'showExplicitBadge'>> & { contentDescriptor?: { url?: string }; artwork?: { dictionary: { url?: string } } };
+export function parse_apple_music_artist_latest_album(album?: LatestRelease, artist?: NamedUUID, force_album_type?: CompactPlaylist['album_type']): CompactPlaylist | undefined {
 	if (is_empty(album)) return undefined;
 	if (artist === undefined) return undefined;
 	const title = album!.title ?? '';

@@ -1,5 +1,5 @@
 export interface GetArtistData {
-	pageMetrics: PageMetrics;
+	pageMetrics?: PageMetrics;
 	sections: Section[];
 	canonicalURL: string;
 	seoData: SeoData;
@@ -7,7 +7,7 @@ export interface GetArtistData {
 
 export interface PageMetrics {
 	instructions: Instruction[];
-	pageFields: PageFields;
+	pageFields?: PageFields;
 	custom: Custom;
 }
 
@@ -68,6 +68,10 @@ export interface Layout {
 export interface ArtistSectionItem {
 	id: string;
 	artwork?: Artwork;
+	circleArtwork?: Artwork | null;
+	fallbackArtwork?: Artwork | null;
+	tracks?: ArtistSectionItem[];
+	featuredContent?: FeaturedContent;
 	title?: string;
 	contentDescriptor?: ContentDescriptor;
 	playAction?: PlayAction;
@@ -379,6 +383,12 @@ export interface PinnedLeadingItem {
 	item: PinnedLeadingItemItem;
 	kind: string;
 	title: string;
+}
+
+export interface FeaturedContent {
+	contentDescriptor?: ContentDescriptor;
+	artwork?: Artwork;
+	detailText?: { headline?: string; title?: string; showExplicitBadge?: boolean };
 }
 
 export interface PinnedLeadingItemItem {

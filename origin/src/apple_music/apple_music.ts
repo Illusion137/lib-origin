@@ -37,8 +37,9 @@ export namespace AppleMusic {
 		const serialized_server_data_regex = /<script type="application\/json".+?id="serialized-server-data">(.+?)<\/script>/s;
 		const extraction = extract_string_from_pattern(html, serialized_server_data_regex, 'MEDIUM');
 		if (typeof extraction === 'object') return extraction;
-		const data = try_json_parse<SerializedServerData>(extraction);
-		if ('error' in data) return data;
+		const parsed = try_json_parse<SerializedServerData | { data: SerializedServerData }>(extraction);
+		if ('error' in parsed) return parsed;
+		const data = Array.isArray(parsed) ? parsed : parsed.data;
 		if (client_cache_full()) return { authorization: client_cache.client.authorization!, data: data };
 		const bearer_path = extract_string_from_pattern(html, /<script type="module" crossorigin src="(.+?)"><\/script>/, 'MEDIUM');
 		if (typeof bearer_path === 'object') return bearer_path;
