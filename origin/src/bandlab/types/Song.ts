@@ -26,6 +26,12 @@ export interface BandLabSong {
 	status: string;
 }
 
+export interface BandLabPost {
+	id: string;
+	type?: string;
+	revision?: { id: string; song?: Pick<BandLabSong, 'id' | 'name'> | null } | null;
+}
+
 export interface Author {
 	conversationId: any;
 	id: string;

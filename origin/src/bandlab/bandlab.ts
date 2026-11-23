@@ -6,7 +6,7 @@ import type { BandlabArtist } from './types/Artist';
 import type { CookieJar } from '@common/utils/cookie_util';
 import { generror } from '@common/utils/error_util';
 import type { BandLabProjects } from './types/ProjectsList';
-import type { BandLabSong } from './types/Song';
+import type { BandLabPost, BandLabSong } from './types/Song';
 import type { BandlabSearchUsers } from './types/SearchUser';
 import type { BandLabSearchSongs } from './types/SearchSong';
 import type { BandLabPlaylist } from './types/Playlist';
@@ -139,6 +139,12 @@ export namespace BandLab {
 		const song_response = await api_get_data<BandLabSong>(`songs/${song_id}`, opts);
 		if ('error' in song_response) return song_response;
 		return await song_response.json();
+	}
+
+	export async function get_post(post_id: string, opts: Opts) {
+		const post_response = await api_get_data<BandLabPost>(`posts/${post_id}`, opts);
+		if ('error' in post_response) return post_response;
+		return await post_response.json();
 	}
 
 	export async function get_download_url(song_id: string, opts: Opts) {
