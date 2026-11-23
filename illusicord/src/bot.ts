@@ -2,8 +2,12 @@ import { Config } from '@illusicord/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { on_message_create, send_message, track_to_string, type DiscordClient } from '@illusicord/cmds';
 import { Player } from '@illusicord/player/player';
+import { log_session, open_illusi_session } from '@illusicord/illusi_session';
 import { Logger, LogLevel } from 'googlevideo/utils';
+import { catch_log } from '@common/utils/error_util';
 Logger.getInstance().setLogLevels(LogLevel.ALL);
+
+console.log('Instantiating bot...');
 
 const client: DiscordClient = new Client({
 	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.MessageContent]
@@ -35,4 +39,5 @@ client.player
 client.on('ready', () => console.log('Illusi is Ready 🎶'));
 client.on('messageCreate', async message => on_message_create(client, message));
 
+open_illusi_session().then(log_session).catch(catch_log);
 client.login(Config.dotenv.TOKEN).catch(e => console.error(e));

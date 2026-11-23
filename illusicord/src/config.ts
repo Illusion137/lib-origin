@@ -9,6 +9,8 @@ export namespace Config {
 		TOKEN: string;
 		SOUNDCLOUD_COOKIES: string;
 		YOUTUBE_COOKIES: string;
+		ILLUSI_EMAIL: string;
+		ILLUSI_PASSWORD: string;
 	} = process.env as any;
 	export const invite_link = `https://discord.com/api/oauth2/authorize?client_id=${dotenv.CLIENT_ID}&permissions=8&scope=bot%20applications.commands` as const;
 }

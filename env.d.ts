@@ -12,5 +12,8 @@ declare namespace NodeJS {
 		BANDLAB_COOKIE_JAR: string;
 
 		LORIGIN: string;
+
+		ILLUSI_EMAIL: string;
+		ILLUSI_PASSWORD: string;
 	}
 }
