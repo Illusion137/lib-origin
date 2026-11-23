@@ -229,24 +229,18 @@ export namespace SoundCloud {
 			query_urn: null
 		};
 	}
-	export async function continuation<T>(next_href: string, opts: Opts, depth = -1): Promise<SearchOf<T>> {
-		try {
-			if (next_href === null || next_href === undefined || next_href === '' || depth === 0) throw new Error();
-			const locale_params = get_locale_params(opts);
-			const next_response = await rozfetch<SearchOf<T>>(`${next_href}&${encode_params(locale_params)}`, api_method_options(opts));
-			if ('error' in next_response) throw next_response.error;
-			const next_data = await next_response.json();
-			if ('error' in next_data) throw next_data.error;
-			if (depth === 1) return next_data;
-			const combined_data = combine_continuation<T>(next_data, await continuation(next_data.next_href, opts, depth - 1));
-			return combined_data;
-		} catch (_) {
-			return {
-				collection: [],
-				next_href: '',
-				query_urn: null
-			};
-		}
+	export async function continuation<T>(next_href: string | null | undefined, opts: Opts, depth = -1): PromiseResult<SearchOf<T>> {
+		if (next_href === null || next_href === undefined || next_href === '') return { collection: [], next_href: '', query_urn: null };
+		if (depth === 0) return { collection: [], next_href, query_urn: null };
+		const locale_params = get_locale_params(opts);
+		const next_response = await rozfetch<SearchOf<T>>(`${next_href}&${encode_params(locale_params)}`, api_method_options(opts));
+		if ('error' in next_response) return next_response;
+		const next_data = await next_response.json();
+		if ('error' in next_data) return next_data;
+		if (depth === 1) return next_data;
+		const rest = await continuation<T>(next_data.next_href, opts, depth - 1);
+		if ('error' in rest) return rest;
+		return combine_continuation<T>(next_data, rest);
 	}
 	type SearchType = 'EVERYTHING' | 'TRACKS' | 'PEOPLE' | 'ALBUMS' | 'PLAYLISTS';
 	function search_type_to_api_method(search_type: SearchType): string {
@@ -313,8 +307,9 @@ export namespace SoundCloud {
 		if ('error' in search_response) return search_response;
 		const search_data = await search_response.json();
 		if ('error' in search_data) return search_data;
-		const result = combine_continuation<Playlist | Track | User>(search_data, await continuation<Playlist | Track | User>(search_data.next_href, opts, opts.depth ?? 0));
-		return { data: result, client_id: opts.client_id };
+		const rest = await continuation<Playlist | Track | User>(search_data.next_href, opts, opts.depth ?? 0);
+		if ('error' in rest) return rest;
+		return { data: combine_continuation<Playlist | Track | User>(search_data, rest), client_id: opts.client_id };
 	}
 	type ArtistMode = 'ALL' | 'POPULAR_TRACKS' | 'TRACKS' | 'ALBUMS' | 'PLAYLISTS' | 'REPOSTS';
 	function artist_mode_to_api_method(artist_mode: ArtistMode): string {
@@ -372,7 +367,9 @@ export namespace SoundCloud {
 		if ('error' in artist_response) return artist_response;
 		const artist = await artist_response.json();
 		if ('error' in artist) return artist;
-		return { user: user_hyrdration, artist_data: combine_continuation<Playlist | User | Track>(artist, await continuation<Playlist | User | Track>(artist.next_href, opts, opts.depth ?? 0)) };
+		const rest = await continuation<Playlist | User | Track>(artist.next_href, opts, opts.depth ?? 0);
+		if ('error' in rest) return rest;
+		return { user: user_hyrdration, artist_data: combine_continuation<Playlist | User | Track>(artist, rest) };
 	}
 	export async function get_playlist(opts: Opts & ({ playlist_path: string })) {
 		const hydration = await get_hydration(`https://soundcloud.com/${clean_permalink(opts.playlist_path)}`, opts);

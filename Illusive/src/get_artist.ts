@@ -11,6 +11,7 @@ import { Prefs } from '@illusive/prefs';
 import type { ArtistOpts, CompactArtist, CompactPlaylist, Continuation, ContinuationPage, MusicServiceArtist, NamedUUID, Track } from '@illusive/types';
 import type { Cursor, Page, PageQuery, PlaylistView, TrackView } from '@origin/illusi/types';
 import type { YTChannelResult, YTCompactPlaylist, YTMAlbum, YTMArtist, YTMTrack, YTTrack } from '@origin/youtube/parser';
+import type * as SCSearch from '@origin/soundcloud/types/Search';
 import { Constants } from './constants';
 import { GLOBALS } from './globals';
 import { is_empty } from '@common/utils/util';
@@ -225,10 +226,11 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
 	const artist_id = await SoundCloud.permalink_to_artist_id({ artist_permalink: id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy } });
 	if ('error' in artist_id) return default_artist(artist_id);
 
+	const soundcloud_opts = { cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy }, client_id: artist_id.client_id };
 	const [artist_tracks_response, artist_albums_response, artist_playlists_response] = await Promise.all([
-		SoundCloud.get_artist('TRACKS', { artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 40, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy }, client_id: artist_id.client_id }),
-		SoundCloud.get_artist('ALBUMS', { artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy }, client_id: artist_id.client_id }),
-		SoundCloud.get_artist('PLAYLISTS', { artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy }, client_id: artist_id.client_id })
+		SoundCloud.get_artist('TRACKS', { ...soundcloud_opts, artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 40 }),
+		SoundCloud.get_artist('ALBUMS', { ...soundcloud_opts, artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8 }),
+		SoundCloud.get_artist('PLAYLISTS', { ...soundcloud_opts, artist_id: artist_id.id, user_hyrdration: artist_id.hydration, limit: 8 })
 	]);
 
 	if ('error' in artist_tracks_response) return default_artist(artist_tracks_response);
@@ -236,6 +238,12 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
 	if ('error' in artist_playlists_response) return default_artist(artist_playlists_response);
 
 	const tracks = artist_tracks_response.artist_data.collection.map(item => soundcloud_parse_track(item));
+	const soundcloud_next = (next_href: string | null) => is_empty(next_href) ? null : next_href;
+	const soundcloud_continuation: ContinuationFetch = async (token) => {
+		const page = await SoundCloud.continuation(token, soundcloud_opts, 1);
+		if ('error' in page) return page;
+		return { data: page.collection, continuation: soundcloud_next(page.next_href) };
+	};
 
 	if (artist_id.hydration.data.avatar_url) {
 		SQLArtists.insert_sql_artists({
@@ -254,6 +262,9 @@ export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Prom
 		playlists: artist_playlists_response?.artist_data?.collection?.map(soundcloud_parse_playlist) ?? [],
 		latest_release: tracks.length <= 0 ? undefined : soundcloud_parse_track_to_song(tracks[0], artist_tracks_response.artist_data.collection[0]),
 		tracks: tracks ?? [],
+		tracks_continuation: artist_continuation<SCSearch.Track, Track>(soundcloud_next(artist_tracks_response.artist_data.next_href), soundcloud_continuation, items => items.map(soundcloud_parse_track)),
+		albums_continuation: artist_continuation<SCSearch.Playlist, CompactPlaylist>(soundcloud_next(artist_albums_response.artist_data.next_href), soundcloud_continuation, items => items.map(soundcloud_parse_playlist)),
+		playlists_continuation: artist_continuation<SCSearch.Playlist, CompactPlaylist>(soundcloud_next(artist_playlists_response.artist_data.next_href), soundcloud_continuation, items => items.map(soundcloud_parse_playlist)),
 		singles_eps: [],
 		similar_artists: [],
 		background_artwork_url: undefined,

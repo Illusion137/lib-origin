@@ -7,6 +7,7 @@ import { urlid } from '@common/utils/util';
 import { generror, generror_catch } from '@common/utils/error_util';
 import { YTNodes } from 'youtubei.js';
 import type { YT, Helpers } from 'youtubei.js';
+import type Innertube from 'youtubei.js';
 
 type YTNode = Helpers.YTNode;
 interface ChannelFeed {
@@ -32,6 +33,31 @@ export namespace YouTube {
 		const data = select(feed).map(parse).filter((item): item is T => item !== undefined);
 		const continuation = feed.has_continuation ? YouTubeShared.register_more(async () => channel_feed_page(await feed.getContinuation(), select, parse)) : null;
 		return { data, continuation };
+	}
+
+	interface ShelfPanelPayload {
+		engagementPanel?: { engagementPanelSectionListRenderer?: { content?: { sectionListRenderer?: { contents?: {
+			itemSectionRenderer?: { contents?: { continuationItemRenderer?: { continuationEndpoint?: { continuationCommand?: { token?: string } } } }[] }
+		}[] } } } };
+	}
+
+	function shelf_panel_token(shelf: YTNodes.Shelf): string | undefined {
+		const payload = shelf.endpoint?.payload as ShelfPanelPayload | undefined;
+		return payload?.engagementPanel?.engagementPanelSectionListRenderer?.content?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents?.[0]?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+	}
+
+	async function shelf_panel_page(session: Innertube, token: string): Promise<Page<YTCompactPlaylist[]>> {
+		const response = await session.actions.execute('/browse', { continuation: token, parse: true });
+		const memo = response.on_response_received_endpoints_memo;
+		const data = (memo?.getType(YTNodes.GridPlaylist) ?? []).map(Parser.parse_playlist_node).filter((p): p is YTCompactPlaylist => p !== undefined);
+		const next = (memo?.getType(YTNodes.ContinuationItem).at(-1)?.endpoint.payload as { token?: string } | undefined)?.token;
+		return { data, continuation: next === undefined ? null : YouTubeShared.register_more(() => shelf_panel_page(session, next)) };
+	}
+
+	function register_topic_releases(session: Innertube, channel: YT.Channel): string | null {
+		if (channel.has_releases) return null;
+		const token = channel.memo.getType(YTNodes.Shelf).map(shelf_panel_token).find(token => token !== undefined);
+		return token === undefined ? null : YouTubeShared.register_more(() => shelf_panel_page(session, token));
 	}
 
 	function register_channel_tab<T>(channel: YT.Channel, get_tab: (channel: YT.Channel) => Promise<ChannelFeed>, select: (feed: ChannelFeed) => YTNode[], parse: (node: YTNode) => T | undefined, enabled: boolean): string | null {
@@ -104,14 +130,15 @@ export namespace YouTube {
 				name: channel.metadata.title ?? '',
 				thumbnails: (channel.metadata.thumbnail ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }))
 			};
+			const topic_releases = register_topic_releases(session, channel);
 			return {
 				artist,
 				tracks: channel.videos.map(Parser.parse_track_node).filter((t): t is YTTrack => t !== undefined),
 				albums: [],
-				playlists: channel.playlists.map(Parser.parse_playlist_node).filter((p): p is YTCompactPlaylist => p !== undefined),
+				playlists: topic_releases !== null ? [] : channel.playlists.map(Parser.parse_playlist_node).filter((p): p is YTCompactPlaylist => p !== undefined),
 				similar_artists: channel.channels.map(c => c.is(YTNodes.Channel) ? Parser.parse_channel(c.as(YTNodes.Channel)) : undefined).filter((a): a is YTChannelResult => a !== undefined),
 				tracks_continuation: register_channel_tab(channel, ch => ch.getVideos(), f => f.videos, Parser.parse_track_node, channel.has_videos),
-				albums_continuation: register_channel_tab(channel, ch => ch.getReleases(), f => f.playlists, Parser.parse_playlist_node, channel.has_releases),
+				albums_continuation: topic_releases ?? register_channel_tab(channel, ch => ch.getReleases(), f => f.playlists, Parser.parse_playlist_node, channel.has_releases),
 				playlists_continuation: register_channel_tab(channel, ch => ch.getPlaylists(), f => f.playlists, Parser.parse_playlist_node, channel.has_playlists),
 				similar_artists_continuation: null
 			};

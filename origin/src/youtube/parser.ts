@@ -170,6 +170,15 @@ export function parse_grid_playlist(node: YTNodes.GridPlaylist): YTCompactPlayli
 	};
 }
 
+export function parse_playlist_renderer(node: YTNodes.Playlist): YTCompactPlaylist {
+	return {
+		playlist_id: node.id,
+		title: text_of(node.title),
+		artists: ['name' in node.author ? author_named(node.author) : { name: text_of(node.author) }],
+		thumbnails: thumbs(node.thumbnails)
+	};
+}
+
 export function parse_channel(node: YTNodes.Channel): YTChannelResult {
 	return {
 		channel_id: node.id,
@@ -192,6 +201,7 @@ export function parse_track_node(node: YTNode): YTTrack | undefined {
 
 export function parse_playlist_node(node: YTNode): YTCompactPlaylist | undefined {
 	if (node.is(YTNodes.GridPlaylist)) return parse_grid_playlist(node.as(YTNodes.GridPlaylist));
+	if (node.is(YTNodes.Playlist)) return parse_playlist_renderer(node.as(YTNodes.Playlist));
 	if (node.is(YTNodes.LockupView) && is_playlist_content(node.as(YTNodes.LockupView))) return parse_lockup_playlist(node.as(YTNodes.LockupView));
 	return undefined;
 }

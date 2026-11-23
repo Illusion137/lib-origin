@@ -247,7 +247,9 @@ export async function soundcloud_get_playlist(url: string): Promise<MusicService
 export async function soundcloud_get_playlist_continuation(opts: SoundcloudPlaylistContinuation): Promise<MusicServicePlaylistContinuation> {
 	if (opts.next_href === null) return { tracks: [], continuation: null };
 	const cookie_jar = Prefs.get_pref('soundcloud_cookie_jar');
-	const artist_response = await Origin.SoundCloud.continuation(opts.next_href, { ...opts, cookie_jar }, opts.depth) as unknown as SCSearch.SearchOf<SCSearch.Track> | SCSearch.SearchOf<SCSearch.LikedTrack>;
+	const continuation_response = await Origin.SoundCloud.continuation<SCSearch.Track | SCSearch.LikedTrack>(opts.next_href, { ...opts, cookie_jar }, opts.depth);
+	if ('error' in continuation_response) return { tracks: [], continuation: null, error: continuation_response };
+	const artist_response = continuation_response as SCSearch.SearchOf<SCSearch.Track> | SCSearch.SearchOf<SCSearch.LikedTrack>;
 	return {
 		tracks: artist_response.collection.length > 0 && 'kind' in artist_response.collection[0] && artist_response.collection[0].kind === 'like'
 			? artist_response.collection.map(track => (track as SCSearch.LikedTrack).track).map(soundcloud_parse_track)

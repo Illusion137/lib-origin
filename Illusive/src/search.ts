@@ -143,6 +143,7 @@ export async function soundcloud_search_continuation(opts: SoundcloudSearchConti
 	if (opts.next_href === null) return default_search();
 	const cookie_jar = get_cookie_jar('soundcloud_cookie_jar');
 	const search_response = await Origin.SoundCloud.continuation<Playlist | Track | User>(opts.next_href, { cookie_jar, client_id: opts.client_id }, 1);
+	if ('error' in search_response) return default_search(search_response);
 	return soundcloud_parse_search({ data: search_response, client_id: opts.client_id });
 }
 
