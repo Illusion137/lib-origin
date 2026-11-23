@@ -11,6 +11,10 @@ function is_better_sqlite(client: unknown): client is BetterSqliteClient {
 	return typeof (client as BetterSqliteClient).prepare === 'function' && typeof (client as BetterSqliteClient).exec === 'function';
 }
 
+interface ReactiveClient {
+	flushPendingReactiveQueries?: () => Promise<void>;
+}
+
 export function raw(instance: DrizzleDB): RawSQLiteConnection {
 	const client: unknown = instance.$client;
 	if (!is_better_sqlite(client)) return sqlite().wrap_client(client);
@@ -31,7 +35,12 @@ let transaction_tail: Promise<unknown> = Promise.resolve();
 export async function transaction<T>(instance: DrizzleDB, fn: (tx: DrizzleDB) => Promise<T>): Promise<T> {
 	const run = async () => {
 		const client: unknown = instance.$client;
-		if (!is_better_sqlite(client)) return instance.transaction(async tx => fn(tx as unknown as DrizzleDB));
+		if (!is_better_sqlite(client)) {
+			const result = await instance.transaction(async tx => fn(tx as unknown as DrizzleDB));
+			// op-sqlite only notifies reactive queries (like the playlists screen's) from its own transaction API
+			await (client as ReactiveClient).flushPendingReactiveQueries?.();
+			return result;
+		}
 		client.exec('BEGIN');
 		try {
 			const result = await fn(instance);

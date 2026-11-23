@@ -455,14 +455,14 @@ function snapshot(track: Track): Record<string, unknown> {
 const recently_played: RecentlyPlayedRepo = {
 	async insert(track) {
 		const now = Date.now();
-		await db.insert(recently_played_table).values({ uid: track.uid, track: snapshot(track), played_at: now })
-			.onConflictDoUpdate({ target: recently_played_table.uid, set: { track: snapshot(track), played_at: now } });
+		await transaction(db, async tx => tx.insert(recently_played_table).values({ uid: track.uid, track: snapshot(track), played_at: now })
+			.onConflictDoUpdate({ target: recently_played_table.uid, set: { track: snapshot(track), played_at: now } }));
 	},
 	async remove(track_uid) {
-		await db.delete(recently_played_table).where(eq(recently_played_table.uid, track_uid));
+		await transaction(db, async tx => tx.delete(recently_played_table).where(eq(recently_played_table.uid, track_uid)));
 	},
 	async clear() {
-		await db.delete(recently_played_table);
+		await transaction(db, async tx => tx.delete(recently_played_table));
 	},
 	async list(limit) {
 		const query = db.select({ track: recently_played_table.track }).from(recently_played_table).orderBy(desc(recently_played_table.played_at));
@@ -470,9 +470,9 @@ const recently_played: RecentlyPlayedRepo = {
 		return rows.map(row => row.track as unknown as Track);
 	},
 	async trim(keep) {
-		await raw(db).execute_statement(
+		await transaction(db, async () => raw(db).execute_statement(
 			'DELETE FROM recently_played WHERE uid NOT IN (SELECT uid FROM recently_played ORDER BY played_at DESC LIMIT ?)', [keep]
-		);
+		));
 	}
 };
 
@@ -496,7 +496,7 @@ const backpack: BackpackRepo = {
 		});
 	},
 	async remove(track_uid) {
-		await db.update(user_tracks_table).set({ backpacked: false, backpacked_at: null, modified_at: Date.now() }).where(eq(user_tracks_table.uid, track_uid));
+		await transaction(db, async tx => tx.update(user_tracks_table).set({ backpacked: false, backpacked_at: null, modified_at: Date.now() }).where(eq(user_tracks_table.uid, track_uid)));
 	},
 	async empty() {
 		await transaction(db, async (tx) => {
