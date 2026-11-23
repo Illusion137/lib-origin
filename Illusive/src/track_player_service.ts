@@ -163,8 +163,14 @@ export async function wait_for_active_track(uid: string, timeout_ms = 10_000): P
 	return false;
 }
 
+let queue_generation = 0;
+export function invalidate_queue_inserts() {
+	queue_generation++;
+}
+
 export async function insert_track_into_player_queue(track_data: Track, plus_index: number, add_to_playing_queue = true): Promise<boolean> {
 	if (!GLOBALS.global_var.is_playing) return false;
+	const run_generation = queue_generation;
 	const track_index = EverythingPlayer.getActiveTrackIndex();
 	if (track_index === null || track_index === undefined) return false;
 	const track = recreate(track_data);
@@ -175,10 +181,13 @@ export async function insert_track_into_player_queue(track_data: Track, plus_ind
 	};
 	const react_native_track = await illusive_track_to_track_player_track(track);
 	if (react_native_track === 'skip') return false;
-	await run_native_queue_mutation(async () => {
-		const active_index = EverythingPlayer.getActiveTrackIndex() ?? track_index;
+	const added = await run_native_queue_mutation(async () => {
+		const active_index = EverythingPlayer.getActiveTrackIndex();
+		if (run_generation !== queue_generation || active_index === null || active_index === undefined) return false;
 		EverythingPlayer.add(react_native_track, Math.min(active_index + plus_index, EverythingPlayer.getQueue().length));
+		return true;
 	});
+	if (!added) return false;
 	track.playback.successful = true;
 	if (add_to_playing_queue) GLOBALS.global_var.playing_queue.push(track.uid);
 	await on_modify_track_player_queue();
