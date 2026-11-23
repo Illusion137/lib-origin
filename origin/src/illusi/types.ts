@@ -123,6 +123,7 @@ export interface AuthMe {
 	username: string;
 	/** Account.avatar_url(avatar_id) */
 	avatar_id: string | null;
+	public_imports: boolean;
 	email_verified: boolean;
 }
 /** Ends the login the refresh token belongs to; works without an access token (e.g. after logging out offline) */
@@ -168,6 +169,10 @@ export interface Track extends Timestamps {
 	duration_ms: number | null;
 	explicit: boolean | null;
 	imported: boolean;
+	/** An imported track's custom artwork: Tracks.artwork_url(artwork_id), public so players can load it */
+	artwork_id: string | null;
+	/** Last-write-wins clock for the artwork */
+	artwork_edited_at: ISODateString | null;
 	/** Unavailable on its original service; play the server copy if there is one */
 	backpacked: boolean;
 	backpacked_at: ISODateString | null;
@@ -330,6 +335,8 @@ export interface User extends Timestamps {
 	role: UserRole;
 	/** Account.avatar_url(avatar_id) */
 	avatar_id: string | null;
+	/** Whether other users can list the tracks this user imported */
+	public_imports: boolean;
 	edited_at: ISODateString | null;
 }
 export interface UserTrack extends Timestamps {
@@ -1046,6 +1053,20 @@ export interface ArtworkResult {
 }
 export type ArtworkFile = MediaFile;
 export interface AvatarResult { avatar_id: string | null }
+export interface UserSettings { public_imports: boolean }
+export interface TrackArtworkResult { track: Pick<Track, 'id' | 'artwork_id' | 'artwork_edited_at'>; applied: boolean }
+/** A user as an artist. Only users with a public playlist or public imports are found, besides the caller */
+export interface UserProfile {
+	id: UUID;
+	username: string;
+	avatar_id: string | null;
+	public_imports: boolean;
+	is_self: boolean;
+	/** Public ones, or all of the caller's own */
+	playlist_count: number;
+	/** Null while the imports are hidden from the caller */
+	import_count: number | null;
+}
 
 export interface SearchSuggestionsQuery {
 	q: string;

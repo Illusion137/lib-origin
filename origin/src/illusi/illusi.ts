@@ -14,7 +14,7 @@ import type {
 	ReviewApplyBody, ReviewApplyResult, ReviewDismissResult, ReviewList, ReviewListQuery, SearchQuery, SearchResponse, SearchSuggestions,
 	SearchSuggestionsQuery, SearchType,
 	SharedEntityTable, SimilarQuery, SoundCloudIngestBody, SoundCloudIngestItem, TempRef, TokenPair, TrackBatchBody, TrackBatchResponse,
-	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, DurationReportBody, DurationReportResult, UserLyricsBody, UUID, YouTubeMusicLyricsIngestBody,
+	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, DurationReportBody, DurationReportResult, UserLyricsBody, UserProfile, UserSettings, TrackArtworkResult, UUID, YouTubeMusicLyricsIngestBody,
 	YouTubeMusicLyricsPayload
 } from '@origin/illusi/types';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
@@ -80,11 +80,14 @@ export namespace Illusi {
 		'GET /me/export/:id': { response: ExportJob };
 		'PUT /me/avatar': { body: FormData; response: AvatarResult };
 		'DELETE /me/avatar': { response: AvatarResult };
+		'PATCH /me/settings': { body: Partial<UserSettings>; response: UserSettings };
 
 		'GET /playlists/public': { query: PublicPlaylistsQuery; response: Page<PlaylistView> };
 		'GET /playlists/:id': { response: PlaylistView };
 		'GET /playlists/:id/tracks': { query: PageQuery; response: Page<TrackView> };
 		'POST /playlists/:id/copy': { response: CopiedPlaylist };
+		'GET /users/:id': { response: UserProfile };
+		'GET /users/:id/imports': { query: PageQuery; response: Page<TrackView> };
 		'GET /users/:id/playlists': { query: PageQuery; response: Page<PlaylistView> };
 		'PUT /playlists/:id/artwork': { body: FormData; response: ArtworkResult };
 		'DELETE /playlists/:id/artwork': { query: { edited_at?: string }; response: ArtworkResult };
@@ -93,6 +96,8 @@ export namespace Illusi {
 		'POST /tracks/batch': { body: TrackBatchBody; response: TrackBatchResponse };
 		'GET /tracks/:id/similar': { query: SimilarQuery; response: { items: TrackView[] } };
 		'GET /tracks/:id/lyrics': { response: LyricsResponse };
+		'PUT /tracks/:id/artwork': { body: FormData; response: TrackArtworkResult };
+		'DELETE /tracks/:id/artwork': { query: { edited_at?: string }; response: TrackArtworkResult };
 		'PUT /tracks/:id/lyrics/user': { body: UserLyricsBody; response: LyricsResponse };
 		'GET /tracks/:id/vocals': { response: TrackVocals };
 		'GET /tracks/:id/alignment': { response: TrackAlignment };
@@ -399,6 +404,17 @@ export namespace Illusi {
 		}
 	}
 
+	/** Other users, as artists: their public playlists (Playlists.of_user) and, when public, the tracks they imported */
+	export namespace Users {
+		export async function get(user_id: UUID) {
+			return call('GET /users/:id', { params: { id: user_id } });
+		}
+		/** 403 IMPORTS_PRIVATE unless they're the caller's or the user made them public */
+		export async function imports(user_id: UUID, query: PageQuery = {}) {
+			return call('GET /users/:id/imports', { params: { id: user_id }, query });
+		}
+	}
+
 	export namespace Playlists {
 		export async function get(playlist_id: UUID) {
 			return call('GET /playlists/:id', { params: { id: playlist_id } });
@@ -465,6 +481,9 @@ export namespace Illusi {
 		export async function remove_avatar() {
 			return call('DELETE /me/avatar');
 		}
+		export async function update_settings(settings: Partial<UserSettings>) {
+			return call('PATCH /me/settings', { body: settings });
+		}
 		/**
 		 * Needs file_headers(); avatar files never change (a new avatar gets a new id), so a downloaded copy can be kept
 		 * forever. Others' avatars are visible where they are: next to a playlist of theirs.
@@ -486,6 +505,20 @@ export namespace Illusi {
 	export namespace Tracks {
 		export async function get(track_id: IllusiId) {
 			return call('GET /tracks/:id', { params: { id: track_id } });
+		}
+		/** An imported track in the caller's library; JPEG, PNG or WebP up to 10 MB. edited_at is when the change was made on this device */
+		export async function set_artwork(track_id: IllusiId, file: ArtworkFile, edited_at?: Date) {
+			const form = new FormData();
+			await append_file(form, file);
+			if (edited_at !== undefined) form.append('edited_at', edited_at.toISOString());
+			return call('PUT /tracks/:id/artwork', { params: { id: track_id }, body: form });
+		}
+		export async function remove_artwork(track_id: IllusiId, edited_at?: Date) {
+			return call('DELETE /tracks/:id/artwork', { params: { id: track_id }, query: { edited_at: edited_at?.toISOString() } });
+		}
+		/** Public: needs no headers, so lock screens and car displays can load it; files never change */
+		export function artwork_url(artwork_id: string): string {
+			return api_url(`/track_artwork/${encodeURIComponent(artwork_id)}`);
 		}
 		export async function batch(ids: IllusiId[]) {
 			return call('POST /tracks/batch', { body: { ids } });

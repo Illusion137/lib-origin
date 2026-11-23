@@ -44,6 +44,8 @@ export interface TrackSnapshot {
 	/** Service view count (Track.plays) */
 	views: number;
 	imported_id: string;
+	/** An imported track's custom artwork on the server; shown when this device has no thumbnail of its own */
+	custom_artwork_url?: string;
 	/** TrackMetaData fields with no column of their own */
 	meta_extra: Partial<TrackMetaData>;
 }
@@ -162,7 +164,7 @@ export const recently_played_table = sqliteTable('recently_played', {
 
 export const OUTBOX_KINDS = [
 	'user_track', 'playlist', 'playlist_track', 'inherited_search', 'inherited_playlist', 'track_play', 'recent_search', 'unavailable',
-	'playlist_artwork', 'artwork_download'
+	'playlist_artwork', 'artwork_download', 'track_artwork'
 ] as const;
 export type OutboxKind = typeof OUTBOX_KINDS[number];
 

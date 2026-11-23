@@ -19,6 +19,7 @@ import { AccountDatabase } from '../account_database';
 import { DatabaseBoot } from '../boot';
 import { NetworkMonitor } from './network_monitor';
 import { PlaylistArtwork } from './playlist_artwork';
+import { TrackArtwork } from './track_artwork';
 import { RequestQueue } from './request_queue';
 import { apply_push_result, build_push, clear_dropped, dropped_changes, fail_push, MAX_ATTEMPTS, MAX_PUSH_TRACKS, type DroppedChange, type PushBatch } from './push';
 import { chunkify, milliseconds_of } from '@common/utils/util';
@@ -35,6 +36,7 @@ const RELEASE_CHECK_INTERVAL_MS = milliseconds_of({ hours: 6 });
 const STATE_CURSOR = 'cursor';
 const STATE_IMPORTED = 'imported';
 const STATE_ARTWORK_IMPORTED = 'artwork_imported';
+const STATE_TRACK_ARTWORK_IMPORTED = 'track_artwork_imported';
 const STATE_ACCOUNT = 'account';
 const STATE_IN_FLIGHT = 'in_flight_push';
 /** New tracks per push after the server refused a push as too large; grows back as pushes succeed */
@@ -171,6 +173,7 @@ export namespace SyncEngine {
 		await RequestQueue.drain();
 		await import_library();
 		await import_artwork();
+		await import_track_artwork();
 
 		let changed = false;
 		let drained = false;
@@ -192,6 +195,7 @@ export namespace SyncEngine {
 		// A big first import continues in the next run, after a pull
 		if (!drained) again = true;
 		await PlaylistArtwork.push(db);
+		await TrackArtwork.push(db);
 		// Both always run; `changed ||= await ...` would skip them once something changed
 		const pulled = await pull();
 		const downloaded = await PlaylistArtwork.download_pending(db);
@@ -248,7 +252,7 @@ export namespace SyncEngine {
 		const previous = await get_state<string>(STATE_ACCOUNT);
 		if (previous === me.user.id) return true;
 		await transaction(db, async (tx) => {
-			for (const key of [STATE_CURSOR, STATE_IMPORTED, STATE_ARTWORK_IMPORTED, STATE_IN_FLIGHT]) await set_state(tx, key, undefined);
+			for (const key of [STATE_CURSOR, STATE_IMPORTED, STATE_ARTWORK_IMPORTED, STATE_TRACK_ARTWORK_IMPORTED, STATE_IN_FLIGHT]) await set_state(tx, key, undefined);
 			// Requests belong to the account that made them
 			await tx.delete(request_queue_table);
 			await set_state(tx, STATE_ACCOUNT, me.user.id);
@@ -289,6 +293,14 @@ export namespace SyncEngine {
 		await transaction(db, async (tx) => {
 			await PlaylistArtwork.queue_existing(tx);
 			await set_state(tx, STATE_ARTWORK_IMPORTED, true);
+		});
+	}
+	/** Queues imported tracks' custom thumbnails for upload once per account */
+	async function import_track_artwork() {
+		if (await get_state<boolean>(STATE_TRACK_ARTWORK_IMPORTED) === true) return;
+		await transaction(db, async (tx) => {
+			await TrackArtwork.queue_existing(tx);
+			await set_state(tx, STATE_TRACK_ARTWORK_IMPORTED, true);
 		});
 	}
 

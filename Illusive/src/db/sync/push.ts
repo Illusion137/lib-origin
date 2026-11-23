@@ -31,7 +31,7 @@ export const MAX_PUSH_ENTITIES = 1_500;
 const graph_size = (graph: ContributionGraph) => (graph.artists?.length ?? 0) + (graph.albums?.length ?? 0) + (graph.tracks?.length ?? 0);
 
 const PUSH_KINDS: readonly OutboxKind[] = ['playlist', 'user_track', 'playlist_track', 'inherited_search', 'inherited_playlist', 'track_play', 'recent_search'];
-const TABLE_OF: Record<Exclude<OutboxKind, 'unavailable' | 'playlist_artwork' | 'artwork_download'>, PushTable> = {
+const TABLE_OF: Record<Exclude<OutboxKind, 'unavailable' | 'playlist_artwork' | 'artwork_download' | 'track_artwork'>, PushTable> = {
 	user_track: 'user_tracks',
 	playlist: 'playlists',
 	playlist_track: 'playlist_tracks',
@@ -281,6 +281,7 @@ export async function build_push(ex: DrizzleDB, opts: { max_rows?: number; max_e
 			case 'unavailable':
 			case 'playlist_artwork':
 			case 'artwork_download':
+			case 'track_artwork':
 				break;
 		}
 	}

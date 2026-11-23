@@ -1,5 +1,6 @@
 import type { DrizzleDB } from '@native/sqlite/sqlite.base';
 import type { Redirect, SyncRows } from '@origin/illusi/types';
+import { Illusi } from '@origin/illusi/illusi';
 import {
 	outbox_table, playlist_inherited_playlists_table, playlist_inherited_searches_table, playlist_tracks_table, playlists_table, recently_played_table,
 	sync_state_table, track_plays_table, user_tracks_table, type OutboxKind, type SnapshotNamed, type TrackSnapshot, type UserTrackRow
@@ -150,7 +151,7 @@ async function merge_tracks(ex: DrizzleDB, from: string, to: string) {
 	await ex.update(track_plays_table).set({ track_uid: to }).where(eq(track_plays_table.track_uid, from));
 	await ex.delete(recently_played_table).where(eq(recently_played_table.uid, from));
 	// Queued changes follow the track, or they'd be dropped as rows that no longer exist
-	const rekeys: [OutboxKind, string, string][] = [['user_track', from, to], ['unavailable', from, to]];
+	const rekeys: [OutboxKind, string, string][] = [['user_track', from, to], ['unavailable', from, to], ['track_artwork', from, to]];
 	for (const row of moved) rekeys.push(['playlist_track', playlist_track_key(row.playlist_uuid, from), playlist_track_key(row.playlist_uuid, to)]);
 	for (const [kind, old_key, new_key] of rekeys) {
 		const [queued] = await ex.select({ id: outbox_table.id }).from(outbox_table).where(and(eq(outbox_table.kind, kind), eq(outbox_table.key, new_key)));
@@ -280,7 +281,12 @@ async function apply_catalog(ex: DrizzleDB, rows: Partial<SyncRows>, now: number
 			album = entry_for('albums', track.album_id, existing);
 		}
 		// A server that doesn't know the duration yet mustn't erase the one this device measured
-		snapshots.set(uid, { ...snapshot, title: track.title, album, duration_ms: track.duration_ms ?? snapshot.duration_ms, explicit: track.explicit, imported: track.imported });
+		const { custom_artwork_url, ...rest } = snapshot;
+		custom_artwork_url;
+		snapshots.set(uid, {
+			...rest, title: track.title, album, duration_ms: track.duration_ms ?? snapshot.duration_ms, explicit: track.explicit, imported: track.imported,
+			...(track.artwork_id ? { custom_artwork_url: Illusi.Tracks.artwork_url(track.artwork_id) } : {})
+		});
 		await ex.update(user_tracks_table).set({ backpacked: track.backpacked, backpacked_at: time(track.backpacked_at), modified_at: now }).where(eq(user_tracks_table.uid, uid));
 		changed = true;
 	}

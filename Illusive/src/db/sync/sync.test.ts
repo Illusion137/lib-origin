@@ -304,7 +304,7 @@ describe('apply_rows', () => {
 	it('creates local rows for tracks from other devices', async () => {
 		const ex = open_db();
 		const result = await apply_rows(ex, {
-			tracks: [{ id: 'ill_new', title: 'Remote', album_id: null, duration_ms: 1000, explicit: null, imported: false, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			tracks: [{ id: 'ill_new', title: 'Remote', album_id: null, duration_ms: 1000, explicit: null, imported: false, artwork_id: null, artwork_edited_at: null, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
 			user_tracks: [{ ...server_user_track(NOW, 'Remote title'), track_id: 'ill_new' }]
 		});
 		expect(result.library_changed).toBe(true);
@@ -316,7 +316,7 @@ describe('apply_rows', () => {
 	it('fills snapshots from catalog rows and names artists and albums that arrive later', async () => {
 		const ex = open_db();
 		await apply_rows(ex, {
-			tracks: [{ id: 'ill_new', title: 'Remote', album_id: 'ill_album', duration_ms: 1000, explicit: true, imported: false, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			tracks: [{ id: 'ill_new', title: 'Remote', album_id: 'ill_album', duration_ms: 1000, explicit: true, imported: false, artwork_id: null, artwork_edited_at: null, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
 			tracks_artists: [{ track_id: 'ill_new', artist_id: 'ill_artist', created_at: iso(NOW), modified_at: iso(NOW) }],
 			user_tracks: [{ ...server_user_track(NOW, 'Remote'), track_id: 'ill_new' }]
 		});
@@ -389,7 +389,7 @@ describe('apply_rows', () => {
 	it('stores producers with their ids', async () => {
 		const ex = open_db();
 		await apply_rows(ex, {
-			tracks: [{ id: 'ill_new', title: 'Remote', album_id: null, duration_ms: 1000, explicit: null, imported: false, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			tracks: [{ id: 'ill_new', title: 'Remote', album_id: null, duration_ms: 1000, explicit: null, imported: false, artwork_id: null, artwork_edited_at: null, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
 			tracks_producers: [{ track_id: 'ill_new', producer_id: 7, name: 'Metro Boomin' }, { track_id: 'ill_new', producer_id: 8, name: null }],
 			user_tracks: [{ ...server_user_track(NOW, 'Remote'), track_id: 'ill_new' }]
 		});
@@ -400,7 +400,7 @@ describe('apply_rows', () => {
 	it('fills genre, explicit and artwork from iTunes when the catalog has none', async () => {
 		const ex = open_db();
 		await apply_rows(ex, {
-			tracks: [{ id: 'ill_new', title: 'Remote', album_id: null, duration_ms: 1000, explicit: null, imported: false, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			tracks: [{ id: 'ill_new', title: 'Remote', album_id: null, duration_ms: 1000, explicit: null, imported: false, artwork_id: null, artwork_edited_at: null, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
 			itunes: [{ id: 'ill_new', entity_type: 'track', explicitness: 'explicit', release_date: null, primary_genre_name: 'Hip-Hop/Rap', artwork_url: 'https://itunes/600.jpg' }],
 			user_tracks: [{ ...server_user_track(NOW, 'Remote'), track_id: 'ill_new' }]
 		});

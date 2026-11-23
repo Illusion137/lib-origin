@@ -2,7 +2,7 @@ import type { PromiseResult, ResponseError } from '@common/types';
 import { catch_log, generror } from '@common/utils/error_util';
 import { fs } from '@native/fs/fs';
 import { Illusi } from '@origin/illusi/illusi';
-import type { ArtworkFile, AuthMe, AvatarResult, ChangeEmailResult, ExportJob, LoginBody, Me, RegisterBody, ResetPasswordBody, SessionResponse, TokenPair } from '@origin/illusi/types';
+import type { ArtworkFile, AuthMe, AvatarResult, ChangeEmailResult, ExportJob, LoginBody, Me, RegisterBody, ResetPasswordBody, SessionResponse, TokenPair, UserSettings } from '@origin/illusi/types';
 import { Prefs } from '@illusive/prefs';
 import { db } from '@illusive/db/database';
 import { report_downloads } from './push';
@@ -150,6 +150,10 @@ export namespace IllusiAccount {
 	}
 	export async function remove_avatar(): PromiseResult<AvatarResult> {
 		return Illusi.Account.remove_avatar();
+	}
+	/** Whether other users can see the tracks this account imported, on its profile */
+	export async function set_public_imports(public_imports: boolean): PromiseResult<UserSettings> {
+		return Illusi.Account.update_settings({ public_imports });
 	}
 	/** An image source for an avatar (expo-image and the like); the id changes with every new avatar, so it caches forever */
 	export function avatar_source(avatar_id: string): { uri: string; headers: Record<string, string> } {

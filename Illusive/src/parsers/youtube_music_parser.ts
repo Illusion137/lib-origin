@@ -24,6 +24,8 @@ export function ytm_track(track: YTMTrack): Track {
 }
 
 export function ytm_album(album: YTMAlbum, type: CompactPlaylist['type'] = 'ALBUM'): CompactPlaylist {
+	// YouTube Music only gives the year
+	const year = /^\d{4}$/u.test(album.year?.trim() ?? '') ? Number(album.year!.trim()) : undefined;
 	const parsed: CompactPlaylist = {
 		title: { name: album.title, uri: album.browse_id === undefined ? null : create_uri('youtubemusic', album.browse_id) },
 		artist: album.artists.map(ytm_named),
@@ -32,7 +34,7 @@ export function ytm_album(album: YTMAlbum, type: CompactPlaylist['type'] = 'ALBU
 		explicit: album.explicit ? 'EXPLICIT' : 'NONE',
 		type,
 		album_type: album.album_type,
-		date: album.year === undefined ? undefined : date_from({ year: parseInt(album.year) }).toISOString() as ISOString
+		date: year === undefined ? undefined : date_from({ year }).toISOString() as ISOString
 	};
 	// Playlists are parsed here too; only albums are entities
 	return type === 'ALBUM' ? IllusiIngest.album('youtubemusic', parsed) : parsed;

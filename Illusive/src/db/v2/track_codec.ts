@@ -163,7 +163,7 @@ export function encode_track(track: Track, opts: { now: number; title_is_catalog
 	}
 
 	const thumbnails: SnapshotThumbnail[] = [...before?.thumbnails ?? []];
-	if (track.artwork_url && !thumbnails.some(t => t.url === track.artwork_url)) thumbnails.push({ url: track.artwork_url, width: null, height: null });
+	if (track.artwork_url && track.artwork_url !== before?.custom_artwork_url && !thumbnails.some(t => t.url === track.artwork_url)) thumbnails.push({ url: track.artwork_url, width: null, height: null });
 
 	const own_analysis = TrackAnalysis.from_values(track.analysis);
 	const analysis = own_analysis === undefined ? before?.analysis ?? null : { ...before?.analysis, ...own_analysis };
@@ -190,6 +190,7 @@ export function encode_track(track: Track, opts: { now: number; title_is_catalog
 			unreleased: track.unreleased ?? false,
 			views: Number.isFinite(track.service_plays) ? track.service_plays! : 0,
 			imported_id: track.imported_id ?? '',
+			...(before?.custom_artwork_url ? { custom_artwork_url: before.custom_artwork_url } : {}),
 			meta_extra
 		},
 		title: track.title === catalog_title ? null : track.title,
@@ -241,7 +242,7 @@ export function decode_track(row: UserTrackRow): Track {
 		service_plays: snapshot.views,
 		imported_id: snapshot.imported_id,
 		illusi_id: row.illusi_id ?? '',
-		artwork_url: best_thumbnail(snapshot.thumbnails),
+		artwork_url: snapshot.custom_artwork_url || best_thumbnail(snapshot.thumbnails),
 		thumbnail_uri: row.thumbnail_uri,
 		media_uri: row.media_uri,
 		lyrics_uri: row.lyrics_uri,

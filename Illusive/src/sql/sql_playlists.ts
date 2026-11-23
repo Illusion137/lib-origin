@@ -7,6 +7,8 @@ import { apply_inherited_mode, sort_playlist_tracks as pure_sort_playlist_tracks
 import type { CompactPlaylistData, InheritedPlaylist, InheritedSearch, Playlist, PlaylistsTracks, SortType, SQLPlaylist, Track } from '@illusive/types';
 import { SQLTracks } from './sql_tracks';
 import { catch_ignore } from '@common/utils/error_util';
+import { SQLfs } from './sql_fs';
+import path_lib from 'path-browserify';
 import { force_json_parse_array } from '@common/utils/parse_util';
 import { track_store } from '@illusive/stores/track_store';
 
@@ -246,6 +248,23 @@ export namespace SQLPlaylists {
 		await Store.write(async repos => repos.playlists.create(playlist_uuid, title));
 		invalidate_playlist_tracks_cache();
 		return playlist_uuid;
+	}
+	export async function duplicate_playlist(playlist_uuid: string): Promise<string | undefined> {
+		const source = await Store.get().playlists.get(playlist_uuid);
+		if (!source) return undefined;
+		const playlist = sql_playlist_to_playlist_no_visual_data(source);
+		const new_uuid = await create_playlist(playlist.title);
+		let thumbnail_uri = playlist.thumbnail_uri;
+		if (!is_empty(thumbnail_uri) && !/^https?:/.test(thumbnail_uri!)) {
+			const copied_name = `copy_${new_uuid}${path_lib.extname(thumbnail_uri!)}`;
+			thumbnail_uri = await SQLfs.copy_to_custom_thumbnail_directory(SQLfs.custom_thumbnail_directory(thumbnail_uri!), copied_name).then(() => copied_name).catch(() => undefined);
+		}
+		await set_fields(new_uuid, { description: playlist.description, sort: playlist.sort, thumbnail_uri: thumbnail_uri || undefined });
+		if (!is_empty(playlist.inherited_playlists)) await update_playlist_inherited_playlists(new_uuid, playlist.inherited_playlists!);
+		if (!is_empty(playlist.inherited_searchs)) await update_playlist_inherited_searchs(new_uuid, playlist.inherited_searchs!);
+		const tracks = await playlist_tracks(playlist_uuid, undefined, undefined, undefined, true);
+		await insert_all_tracks_playlist(tracks.map(track => ({ uuid: new_uuid, track_uid: track.uid })));
+		return new_uuid;
 	}
 	export async function delete_playlist(playlist_uuid: string) {
 		await Store.write(async repos => repos.playlists.remove(playlist_uuid));

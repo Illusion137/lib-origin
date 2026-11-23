@@ -37,6 +37,7 @@ async function save_tracks(ex: DrizzleDB, tracks: readonly Track[], mode: 'inser
 	const rows: UserTrackInsert[] = [];
 	const changed: string[] = [];
 	const downloads: string[] = [];
+	const artwork: string[] = [];
 	for (const track of tracks) {
 		const before = users.get(track.uid);
 		const row = encode_track(track, { now, title_is_catalog: before?.illusi_id == null, previous: before });
@@ -48,12 +49,14 @@ async function save_tracks(ex: DrizzleDB, tracks: readonly Track[], mode: 'inser
 			row.created_at = before.created_at;
 		}
 		if (download_changed(before, row)) downloads.push(track.uid);
+		if (before !== undefined && row.track.imported && before.thumbnail_uri !== row.thumbnail_uri) artwork.push(track.uid);
 		if (user_changed(before, row)) changed.push(track.uid);
 		else row.edited_at = before!.edited_at;
 		rows.push(row);
 	}
 	await write_user_tracks(ex, rows);
 	await Outbox.enqueue(ex, 'user_track', sync ? changed : downloads);
+	if (sync) await Outbox.enqueue(ex, 'track_artwork', artwork, { edited_at: now });
 }
 
 async function track_by_uid(ex: DrizzleDB, uid: string): Promise<Track | undefined> {

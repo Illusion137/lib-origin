@@ -35,16 +35,12 @@ export function create_thumbnails(url: string, width = NaN, height = NaN): Illus
 	return [{ url: url, width: width, height: height }];
 }
 
+/**
+ * A UTC date from its parts; missing parts are the start of the period, so `{ year: 2026 }` is 2026-01-01, never
+ * today's date in 2026 (which made year-only albums look released the moment they were seen). `month` is 0-based.
+ */
 export function date_from(date: { year?: number; month?: number; day?: number; hour?: number; minute?: number; second?: number; ms?: number }) {
-	const new_date = new Date();
-	if (date.year) new_date.setFullYear(date.year);
-	if (date.month) new_date.setMonth(date.month);
-	if (date.day) new_date.setDate(date.day);
-	if (date.hour) new_date.setHours(date.hour);
-	if (date.minute) new_date.setMinutes(date.minute);
-	if (date.second) new_date.setSeconds(date.second);
-	if (date.ms) new_date.setMilliseconds(date.ms);
-	return new_date;
+	return new Date(Date.UTC(date.year ?? new Date().getUTCFullYear(), date.month ?? 0, date.day ?? 1, date.hour ?? 0, date.minute ?? 0, date.second ?? 0, date.ms ?? 0));
 }
 
 export function get_unique_artists_tracks(global_tracks: Track[]) {

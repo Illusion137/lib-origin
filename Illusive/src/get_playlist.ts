@@ -359,7 +359,7 @@ export async function illusi_get_playlist(url: string): Promise<MusicServicePlay
 		creator: [{ name: playlist.owner.username, uri: null }],
 		tracks: illusi_library_tracks(page.items),
 		...(playlist.description ? { description: playlist.description } : {}),
-		artwork_url: IllusiViews.best_thumbnail_url(playlist.thumbnails) || undefined,
+		artwork_url: IllusiViews.playlist_artwork(playlist),
 		date: playlist.created_at as ISOString,
 		continuation: page.next_cursor === null ? null : { uuid: id, cursor: page.next_cursor } as IllusiPlaylistContinuation
 	};

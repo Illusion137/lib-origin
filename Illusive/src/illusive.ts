@@ -6,14 +6,15 @@ import { amazon_music_create_playlist, amazon_music_delete_playlist, apple_music
 import { audiomack_download_from_id, bandlab_download_from_id, illusi_download_from_id, soundcloud_download_from_id, youtube_download_from_id } from '@illusive/download_from_id';
 import { apple_music_get_artist, illusi_get_artist, soundcloud_get_artist, youtube_get_artist, youtube_music_get_artist, spotify_get_artist } from '@illusive/get_artist';
 import { apple_music_get_latest_releases, soundcloud_get_latest_releases, spotify_get_latest_releases, youtube_music_get_latest_releases } from '@illusive/get_latest_releases';
-import { amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, audiomack_get_playlist, bandlab_get_playlist, bandlab_get_playlist_continuation, deezer_get_playlist, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, pandora_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, tidal_get_playlist, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from '@illusive/get_playlist';
+import { album_fetch_opts, amazon_music_get_playlist, api_get_playlist, apple_music_get_playlist, apple_music_get_playlist_continuation, audiomack_get_playlist, bandlab_get_playlist, bandlab_get_playlist_continuation, deezer_get_playlist, illusi_get_playlist, illusi_get_playlist_continuation, musi_get_playlist, pandora_get_playlist, soundcloud_get_playlist, soundcloud_get_playlist_continuation, spotify_get_playlist, spotify_get_playlist_continuation, tidal_get_playlist, youtube_get_playlist, youtube_get_playlist_continuation, youtube_music_get_playlist, youtube_music_get_playlist_continuation } from '@illusive/get_playlist';
 import { get_soundcloud_track_mix, get_youtube_music_track_mix, get_youtube_track_mix } from '@illusive/get_track_mix';
 import { soundcloud_get_related, youtube_music_get_related } from '@illusive/get_related';
 import { amazon_music_get_user_playlists, apple_music_get_user_playlists, audiomack_get_user_playlists, bandlab_get_user_playlists, deezer_get_user_playlists, illusi_get_user_playlists, pandora_get_user_playlists, soundcloud_get_user_playlists, spotify_get_user_playlists, tidal_get_user_playlists, youtube_get_user_playlists, youtube_music_get_user_playlists } from '@illusive/get_user_playlist';
-import { all_words, artist_string, clean_track_info, is_topic, number_epsilon_distance, one_includes_word_not_other, str_or_include } from '@illusive/illusive_utils';
+import { all_words, artist_string, clean_track_info, is_topic, make_https, music_service_uri_to_music_service, number_epsilon_distance, one_includes_word_not_other, split_uri, str_or_include } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
 import { amazon_music_search, apple_music_search, audiomack_search, deezer_search, illusi_search, pandora_search, soundcloud_search, soundcloud_search_continuation, spotify_search, tidal_search, youtube_music_search, youtube_search } from '@illusive/search';
-import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, MusicSearchResponse, MusicServiceType, Track } from '@illusive/types';
+import type { Artwork, CompactArtist, CompactPlaylist, DownloadFromIdResult, IllusiveURI, MusicSearchResponse, MusicServiceType, Track } from '@illusive/types';
+import { continue_once, track_key } from './continuation';
 import { MusicService } from '@illusive/types';
 import { illusi_get_new_releases, soundcloud_get_new_releases, youtube_music_get_new_releases } from '@illusive/new_releases';
 import { Constants } from '@illusive/constants';
@@ -374,6 +375,26 @@ export namespace Illusive {
 			return related_result.tracks;
 		}
 		return [];
+	}
+
+	/** An artist's top tracks plus one continuation page */
+	export async function get_artist_tracks(artist_uri: IllusiveURI): Promise<Track[] | ResponseError> {
+		const [service, id] = split_uri(artist_uri);
+		const get_artist = music_service.get(music_service_uri_to_music_service(service))?.get_artist;
+		if (get_artist === undefined) return generror(`Service Artist doesn't support: ${service}`, 'LOW', { artist_uri });
+		const artist = await get_artist(id).catch(json_catch);
+		if ('error' in artist && artist.error !== undefined) return artist.error;
+		return (await continue_once(artist.tracks, artist.tracks_continuation, track_key)).items;
+	}
+
+	export async function get_uri_playlist_tracks(playlist_uri: IllusiveURI, as_album: boolean): Promise<Track[] | ResponseError> {
+		const [service, id] = split_uri(playlist_uri);
+		const playlist_service = music_service.get(music_service_uri_to_music_service(service));
+		if (playlist_service === undefined) return generror(`Unknown playlist service: ${service}`, 'LOW', { playlist_uri });
+		const playlist = await playlist_service.get_playlist(make_https(id), as_album ? album_fetch_opts : undefined).catch(json_catch);
+		if ('error' in playlist && playlist.error !== undefined) return playlist.error;
+		if (!('tracks' in playlist)) return generror('Playlist has no tracks', 'LOW', { playlist_uri });
+		return playlist.tracks.concat(await playlist_service.get_rest_of_playlist(playlist.continuation));
 	}
 
 	export function get_youtube_lowest_quality_thumbnail_uri(video_id: string) {

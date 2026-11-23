@@ -42,8 +42,20 @@ export async function push_track_to_playing_queue(track_data: Track) {
 	await insert_track_into_player_queue(track_data, 1 + GLOBALS.global_var.playing_queue.length);
 	await alerts().haptic_notification('SUCCESS');
 }
+export async function push_tracks_to_playing_queue(tracks: Track[]) {
+	for (const track of tracks) {
+		if (!await insert_track_into_player_queue(track, 1 + GLOBALS.global_var.playing_queue.length)) break;
+	}
+	await alerts().haptic_notification('SUCCESS');
+}
 export async function play_track_next(track_data: Track) {
 	await insert_track_into_player_queue(track_data, 1);
+	await alerts().haptic_notification('SUCCESS');
+}
+export async function play_tracks_next(tracks: Track[]) {
+	for (const [i, track] of tracks.entries()) {
+		if (!await insert_track_into_player_queue(track, i + 1)) break;
+	}
 	await alerts().haptic_notification('SUCCESS');
 }
 export async function sprinkle_into_queue(tracks: Track[]) {

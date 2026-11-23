@@ -13,6 +13,8 @@ function track_view(overrides: Partial<TrackView> = {}): TrackView {
 		duration_ms: 185_500,
 		explicit: true,
 		imported: false,
+		artwork_id: null,
+		artwork_edited_at: null,
 		backpacked: false,
 		backpacked_at: null,
 		created_at: T,
@@ -34,6 +36,10 @@ function track_view(overrides: Partial<TrackView> = {}): TrackView {
 }
 
 describe('IllusiViews.track', () => {
+	it('prefers an imported track\'s custom artwork', () => {
+		expect(IllusiViews.track(track_view({ imported: true, artwork_id: 'a.jpg' })).artwork_url).toMatch(/\/track_artwork\/a\.jpg$/);
+	});
+
 	it('maps catalog fields, service ids and the best thumbnail', () => {
 		const track = IllusiViews.track(track_view());
 		expect(track).toMatchObject({
@@ -85,7 +91,13 @@ describe('IllusiViews compact views', () => {
 			edited_at: null, artwork_id: null, artwork_edited_at: null, created_at: T, modified_at: T, owner: { id: 'u1', username: 'sumi', avatar_id: null }, is_owner: false, track_count: 3,
 			thumbnails: []
 		} satisfies PlaylistView);
-		expect(playlist).toMatchObject({ title: { name: 'Mix', uri: 'illusi:p1' }, artist: [{ name: 'sumi', uri: null }], type: 'PLAYLIST' });
+		expect(playlist).toMatchObject({ title: { name: 'Mix', uri: 'illusi:p1' }, artist: [{ name: 'sumi', uri: 'illusi:user.u1' }], type: 'PLAYLIST' });
+
+		const covers = [{ url: 'first', width: 300, height: 300 }, { url: 'bigger', width: 1280, height: 720 }];
+		const base = { artwork_id: null, thumbnails: covers };
+		expect(IllusiViews.playlist_artwork(base)).toBe('first');
+		expect(IllusiViews.playlist_artwork({ ...base, artwork_id: 'art.jpg' })).toMatch(/\/artwork\/art\.jpg$/);
+		expect(IllusiViews.playlist_artwork({ ...base, thumbnails: [] })).toBeUndefined();
 
 		const album = IllusiViews.album({
 			id: 'a1', artist_id: 'ar1', name: 'One', album_type: 'SINGLE', release_date: T, track_count: 1, explicit: false, created_at: T, modified_at: T,

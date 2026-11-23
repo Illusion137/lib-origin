@@ -2,6 +2,7 @@ import type {
 	AlbumRef, AlbumType, AlbumView, ArtistRef, ArtistView, NewReleaseAlbum, NewReleaseSoundCloudTrack, PlaylistView, SearchSuggestions, Thumbnail,
 	TrackView
 } from '@origin/illusi/types';
+import { Illusi } from '@origin/illusi/illusi';
 import { bool_to_explicit, itunes_explicit, TRACK_SERVICE_ID_FIELDS } from './db/v2/track_codec';
 import { TrackAnalysis } from './track_analysis';
 import { create_uri } from './illusive_utils';
@@ -21,6 +22,16 @@ export namespace IllusiViews {
 	/** The album id in an `illusi:album.<id>` playlist id, or null for a playlist uuid */
 	export function album_id_of(playlist_id: string): string | null {
 		return playlist_id.startsWith(ALBUM_PREFIX) ? playlist_id.slice(ALBUM_PREFIX.length) : null;
+	}
+	/** Users are artists too, by way of their imports and public playlists; the prefix tells illusi_get_artist which one it is */
+	export const USER_PREFIX = 'user.';
+
+	export function user_uri(user_id: string) {
+		return create_uri('illusi', `${USER_PREFIX}${user_id}`);
+	}
+	/** The user id in an `illusi:user.<id>` artist id, or null for a catalog artist */
+	export function user_id_of(artist_id: string): string | null {
+		return artist_id.startsWith(USER_PREFIX) ? artist_id.slice(USER_PREFIX.length) : null;
 	}
 
 	export function artist_named(artist: ArtistRef): NamedUUID {
@@ -68,7 +79,7 @@ export namespace IllusiViews {
 			explicit: bool_to_explicit(view.explicit ?? itunes_explicit(view.itunes?.explicitness)),
 			album: view.album ? album_named(view.album) : { name: '', uri: null },
 			illusi_id: view.id,
-			artwork_url: best_thumbnail_url(view.thumbnails) || view.itunes?.artwork_url || '',
+			artwork_url: (view.artwork_id ? Illusi.Tracks.artwork_url(view.artwork_id) : '') || best_thumbnail_url(view.thumbnails) || view.itunes?.artwork_url || '',
 			meta
 		};
 		const service_ids = view.service_ids as Record<string, unknown>;
@@ -89,11 +100,18 @@ export namespace IllusiViews {
 		return tracks.map(t => (t.illusi_id ? by_illusi_id.get(t.illusi_id) : undefined) ?? t);
 	}
 
+	/** The playlist's custom artwork, else its first track's cover. The server sends one thumbnail per leading track, not sizes of one image */
+	export function playlist_artwork(view: Pick<PlaylistView, 'artwork_id' | 'thumbnails'>): string | undefined {
+		if (view.artwork_id) return Illusi.Playlists.artwork_url(view.artwork_id);
+		return view.thumbnails[0]?.url || undefined;
+	}
+
 	export function playlist(view: PlaylistView): CompactPlaylist {
+		const artwork = playlist_artwork(view);
 		return {
 			title: { name: view.title, uri: create_uri('illusi', view.id) },
-			artist: [{ name: view.owner.username, uri: null }],
-			artwork_thumbnails: thumbnails(view.thumbnails),
+			artist: [{ name: view.owner.username, uri: user_uri(view.owner.id) }],
+			...(artwork ? { artwork_url: artwork } : {}),
 			date: view.created_at as ISOString,
 			type: 'PLAYLIST'
 		};
