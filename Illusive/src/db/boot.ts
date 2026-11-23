@@ -9,6 +9,9 @@ import { LegacyMigration, mark_migration_done, migration_phase, run_legacy_fixup
 import { Store } from './store';
 import { v2_repos } from './v2/repos';
 import { AccountDatabase } from './account_database';
+import { fix_download_dates } from './migration/download_date_fixup';
+import { SQLfs } from '@illusive/sql/sql_fs';
+import { fs } from '@native/fs/fs';
 
 /** The pre-1810 database file; its presence means the 1810 update still has to import it */
 const LEGACY_1400_PATH = 'illusi-db-1400.sqlite3';
@@ -17,6 +20,13 @@ export namespace DatabaseBoot {
 	let migration: LegacyMigration | null = null;
 	let running: Promise<MigrationPhase> | null = null;
 	let stop_requested = false;
+
+	async function run_download_date_fixup() {
+		await fix_download_dates(V2.db, async (media_uri) => {
+			const info = await fs().get_info(SQLfs.media_directory(media_uri));
+			return info.exists ? info.file_modified_ms : null;
+		}).catch(catch_log);
+	}
 
 	/**
 	 * Opens the databases and picks the one the app uses: v2 once the 1810 migration finished (or on a fresh
@@ -34,11 +44,13 @@ export namespace DatabaseBoot {
 		// Only the default database descends from the 1810 one; other accounts start empty
 		if (!V2.is_default_database()) {
 			await mark_migration_done(V2.db);
+			await run_download_date_fixup();
 			Store.set_mode('v2');
 			return true;
 		}
 		if (await migration_phase(V2.db) === 'DONE') {
 			await run_legacy_fixup(V2.db).catch(catch_log);
+			await run_download_date_fixup();
 			Store.set_mode('v2');
 			return true;
 		}
@@ -46,6 +58,7 @@ export namespace DatabaseBoot {
 		if (!has_legacy) {
 			// Nothing to migrate; mark it done so a later 1810 file (e.g. a restored backup) isn't picked up by accident
 			await mark_migration_done(V2.db);
+			await run_download_date_fixup();
 			Store.set_mode('v2');
 			return true;
 		}
@@ -106,7 +119,10 @@ export namespace DatabaseBoot {
 			swap: async () => { Store.set_mode('v2'); },
 			should_stop: () => stop_requested
 		}).then(async (phase) => {
-			if (phase === 'DONE') await on_swapped();
+			if (phase === 'DONE') {
+				await run_download_date_fixup();
+				await on_swapped();
+			}
 			return phase;
 		}).finally(() => { running = null; });
 		return running;
