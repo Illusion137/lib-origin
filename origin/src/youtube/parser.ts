@@ -130,11 +130,17 @@ function lockup_thumbnails(node: YTNodes.LockupView): YTThumbnail[] {
 }
 const LOCKUP_TYPE_LABELS = new Set(['playlist', 'album', 'single', 'ep', 'mix', 'podcast', 'course', 'show', 'video', 'short']);
 function strip_type_label(name: string): string {
-	const match = name.match(/^(.*?)\s+·\s+([^·]+)$/);
+	const match = /^(.*?)\s+·\s+([^·]+)$/.exec(name);
 	return match !== null && LOCKUP_TYPE_LABELS.has(match[2].trim().toLowerCase()) ? match[1] : name;
 }
+/** "1.2M views", "3 years ago", "LIVE · 400 watching": text a lockup shows next to its channel */
+function is_lockup_stat(text: string) {
+	return is_credit_metadata(text) || /\b(views?|watching|waiting)$|\bago$|^(streamed|premiered|scheduled)\b|^view full playlist$/i.test(text.trim());
+}
 function lockup_artist(node: YTNodes.LockupView, owner?: YTNamed): YTNamed {
-	const parts = (node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts ?? []).flatMap(part => {
+	// The channel is usually the first row, but some layouts put the stats row first or leave the channel out
+	const rows = node.metadata?.metadata?.metadata_rows ?? [];
+	const parts = rows.flatMap(row => row.metadata_parts ?? []).flatMap((part) => {
 		const text = part.text;
 		if (text === null || text === undefined) return [];
 		const run = text.runs?.[0];
@@ -142,13 +148,11 @@ function lockup_artist(node: YTNodes.LockupView, owner?: YTNamed): YTNamed {
 		const browse_id = (endpoint?.payload as { browseId?: string } | undefined)?.browseId;
 		return [{ name: text.text ?? '', channel_id: browse_id?.startsWith('UC') ? browse_id : undefined }];
 	});
-	const is_label = (name: string) => LOCKUP_TYPE_LABELS.has(name.trim().toLowerCase());
+	const is_label = (name: string) => name.trim() === '' || LOCKUP_TYPE_LABELS.has(name.trim().toLowerCase()) || is_lockup_stat(name);
 	const linked = parts.find(part => part.channel_id !== undefined && !is_label(part.name));
 	if (linked !== undefined) return linked;
 	if (owner !== undefined) return { name: owner.name, channel_id: parts.find(part => part.channel_id !== undefined)?.channel_id ?? owner.channel_id };
-	const first = parts[0];
-	if (first === undefined || is_label(first.name)) return { name: '' };
-	return first;
+	return parts.find(part => !is_label(part.name)) ?? { name: '' };
 }
 
 function lockup_track(node: YTNodes.LockupView, owner?: YTNamed): YTTrack {
