@@ -105,7 +105,7 @@ export async function setup_track_player(): Promise<boolean> {
 		trackplayer_has_been_setup = true;
 		return true;
 	}
-	await EverythingPlayer.setupPlayer({ enableVideo: false, sabrPoolAhead: 1 });
+	await EverythingPlayer.setupPlayer({ enableVideo: false, sabrPoolAhead: 1, autoHandleRemoteEvents: false });
 	trackplayer_has_been_setup = true;
 	await EverythingPlayer.updateOptions({
 		android: {
