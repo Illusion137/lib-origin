@@ -358,7 +358,7 @@ export async function illusi_get_playlist(url: string): Promise<MusicServicePlay
 	if (Illusi.is_error(page)) return default_playlist(page);
 	return {
 		title: playlist.title,
-		creator: [{ name: playlist.owner.username, uri: null }],
+		creator: [{ name: playlist.owner.username, uri: IllusiViews.user_uri(playlist.owner.id) }],
 		tracks: illusi_library_tracks(page.items),
 		...(playlist.description ? { description: playlist.description } : {}),
 		artwork_url: IllusiViews.playlist_artwork(playlist),
