@@ -4,6 +4,7 @@ import 'text-encoding-polyfill';
 import 'react-native-url-polyfill/auto';
 import { decode, encode } from 'base-64';
 import BufferRN from 'buffer/';
+import QuickCrypto from 'react-native-quick-crypto';
 const Buffer = BufferRN.Buffer;
 
 // isomorphic-git (used by the OTA git-mode updater) checks the global `Buffer`
@@ -11,6 +12,11 @@ const Buffer = BufferRN.Buffer;
 // so it throws "Missing Buffer dependency" without this on Hermes/RN.
 if (!global.Buffer) {
 	(global as any).Buffer = Buffer;
+}
+
+// youtubei.js's sha1Hash calls bare `crypto.subtle.digest`, which Hermes doesn't provide.
+if (!(global as { crypto?: unknown }).crypto) {
+	(global as { crypto?: unknown }).crypto = QuickCrypto;
 }
 
 if (!global.btoa) {
