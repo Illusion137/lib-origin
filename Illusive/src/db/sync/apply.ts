@@ -33,15 +33,17 @@ function local_wins(local_edited_at: number | undefined, server_edited_at: numbe
 
 const ids_sql = (ids: readonly string[]) => sql.join(ids.map(id => sql`${id}`), sql`, `);
 
+// Queries go through select(), never ex.all(sql`...`): drizzle's op-sqlite driver returns no rows for raw all() on op-sqlite 15
+/** Snapshots crediting one of these artists, or on one of these albums */
+const holding = (kind: 'artists' | 'albums', ids: readonly string[]) => kind === 'artists'
+	? sql`EXISTS (SELECT 1 FROM json_each(${user_tracks_table.track}, '$.artists') AS je WHERE json_extract(je.value, '$.illusi_id') IN (${ids_sql(ids)}))`
+	: sql`json_extract(${user_tracks_table.track}, '$.album.illusi_id') IN (${ids_sql(ids)})`;
+
 /** uids of the tracks whose snapshot credits one of these artists, or is on one of these albums */
 async function uids_with(ex: DrizzleDB, kind: 'artists' | 'albums', illusi_ids: readonly string[]): Promise<string[]> {
 	const result = new Set<string>();
 	for (const chunk of chunkify([...new Set(illusi_ids)], IDS_PER_QUERY)) {
-		const rows = kind === 'artists'
-			? await ex.all<{ uid: string }>(sql`SELECT DISTINCT ${user_tracks_table.uid} AS uid FROM ${user_tracks_table}, json_each(${user_tracks_table.track}, '$.artists') AS je
-				WHERE json_extract(je.value, '$.illusi_id') IN (${ids_sql(chunk)})`)
-			: await ex.all<{ uid: string }>(sql`SELECT ${user_tracks_table.uid} AS uid FROM ${user_tracks_table}
-				WHERE json_extract(${user_tracks_table.track}, '$.album.illusi_id') IN (${ids_sql(chunk)})`);
+		const rows = await ex.select({ uid: user_tracks_table.uid }).from(user_tracks_table).where(holding(kind, chunk));
 		for (const row of rows) result.add(row.uid);
 	}
 	return [...result];
@@ -51,14 +53,12 @@ async function uids_with(ex: DrizzleDB, kind: 'artists' | 'albums', illusi_ids: 
 async function known_entries(ex: DrizzleDB, kind: 'artists' | 'albums', illusi_ids: readonly string[]): Promise<Map<string, SnapshotNamed>> {
 	const result = new Map<string, SnapshotNamed>();
 	for (const chunk of chunkify([...new Set(illusi_ids)], IDS_PER_QUERY)) {
-		const rows = kind === 'artists'
-			? await ex.all<{ entry: string }>(sql`SELECT je.value AS entry FROM ${user_tracks_table}, json_each(${user_tracks_table.track}, '$.artists') AS je
-				WHERE json_extract(je.value, '$.illusi_id') IN (${ids_sql(chunk)}) AND json_extract(je.value, '$.name') != ''`)
-			: await ex.all<{ entry: string }>(sql`SELECT json_extract(${user_tracks_table.track}, '$.album') AS entry FROM ${user_tracks_table}
-				WHERE json_extract(${user_tracks_table.track}, '$.album.illusi_id') IN (${ids_sql(chunk)}) AND json_extract(${user_tracks_table.track}, '$.album.name') != ''`);
-		for (const row of rows) {
-			const entry = JSON.parse(row.entry) as SnapshotNamed;
-			if (entry.illusi_id !== undefined && !result.has(entry.illusi_id)) result.set(entry.illusi_id, entry);
+		const wanted = new Set(chunk);
+		const rows = await ex.select({ track: user_tracks_table.track }).from(user_tracks_table).where(holding(kind, chunk));
+		for (const { track } of rows) {
+			for (const entry of kind === 'artists' ? track.artists : track.album === null ? [] : [track.album]) {
+				if (entry.illusi_id !== undefined && entry.name !== '' && wanted.has(entry.illusi_id) && !result.has(entry.illusi_id)) result.set(entry.illusi_id, entry);
+			}
 		}
 	}
 	return result;
@@ -174,8 +174,7 @@ export async function assign_track_id(ex: DrizzleDB, uid: string, illusi_id: str
 /** Gives snapshot artists and albums the illusi_ids the server assigned to their contribution refs */
 export async function assign_entity_ids(ex: DrizzleDB, id_map: ReadonlyMap<string, string>) {
 	if (id_map.size === 0) return;
-	const rows = await ex.all<{ uid: string }>(sql`SELECT ${user_tracks_table.uid} AS uid FROM ${user_tracks_table}
-		WHERE (json_extract(${user_tracks_table.track}, '$.album') IS NOT NULL AND json_extract(${user_tracks_table.track}, '$.album.illusi_id') IS NULL)
+	const rows = await ex.select({ uid: user_tracks_table.uid }).from(user_tracks_table).where(sql`(json_extract(${user_tracks_table.track}, '$.album') IS NOT NULL AND json_extract(${user_tracks_table.track}, '$.album.illusi_id') IS NULL)
 		OR EXISTS (SELECT 1 FROM json_each(${user_tracks_table.track}, '$.artists') AS je WHERE json_extract(je.value, '$.illusi_id') IS NULL)`);
 	const snapshots = new Snapshots(ex);
 	await snapshots.load(rows.map(row => row.uid));
