@@ -89,6 +89,20 @@ export namespace SQLfs {
 	export async function read_file(path: string) {
 		return await fs().read_as_string(path, { encoding: 'utf8' });
 	}
+	export async function clear_cache_directory() {
+		const files = await read_directory(cache_directory(''));
+		if ('error' in files) return 0;
+		let deleted = 0;
+		await Promise.all(files.map(async (file) => {
+			if (!file.endsWith('.che')) return;
+			const path = cache_directory(file);
+			const info = await fs().get_info(path);
+			if (!info.exists || info.is_directory) return;
+			await fs().remove(path);
+			deleted++;
+		}));
+		return deleted;
+	}
 	export async function file_created_at(path: string) {
 		const file_info = await fs().get_info(path);
 		if (file_info.exists) return new Date(file_info.file_modified_ms);
