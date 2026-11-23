@@ -133,15 +133,15 @@ function strip_type_label(name: string): string {
 	const match = /^(.*?)\s+·\s+([^·]+)$/.exec(name);
 	return match !== null && LOCKUP_TYPE_LABELS.has(match[2].trim().toLowerCase()) ? match[1] : name;
 }
-/** "1.2M views", "3 years ago", "LIVE · 400 watching": text a lockup shows next to its channel */
+/** "1.2M views", "11K", "3 years ago", "LIVE · 400 watching": text a lockup shows next to its channel */
 function is_lockup_stat(text: string) {
-	return is_credit_metadata(text) || /\b(views?|watching|waiting)$|\bago$|^(streamed|premiered|scheduled)\b|^view full playlist$/i.test(text.trim());
+	return is_credit_metadata(text) || /^[\d.,]+\s*[KMB]?$|\b(views?|watching|waiting)$|\bago$|^(streamed|premiered|scheduled)\b|^view full playlist$/i.test(text.trim());
 }
 function lockup_artist(node: YTNodes.LockupView, owner?: YTNamed): YTNamed {
 	// The channel is usually the first row, but some layouts put the stats row first or leave the channel out
 	const rows = node.metadata?.metadata?.metadata_rows ?? [];
 	const parts = rows.flatMap(row => row.metadata_parts ?? []).flatMap((part) => {
-		const text = part.text;
+		const text = part.text ?? part.avatar_stack?.text;
 		if (text === null || text === undefined) return [];
 		const run = text.runs?.[0];
 		const endpoint = text.endpoint ?? (run !== undefined && 'endpoint' in run ? run.endpoint : undefined);
