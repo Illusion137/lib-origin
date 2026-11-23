@@ -6,19 +6,21 @@ import { parse_apple_music_artist_album, parse_apple_music_artist_latest_album, 
 import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_track_to_song } from '@illusive/parsers/soundcloud_parser';
 import { ytm_album, ytm_artist, ytm_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
-import { best_thumbnail, create_uri } from '@illusive/illusive_utils';
+import { best_thumbnail, create_uri, split_uri } from '@illusive/illusive_utils';
 import { Prefs } from '@illusive/prefs';
-import type { ArtistOpts, CompactArtist, CompactPlaylist, Continuation, ContinuationPage, MusicServiceArtist, NamedUUID, Track } from '@illusive/types';
-import type { Cursor, Page, PageQuery, PlaylistView, TrackView } from '@origin/illusi/types';
+import type { ArtistOpts, CompactArtist, CompactPlaylist, Continuation, ContinuationPage, IllusiveURI, MusicServiceArtist, MusicServiceURI, NamedUUID, Track } from '@illusive/types';
+import type { Cursor, Page, PageQuery, PlaylistView, ServiceIds, TrackView } from '@origin/illusi/types';
 import type { YTChannelResult, YTCompactPlaylist, YTMAlbum, YTMArtist, YTMTrack, YTTrack } from '@origin/youtube/parser';
 import type * as SCSearch from '@origin/soundcloud/types/Search';
 import { Constants } from './constants';
 import { GLOBALS } from './globals';
 import { is_empty } from '@common/utils/util';
 import { SQLArtists } from './sql/sql_artists';
+import type { SQLArtistInsert } from './legacy/1810/schema';
 import { reinterpret_cast } from '@common/cast';
 import { parse_spotify_artist_album, parse_spotify_artist_appears_on, parse_spotify_artist_track, parse_spotify_similar_artist } from './parsers/spotify_parser';
 import { catch_log } from '@common/utils/error_util';
+import { breadcrumb } from '@common/sentry_error_handler';
 import { Illusi } from '@origin/illusi/illusi';
 import { IllusiAccount } from './db/sync/illusi_account';
 import { IllusiViews } from './illusi_views';
@@ -223,8 +225,14 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
 }
 
 export async function soundcloud_get_artist(id: string, opts?: ArtistOpts): Promise<MusicServiceArtist> {
-	const artist_id = await SoundCloud.permalink_to_artist_id({ artist_permalink: id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy } });
+	return soundcloud_artist(await SoundCloud.permalink_to_artist_id({ artist_permalink: id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy } }), opts);
+}
+async function soundcloud_get_artist_by_user_id(user_id: string): Promise<MusicServiceArtist> {
+	return soundcloud_artist(await SoundCloud.user_id_to_artist_id({ user_id, cookie_jar: get_cookie_jar('soundcloud_cookie_jar') }));
+}
+async function soundcloud_artist(artist_id: Awaited<ReturnType<typeof SoundCloud.permalink_to_artist_id>>, opts?: ArtistOpts): Promise<MusicServiceArtist> {
 	if ('error' in artist_id) return default_artist(artist_id);
+	const id = artist_id.hydration.data.permalink;
 
 	const soundcloud_opts = { cookie_jar: get_cookie_jar('soundcloud_cookie_jar'), fetch_opts: { proxy: opts?.proxy }, client_id: artist_id.client_id };
 	const [artist_tracks_response, artist_albums_response, artist_playlists_response] = await Promise.all([
@@ -411,6 +419,9 @@ async function illusi_get_server_artist(id: string): Promise<MusicServiceArtist>
 	const other_items = Illusi.is_error(singles_eps) ? [] : singles_eps.items.filter(album => album.album_type !== 'ALBUM');
 	const newest = [...album_items, ...other_items].sort((a, b) => new Date(b.release_date ?? 0).getTime() - new Date(a.release_date ?? 0).getTime())[0];
 	const compact = IllusiViews.artist(artist);
+	if (typeof compact.profile_artwork_url === 'string') {
+		SQLArtists.insert_sql_artists({ uri: create_uri('illusi', artist.id), name: artist.name, artwork_url: compact.profile_artwork_url }).catch(catch_log);
+	}
 	return {
 		name: artist.name,
 		tracks: Illusi.is_error(tracks) ? [] : IllusiViews.prefer_local(tracks.items.map(IllusiViews.track), GLOBALS.global_var.sql_tracks),
@@ -419,9 +430,99 @@ async function illusi_get_server_artist(id: string): Promise<MusicServiceArtist>
 		playlists: [],
 		...(newest === undefined ? {} : { latest_release: IllusiViews.album(newest) }),
 		similar_artists: Illusi.is_error(similar) ? [] : similar.items.map(IllusiViews.artist),
+		service_uris: artist_service_uris(artist.service_ids),
 		...(compact.profile_artwork_url === undefined ? {} : { profile_artwork_url: compact.profile_artwork_url }),
 		is_following: undefined,
 		follow: empty_async_call,
 		unfollow: empty_async_call
 	};
+}
+
+const ILLUSI_ARTWORK_CONCURRENCY = 4;
+const requested_illusi_artwork = new Set<string>();
+
+export async function load_illusi_artist_artwork(artists: NamedUUID[]): Promise<void> {
+	if (!IllusiAccount.is_logged_in()) return;
+	await SQLArtists.artists_memo_ready;
+	const ids = artists
+		.map(artist => artist.uri ?? '')
+		.filter(uri => uri.startsWith('illusi:') && SQLArtists.artists_artwork_memo[uri] === undefined && !requested_illusi_artwork.has(uri))
+		.map(uri => uri.slice('illusi:'.length))
+		.filter(id => /^[0-9a-f-]{36}$/i.test(id));
+	for (const id of ids) requested_illusi_artwork.add(create_uri('illusi', id));
+	const found: SQLArtistInsert[] = [];
+	for (let i = 0; i < ids.length; i += ILLUSI_ARTWORK_CONCURRENCY) {
+		await Promise.all(ids.slice(i, i + ILLUSI_ARTWORK_CONCURRENCY).map(async (id) => {
+			const view = await Illusi.Artists.get(id);
+			if (Illusi.is_error(view)) return;
+			const artwork = IllusiViews.artist(view).profile_artwork_url;
+			if (typeof artwork === 'string') found.push({ uri: create_uri('illusi', id), name: view.name, artwork_url: artwork });
+		}));
+	}
+	await SQLArtists.insert_all_into_sql_artists(found);
+}
+
+const SOUNDCLOUD_PERMALINK = 'soundcloud.com/';
+const ARTIST_SERVICES: readonly (readonly [keyof ServiceIds, MusicServiceURI, string?])[] = [
+	['youtube_id', 'youtubemusic'],
+	['youtube_id', 'youtube'],
+	['soundcloud_permalink', 'soundcloud', SOUNDCLOUD_PERMALINK],
+	['soundcloud_id', 'soundcloud'],
+	['spotify_id', 'spotify'],
+	['applemusic_id', 'applemusic']
+];
+
+const SERVICE_ARTIST_LOADERS: Partial<Record<string, (id: string) => Promise<MusicServiceArtist>>> = {
+	youtubemusic: youtube_music_get_artist,
+	youtube: youtube_get_artist,
+	soundcloud: async id => (id.startsWith(SOUNDCLOUD_PERMALINK) ? soundcloud_get_artist(id) : soundcloud_get_artist_by_user_id(id)),
+	spotify: spotify_get_artist,
+	applemusic: apple_music_get_artist
+};
+
+export function artist_service_uris(ids: ServiceIds): IllusiveURI[] {
+	return ARTIST_SERVICES.flatMap(([column, service, prefix = '']) => {
+		const id = ids[column];
+		return (typeof id === 'string' && id !== '') || typeof id === 'number' ? [create_uri(service, `${prefix}${id}`)] : [];
+	});
+}
+
+export async function load_service_artist(artist: MusicServiceArtist): Promise<MusicServiceArtist | null> {
+	for (const uri of artist.service_uris ?? []) {
+		const [service, id] = split_uri(uri);
+		const load = SERVICE_ARTIST_LOADERS[service];
+		if (load === undefined) continue;
+		const found = await load(id).catch((error: unknown) => {
+			catch_log(error);
+			return null;
+		});
+		if (found === null || found.error !== undefined || (found.tracks.length === 0 && found.albums.length === 0 && found.singles_eps.length === 0)) {
+			breadcrumb('artist', 'service artist skipped', { uri, error: found?.error?.error.message ?? (found === null ? 'threw' : 'empty') });
+			continue;
+		}
+		const full = await load_artist_first_pages(found);
+		const tracks = full.tracks.length > 0 ? full : artist;
+		const albums = full.albums.length > 0 ? full : artist;
+		const singles_eps = full.singles_eps.length > 0 ? full : artist;
+		const playlists = full.playlists.length > 0 ? full : artist;
+		const similar_artists = full.similar_artists.length > 0 ? full : artist;
+		return {
+			...full,
+			name: full.name || artist.name,
+			tracks: tracks.tracks,
+			tracks_continuation: tracks.tracks_continuation,
+			albums: albums.albums,
+			albums_continuation: albums.albums_continuation,
+			singles_eps: singles_eps.singles_eps,
+			singles_eps_continuation: singles_eps.singles_eps_continuation,
+			playlists: playlists.playlists,
+			playlists_continuation: playlists.playlists_continuation,
+			similar_artists: similar_artists.similar_artists,
+			similar_artists_continuation: similar_artists.similar_artists_continuation,
+			latest_release: full.latest_release ?? artist.latest_release,
+			profile_artwork_url: full.profile_artwork_url || artist.profile_artwork_url,
+			service_uris: undefined
+		};
+	}
+	return null;
 }

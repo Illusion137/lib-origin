@@ -435,6 +435,8 @@ export interface MusicServiceArtist {
 	background_artwork_url?: string;
 	profile_artwork_url?: Artwork;
 	similar_artists: CompactArtist[];
+	/** The same artist on other services, best first; these usually have more of the discography than the Illusi catalog */
+	service_uris?: IllusiveURI[];
 	error?: ResponseError;
 	is_following?: boolean;
 	follow: () => PromiseResult<any>;

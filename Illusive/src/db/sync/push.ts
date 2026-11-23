@@ -14,6 +14,7 @@ import { chunkify } from '@common/utils/util';
 import { album_ref, artist_ref } from '../v2/track_codec';
 import { read_rows } from '../v2/tracks';
 import { apply_rows, assign_entity_ids, assign_track_id, type ApplyResult } from './apply';
+import { artist_service_ids } from './illusi_entities';
 
 // Builds a push from the outbox and applies what the server sends back.
 
@@ -105,7 +106,10 @@ export function track_graph(rows: readonly Pick<UserTrackInsert, 'uid' | 'title'
 		const snapshot = row.track;
 		const artist_refs = snapshot.artists.map((artist) => {
 			const ref = artist_ref(artist);
-			if (artist.illusi_id === undefined && !artists.has(ref)) artists.set(ref, { ref, name: artist.name });
+			if (artist.illusi_id === undefined && !artists.has(ref)) {
+				const service_ids = artist_service_ids(artist);
+				artists.set(ref, { ref, name: artist.name, ...(service_ids === undefined ? {} : { service_ids }) });
+			}
 			return ref;
 		});
 		let ref_of_album: string | null = null;

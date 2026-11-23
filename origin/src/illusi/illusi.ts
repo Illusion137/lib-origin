@@ -14,7 +14,7 @@ import type {
 	ReviewApplyBody, ReviewApplyResult, ReviewDismissResult, ReviewList, ReviewListQuery, SearchQuery, SearchResponse, SearchSuggestions,
 	SearchSuggestionsQuery, SearchType,
 	SharedEntityTable, SimilarQuery, SoundCloudIngestBody, SoundCloudIngestItem, TempRef, TokenPair, TrackBatchBody, TrackBatchResponse,
-	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, DurationReportBody, DurationReportResult, UserLyricsBody, UserProfile, UserSettings, TrackArtworkResult, UUID, YouTubeMusicLyricsIngestBody,
+	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, DurationReportBody, DurationReportResult, UserLyricsBody, UserProfile, UserSettings, ArtistServiceIdsBody, TrackArtworkResult, UUID, YouTubeMusicLyricsIngestBody,
 	YouTubeMusicLyricsPayload
 } from '@origin/illusi/types';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
@@ -106,6 +106,7 @@ export namespace Illusi {
 		'GET /artists/:id/albums': { query: ArtistAlbumsQuery; response: Page<AlbumView> };
 		'GET /artists/:id/tracks': { query: ArtistTracksQuery; response: Page<TrackView> };
 		'GET /artists/:id/similar': { query: SimilarQuery; response: { items: ArtistView[] } };
+		'POST /artists/service_ids': { body: ArtistServiceIdsBody; response: { filled: number } };
 
 		'GET /search': { query: SearchQuery; response: SearchResponse };
 		'GET /search/suggestions': { query: SearchSuggestionsQuery; response: SearchSuggestions };
@@ -564,6 +565,9 @@ export namespace Illusi {
 		}
 		export async function similar(artist_id: IllusiId, limit?: number) {
 			return call('GET /artists/:id/similar', { params: { id: artist_id }, query: { limit } });
+		}
+		export async function set_service_ids(items: ArtistServiceIdsBody['items']) {
+			return call('POST /artists/service_ids', { body: { items } });
 		}
 	}
 

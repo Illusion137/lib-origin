@@ -343,6 +343,18 @@ export namespace SoundCloud {
 		if ('error' in resolved_user) return resolved_user;
 		return { id: String(resolved_user.id), client_id: opts.client_id, hydration: { hydratable: 'user', data: resolved_user } as HydratableUser };
 	}
+	export async function user_id_to_artist_id(opts: Opts & { user_id: string }) {
+		if (opts.client_id === undefined) {
+			const client_id = await get_client_id({});
+			if ('error' in client_id) return client_id;
+			opts.client_id = client_id.client_id;
+		}
+		const user_response = await rozfetch<UserData>(`https://api-v2.soundcloud.com/users/${encodeURIComponent(opts.user_id)}?${encode_params(get_locale_params(opts))}`, api_method_options(opts));
+		if ('error' in user_response) return user_response;
+		const user = await user_response.json();
+		if ('error' in user) return user;
+		return { id: String(user.id), client_id: opts.client_id, hydration: { hydratable: 'user', data: user } as HydratableUser };
+	}
 
 	export async function get_artist(mode: 'POPULAR_TRACKS' | 'TRACKS' | 'REPOSTS', opts: Opts & { artist_permalink?: string; artist_id?: string; user_hyrdration?: HydratableUser; depth?: number; limit?: number; offset?: number }): PromiseResult<ArtistUser<Track>>;
 	export async function get_artist(mode: 'ALBUMS' | 'PLAYLISTS', opts: Opts & { artist_permalink?: string; artist_id?: string; user_hyrdration?: HydratableUser; depth?: number; limit?: number; offset?: number }): PromiseResult<ArtistUser<Playlist>>;

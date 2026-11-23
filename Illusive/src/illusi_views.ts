@@ -125,7 +125,7 @@ export namespace IllusiViews {
 			artist: view.artists.map(artist_named),
 			artwork_thumbnails: thumbnails(view.thumbnails),
 			...(artwork ? { artwork_url: artwork } : {}),
-			...(view.release_date ? { date: view.release_date as ISOString } : {}),
+			...((view.release_date ?? itunes?.release_date) ? { date: (view.release_date ?? itunes?.release_date) as ISOString } : {}),
 			explicit: bool_to_explicit(view.explicit ?? itunes_explicit(itunes?.explicitness)),
 			type: 'ALBUM',
 			album_type: album_type(view.album_type, view.track_count)

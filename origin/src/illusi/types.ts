@@ -1054,6 +1054,7 @@ export interface ArtworkResult {
 export type ArtworkFile = MediaFile;
 export interface AvatarResult { avatar_id: string | null }
 export interface UserSettings { public_imports: boolean }
+export interface ArtistServiceIdsBody { items: { artist_id: IllusiId; service_ids: ServiceIds }[] }
 export interface TrackArtworkResult { track: Pick<Track, 'id' | 'artwork_id' | 'artwork_edited_at'>; applied: boolean }
 /** A user as an artist. Only users with a public playlist or public imports are found, besides the caller */
 export interface UserProfile {

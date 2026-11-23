@@ -62,7 +62,10 @@ export namespace AppleMusic {
 		const response = await get_response(url, opts);
 		if ('error' in response) return response;
 		const text = await response.text();
-		return await extract_serialized_server_data(text, opts);
+		const extracted = await extract_serialized_server_data(text, opts);
+		if ('error' in extracted) return extracted;
+		if (extracted.data[0]?.data === undefined) return generror('Apple Music page had no data', 'LOW', { url });
+		return extracted;
 	}
 	function get_api_headers(bearer: string, opts: Opts) {
 		const cookie_jar = opts.cookie_jar;

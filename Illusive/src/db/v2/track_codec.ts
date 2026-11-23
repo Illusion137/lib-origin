@@ -72,9 +72,19 @@ export function album_ref(album: SnapshotNamed, first_artist: SnapshotNamed | un
 
 function named_entry(named: NamedUUID): SnapshotNamed {
 	const entry: SnapshotNamed = { name: named.name.trim() };
-	if (named.uri) entry.uri = named.uri;
+	// A catalog uri is how decode_track shows a server id; store the id itself
+	const catalog = catalog_id(named, CATALOG_ALBUM_URI) ?? catalog_id(named, CATALOG_ARTIST_URI);
+	if (catalog !== null) entry.illusi_id = catalog;
+	else if (named.uri) entry.uri = named.uri;
 	else if (named.uuid) entry.uuid = named.uuid;
 	return entry;
+}
+
+/** For display: an entry known only by its server id (as server tracks are) links to the catalog artist or album */
+function display_named(entry: SnapshotNamed, catalog_prefix: string): NamedUUID {
+	const named = named_of(entry);
+	if (named.uri || named.uuid || entry.illusi_id === undefined) return named;
+	return { name: entry.name, uri: `${catalog_prefix}${entry.illusi_id}` as NamedUUID['uri'] & string };
 }
 
 function keep_illusi_id(entry: SnapshotNamed, previous: readonly SnapshotNamed[]): SnapshotNamed {
@@ -134,7 +144,8 @@ export function encode_track(track: Track, opts: { now: number; title_is_catalog
 	const seen = new Set<string>();
 	let artists: SnapshotNamed[] = [];
 	for (const named of valid_artists(track)) {
-		const entry = keep_illusi_id(named_entry(named), before?.artists ?? []);
+		const named_with_id = named_entry(named);
+		const entry = named_with_id.illusi_id === undefined ? keep_illusi_id(named_with_id, before?.artists ?? []) : named_with_id;
 		const key = entry.illusi_id ?? artist_id_for(named);
 		if (seen.has(key)) continue;
 		seen.add(key);
@@ -233,12 +244,12 @@ export function decode_track(row: UserTrackRow): Track {
 		uid: row.uid,
 		title: row.title ?? snapshot.title,
 		alt_title: snapshot.alt_title,
-		artists: (row.artists_override ?? snapshot.artists).map(named_of),
+		artists: (row.artists_override ?? snapshot.artists).map(entry => display_named(entry, CATALOG_ARTIST_URI)),
 		duration: snapshot.duration_ms === null ? 0 : snapshot.duration_ms / 1000,
 		prods: snapshot.prods,
 		explicit: bool_to_explicit(snapshot.explicit),
 		unreleased: snapshot.unreleased,
-		album: (row.album_override ?? snapshot.album) ? named_of(row.album_override ?? snapshot.album!) : { name: '', uri: null },
+		album: (row.album_override ?? snapshot.album) ? display_named(row.album_override ?? snapshot.album!, CATALOG_ALBUM_URI) : { name: '', uri: null },
 		service_plays: snapshot.views,
 		imported_id: snapshot.imported_id,
 		illusi_id: row.illusi_id ?? '',

@@ -1,28 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Page, PlaylistView, TrackView, UserProfile } from '@origin/illusi/types';
-import { illusi_get_artist, load_artist_first_pages } from './get_artist';
+import type { ArtistView, Page, PlaylistView, TrackView, UserProfile } from '@origin/illusi/types';
+import { artist_service_uris, illusi_get_artist, load_artist_first_pages, load_illusi_artist_artwork, load_service_artist } from './get_artist';
 import { IllusiViews } from './illusi_views';
 
 const api = vi.hoisted(() => ({
 	get: vi.fn(),
 	imports: vi.fn(),
-	of_user: vi.fn()
+	of_user: vi.fn(),
+	artist: vi.fn(),
+	ytm_artist: vi.fn(),
+	sc_user: vi.fn()
+}));
+const artists = vi.hoisted(() => ({
+	artists_memo_ready: Promise.resolve(),
+	artists_artwork_memo: {} as Record<string, string | number | undefined>,
+	insert_all_into_sql_artists: vi.fn(async () => undefined)
 }));
 
-vi.mock('@origin/index', () => ({}));
+vi.mock('@origin/index', () => ({ YouTubeMusic: { get_artist: api.ytm_artist }, SoundCloud: { user_id_to_artist_id: api.sc_user } }));
 vi.mock('./parsers/apple_music_parser', () => ({}));
 vi.mock('./parsers/soundcloud_parser', () => ({}));
 vi.mock('./parsers/youtube_music_parser', () => ({}));
 vi.mock('./parsers/youtube_parser', () => ({}));
 vi.mock('./parsers/spotify_parser', () => ({}));
 vi.mock('./prefs', () => ({ Prefs: { get_pref: () => '' } }));
-vi.mock('./sql/sql_artists', () => ({ SQLArtists: {} }));
+vi.mock('@common/sentry_error_handler', () => ({ breadcrumb: vi.fn() }));
+vi.mock('./sql/sql_artists', () => ({ SQLArtists: artists }));
 vi.mock('./globals', () => ({ GLOBALS: { global_var: { sql_tracks: [] } } }));
 vi.mock('./db/sync/illusi_account', () => ({ IllusiAccount: { is_logged_in: () => true } }));
 vi.mock('@origin/illusi/illusi', () => ({
 	Illusi: {
 		is_error: (result: unknown) => typeof result === 'object' && result !== null && 'error' in result,
 		Users: { get: api.get, imports: api.imports },
+		Artists: { get: api.artist },
 		Playlists: { of_user: api.of_user, artwork_url: (id: string) => `https://api/artwork/${id}` },
 		Account: { avatar_url: (id: string) => `https://api/avatars/${id}` }
 	}
@@ -93,5 +103,47 @@ describe('illusi_get_artist for users', () => {
 		const artist = await illusi_get_artist(`user.${USER}`);
 		expect(artist.error).toBeDefined();
 		expect(artist.tracks).toEqual([]);
+	});
+});
+
+describe('load_illusi_artist_artwork', () => {
+	const id = (n: number) => `2222222${n}-2222-4222-8222-222222222222`;
+	function artist_view(artist_id: string, artwork: string | null): ArtistView {
+		return {
+			id: artist_id, name: `Artist ${artist_id}`, description: null, primary_genre_name: null, created_at: T, modified_at: T,
+			service_ids: {}, thumbnails: artwork === null ? [] : [{ url: artwork, width: 100, height: 100 }], itunes: null, album_count: 0, track_count: 0, in_library: true
+		};
+	}
+
+	it('fetches each catalog-only artist once and caches its picture under the uri the library uses', async () => {
+		artists.artists_artwork_memo[`illusi:${id(3)}`] = 'https://cached';
+		api.artist.mockImplementation(async (artist_id: string) => (artist_id === id(1)
+			? artist_view('merged-id', 'https://img/1')
+			: artist_id === id(2) ? artist_view(artist_id, null) : { error: new Error('gone') }));
+
+		const named = [id(1), id(2), id(3), id(4)].map(artist_id => ({ name: artist_id, uri: `illusi:${artist_id}` as const }));
+		await load_illusi_artist_artwork([...named, { name: 'yt', uri: 'youtube:channel.x' as const }, { name: 'user', uri: `illusi:user.${USER}` as const }]);
+		expect(api.artist.mock.calls.map(([artist_id]) => artist_id as string).sort()).toEqual([id(1), id(2), id(4)]);
+		expect(artists.insert_all_into_sql_artists).toHaveBeenCalledWith([{ uri: `illusi:${id(1)}`, name: 'Artist merged-id', artwork_url: 'https://img/1' }]);
+
+		await load_illusi_artist_artwork(named);
+		expect(api.artist).toHaveBeenCalledTimes(3);
+	});
+});
+
+describe('service artists', () => {
+	it('lists the services an artist can be opened on, best first', () => {
+		expect(artist_service_uris({ applemusic_id: '1479424', spotify_id: '3TVXtAsR1Inumwj472S9r4', youtube_id: 'UCabc', soundcloud_id: 42, soundcloud_permalink: 'ryc', deezer_id: null }))
+			.toEqual(['youtubemusic:UCabc', 'youtube:UCabc', 'soundcloud:soundcloud.com/ryc', 'soundcloud:42', 'spotify:3TVXtAsR1Inumwj472S9r4', 'applemusic:1479424']);
+		expect(artist_service_uris({})).toEqual([]);
+	});
+
+	it('keeps the catalog artist when no service loads', async () => {
+		api.ytm_artist.mockResolvedValue({ error: new Error('blocked') });
+		api.sc_user.mockResolvedValue({ error: new Error('gone') });
+		const artist = { name: 'A', tracks: [], albums: [], singles_eps: [], playlists: [], similar_artists: [], service_uris: ['youtubemusic:UCabc' as const, 'soundcloud:42' as const], follow: vi.fn(), unfollow: vi.fn() };
+		expect(await load_service_artist(artist)).toBeNull();
+		expect(api.ytm_artist).toHaveBeenCalledTimes(1);
+		expect(api.sc_user).toHaveBeenCalledWith(expect.objectContaining({ user_id: '42' }));
 	});
 });

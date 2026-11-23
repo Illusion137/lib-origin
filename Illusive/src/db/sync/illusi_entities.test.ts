@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CompactArtist, CompactPlaylist, Track } from '@illusive/types';
-import { catalog_album, catalog_artist, catalog_track, EntityGraph, split_named_uri } from './illusi_entities';
+import { artist_service_ids, catalog_album, catalog_artist, catalog_track, EntityGraph, split_named_uri } from './illusi_entities';
+import { ArtistLinks } from './artist_links';
 
 const track = (extra: Partial<Track> = {}): Track => ({
 	uid: 'u1', title: 'Song', duration: 200, artists: [{ name: 'A', uri: 'spotify:artist1' }], album: { name: 'Album', uri: 'spotify:album1' },
@@ -81,5 +82,28 @@ describe('catalog items', () => {
 		const album: CompactPlaylist = { title: { name: 'LP', uri: 'tidal:9' }, artist: [] };
 		expect(catalog_album('tidal', album, {})).toMatchObject({ kind: 'album', id: '9', title: 'LP' });
 		expect(catalog_album('tidal', { ...album, title: { name: 'LP', uri: null } }, {})).toBeNull();
+	});
+});
+
+describe('artist links', () => {
+	const channel = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
+
+	it('maps artist uris to the ids the server stores', () => {
+		expect(artist_service_ids({ uri: `youtubemusic:${channel}` })).toEqual({ youtube_id: channel });
+		expect(artist_service_ids({ uri: `youtube:${channel}` })).toEqual({ youtube_id: channel });
+		expect(artist_service_ids({ uri: 'youtube:@handle' })).toBeUndefined();
+		expect(artist_service_ids({ uri: 'soundcloud:soundcloud.com/Ryc' })).toEqual({ soundcloud_permalink: 'ryc' });
+		expect(artist_service_ids({ uri: 'soundcloud:soundcloud.com/ryc/a-track' })).toBeUndefined();
+		expect(artist_service_ids({ uri: 'spotify:3TVXtAsR1Inumwj472S9r4' })).toEqual({ spotify_id: '3TVXtAsR1Inumwj472S9r4' });
+		expect(artist_service_ids({ uri: null })).toBeUndefined();
+	});
+
+	it('collects the links of artists the server knows, from catalog and edited credits', () => {
+		const snapshot = (artists: { name: string; uri?: string; illusi_id?: string }[]) => ({ artists }) as never;
+		const links = ArtistLinks.collect([
+			{ track: snapshot([{ name: 'Ryc', uri: `youtubemusic:${channel}`, illusi_id: 'a1' }, { name: 'New', uri: 'soundcloud:soundcloud.com/new' }]), artists_override: null },
+			{ track: snapshot([{ name: 'Ryc', uri: 'soundcloud:soundcloud.com/ryc', illusi_id: 'a1' }]), artists_override: [{ name: 'Other', uri: 'spotify:abc', illusi_id: 'a2' }] }
+		]);
+		expect(Object.fromEntries(links)).toEqual({ a1: { youtube_id: channel, soundcloud_permalink: 'ryc' }, a2: { spotify_id: 'abc' } });
 	});
 });

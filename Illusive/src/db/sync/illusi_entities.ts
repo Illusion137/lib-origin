@@ -31,7 +31,19 @@ export function split_named_uri(uri: string | null | undefined): { service: stri
 	return { service, id: entity_id(service, uri.slice(colon + 1)) };
 }
 
-function named_service_ids(named: NamedUUID | undefined): ServiceIds | undefined {
+const YOUTUBE_CHANNEL = /^UC[A-Za-z0-9_-]{22}$/u;
+
+export function artist_service_ids(named: { uri?: string | null } | undefined): ServiceIds | undefined {
+	const parsed = split_named_uri(named?.uri);
+	if ((parsed?.service === 'youtube' || parsed?.service === 'youtubemusic') && YOUTUBE_CHANNEL.test(parsed.id)) return { youtube_id: parsed.id };
+	if (parsed?.service === 'soundcloud') {
+		const permalink = parsed.id.replace(/^(?:m\.)?soundcloud\.com\//u, '').split(/[?#]/u)[0].replace(/\/+$/u, '');
+		return /^[^/]+$/u.test(permalink) ? { soundcloud_permalink: permalink.toLowerCase() } : undefined;
+	}
+	return named_service_ids(named);
+}
+
+function named_service_ids(named: { uri?: string | null } | undefined): ServiceIds | undefined {
 	const parsed = split_named_uri(named?.uri);
 	const column = parsed === null ? undefined : URI_ID_COLUMN[parsed.service as MusicServiceURI];
 	return parsed === null || column === undefined ? undefined : { [column]: parsed.id };
@@ -80,7 +92,7 @@ export class EntityGraph {
 	private add_artist(named: NamedUUID, artwork_url?: string): string {
 		const ref = artist_id_for(named);
 		const existing = this.artists.get(ref);
-		const service_ids = named_service_ids(named);
+		const service_ids = artist_service_ids(named);
 		if (existing === undefined) {
 			this.artists.set(ref, {
 				ref, name: named.name.trim(),

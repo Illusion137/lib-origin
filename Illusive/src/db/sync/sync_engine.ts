@@ -20,6 +20,7 @@ import { DatabaseBoot } from '../boot';
 import { NetworkMonitor } from './network_monitor';
 import { PlaylistArtwork } from './playlist_artwork';
 import { TrackArtwork } from './track_artwork';
+import { ArtistLinks } from './artist_links';
 import { RequestQueue } from './request_queue';
 import { apply_push_result, build_push, clear_dropped, dropped_changes, fail_push, MAX_ATTEMPTS, MAX_PUSH_TRACKS, type DroppedChange, type PushBatch } from './push';
 import { chunkify, milliseconds_of } from '@common/utils/util';
@@ -37,6 +38,8 @@ const STATE_CURSOR = 'cursor';
 const STATE_IMPORTED = 'imported';
 const STATE_ARTWORK_IMPORTED = 'artwork_imported';
 const STATE_TRACK_ARTWORK_IMPORTED = 'track_artwork_imported';
+const STATE_ARTIST_LINKS = 'artist_links';
+const ARTIST_LINKS_EVERY_MS = 6 * 60 * 60 * 1000;
 const STATE_ACCOUNT = 'account';
 const STATE_IN_FLIGHT = 'in_flight_push';
 /** New tracks per push after the server refused a push as too large; grows back as pushes succeed */
@@ -196,6 +199,7 @@ export namespace SyncEngine {
 		if (!drained) again = true;
 		await PlaylistArtwork.push(db);
 		await TrackArtwork.push(db);
+		await push_artist_links().catch(catch_log);
 		// Both always run; `changed ||= await ...` would skip them once something changed
 		const pulled = await pull();
 		const downloaded = await PlaylistArtwork.download_pending(db);
@@ -252,7 +256,7 @@ export namespace SyncEngine {
 		const previous = await get_state<string>(STATE_ACCOUNT);
 		if (previous === me.user.id) return true;
 		await transaction(db, async (tx) => {
-			for (const key of [STATE_CURSOR, STATE_IMPORTED, STATE_ARTWORK_IMPORTED, STATE_TRACK_ARTWORK_IMPORTED, STATE_IN_FLIGHT]) await set_state(tx, key, undefined);
+			for (const key of [STATE_CURSOR, STATE_IMPORTED, STATE_ARTWORK_IMPORTED, STATE_TRACK_ARTWORK_IMPORTED, STATE_ARTIST_LINKS, STATE_IN_FLIGHT]) await set_state(tx, key, undefined);
 			// Requests belong to the account that made them
 			await tx.delete(request_queue_table);
 			await set_state(tx, STATE_ACCOUNT, me.user.id);
@@ -296,6 +300,13 @@ export namespace SyncEngine {
 		});
 	}
 	/** Queues imported tracks' custom thumbnails for upload once per account */
+	async function push_artist_links() {
+		const state = await get_state<{ at: number; sent: ArtistLinks.Sent }>(STATE_ARTIST_LINKS);
+		if (state !== undefined && Date.now() - state.at < ARTIST_LINKS_EVERY_MS) return;
+		const sent = await ArtistLinks.push(db, state?.sent ?? {});
+		await set_state(db, STATE_ARTIST_LINKS, { at: Date.now(), sent });
+	}
+
 	async function import_track_artwork() {
 		if (await get_state<boolean>(STATE_TRACK_ARTWORK_IMPORTED) === true) return;
 		await transaction(db, async (tx) => {

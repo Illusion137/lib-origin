@@ -321,7 +321,7 @@ describe('apply_rows', () => {
 			user_tracks: [{ ...server_user_track(NOW, 'Remote'), track_id: 'ill_new' }]
 		});
 		let [track] = await read_tracks(ex, ['ill_new']);
-		expect(track.artists).toEqual([{ name: '', uri: null }]);
+		expect(track.artists).toEqual([{ name: '', uri: 'illusi:ill_artist' }]);
 		expect(track.explicit).toBe('EXPLICIT');
 
 		await apply_rows(ex, {
@@ -331,6 +331,27 @@ describe('apply_rows', () => {
 		[track] = await read_tracks(ex, ['ill_new']);
 		expect(track.artists.map(a => a.name)).toEqual(['Remote Artist']);
 		expect(track.album?.name).toBe('Remote Album');
+	});
+
+	it('links server-only artists and albums to the catalog, without storing the made-up uri', async () => {
+		const ex = open_db();
+		use_database(ex);
+		const [track_id, artist_id, album_id] = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333'];
+		await apply_rows(ex, {
+			tracks: [{ id: track_id, title: 'Remote', album_id, duration_ms: 1000, explicit: null, imported: false, artwork_id: null, artwork_edited_at: null, backpacked: false, backpacked_at: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			tracks_artists: [{ track_id, artist_id, created_at: iso(NOW), modified_at: iso(NOW) }],
+			artists: [{ id: artist_id, name: 'Remote Artist', description: null, primary_genre_name: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			albums: [{ id: album_id, artist_id, name: 'Remote Album', album_type: null, release_date: null, track_count: null, explicit: null, created_at: iso(NOW), modified_at: iso(NOW) }],
+			user_tracks: [{ ...server_user_track(NOW, 'Remote'), track_id }]
+		});
+		const [track] = await read_tracks(ex, [track_id]);
+		expect(track.artists).toEqual([{ name: 'Remote Artist', uri: `illusi:${artist_id}` }]);
+		expect(track.album).toEqual({ name: 'Remote Album', uri: `illusi:album.${album_id}` });
+
+		await v2_repos.tracks.update(track.uid, { ...track, title: 'Renamed' });
+		const [row] = await ex.select().from(user_tracks_table).where(eq(user_tracks_table.uid, track.uid));
+		expect(row.track.artists).toEqual([{ name: 'Remote Artist', illusi_id: artist_id }]);
+		expect(row.track.album).toEqual({ name: 'Remote Album', illusi_id: album_id });
 	});
 
 	it('only fills in service ids for tracks this device holds', async () => {

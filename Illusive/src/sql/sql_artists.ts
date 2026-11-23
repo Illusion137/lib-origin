@@ -17,16 +17,38 @@ export namespace SQLArtists {
 	let resolve_artists_memo_ready: () => void;
 	export const artists_memo_ready = new Promise<void>((resolve) => { resolve_artists_memo_ready = resolve; });
 
+	// Server-synced tracks only know an artist by its Illusi id, so a picture the app found under a service uri is matched by name
+	const artwork_by_name = new Map<string, SQLArtist['artwork_url'] | number>();
+	const name_key = (name: string) => remove_topic(name).trim().toLowerCase();
+	function remember_artwork(uri: string, name: string, artwork_url: SQLArtist['artwork_url'] | number | undefined) {
+		artists_artwork_memo[uri] = artwork_url;
+		const key = name_key(name);
+		if (key !== '' && artwork_url !== undefined && artwork_url !== '') artwork_by_name.set(key, artwork_url);
+	}
+	export function artwork_for(artist: NamedUUID): SQLArtist['artwork_url'] | number | undefined {
+		return artists_artwork_memo[artist.uri ?? ''] || artwork_by_name.get(name_key(artist.name ?? '')) || undefined;
+	}
+
+	const artwork_listeners = new Set<() => void>();
+	export function subscribe_artwork(listener: () => void): () => void {
+		artwork_listeners.add(listener);
+		return () => artwork_listeners.delete(listener);
+	}
+	function notify_artwork() {
+		for (const listener of artwork_listeners) listener();
+	}
+
 	export async function get_all_sql_artists(): Promise<SQLArtist[]> {
 		artists_artwork_memo[create_uri('illusi', Constants.import_uri_id)] = Constants.sudo_profile_picture_index;
 		artists_artwork_memo[create_uri('illusi', Constants.local_illusi_uri_id)] = Constants.sumi_profile_picture_index;
 
 		const artists = await load_artists();
 		for (const artist of artists) {
-			artists_artwork_memo[artist.uri] = artist.artwork_url;
+			remember_artwork(artist.uri, artist.name, artist.artwork_url);
 			artists_memo[artist.uri] = artist;
 		}
 		resolve_artists_memo_ready();
+		notify_artwork();
 		return artists;
 	}
 
@@ -37,16 +59,18 @@ export namespace SQLArtists {
 	}
 
 	export async function insert_sql_artists(sql_artist: SQLArtistInsert) {
-		artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
+		remember_artwork(sql_artist.uri, sql_artist.name, sql_artist.artwork_url);
 		artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
+		notify_artwork();
 		await save_artists([sql_artist]);
 	}
 
 	export async function insert_all_into_sql_artists(sql_artists: SQLArtistInsert[]) {
 		for (const sql_artist of sql_artists) {
-			artists_artwork_memo[sql_artist.uri] = sql_artist.artwork_url;
+			remember_artwork(sql_artist.uri, sql_artist.name, sql_artist.artwork_url);
 			artists_memo[sql_artist.uri] = sql_artist as SQLArtist;
 		}
+		if (sql_artists.length > 0) notify_artwork();
 		await save_artists(sql_artists);
 	}
 
@@ -108,6 +132,6 @@ export namespace SQLArtists {
 	}
 
 	export function nammed_uuid_to_compact_artist(artist: NamedUUID): CompactArtist {
-		return { name: artist, is_official_artist_channel: true, profile_artwork_url: artists_artwork_memo[artist.uri ?? ''] ?? default_profile_picture_url };
+		return { name: artist, is_official_artist_channel: true, profile_artwork_url: artwork_for(artist) ?? default_profile_picture_url };
 	}
 }
