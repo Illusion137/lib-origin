@@ -181,7 +181,7 @@ export namespace SyncEngine {
 		let changed = false;
 		let drained = false;
 		// A push that keeps failing must not stop this device from hearing other devices' changes
-		let push_error: unknown;
+		let push_error: Error | undefined;
 		try {
 			for (let round = 0; round < PUSH_ROUNDS_PER_SYNC; round++) {
 				const pushed = await push_once();
@@ -192,7 +192,7 @@ export namespace SyncEngine {
 				changed ||= pushed.library_changed;
 			}
 		} catch (error) {
-			push_error = error;
+			push_error = error instanceof Error ? error : new Error(String(error));
 			drained = true;
 		}
 		// A big first import continues in the next run, after a pull

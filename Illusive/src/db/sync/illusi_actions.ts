@@ -1,4 +1,3 @@
-import fuzzysort from 'fuzzysort';
 import { catch_log, generror } from '@common/utils/error_util';
 import type { Action, ActionOf, LyricsResponse, ReleaseService, ResearchService, UUID } from '@origin/illusi/types';
 import { Illusi } from '@origin/illusi/illusi';
@@ -7,7 +6,7 @@ import type { Track as SoundCloudTrack, Playlist as SoundCloudPlaylist } from '@
 import type { CompactPlaylist, MusicServiceType, MusicServiceURI, NamedUUID, Track } from '@illusive/types';
 import { Prefs } from '@illusive/prefs';
 import { Illusive } from '@illusive/illusive';
-import { artist_string, clean_track_info, create_uri, make_https, split_uri } from '@illusive/illusive_utils';
+import { create_uri, make_https, split_uri } from '@illusive/illusive_utils';
 import { SQLfs } from '@illusive/sql/sql_fs';
 import { Wifi } from '@illusive/wifi_utils';
 import { db } from '@illusive/db/database';
@@ -18,6 +17,7 @@ import { release_graph, type ReleaseAlbum } from './release_graph';
 import { Outbox } from '../v2/outbox';
 import { Store } from '@illusive/db/store';
 import { RequestQueue } from './request_queue';
+import { TrackMatch } from '@illusive/track_match';
 import { milliseconds_of } from '@common/utils/util';
 
 /**
@@ -161,18 +161,11 @@ export namespace IllusiActions {
 		if (result !== null && Illusi.is_error(result)) catch_log(result.error);
 	}
 
-	export function title_artist_match(title: string, artists: string, track: Track | undefined): boolean {
-		if (track === undefined) return true;
-		const title_result = fuzzysort.single(clean_track_info(title).trim(), clean_track_info(track.title).trim());
-		const artist_result = fuzzysort.single(clean_track_info(artists).trim(), clean_track_info(artist_string(track)).trim());
-		return (title_result?.score ?? 0) >= 0.6 && (artist_result?.score ?? 0.5) >= 0.5;
-	}
-
 	/** Finds the song on Genius and hands the server its page state; resolves with the server's lyrics, if any */
 	export async function check_genius(action: ActionOf<'CHECK_GENIUS'>): Promise<LyricsResponse | null> {
 		const track = await local_track(action.track_id);
 		const hits = await Origin.Genius.search_songs(action.query, {});
-		const hit = 'error' in hits ? undefined : hits.find(h => title_artist_match(h.result.title, h.result.artist_names, track));
+		const hit = 'error' in hits ? undefined : TrackMatch.best(hits, h => ({ title: h.result.title, artists: h.result.artist_names }), track);
 		const state = hit === undefined ? undefined : await Origin.Genius.get_lyrics_preloaded_state(hit.result, {});
 		const result = state === undefined || 'error' in state
 			? await RequestQueue.send('genius_not_found', action)
@@ -193,7 +186,7 @@ export namespace IllusiActions {
 			const track = await local_track(action.track_id);
 			const search = await Origin.YouTubeMusic.search({ cookie_jar }, action.query);
 			const candidates = 'error' in search ? [] : search.tracks;
-			video_id = candidates.find(t => t.video_id && title_artist_match(t.title, t.artists.map(a => a.name).join(' '), track))?.video_id;
+			video_id = TrackMatch.best(candidates.filter(t => t.video_id), t => ({ title: t.title, artists: t.artists.map(a => a.name) }), track)?.video_id;
 		}
 		const lyrics = video_id === undefined ? undefined : await Origin.YouTubeMusic.get_lyrics({ cookie_jar }, video_id);
 		const result = lyrics === undefined || 'error' in lyrics || lyrics.lyrics.trim() === ''

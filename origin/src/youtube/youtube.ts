@@ -37,8 +37,8 @@ export namespace YouTube {
 
 	interface ShelfPanelPayload {
 		engagementPanel?: { engagementPanelSectionListRenderer?: { content?: { sectionListRenderer?: { contents?: {
-			itemSectionRenderer?: { contents?: { continuationItemRenderer?: { continuationEndpoint?: { continuationCommand?: { token?: string } } } }[] }
-		}[] } } } };
+			itemSectionRenderer?: { contents?: { continuationItemRenderer?: { continuationEndpoint?: { continuationCommand?: { token?: string } } } }[] };
+		}[]; }; }; }; };
 	}
 
 	function shelf_panel_token(shelf: YTNodes.Shelf): string | undefined {

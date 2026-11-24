@@ -8,12 +8,17 @@ import { LetterSync } from './letter_sync';
 import { Lyrics } from './lyrics';
 import { LyricsAlign } from './lyrics_align';
 import { RequestQueue } from './db/sync/request_queue';
+import { fs } from '@native/fs/fs';
+import { SQLfs } from './sql/sql_fs';
 
 // Native and app-side modules the lookup doesn't use here
-vi.mock('@native/fs/fs', () => ({ fs: () => ({}) }));
+vi.mock('@native/fs/fs', () => {
+	const native = {};
+	return { fs: () => native };
+});
 vi.mock('./sql/sql_fs', () => ({ SQLfs: {} }));
 vi.mock('@roze/translate', () => ({ Translate: { google_translate_html: vi.fn() } }));
-vi.mock('./db/sync/illusi_actions', () => ({ IllusiActions: { handle: vi.fn(), check_genius: vi.fn(), check_youtube_music: vi.fn(), title_artist_match: () => true } }));
+vi.mock('./db/sync/illusi_actions', () => ({ IllusiActions: { handle: vi.fn(), check_genius: vi.fn(), check_youtube_music: vi.fn() } }));
 vi.mock('./db/sync/request_queue', () => ({ RequestQueue: { send: vi.fn().mockResolvedValue({}) } }));
 vi.mock('@origin/genius/genius', () => ({ Genius: { search_songs: vi.fn(), get_lyrics: vi.fn() } }));
 
@@ -309,5 +314,49 @@ describe('Lyrics.syllable_word_sync', () => {
 
 	it('only word syncs line synced lyrics', () => {
 		expect(Lyrics.syllable_word_sync(Lyrics.from_plain('a\nb'))).toBeNull();
+	});
+});
+
+describe('Lyrics.fuzzy_search_lyrics', () => {
+	const files: Record<string, string> = {
+		knots: '[Verse 1]\nI got the bag up\nDon\'t stop now\n[Chorus]\nGroundhog day again',
+		home: 'Running through the city\nThe bag is gone',
+		synced: JSON.stringify({ sync_type: 'LINE', lines: [{ text: 'Café lights at midnight', start_ms: 0 }] })
+	};
+	const tracks = [
+		track({ uid: 'knots', title: 'Knots', lyrics_uri: 'knots' }),
+		track({ uid: 'home', title: 'Home', lyrics_uri: 'home' }),
+		track({ uid: 'synced', title: 'Lights', lyrics_uri: 'synced', sync_status: 'LINE' }),
+		track({ uid: 'none', title: 'No Lyrics' })
+	];
+	beforeEach(async () => {
+		Object.assign(SQLfs, { lyrics_directory: (uri: string) => uri });
+		Object.assign(fs(), { read_as_string: async (path: string) => files[path] });
+		await Lyrics.load_lyrics_into_fuzzy_memory(tracks);
+	});
+	const search = async (query: string) => (await Lyrics.fuzzy_search_lyrics(query)).map(result => [result.track.uid, result.line]);
+
+	it('finds the track and line holding the phrase, best first', async () => {
+		expect(await search('the bag')).toEqual([['knots', 'I got the bag up'], ['home', 'The bag is gone']]);
+		expect(await search('got the bag')).toEqual([['knots', 'I got the bag up'], ['home', 'The bag is gone']]);
+	});
+
+	it('ignores case, apostrophes, accents, and section headers', async () => {
+		expect(await search('DONT STOP')).toEqual([['knots', 'Don\'t stop now']]);
+		expect(await search('cafe')).toEqual([['synced', 'Café lights at midnight']]);
+		expect(await search('chorus')).toEqual([]);
+	});
+
+	it('matches the word being typed by its start, and only whole earlier words', async () => {
+		expect(await search('groundhog da')).toEqual([['knots', 'Groundhog day again']]);
+		expect(await search('a')).toEqual([]);
+	});
+
+	it('tolerates a typo', async () => {
+		expect((await search('grondhog day'))[0]).toEqual(['knots', 'Groundhog day again']);
+	});
+
+	it('finds a track by its title', async () => {
+		expect((await search('home'))[0][0]).toBe('home');
 	});
 });

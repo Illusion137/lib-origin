@@ -1,4 +1,3 @@
-import fuzzysort from 'fuzzysort';
 import { small_track } from './illusive_utils';
 import { catch_log, generror } from '@common/utils/error_util';
 import type { Track } from './types';
@@ -16,6 +15,7 @@ import { LetterSync } from './letter_sync';
 import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
 import { RequestQueue } from './db/sync/request_queue';
+import { TrackMatch } from './track_match';
 import { server_service_ids, track_graph } from './db/sync/push';
 import { deterministic_uuid } from './db/v2/keys';
 import { encode_track } from './db/v2/track_codec';
@@ -222,12 +222,26 @@ export namespace Lyrics {
 		return synced === unsynced ? null : synced;
 	}
 
-	async function genius_lyrics(track: Track): PromiseResult<{ lyrics: TrackLyrics; preloaded_state: LyricsPreloadedState }> {
+	async function genius_hit(track: Track) {
 		const artist = track.artists[0]?.name;
-		const hits = await Genius.search_songs(`${artist === undefined ? '' : remove_topic(artist)} ${track.title}`.trim(), {});
-		if ('error' in hits) return hits;
-		const hit = hits.find(h => IllusiActions.title_artist_match(h.result.title, h.result.artist_names, track));
-		if (hit === undefined) return generror('No lyrics found on Genius', 'INFO', { track: small_track(track) });
+		const title = TrackMatch.clean_title(track.title, TrackMatch.artist_names(track.artists.map(a => a.name)));
+		const queries = [...new Set([`${artist === undefined ? '' : remove_topic(artist)} ${title}`.trim(), title])];
+		let first_error: ResponseError | undefined;
+		for (const query of queries) {
+			const hits = await Genius.search_songs(query, {});
+			if ('error' in hits) {
+				first_error ??= hits;
+				continue;
+			}
+			const hit = TrackMatch.best(hits, h => ({ title: h.result.title, artists: h.result.artist_names }), track);
+			if (hit !== undefined) return hit;
+		}
+		return first_error ?? generror('No lyrics found on Genius', 'INFO', { track: small_track(track) });
+	}
+
+	async function genius_lyrics(track: Track): PromiseResult<{ lyrics: TrackLyrics; preloaded_state: LyricsPreloadedState }> {
+		const hit = await genius_hit(track);
+		if ('error' in hit) return hit;
 		const result = await Genius.get_lyrics(hit.result, {});
 		if ('error' in result) return result;
 		if (typeof result.lyrics === 'object') return result.lyrics;
@@ -348,42 +362,96 @@ export namespace Lyrics {
 		}
 	}
 
-	interface LyricsFileEntry {
-		filename: string;
-		path: string;
-		content: string;
+	interface IndexedLine {
+		text: string;
+		words: string[];
+		joined: string;
+	}
+	interface IndexedLyrics {
+		track: Track;
+		title_words: string[];
+		lines: IndexedLine[];
+	}
+	export interface LyricsSearchResult {
+		track: Track;
+		line: string;
+		score: number;
 	}
 
-	let loaded_fuzzy_lyrics: LyricsFileEntry[] = [];
+	const SEARCH_LIMIT = 50;
+	const SECTION_HEADER = /^\[[^\]]*\]$/;
+
+	function search_words(text: string): string[] {
+		return text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[‘’ʼ`´']/g, '').split(/[^\p{L}\p{N}]+/u).filter(word => word !== '');
+	}
+
+	function index_line(text: string): IndexedLine {
+		const words = search_words(text);
+		return { text, words, joined: words.join(' ') };
+	}
+
+	function within_one_edit(a: string, b: string): boolean {
+		if (Math.abs(a.length - b.length) > 1) return false;
+		let i = 0;
+		while (i < a.length && i < b.length && a[i] === b[i]) i++;
+		if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
+		return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+	}
+
+	/** 1 for the word itself, less for the start of the word being typed or a one letter typo */
+	function word_score(query_word: string, word: string, typing: boolean): number {
+		if (word === query_word) return 1;
+		if (typing && query_word.length >= 2 && word.startsWith(query_word)) return 0.9;
+		if (query_word.length >= 4 && within_one_edit(query_word, word)) return 0.8;
+		return 0;
+	}
+
+	/** How much of the query a line holds: the whole phrase, every word, or most words */
+	function line_score(line: { words: string[]; joined: string }, query_words: string[], query: string): number {
+		if (line.words.length === 0) return 0;
+		if (` ${line.joined} `.includes(` ${query} `)) return 3;
+		let total = 0;
+		let matched = 0;
+		for (let i = 0; i < query_words.length; i++) {
+			const best = Math.max(...line.words.map(word => word_score(query_words[i], word, i === query_words.length - 1)));
+			total += best;
+			if (best > 0) matched++;
+		}
+		if (matched === query_words.length) return 2 + total / query_words.length / 2;
+		return matched >= 2 && matched / query_words.length >= 0.5 ? total / query_words.length : 0;
+	}
+
+	let indexed_lyrics: IndexedLyrics[] = [];
 	export async function load_lyrics_into_fuzzy_memory(tracks: Track[]) {
-		loaded_fuzzy_lyrics = await Promise.all<LyricsFileEntry>(
+		indexed_lyrics = await Promise.all(
 			tracks.filter(track => !is_empty(track.lyrics_uri))
-				.map(async (track) => {
-					const path = SQLfs.lyrics_directory(track.lyrics_uri!);
-					const content = await fs().read_as_string(path, { encoding: 'utf8' });
+				.map(async (track): Promise<IndexedLyrics> => {
+					const content = await fs().read_as_string(SQLfs.lyrics_directory(track.lyrics_uri!), { encoding: 'utf8' });
 					const text = typeof content === 'object' ? '' : content;
-					return {
-						filename: path.split('/').pop() ?? path,
-						path,
-						content: (track.sync_status ?? 'NONE') === 'NONE' ? text : plain_of_file(text)
-					};
+					const plain = (track.sync_status ?? 'NONE') === 'NONE' ? text : plain_of_file(text);
+					const lines = plain.split('\n').map(line => line.trim()).filter(line => line !== '' && !SECTION_HEADER.test(line));
+					return { track, title_words: search_words(`${track.title} ${track.artists.map(artist => artist.name).join(' ')}`), lines: [...new Set(lines)].map(index_line) };
 				})
 		);
 	}
-	export async function fuzzy_search_lyrics(query: string) {
-		const prepared = loaded_fuzzy_lyrics.map(f => ({
-			...f,
-			_filename: fuzzysort.prepare(f.filename),
-			_content: fuzzysort.prepare(f.content)
-		}));
 
-		const results = fuzzysort.go(query, prepared, {
-			keys: ['_filename', '_content'],
-			limit: 50,
-			threshold: -10000
-		});
-
-		return results;
+	/** The downloaded lyrics best matching the query, each with the line that matched */
+	export async function fuzzy_search_lyrics(query: string): Promise<LyricsSearchResult[]> {
+		const query_words = search_words(query);
+		if (query_words.length === 0) return [];
+		const joined_query = query_words.join(' ');
+		const results: LyricsSearchResult[] = [];
+		for (const lyrics of indexed_lyrics) {
+			let best: LyricsSearchResult | undefined;
+			for (const line of lyrics.lines) {
+				const score = line_score(line, query_words, joined_query);
+				if (score > (best?.score ?? 0)) best = { track: lyrics.track, line: line.text, score };
+			}
+			const title_score = line_score({ words: lyrics.title_words, joined: lyrics.title_words.join(' ') }, query_words, joined_query);
+			if (title_score >= 2 && title_score + 0.5 > (best?.score ?? 0)) best = { track: lyrics.track, line: best?.line ?? '', score: title_score + 0.5 };
+			if (best !== undefined) results.push(best);
+		}
+		return results.sort((a, b) => b.score - a.score).slice(0, SEARCH_LIMIT);
 	}
 
 	// Illusi in an natively English app; so we'll assume that English is primary language
