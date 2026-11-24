@@ -35,6 +35,7 @@ export interface RoZFetchRequestInit extends RequestInit {
 	method?: FetchMethod | (string & {});
 	ignore_fail_request?: boolean;
 	impersonate?: boolean;
+	no_emit_error?: boolean;
 }
 type RozFetchText<T> = [T] extends [never] ? () => Promise<string> : never;
 type RozFetchJSON<T> = T extends never ? never : () => PromiseResult<T>;
@@ -164,7 +165,7 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 		response.invalidate_cache = async () => invalidate_rozfetch_cache(init ?? {}, cache_key);
 		response.cache_timestamp = -1;
 
-		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, 'INFO', {}, { input, init: error_context_init(init) });
+		const err = generror_fetch(response, `rozfetch failed | response NOT ok | ${response.status}: ${status_codes_descriptions[response.status]}`, 'NONE', {}, { input, init: error_context_init(init) });
 		await update_rozfetch_cache(init ?? {}, response, cache_key, err);
 
 		if (!response.ok && init?.ignore_fail_request !== true) return err;
@@ -177,9 +178,9 @@ export default async function rozfetch<T = never>(input: string, init?: RoZFetch
 			error.message = ABORT_MESSAGE + err.message;
 			error.stack = ABORT_MESSAGE + err.stack;
 			error.cause = err.cause;
-			return generror_catch(error, 'rozfetch failed', 'LOW', { input, init: { ...error_context_init(init), headers: '{VARIOUS HEADERS}' } });
+			return generror_catch(error, 'rozfetch failed', init?.no_emit_error ? 'NONE' : 'LOW', { input, init: { ...error_context_init(init), headers: '{VARIOUS HEADERS}' } });
 		}
-		if ((e as Error).message.includes('Network request failed')) return generror_catch(e, 'rozfetch failed', 'INFO', { input, init: error_context_init(init) });
-		return generror_catch(e, 'rozfetch failed', 'MEDIUM', { input, init: error_context_init(init) });
+		if ((e as Error).message.includes('Network request failed')) return generror_catch(e, 'rozfetch failed', init?.no_emit_error ? 'NONE' : 'INFO', { input, init: error_context_init(init) });
+		return generror_catch(e, 'rozfetch failed', init?.no_emit_error ? 'NONE' : 'MEDIUM', { input, init: error_context_init(init) });
 	}
 }

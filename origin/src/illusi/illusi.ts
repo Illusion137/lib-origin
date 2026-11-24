@@ -160,6 +160,7 @@ export namespace Illusi {
 		body?: unknown;
 		query?: object;
 		headers?: Record<string, string>;
+		no_emit_error?: boolean;
 	}
 
 	function api_error(route: string, message: string, severity: ErrorSeverity, status?: number, extra: { code?: string; issues?: unknown; body?: unknown } = {}): IllusiError {
@@ -185,10 +186,10 @@ export namespace Illusi {
 		return { ...config.headers, ...auth_headers() };
 	}
 
-	async function error_from_response(route: string, response: Response & { json: () => PromiseResult<unknown> }): Promise<IllusiError> {
+	async function error_from_response(route: string, response: Response & { json: () => PromiseResult<unknown> }, no_emit_error = false): Promise<IllusiError> {
 		const body = await response.json();
 		const api_body = typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string' ? body as ApiErrorBody : undefined;
-		return api_error(route, api_body?.error ?? response.statusText, response.status === 404 ? 'INFO' : 'LOW', response.status, { code: api_body?.code, issues: api_body?.issues, body: api_body });
+		return api_error(route, api_body?.error ?? response.statusText, no_emit_error ? 'NONE' : response.status === 404 ? 'INFO' : 'LOW', response.status, { code: api_body?.code, issues: api_body?.issues, body: api_body });
 	}
 
 	/** A { uri, name, type } file goes in as a Blob read from disk: the global fetch may only take Blob parts */
@@ -226,7 +227,7 @@ export namespace Illusi {
 		const method = route.slice(0, space);
 		const path = fill_path(route.slice(space + 1), input.params ?? {});
 		const is_public = PUBLIC_ROUTES.has(route);
-		if (!is_public && session === null) return api_error(route, 'not logged in', 'LOW', 401);
+		if (!is_public && session === null) return api_error(route, 'not logged in', input.no_emit_error ? 'NONE' : 'LOW', 401);
 
 		const multipart = typeof FormData !== 'undefined' && input.body instanceof FormData;
 		const headers: Record<string, string> = {
@@ -242,7 +243,8 @@ export namespace Illusi {
 			method,
 			headers,
 			body: input.body === undefined ? undefined : multipart ? input.body as FormData : JSON.stringify(input.body),
-			ignore_fail_request: true
+			ignore_fail_request: true,
+			no_emit_error: input.no_emit_error
 		});
 		if ('error' in response) return response;
 		if (response.status === 401 && !is_public && retry_on_401 && await refresh_session()) return send(route, input, extra_headers, false);
@@ -252,7 +254,7 @@ export namespace Illusi {
 	async function request(route: Route, input: AnyInput, retry_on_401 = true): PromiseResult<unknown> {
 		const response = await send(route, input, {}, retry_on_401);
 		if ('error' in response) return response;
-		if (!response.ok) return error_from_response(route, response);
+		if (!response.ok) return error_from_response(route, response, input.no_emit_error);
 		if (response.status === 204) return null;
 		return response.json();
 	}
@@ -700,13 +702,13 @@ export namespace Illusi {
 			if (opts.token !== undefined) form.append('token', opts.token);
 			await append_file(form, file);
 			const headers = opts.token === undefined ? undefined : { 'X-Action-Token': opts.token };
-			return request('POST /tracks/:id/media', { params: { id: track_id }, body: form, headers }) as PromiseResult<MediaUploadResult>;
+			return request('POST /tracks/:id/media', { params: { id: track_id }, body: form, headers, no_emit_error: true }) as PromiseResult<MediaUploadResult>;
 		}
 		export async function fulfil(action: ActionOf<'UPLOAD_MEDIA'>, file: MediaFile, quality?: string) {
 			return upload(action.track_id, file, { quality, token: action.token });
 		}
 		export async function requests(query: MediaRequestsQuery = {}) {
-			return call('GET /media/requests', { query });
+			return request('GET /media/requests', { query, no_emit_error: true }) as PromiseResult<RouteResponse<'GET /media/requests'>>;
 		}
 		/** Public: a resource id is unguessable, so its URL streams without a session or headers */
 		export function url(resource_id: string): string {
@@ -720,18 +722,18 @@ export namespace Illusi {
 		export async function resolve(resource_id: string): PromiseResult<{ url: string; headers: Record<string, string> }> {
 			const route = 'GET /media/:resource_id';
 			const media_url = url(resource_id);
-			const response = await rozfetch<unknown>(media_url, { ...config.fetch_opts, method: 'GET', headers: { ...config.headers, Range: 'bytes=0-0' }, ignore_fail_request: true });
+			const response = await rozfetch<unknown>(media_url, { ...config.fetch_opts, method: 'GET', headers: { ...config.headers, Range: 'bytes=0-0' }, ignore_fail_request: true, no_emit_error: true });
 			if ('error' in response) return response;
-			if (!response.ok) return error_from_response(route, response);
+			if (!response.ok) return error_from_response(route, response, true);
 			return { url: response.url === '' ? media_url : response.url, headers: {} };
 		}
 		export async function download(resource_id: string, range?: { start: number; end?: number }): PromiseResult<ArrayBuffer> {
 			const route = 'GET /media/:resource_id';
 			const response = await rozfetch<unknown>(url(resource_id), {
-				...config.fetch_opts, method: 'GET', headers: { ...config.headers, ...(range === undefined ? {} : { Range: `bytes=${range.start}-${range.end ?? ''}` }) }, ignore_fail_request: true
+				...config.fetch_opts, method: 'GET', headers: { ...config.headers, ...(range === undefined ? {} : { Range: `bytes=${range.start}-${range.end ?? ''}` }) }, ignore_fail_request: true, no_emit_error: true
 			});
 			if ('error' in response) return response;
-			if (!response.ok) return error_from_response(route, response);
+			if (!response.ok) return error_from_response(route, response, true);
 			return response.arrayBuffer();
 		}
 	}

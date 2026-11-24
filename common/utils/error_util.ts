@@ -62,13 +62,14 @@ function clean_error_trace(error: Error): Error {
 function generror_base_msg(msg: string, emsg?: string, args: object = {}): string {
 	return `${msg}${emsg ? ' | ' + emsg : ''}\n : args${args_prettystring(args)}`;
 }
-export type ErrorSeverity = 'CRITICAL' | 'MEDIUM' | 'LOW' | 'INFO';
+export type ErrorSeverity = 'CRITICAL' | 'MEDIUM' | 'LOW' | 'INFO' | 'NONE';
 
 export const SEVERITY_HANDLER_MAP: Record<ErrorSeverity, (error: ResponseError) => any> = {
 	CRITICAL: () => { return; },
 	MEDIUM: () => { return; },
 	LOW: () => { return; },
-	INFO: () => { return; }
+	INFO: () => { return; },
+	NONE: () => { return; }
 };
 
 function handle_error(error: ResponseError, severity: ErrorSeverity, ignore = false): ResponseError {
