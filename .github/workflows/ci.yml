@@ -18,7 +18,13 @@ jobs:
           cache: 'yarn'
       - name: Install protoc
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-      - run: yarn install --frozen-lockfile
+      - name: Install dependencies
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-concurrency 1 && exit 0
+            echo "yarn install failed (attempt $attempt), retrying"
+          done
+          exit 1
       - run: yarn lint
       - run: yarn build:osx
       - run: yarn test:ci

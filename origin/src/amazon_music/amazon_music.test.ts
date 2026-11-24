@@ -1,6 +1,6 @@
 import { test, describe, beforeEach } from 'vitest';
 import { CookieJar } from '@common/utils/cookie_util';
-import { AmazonMusic } from '@origin/index';
+import { AmazonMusic } from '@origin/amazon_music/amazon_music';
 import { expect_error, expect_no_error } from '@common/testing.test';
 import 'dotenv/config';
 
