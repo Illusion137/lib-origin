@@ -5,7 +5,6 @@
 
 import { EventEmitter } from 'events';
 import xml2js from 'xml2js';
-import { array_unique } from 'array-hyper-unique';
 import { dirname as pathDirname, posix } from 'path';
 import { zip } from '@native/zip/zip';
 
@@ -553,7 +552,7 @@ export class EPub extends EventEmitter {
 							this.metadata.author_link_map[n] = (t[n] || '').toString().trim();
 						}
 
-						this.metadata.contribute = array_unique(this.metadata.contribute);
+						this.metadata.contribute = [...new Set(this.metadata.contribute)];
 					}
 
 					break;
