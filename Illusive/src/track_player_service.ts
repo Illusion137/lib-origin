@@ -215,7 +215,7 @@ export async function illusive_track_to_track_player_track(track: Track): Promis
 	if (track === undefined) return 'skip';
 	const url_data = await Illusive.get_download_url(SQLfs.document_directory(''), track);
 	if ('error' in url_data) {
-		GLOBALS.global_var.bottom_alert('Failed to convert track to Illusive track', 'WARN', url_data);
+		GLOBALS.global_var.bottom_alert(YouTubeDL.is_age_restricted_error(url_data) ? `"${track.title}" is age restricted on YouTube, sign in to YouTube to play it` : 'Failed to convert track to Illusive track', 'WARN', url_data);
 		if (YouTubeDL.is_unavailable_error(url_data)) await SQLBackpack.report_unavailable(track);
 		return 'skip';
 	}

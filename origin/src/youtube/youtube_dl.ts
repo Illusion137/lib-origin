@@ -35,9 +35,24 @@ export namespace YouTubeDL {
 
 	const UNAVAILABLE_ERROR_NAME = 'YouTubeUnavailableError';
 	const UNAVAILABLE_STATUSES = new Set(['ERROR', 'UNPLAYABLE']);
+	const AGE_RESTRICTED_ERROR_NAME = 'YouTubeAgeRestrictedError';
 
 	export function is_unavailable_error(error: ResponseError) {
 		return error.error.name === UNAVAILABLE_ERROR_NAME;
+	}
+
+	export function is_age_restricted_error(error: ResponseError) {
+		return error.error.name === AGE_RESTRICTED_ERROR_NAME;
+	}
+
+	function is_age_restricted_status(status: string, reason: string) {
+		return status === 'LOGIN_REQUIRED' && /\bage\b/i.test(reason);
+	}
+
+	function age_restricted_error(video_id: string, reason: string): ResponseError {
+		const response_error = generror(`YouTube video is age restricted and can't be played without signing in to YouTube with an age-verified account (${reason})`, 'NONE', { video_id });
+		response_error.error.name = AGE_RESTRICTED_ERROR_NAME;
+		return response_error;
 	}
 
 	function is_unavailable_status(status: string, reason: string) {
@@ -128,6 +143,7 @@ export namespace YouTubeDL {
 		};
 		const result = await retry_result<ExtendedSabrStreamConfig>(try_resolve_sabr_info, { wait_for_network: true });
 		if (typeof result === 'object' && result !== null && 'error' in result) {
+			if (is_age_restricted_error(result) || is_unavailable_error(result)) return result;
 			return generror_catch(result.error, 'Failed to resolve SABR URL', 'CRITICAL', { video_id });
 		}
 		return result;
@@ -140,6 +156,8 @@ export namespace YouTubeDL {
 
 		const player_response = await make_player_request(client, video_id);
 		const playability_status = player_response.playability_status;
+		if (playability_status !== undefined && is_age_restricted_status(playability_status.status, playability_status.reason ?? ''))
+			return age_restricted_error(video_id, playability_status.reason ?? '');
 		if (playability_status !== undefined && is_unavailable_status(playability_status.status, playability_status.reason ?? ''))
 			return unavailable_error(video_id, playability_status.status, playability_status.reason ?? '');
 
