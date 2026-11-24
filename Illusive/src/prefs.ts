@@ -167,6 +167,7 @@ export namespace Prefs {
 
 		default_playlist_max_size: { default_value: 200, current_value: 200, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,
 		recently_played_max_size: { default_value: 100, current_value: 100, type: 'NUMBER', visible: true, section: 'Playlist' } as BasePref<number, OtherPrefTypes>,
+		upcoming_weeks: { default_value: 3, current_value: 3, type: 'NUMBER', range: { start: 1, end: 52 }, visible: true, section: 'Playlist', description: 'How many weeks back the \'Upcoming\' playlist counts plays from' } as BasePref<number, OtherPrefTypes>,
 		fuzzy_search_threshold: { default_value: 50, current_value: 100, type: 'NUMBER', range: { start: 0, end: 100 }, visible: true, section: 'Playlist', description: 'The minimum confidence for Illusi\'s fuzzy-search  (0-100%)' } as BasePref<number, OtherPrefTypes>,
 		ignore_fat_finger_for_seconds: { default_value: 0, current_value: 0, type: 'NUMBER', range: { start: 0, end: 30 }, visible: true, section: 'Interactions', description: 'How long to set a delay before you can press on another track for it to actually play. Ignores track inputs after a track press for x seconds.' } as BasePref<number, OtherPrefTypes>,
 		default_to_strict_search: { default_value: false, current_value: false, type: 'BOOLEAN', visible: true, section: 'Interactions', description: 'Your searches will default to the strict-search over fuzzy-search' } as BasePref<boolean, OtherPrefTypes>,

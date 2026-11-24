@@ -73,6 +73,7 @@ function glyph_for_playlist(title: string): GlyphName {
 		case 'Recently Added': return 'new_releases';
 		case 'Recently Played': return 'history';
 		case 'Most Played': return 'trending_up';
+		case 'Upcoming': return 'whatshot';
 		case 'Least Played': return 'trending_down';
 		case 'Past Queue': return 'queue_music';
 		case 'Imported': return 'file_download_done';
