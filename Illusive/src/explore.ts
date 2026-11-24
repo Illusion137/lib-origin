@@ -19,6 +19,8 @@ import { IllusiViews } from './illusi_views';
 import { FSCache } from '@common/fs_cache';
 import type { SelectionItem } from '@origin/soundcloud/types/MixedSelection';
 import type { ArtistRecommendation } from '@origin/soundcloud/types/Search';
+import type { Soundtrack } from '@origin/illusi/types';
+import { illusi_sync_new_releases, soundcloud_feed_items, soundcloud_parse_new_releases, youtube_music_get_new_releases } from './new_releases';
 
 // TODO slight rework
 
@@ -26,8 +28,10 @@ export namespace Explore {
 	const YT_MUSIC_TOP_TRACKS_PLAYLIST_URL = 'PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI';
 	const FORGOTTEN_FAVORITES_SLICE = 50;
 
-	const NEW_RELEASE_SERVICES: MusicServiceType[] = ['Illusi', 'YouTube Music', 'SoundCloud'];
 	const NEW_RELEASES_SERVICE_TIMEOUT_MS = milliseconds_of({ seconds: 8 });
+	const NEW_RELEASES_SYNC_TIMEOUT_MS = milliseconds_of({ seconds: 20 });
+	const SOUNDTRACK_CACHE_KEY = 'ILLUSI_SOUNDTRACK_CACHE_KEY';
+	const SOUNDTRACK_CACHE_MS = milliseconds_of({ hours: 1 });
 
 	const artist_keys = (artist: NamedUUID) => [artist.uri ?? '', remove_topic(artist.name).trim().toLowerCase()].filter(key => key !== '');
 	const release_key = (release: CompactPlaylist) => `${release.title.name.trim().toLowerCase()}\u0000${remove_topic(release.artist[0]?.name ?? '').trim().toLowerCase()}`;
@@ -67,18 +71,27 @@ export namespace Explore {
 		return Prefs.get_pref('new_releases').length === 0 || should_automatic_refresh(Prefs.get_pref('new_releases_last_refreshed'));
 	}
 
-	async function service_new_releases(type: MusicServiceType): Promise<CompactPlaylist[]> {
-		const music_service = Illusive.music_service.get(type);
-		if (music_service?.get_new_releases === undefined || !music_service.has_credentials()) return [];
-		const timed_out = wait(NEW_RELEASES_SERVICE_TIMEOUT_MS).then(() => [] as CompactPlaylist[]);
-		return Promise.race([music_service.get_new_releases(), timed_out]).catch((error: unknown) => {
+	/** `get` on the service when it's logged in, or `fallback` when it isn't, fails or takes longer than `timeout_ms` */
+	async function from_service<T>(type: MusicServiceType, get: () => Promise<T>, fallback: T, timeout_ms = NEW_RELEASES_SERVICE_TIMEOUT_MS): Promise<T> {
+		if (!Illusive.music_service.get(type)?.has_credentials()) return fallback;
+		const timed_out = wait(timeout_ms).then(() => fallback);
+		return Promise.race([get(), timed_out]).catch((error: unknown) => {
 			console.warn(generror_catch(error, 'Failed to get new releases', 'MEDIUM', { type }));
-			return [];
+			return fallback;
 		});
 	}
 
+	/**
+	 * Gets what the SoundCloud stream and YouTube Music new releases show, hands them to Illusi and caches what it answers
+	 * with (those and releases by library artists). Signed out or offline, the feeds alone are cached.
+	 */
 	export async function refresh_new_releases(): Promise<CompactPlaylist[]> {
-		const releases = (await Promise.all(NEW_RELEASE_SERVICES.map(service_new_releases))).flat();
+		const [soundcloud_items, youtube_music_albums] = await Promise.all([
+			from_service('SoundCloud', soundcloud_feed_items, []),
+			from_service('YouTube Music', youtube_music_get_new_releases, [])
+		]);
+		const synced = await from_service('Illusi', () => illusi_sync_new_releases({ soundcloud_items, youtube_music_albums }), null, NEW_RELEASES_SYNC_TIMEOUT_MS);
+		const releases = synced ?? [...soundcloud_parse_new_releases(soundcloud_items), ...youtube_music_albums];
 		if (releases.length === 0) return get_new_releases();
 		const old_keys = new Set(Prefs.get_pref('new_releases').map(release_key));
 		await Promise.all([
@@ -171,6 +184,26 @@ export namespace Explore {
 		if ('error' in artists) return [];
 		await FSCache.insert_cache(REC_SOUNDCLOUD_CACHE_KEY, artists, {});
 		return artists.data.collection.map(item => soundcloud_parse_user(item.user));
+	}
+
+	/**
+	 * My Soundtrack: what the user has on heavy rotation right now, mixed with tracks Illusi picked for them. Library
+	 * tracks come back as the local copies.
+	 */
+	export async function get_my_soundtrack(): Promise<Track[]> {
+		if (!IllusiAccount.is_logged_in()) return [];
+		let soundtrack = await FSCache.check_cache<Soundtrack>(SOUNDTRACK_CACHE_KEY, SOUNDTRACK_CACHE_MS, {});
+		if (!soundtrack) {
+			const result = await Illusi.User.soundtrack();
+			if (Illusi.is_error(result)) {
+				console.warn(generror('Failed to get My Soundtrack', 'MEDIUM', { result }));
+				return [];
+			}
+			soundtrack = result;
+			await FSCache.insert_cache(SOUNDTRACK_CACHE_KEY, soundtrack, {});
+		}
+		const tracks = IllusiViews.prefer_local(soundtrack.items.map(item => IllusiViews.track(item.track)), GLOBALS.global_var.sql_tracks);
+		return SQLTracks.add_playback_saved_data_to_tracks(tracks);
 	}
 
 	export async function get_illusi_public_playlists(): Promise<CompactPlaylist[]> {

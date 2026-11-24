@@ -8,11 +8,11 @@ import type {
 	Action, ActionOf, ActionType, AlbumDetail, AlbumView, ApiErrorBody, ArtistAlbumsQuery, ArtistTracksQuery, ArtistView, ArtworkFile,
 	ArtworkResult, AuthMe, AvatarResult, BackpackRequestsQuery, ChangeEmailBody, ChangeEmailResult, ChangePasswordBody, ContributionGraph, ContributionPayload, ContributionResult, CopiedPlaylist, Cursor, DeleteAccountBody,
 	CatalogIngestBody, CatalogIngestResult, CatalogItem, EntityPatchBody, EntityPatchResult, ExportJob, ForgotPasswordBody, GeniusIngestBody, LogoutBody, ResetPasswordBody, SessionResponse, IllusiId, IngestAccepted, LibraryQuery, LinkedPlaylist, LoginBody, LyricsResponse, Me, MediaFile,
-	MediaRequestsQuery, MediaUploadOpts, MediaUploadResult, MyPlaylistsQuery, NewReleases, NewReleasesIngestBody, NewReleasesIngestResult,
+	MediaRequestsQuery, MediaUploadOpts, MediaUploadResult, MyPlaylistsQuery, NewReleases, NewReleasesFeedBody, NewReleasesIngestBody, NewReleasesIngestResult,
 	NewReleasesQuery, Page, PageQuery, PlaylistView, PlayView, PublicPlaylistsQuery, PullBody, PullResponse, PushBody, PushChanges,
 	PushResponse, RecentSearch, RefreshBody, RegisterBody, ReleaseService, ResearchService, ResolveBody, ResolveItem, ResolveResponse,
 	ReviewApplyBody, ReviewApplyResult, ReviewDismissResult, ReviewList, ReviewListQuery, SearchQuery, SearchResponse, SearchSuggestions,
-	SearchSuggestionsQuery, SearchType,
+	SearchSuggestionsQuery, SearchType, Soundtrack,
 	SharedEntityTable, SimilarQuery, SoundCloudIngestBody, SoundCloudIngestItem, TempRef, TokenPair, TrackBatchBody, TrackBatchResponse,
 	TrackAlignment, TrackResearchBody, TrackResearchResult, TrackView, TrackVocals, UnavailableReportBody, UnavailableReportResult, DurationReportBody, DurationReportResult, UserLyricsBody, UserProfile, UserSettings, ArtistServiceIdsBody, TrackArtworkResult, UUID, YouTubeMusicLyricsIngestBody,
 	YouTubeMusicLyricsPayload
@@ -74,6 +74,7 @@ export namespace Illusi {
 		'GET /me/plays': { query: PageQuery; response: Page<PlayView> };
 		'GET /me/recent_searches': { query: { limit?: number }; response: { items: RecentSearch[] } };
 		'GET /me/linked_playlists': { response: { items: LinkedPlaylist[] } };
+		'GET /me/soundtrack': { query: { limit?: number }; response: Soundtrack };
 		'DELETE /me': { body: DeleteAccountBody; response: null };
 		'POST /me/export': { response: ExportJob };
 		'GET /me/exports': { response: { items: ExportJob[] } };
@@ -113,6 +114,7 @@ export namespace Illusi {
 
 		'GET /new-releases': { query: Pick<NewReleasesQuery, 'limit'>; response: NewReleases };
 		'GET /new-releases/me': { query: NewReleasesQuery; response: NewReleases };
+		'POST /new-releases/me': { body: NewReleasesFeedBody; response: NewReleases };
 
 		'POST /ingest/soundcloud': { body: SoundCloudIngestBody; response: IngestAccepted };
 		'POST /ingest/service': { body: CatalogIngestBody; response: CatalogIngestResult };
@@ -405,6 +407,10 @@ export namespace Illusi {
 		export async function linked_playlists() {
 			return call('GET /me/linked_playlists');
 		}
+		/** Heavy rotation mixed with tracks picked for the user */
+		export async function soundtrack(limit?: number) {
+			return call('GET /me/soundtrack', { query: { limit } });
+		}
 	}
 
 	/** Other users, as artists: their public playlists (Playlists.of_user) and, when public, the tracks they imported */
@@ -590,6 +596,10 @@ export namespace Illusi {
 		/** Each named service adds FETCH_NEW_RELEASES actions for library artists due a check */
 		export async function mine(services: ReleaseService[] = [], limit?: number) {
 			return call('GET /new-releases/me', { query: { limit, services: services.length === 0 ? undefined : services.join(',') } });
+		}
+		/** Hands over what the client's own SoundCloud stream and YouTube Music new releases show, and gets back the whole list */
+		export async function sync(body: NewReleasesFeedBody) {
+			return call('POST /new-releases/me', { body });
 		}
 	}
 

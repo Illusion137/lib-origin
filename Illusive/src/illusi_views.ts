@@ -1,5 +1,5 @@
 import type {
-	AlbumRef, AlbumType, AlbumView, ArtistRef, ArtistView, NewReleaseAlbum, NewReleaseSoundCloudTrack, PlaylistView, SearchSuggestions, Thumbnail,
+	AlbumRef, AlbumType, AlbumView, ArtistRef, ArtistView, NewReleaseAlbum, NewReleaseFeedAlbum, NewReleaseSoundCloudTrack, PlaylistView, SearchSuggestions, Thumbnail,
 	TrackView
 } from '@origin/illusi/types';
 import { Illusi } from '@origin/illusi/illusi';
@@ -196,6 +196,25 @@ export namespace IllusiViews {
 			type: 'ALBUM',
 			album_type: 'SONG',
 			song_track: song
+		};
+	}
+
+	const FEED_ALBUM_TYPES: readonly string[] = ['ALBUM', 'SINGLE', 'EP', 'SINGLE/EP', 'SONG', 'PLAYLIST'] satisfies CompactPlaylistAlbumType[];
+
+	/** A release from the user's own SoundCloud stream or YouTube Music new-releases page, linked to it there */
+	export function feed_album(release: NewReleaseFeedAlbum): CompactPlaylist {
+		const service = release.service === 'soundcloud' ? 'soundcloud' : 'youtubemusic';
+		const title_id = release.service === 'soundcloud' ? release.url : release.id;
+		const album_type = release.album_type?.toUpperCase();
+		return {
+			title: { name: release.name, uri: title_id ? create_uri(service, title_id) : null },
+			artist: release.artists.map(artist => ({ name: artist.name, uri: artist.id ? create_uri(service, artist.id) : null })),
+			artwork_thumbnails: [],
+			...(release.artwork_url ? { artwork_url: release.artwork_url } : {}),
+			date: release.release_date as ISOString,
+			explicit: bool_to_explicit(release.explicit),
+			type: 'ALBUM',
+			...(album_type && FEED_ALBUM_TYPES.includes(album_type) ? { album_type: album_type as CompactPlaylistAlbumType } : {})
 		};
 	}
 }

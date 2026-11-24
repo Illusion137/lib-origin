@@ -737,11 +737,55 @@ export interface NewReleaseSoundCloudTrack {
 	release_date: ISODateString;
 	user: { id: number; username: string | null; permalink: string | null; avatar_url: string | null; verified: boolean | null } | null;
 }
+/** An album or playlist the user's own SoundCloud stream or YouTube Music new-releases page showed them */
+export interface NewReleaseFeedAlbum {
+	service: 'soundcloud' | 'youtube_music';
+	/** SoundCloud playlist id or YouTube Music browse id */
+	id: string;
+	name: string;
+	album_type: string | null;
+	explicit: boolean | null;
+	artwork_url: string | null;
+	/** SoundCloud only */
+	url: string | null;
+	/** `id` is the artist's id (SoundCloud: permalink) on the service */
+	artists: { name: string; id: string | null }[];
+	/** When the service doesn't date it (YouTube Music), when the user first saw it */
+	release_date: ISODateString;
+}
 export interface NewReleases extends WithActions {
 	since: ISODateString;
 	until: ISODateString;
 	albums: NewReleaseAlbum[];
 	soundcloud_tracks: NewReleaseSoundCloudTrack[];
+	/** Only on the user's own releases */
+	feed_albums?: NewReleaseFeedAlbum[];
+	/** Handed-over items that were malformed; `POST /new-releases/me` only */
+	rejected?: number;
+}
+export interface YouTubeMusicFeedAlbum {
+	/** Browse id */
+	id: string;
+	name: string;
+	album_type?: string | null;
+	artists: { name: string; id?: string | null }[];
+	artwork_url?: string | null;
+	explicit?: boolean | null;
+}
+/** What the client's own feeds show, handed over so the server can answer with the whole list */
+export interface NewReleasesFeedBody {
+	limit?: number;
+	/** Services the client is logged into; each adds FETCH_NEW_RELEASES actions */
+	services?: ReleaseService[];
+	/** Raw SoundCloud stream items */
+	soundcloud_items?: unknown[];
+	youtube_music_albums?: YouTubeMusicFeedAlbum[];
+}
+export type SoundtrackReason = 'heavy_rotation' | 'for_you';
+export interface Soundtrack {
+	generated_at: ISODateString;
+	/** What the user has on heavy rotation, mixed with tracks picked for them; the mix changes once a day */
+	items: { reason: SoundtrackReason; track: TrackView }[];
 }
 export interface NewReleasesQuery {
 	limit?: number;

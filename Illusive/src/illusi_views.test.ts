@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AlbumView, NewReleaseSoundCloudTrack, PlaylistView, SearchSuggestions, TrackView } from '@origin/illusi/types';
+import type { AlbumView, NewReleaseFeedAlbum, NewReleaseSoundCloudTrack, PlaylistView, SearchSuggestions, TrackView } from '@origin/illusi/types';
 import { IllusiViews } from './illusi_views';
 import type { Track } from './types';
 
@@ -141,5 +141,27 @@ describe('IllusiViews suggestions', () => {
 			date: '2016-04-29T00:00:00.000Z', artwork_thumbnails: [{ url: 'cover', width: 0, height: 0 }]
 		});
 		expect(IllusiViews.suggestions({ text: [], tracks: [], artists: [], albums: [] })).toEqual([]);
+	});
+});
+
+describe('IllusiViews.feed_album', () => {
+	const release = (overrides: Partial<NewReleaseFeedAlbum>): NewReleaseFeedAlbum => ({
+		service: 'youtube_music', id: 'MPREb_1', name: 'New', album_type: 'SINGLE', explicit: true, artwork_url: 'https://lh3/a.jpg', url: null,
+		artists: [{ name: 'X', id: 'UC1' }, { name: 'Y', id: null }], release_date: T, ...overrides
+	});
+
+	it('links a YouTube Music album and its artists there', () => {
+		expect(IllusiViews.feed_album(release({}))).toEqual({
+			title: { name: 'New', uri: 'youtubemusic:MPREb_1' },
+			artist: [{ name: 'X', uri: 'youtubemusic:UC1' }, { name: 'Y', uri: null }],
+			artwork_thumbnails: [], artwork_url: 'https://lh3/a.jpg', date: T, explicit: 'EXPLICIT', type: 'ALBUM', album_type: 'SINGLE'
+		});
+	});
+
+	it('links a SoundCloud playlist by its url, and drops unknown album types', () => {
+		const out = IllusiViews.feed_album(release({ service: 'soundcloud', id: '9', url: 'https://soundcloud.com/up/sets/ep', album_type: 'mixtape', artists: [{ name: 'Up', id: 'up' }] }));
+		expect(out.title.uri).toBe('soundcloud:soundcloud.com/up/sets/ep');
+		expect(out.artist).toEqual([{ name: 'Up', uri: 'soundcloud:up' }]);
+		expect(out.album_type).toBeUndefined();
 	});
 });
