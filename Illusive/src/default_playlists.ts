@@ -1,13 +1,20 @@
 import { is_empty, milliseconds_of } from '@common/utils/util';
 import { Prefs } from '@illusive/prefs';
-import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist } from '@illusive/types';
+import type { CompactPlaylistData, DefaultPlaylist, ResolvedDefaultPlaylist, Track } from '@illusive/types';
 import { GLOBALS } from './globals';
 import { SQLRecentlyPlayed } from './sql/sql_recently_played';
 import { SQLTrackPlays } from './sql/sql_track_plays';
 
+function upcoming_start() {
+	return new Date(Date.now() - milliseconds_of({ weeks: Prefs.get_pref('upcoming_weeks') }));
+}
+
+export function upcoming_plays_sync(track: Track): number {
+	return SQLTrackPlays.count_track_plays_sync(track.uid, { date_start: upcoming_start() });
+}
+
 async function upcoming_tracks(limit: number) {
-	const date_start = new Date(Date.now() - milliseconds_of({ weeks: Prefs.get_pref('upcoming_weeks') }));
-	const recent_plays = await SQLTrackPlays.count_all_track_plays({ date_start });
+	const recent_plays = await SQLTrackPlays.count_all_track_plays({ date_start: upcoming_start() });
 	const plays_of = (uid: string) => recent_plays[uid]?.length ?? 0;
 	return GLOBALS.global_var.sql_tracks.filter(track => plays_of(track.uid) !== 0)
 		.sort((a, b) => plays_of(b.uid) - plays_of(a.uid) || (b.meta?.plays ?? 0) - (a.meta?.plays ?? 0))
