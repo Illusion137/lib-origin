@@ -119,7 +119,8 @@ export async function setup_track_player(): Promise<boolean> {
 			Capability.SeekTo,
 			Capability.PlayFromSearch
 		],
-		progressUpdateEventInterval: 1
+		progressUpdateEventInterval: 1,
+		djCrossfade: true
 	});
 	EverythingPlayer.setRepeatMode(RepeatMode.Off);
 	EverythingPlayer.setEqualizer(equalizer_bands(Prefs.get_pref('equalizer_preset')));
