@@ -22,6 +22,23 @@ describe('EntityGraph', () => {
 		expect(built.tracks![0].album_ref).toBe(built.albums![0].ref);
 	});
 
+	it('relates an artist to the similar artists its page lists, in order, skipping ones without a service id', () => {
+		const graph = new EntityGraph();
+		const similar = (name: string, uri: string | null): CompactArtist => ({ name: { name, uri }, profile_artwork_url: `https://art/${name}.jpg` });
+		expect(graph.add_similar_artists({ name: 'Lelo', uri: 'spotify:lelo' }, [
+			similar('BabyTron', 'spotify:babytron'), similar('No Id', null), similar('Lelo', 'spotify:lelo'), similar('Cash Kidd', 'spotify:cashkidd')
+		])).toBe(true);
+		const built = graph.build();
+		const name_of = new Map(built.artists!.map(a => [a.ref, a.name]));
+		expect(built.relations?.similar_artists?.map(r => [name_of.get(r.artist_ref), name_of.get(r.similar_artist_ref)])).toEqual([['Lelo', 'BabyTron'], ['Lelo', 'Cash Kidd']]);
+		expect(built.artists?.find(a => a.name === 'BabyTron')?.thumbnails).toEqual([{ url: 'https://art/BabyTron.jpg' }]);
+		// An artist page without an id, or with nothing identifiable listed, adds nothing.
+		const empty = new EntityGraph();
+		expect(empty.add_similar_artists({ name: 'Lelo', uri: null }, [similar('BabyTron', 'spotify:babytron')])).toBe(false);
+		expect(empty.add_similar_artists({ name: 'Lelo', uri: 'spotify:lelo' }, [similar('No Id', null)])).toBe(false);
+		expect(empty.size()).toBe(0);
+	});
+
 	it('shares an artist between tracks instead of repeating it', () => {
 		const graph = new EntityGraph();
 		graph.add_track(track());

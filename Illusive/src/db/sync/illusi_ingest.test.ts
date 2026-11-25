@@ -72,6 +72,18 @@ describe('IllusiIngest entities', () => {
 		expect(IllusiIngest.pending_entities()).toBe(0);
 	});
 
+	it('contributes an artist page\'s similar artists once per page', async () => {
+		vi.spyOn(Illusi, 'get_session').mockReturnValue(session);
+		const contribute = vi.spyOn(Illusi, 'contribute').mockResolvedValue({ refs: {}, created: [], matched: [], conflicts: [], rejected: [] });
+		const similar = [{ name: { name: 'B', uri: 'spotify:b' } }, { name: { name: 'C', uri: 'spotify:c' } }];
+		IllusiIngest.similar_artists('spotify', { name: 'A', uri: 'spotify:a' }, similar);
+		IllusiIngest.similar_artists('spotify', { name: 'A', uri: 'spotify:a' }, similar);
+		IllusiIngest.similar_artists('spotify', { name: 'Z', uri: 'spotify:z' }, []);
+		await IllusiIngest.flush();
+		expect(contribute).toHaveBeenCalledTimes(1);
+		expect(contribute.mock.calls[0][0].relations?.similar_artists).toHaveLength(2);
+	});
+
 	it('contributes YouTube objects without a service copy', async () => {
 		vi.spyOn(Illusi, 'get_session').mockReturnValue(session);
 		const contribute = vi.spyOn(Illusi, 'contribute').mockResolvedValue({ refs: {}, created: [], matched: [], conflicts: [], rejected: [] });

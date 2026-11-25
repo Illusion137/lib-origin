@@ -7,6 +7,7 @@ import { soundcloud_parse_playlist, soundcloud_parse_track, soundcloud_parse_tra
 import { ytm_album, ytm_artist, ytm_track } from '@illusive/parsers/youtube_music_parser';
 import { youtube_parse_channels, youtube_parse_playlists, youtube_parse_videos } from '@illusive/parsers/youtube_parser';
 import { best_thumbnail, create_uri, split_uri } from '@illusive/illusive_utils';
+import { IllusiIngest } from './db/sync/illusi_ingest';
 import { Prefs } from '@illusive/prefs';
 import type { ArtistOpts, CompactArtist, CompactPlaylist, Continuation, ContinuationPage, IllusiveURI, MusicSearchResponse, MusicServiceArtist, MusicServiceURI, NamedUUID, Track } from '@illusive/types';
 import type { Cursor, Page, PageQuery, PlaylistView, ServiceIds, TrackView } from '@origin/illusi/types';
@@ -109,6 +110,7 @@ export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): 
 	const albums = artist_response.albums.map(album => ytm_album(album, 'ALBUM'));
 	const singles_eps = artist_response.singles.map(single => ytm_album(single, 'ALBUM'));
 	const similar_artists = remember_artist_artwork(artist_response.similar_artists.map(ytm_artist));
+	IllusiIngest.similar_artists('youtubemusic', { name, uri: create_uri('youtubemusic', id) }, similar_artists);
 	const ytm_continuation: ContinuationFetch = token => YouTubeMusic.get_continuation({ cookie_jar: get_cookie_jar('youtube_music_cookie_jar') }, token);
 
 	if (background_thumbnail) {
@@ -210,6 +212,7 @@ export async function apple_music_get_artist(id: string, opts?: ArtistOpts): Pro
 	}
 
 	const parsed_similar_artists = similar_artists?.items.map(parse_apple_music_artist_similar_artist) ?? [];
+	IllusiIngest.similar_artists('applemusic', artist_info, parsed_similar_artists);
 
 	parsed_similar_artists.filter(artist => artist.profile_artwork_url && artist.name.uri).forEach((artist) => {
 		SQLArtists.insert_sql_artists({
@@ -305,6 +308,7 @@ export async function spotify_get_artist(id: string, opts?: ArtistOpts): Promise
 	const background_artwork_url = best_thumbnail(union_artist.visuals?.avatarImage?.sources)?.url;
 	const profile_artwork_url = best_thumbnail(union_artist.visuals?.headerImage?.sources)?.url;
 	const similar_artists = union_artist.relatedContent.relatedArtists.items.map(parse_spotify_similar_artist);
+	IllusiIngest.similar_artists('spotify', artist_uri, similar_artists);
 
 	if (profile_artwork_url) {
 		SQLArtists.insert_sql_artists({

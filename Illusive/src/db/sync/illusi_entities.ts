@@ -84,6 +84,7 @@ export class EntityGraph {
 	private readonly tracks_artists = new Map<string, { track_ref: string; artist_ref: string }>();
 	private readonly album_tracks = new Map<string, { album_ref: string; track_ref: string }>();
 	private readonly artist_albums = new Map<string, { artist_ref: string; album_ref: string }>();
+	private readonly similar_artists = new Map<string, { artist_ref: string; similar_artist_ref: string }>();
 
 	size(): number {
 		return this.artists.size + this.albums.size + this.tracks.size;
@@ -172,6 +173,22 @@ export class EntityGraph {
 		return true;
 	}
 
+	/**
+	 * The similar artists an artist page lists, in the service's order (the server keeps it). Only artists with a
+	 * service id: a bare name can't be matched to the right artist.
+	 */
+	add_similar_artists(artist: NamedUUID, similar: readonly CompactArtist[]): boolean {
+		if (!present(artist.name) || artist_service_ids(artist) === undefined) return false;
+		const known = similar.filter(other => present(other.name.name) && artist_service_ids(other.name) !== undefined);
+		if (known.length === 0) return false;
+		const artist_ref = this.add_artist(artist);
+		for (const other of known) {
+			const similar_artist_ref = this.add_artist(other.name, typeof other.profile_artwork_url === 'string' ? other.profile_artwork_url : undefined);
+			if (similar_artist_ref !== artist_ref) this.similar_artists.set(`${artist_ref}|${similar_artist_ref}`, { artist_ref, similar_artist_ref });
+		}
+		return true;
+	}
+
 	build(): ContributionGraph {
 		return {
 			artists: [...this.artists.values()],
@@ -180,7 +197,8 @@ export class EntityGraph {
 			relations: {
 				tracks_artists: [...this.tracks_artists.values()],
 				album_tracks: [...this.album_tracks.values()],
-				artist_albums: [...this.artist_albums.values()]
+				artist_albums: [...this.artist_albums.values()],
+				similar_artists: [...this.similar_artists.values()]
 			}
 		};
 	}

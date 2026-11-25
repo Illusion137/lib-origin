@@ -1,7 +1,7 @@
 import { catch_log } from '@common/utils/error_util';
 import { Illusi } from '@origin/illusi/illusi';
 import type { CatalogItem, ContributionGraph, SoundCloudIngestItem } from '@origin/illusi/types';
-import type { CompactArtist, CompactPlaylist, Track } from '@illusive/types';
+import type { CompactArtist, CompactPlaylist, NamedUUID, Track } from '@illusive/types';
 import { RequestQueue } from './request_queue';
 import { milliseconds_of } from '@common/utils/util';
 import { catalog_album, catalog_artist, catalog_track, EntityGraph, is_catalog_service, split_named_uri, type IngestService } from './illusi_entities';
@@ -123,6 +123,15 @@ export namespace IllusiIngest {
 		if (is_catalog_service(service) && raw !== undefined) queue_catalog(catalog_artist(service, parsed, raw));
 		schedule();
 		return parsed;
+	}
+
+	/** The similar artists a service's artist page lists, so Illusi's artist pages can list them too */
+	export function similar_artists(service: IngestService, artist: NamedUUID, similar: readonly CompactArtist[]) {
+		if (!logged_in() || similar.length === 0) return;
+		const id = split_named_uri(artist.uri)?.id;
+		if (id === undefined || seen(`similar:${service}:${id}`)) return;
+		queue_entity(target => target.add_similar_artists(artist, similar));
+		schedule();
 	}
 
 	function has_pending() {
