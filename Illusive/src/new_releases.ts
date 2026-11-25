@@ -11,6 +11,9 @@ import { sc_highest_artwork, soundcloud_parse_track } from './parsers/soundcloud
 import { reinterpret_cast } from '@common/cast';
 import { create_uri, split_uri } from './illusive_utils';
 
+/** Releases kept: the ones by artists the user plays most, then the newest */
+export const NEW_RELEASES_LIMIT = 200;
+
 export async function youtube_music_get_new_releases(): Promise<CompactPlaylist[]> {
 	const cookie_jar = Prefs.get_pref('youtube_music_cookie_jar');
 	const new_releases_albums_response = await Origin.YouTubeMusic.new_releases_albums({ cookie_jar: cookie_jar });
@@ -98,6 +101,7 @@ function youtube_music_feed_album(album: CompactPlaylist): YouTubeMusicFeedAlbum
 export async function illusi_sync_new_releases(feeds: NewReleaseFeeds = {}): Promise<CompactPlaylist[] | null> {
 	if (!IllusiAccount.is_logged_in()) return null;
 	const result = await Illusi.NewReleasesApi.sync({
+		limit: NEW_RELEASES_LIMIT,
 		services: IllusiActions.release_services(),
 		soundcloud_items: feeds.soundcloud_items ?? [],
 		youtube_music_albums: (feeds.youtube_music_albums ?? []).map(youtube_music_feed_album).filter(album => album !== null)

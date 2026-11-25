@@ -7,7 +7,8 @@ vi.mock('@native/fs/fs', () => ({ fs: () => ({}) }));
 vi.mock('./sql/sql_fs', () => ({ SQLfs: {} }));
 vi.mock('./sql/sql_tracks', () => ({ SQLTracks: {} }));
 vi.mock('./illusive', () => ({ Illusive: {} }));
-vi.mock('./prefs', () => ({ Prefs: {} }));
+const prefs = vi.hoisted(() => ({ store: {} as Record<string, unknown> }));
+vi.mock('./prefs', () => ({ Prefs: { get_pref: (key: string) => prefs.store[key] } }));
 vi.mock('./db/sync/illusi_account', () => ({ IllusiAccount: {} }));
 vi.mock('./globals', () => ({ GLOBALS: { global_var: {} } }));
 vi.mock('./futsal_shuffle', () => ({ FutsalShuffle: {} }));
@@ -38,5 +39,27 @@ describe('Explore.rank_new_releases', () => {
 
 	it('hides artists outside the library but keeps followed SoundCloud tracks', () => {
 		expect(Explore.rank_new_releases(releases, library, true).map(r => r.title.name)).toEqual(['Fav New', 'Fav Old', 'Known One', 'SC']);
+	});
+});
+
+describe('Explore.new_releases_stale', () => {
+	const at = (h: number, m: number, day = 25) => new Date(2026, 10, day, h, m);
+	const cached = (last_refreshed: Date, releases: CompactPlaylist[] = [release('A', 'B', '2026-11-25')]) => {
+		prefs.store = { new_releases: releases, new_releases_last_refreshed: last_refreshed };
+	};
+
+	it('is stale once the clock reaches the next hour, since artists drop on the hour', () => {
+		cached(at(15, 59));
+		expect(Explore.new_releases_stale(at(15, 59))).toBe(false);
+		expect(Explore.new_releases_stale(at(16, 0))).toBe(true);
+		cached(at(16, 0));
+		expect(Explore.new_releases_stale(at(16, 59))).toBe(false);
+	});
+
+	it('is stale the same hour on another day, and with nothing cached', () => {
+		cached(at(16, 10, 24));
+		expect(Explore.new_releases_stale(at(16, 20))).toBe(true);
+		cached(at(16, 10), []);
+		expect(Explore.new_releases_stale(at(16, 20))).toBe(true);
 	});
 });

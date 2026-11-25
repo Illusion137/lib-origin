@@ -7,7 +7,6 @@ import { Illusive } from './illusive';
 import { SQLfs } from './sql/sql_fs';
 import { SQLTracks } from './sql/sql_tracks';
 import { generror, generror_catch } from '@common/utils/error_util';
-import { should_automatic_refresh } from './illusive_utils';
 import { Prefs } from './prefs';
 import { wait } from '@common/utils/timed_util';
 import { remove_topic } from '@common/utils/clean_util';
@@ -20,7 +19,7 @@ import { FSCache } from '@common/fs_cache';
 import type { SelectionItem } from '@origin/soundcloud/types/MixedSelection';
 import type { ArtistRecommendation } from '@origin/soundcloud/types/Search';
 import type { Soundtrack } from '@origin/illusi/types';
-import { illusi_sync_new_releases, soundcloud_feed_items, soundcloud_parse_new_releases, youtube_music_get_new_releases } from './new_releases';
+import { illusi_sync_new_releases, NEW_RELEASES_LIMIT, soundcloud_feed_items, soundcloud_parse_new_releases, youtube_music_get_new_releases } from './new_releases';
 
 // TODO slight rework
 
@@ -67,8 +66,12 @@ export namespace Explore {
 		return ranked.map(release => release.song_track ? { ...release, song_track: SQLTracks.add_playback_saved_data_to_track(release.song_track) } : release);
 	}
 
-	export function new_releases_stale(): boolean {
-		return Prefs.get_pref('new_releases').length === 0 || should_automatic_refresh(Prefs.get_pref('new_releases_last_refreshed'));
+	/** Local clock hour, so a refresh at 3:59 is stale at 4:00: artists drop releases on the hour */
+	const clock_hour = (date: Date) => `${date.toDateString()} ${date.getHours()}`;
+
+	/** Nothing cached, or the last refresh was in another hour of the clock */
+	export function new_releases_stale(now = new Date()): boolean {
+		return Prefs.get_pref('new_releases').length === 0 || clock_hour(new Date(Prefs.get_pref('new_releases_last_refreshed'))) !== clock_hour(now);
 	}
 
 	/** `get` on the service when it's logged in, or `fallback` when it isn't, fails or takes longer than `timeout_ms` */
@@ -85,7 +88,14 @@ export namespace Explore {
 	 * Gets what the SoundCloud stream and YouTube Music new releases show, hands them to Illusi and caches what it answers
 	 * with (those and releases by library artists). Signed out or offline, the feeds alone are cached.
 	 */
-	export async function refresh_new_releases(): Promise<CompactPlaylist[]> {
+	let refreshing: Promise<CompactPlaylist[]> | null = null;
+	export function refresh_new_releases(): Promise<CompactPlaylist[]> {
+		// Opening Explore again while a refresh runs joins it
+		refreshing ??= fetch_new_releases().finally(() => { refreshing = null; });
+		return refreshing;
+	}
+
+	async function fetch_new_releases(): Promise<CompactPlaylist[]> {
 		const [soundcloud_items, youtube_music_albums] = await Promise.all([
 			from_service('SoundCloud', soundcloud_feed_items, []),
 			from_service('YouTube Music', youtube_music_get_new_releases, [])
@@ -95,7 +105,7 @@ export namespace Explore {
 		if (releases.length === 0) return get_new_releases();
 		const old_keys = new Set(Prefs.get_pref('new_releases').map(release_key));
 		await Promise.all([
-			Prefs.save_pref('new_releases', releases),
+			Prefs.save_pref('new_releases', rank_new_releases(releases, GLOBALS.global_var.sql_tracks, false).slice(0, NEW_RELEASES_LIMIT)),
 			Prefs.save_pref('new_releases_last_refreshed', new Date())
 		]);
 		const ranked = get_new_releases();
