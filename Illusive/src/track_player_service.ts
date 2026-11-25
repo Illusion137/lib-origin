@@ -393,7 +393,6 @@ export async function playback_service() {
 			const illusi_track = queue_track(data.index);
 			updated_metadata_mutex = false;
 			if (illusi_track === undefined) return;
-			if (illusi_track.meta?.begdur !== undefined) EverythingPlayer.seekTo(illusi_track.meta.begdur);
 			GLOBALS.global_var.playing_queue = [];
 
 			await SQLRecentlyPlayed.insert_recently_played_track(illusi_track);
