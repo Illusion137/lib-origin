@@ -24,6 +24,7 @@ export namespace IllusiAccount {
 	}
 
 	function on_session_change(session: TokenPair | null) {
+		if (session === null) current_account = null;
 		Prefs.save_pref('illusi_session', session === null ? '' : JSON.stringify(session)).catch(catch_log);
 		for (const listener of listeners) listener(session !== null);
 	}
@@ -55,6 +56,7 @@ export namespace IllusiAccount {
 	/** The server knows downloads per login, so a fresh one starts by hearing what this device has */
 	async function logged_in(result: SessionResponse | ResponseError) {
 		if (!Illusi.is_error(result)) {
+			current_account = null;
 			email_verified = result.email_verified ?? null;
 			await report_downloads(db).catch(catch_log);
 		}
@@ -108,14 +110,25 @@ export namespace IllusiAccount {
 
 	/** Null until known. The server refuses everything but /auth until the address is confirmed. */
 	let email_verified: boolean | null = null;
+	let current_account: AuthMe | null = null;
 	export function is_email_verified(): boolean | null {
 		return email_verified;
 	}
 	/** Works before the email is confirmed; refreshes is_email_verified() */
 	export async function account(): PromiseResult<AuthMe> {
 		const result = await Illusi.Auth.me();
-		if (!Illusi.is_error(result)) email_verified = result.email_verified;
+		if (!Illusi.is_error(result)) {
+			email_verified = result.email_verified;
+			current_account = result;
+		}
 		return result;
+	}
+	/** The logged in account, fetched once per login; null when logged out or unreachable */
+	export async function cached_account(): Promise<AuthMe | null> {
+		if (!is_logged_in()) return null;
+		if (current_account !== null) return current_account;
+		const result = await account();
+		return Illusi.is_error(result) ? null : result;
 	}
 	export async function resend_verification(): PromiseResult<null> {
 		return Illusi.Auth.resend_verification();

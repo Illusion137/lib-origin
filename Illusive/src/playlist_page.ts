@@ -10,12 +10,20 @@ import { reinterpret_cast } from '../../common/cast';
 import { default_playlists } from './default_playlists';
 import { Constants } from './constants';
 import { album_fetch_opts } from './get_playlist';
+import { IllusiAccount } from './db/sync/illusi_account';
+import { IllusiViews } from './illusi_views';
 
 export namespace PlaylistPage {
 	export interface PlaylistInitialData
 	{
 		playlist_data: Playlist & { creator?: NamedUUID[] };
 		initial_tracks: Track[] | Promise<Track[]>; continuation: unknown; error?: ResponseError;
+	}
+
+	async function default_playlist_creator(): Promise<NamedUUID> {
+		const account = await IllusiAccount.cached_account();
+		if (account !== null) return { name: account.username, uri: IllusiViews.user_uri(account.id) };
+		return { name: Constants.import_uri_id, uri: create_uri('illusi', Constants.import_uri_id) };
 	}
 
 	export async function playlist_initial_data_default_playlist(default_playlist_title: string): Promise<PlaylistInitialData> {
@@ -25,7 +33,8 @@ export namespace PlaylistPage {
 			playlist_data: {
 				uuid: gen_uuid(),
 				title: default_playlist_title,
-				creator: [{ name: Constants.import_uri_id, uri: create_uri('illusi', Constants.import_uri_id) }]
+				creator: [await default_playlist_creator()],
+				date: new Date().toISOString()
 			}
 		};
 	}
@@ -34,7 +43,7 @@ export namespace PlaylistPage {
 		const playlist_data = await SQLPlaylists.playlist_data(uuid, 'IGNORE');
 		if (playlist_data) {
 			return {
-				playlist_data: { ...playlist_data, creator: [{ name: Constants.import_uri_id, uri: create_uri('illusi', Constants.import_uri_id) }] },
+				playlist_data: { ...playlist_data, creator: [await default_playlist_creator()] },
 				initial_tracks: [],
 				continuation: null
 			};
