@@ -4,10 +4,12 @@ import { db } from '@illusive/db/database';
 import { artist_artwork_table } from '@illusive/db/schema';
 import { Store } from '@illusive/db/store';
 import { create_uri } from '@illusive/illusive_utils';
+import { IllusiViews } from '@illusive/illusi_views';
 import { db as legacy_db } from '@illusive/legacy/1810/database';
 import { artists_table as legacy_artists_table, type SQLArtist, type SQLArtistInsert } from '@illusive/legacy/1810/schema';
 import type { ArtistSortMode, CompactArtist, NamedUUID, Track } from '@illusive/types';
 import { and, eq } from 'drizzle-orm';
+import { Illusi } from '@origin/illusi/illusi';
 
 export namespace SQLArtists {
 	export const default_profile_picture_url = 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg';
@@ -36,6 +38,14 @@ export namespace SQLArtists {
 	}
 	function notify_artwork() {
 		for (const listener of artwork_listeners) listener();
+	}
+
+	export function remember_illusi_user_avatar(user_id: string, avatar_id: string | null) {
+		const uri = IllusiViews.user_uri(user_id);
+		const artwork_url = avatar_id === null ? undefined : Illusi.Account.avatar_url(avatar_id);
+		if (artists_artwork_memo[uri] === artwork_url) return;
+		artists_artwork_memo[uri] = artwork_url;
+		notify_artwork();
 	}
 
 	export async function get_all_sql_artists(): Promise<SQLArtist[]> {

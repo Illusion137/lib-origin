@@ -29,6 +29,7 @@ import { Illusi } from '@origin/illusi/illusi';
 import type { TrackView } from '@origin/illusi/types';
 import { IllusiAccount } from './db/sync/illusi_account';
 import { IllusiViews } from './illusi_views';
+import { SQLArtists } from './sql/sql_artists';
 import { GLOBALS } from './globals';
 
 export const album_fetch_opts: RoZFetchRequestInit = {
@@ -356,6 +357,7 @@ export async function illusi_get_playlist(url: string): Promise<MusicServicePlay
 	const [playlist, page] = await Promise.all([Illusi.Playlists.get(id), Illusi.Playlists.tracks(id, { limit: ILLUSI_PAGE_LIMIT })]);
 	if (Illusi.is_error(playlist)) return default_playlist(playlist);
 	if (Illusi.is_error(page)) return default_playlist(page);
+	SQLArtists.remember_illusi_user_avatar(playlist.owner.id, playlist.owner.avatar_id);
 	return {
 		title: playlist.title,
 		creator: [{ name: playlist.owner.username, uri: IllusiViews.user_uri(playlist.owner.id) }],

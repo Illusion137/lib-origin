@@ -389,6 +389,7 @@ async function illusi_get_user_artist(user_id: string): Promise<MusicServiceArti
 	if (!IllusiAccount.is_logged_in()) return default_artist();
 	const profile = await Illusi.Users.get(user_id);
 	if (Illusi.is_error(profile)) return default_artist(profile);
+	SQLArtists.remember_illusi_user_avatar(user_id, profile.avatar_id);
 	const load_imports = async (query: PageQuery) => Illusi.Users.imports(user_id, query);
 	const load_playlists = async (query: PageQuery) => Illusi.Playlists.of_user(user_id, query);
 	const map_tracks = (items: TrackView[]) => IllusiViews.prefer_local(items.map(IllusiViews.track), GLOBALS.global_var.sql_tracks);
