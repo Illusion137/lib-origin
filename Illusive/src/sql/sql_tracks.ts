@@ -80,6 +80,11 @@ export namespace SQLTracks {
 		return key_map.get(lookup_key);
 	}
 
+	const mergeable_id_keys = ['illusi_id', 'imported_id', 'youtube_id', 'soundcloud_id', 'soundcloud_permalink', 'spotify_id', 'amazonmusic_id', 'applemusic_id', 'bandlab_id', 'audiomack_id', 'deezer_id', 'pandora_id', 'tidal_id'] as const satisfies readonly (keyof Track)[];
+	function merge_missing_id<K extends typeof mergeable_id_keys[number]>(target: Track, source: Track, key: K) {
+		if (is_empty(target[key]) && !is_empty(source[key])) target[key] = source[key];
+	}
+
 	export function add_playback_saved_data_to_track(track: Track): Track {
 		const saved = track_exists(track, GLOBALS.global_var.sql_tracks);
 		let new_track: Track = {
@@ -103,6 +108,10 @@ export namespace SQLTracks {
 				sync_status: found_track?.sync_status,
 				meta: found_track?.meta
 			};
+			if (found_track) {
+				if (is_empty(new_track.duration) && !is_empty(found_track.duration)) new_track.duration = found_track.duration;
+				for (const key of mergeable_id_keys) merge_missing_id(new_track, found_track, key);
+			}
 		}
 		check_fixerupper_track(new_track).catch(catch_ignore);
 		return new_track;

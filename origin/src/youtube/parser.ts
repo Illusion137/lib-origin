@@ -315,6 +315,13 @@ function album_type_of(item_type?: string): YTMAlbumType {
 	}
 }
 
+function release_type_of(item_type: string | undefined, label: Misc.Text | undefined): YTMAlbumType {
+	const type = album_type_of(item_type);
+	if (type !== 'ALBUM') return type;
+	const named = album_type_of(label?.toString().split('•')[0]?.trim());
+	return named === 'SINGLE' || named === 'EP' ? named : type;
+}
+
 function run_browse_id(run: Misc.TextRun | Misc.EmojiRun): string | undefined {
 	return 'endpoint' in run ? (run.endpoint?.payload as { browseId?: string } | undefined)?.browseId : undefined;
 }
@@ -407,7 +414,7 @@ export function parse_ytm_album(item: YTNodes.MusicResponsiveListItem): YTMAlbum
 		thumbnails: thumbs(item.thumbnails),
 		explicit: has_explicit(item.badges),
 		year: item.year,
-		album_type: album_type_of(item.item_type)
+		album_type: release_type_of(item.item_type, item.flex_columns[1]?.title)
 	};
 }
 export function parse_ytm_artist(item: YTNodes.MusicResponsiveListItem): YTMArtist {
@@ -426,7 +433,7 @@ export function parse_ytm_two_row_album(item: YTNodes.MusicTwoRowItem): YTMAlbum
 		thumbnails: thumbs(item.thumbnail),
 		explicit: has_explicit(item.badges?.array?.() ?? undefined),
 		year: item.year,
-		album_type: album_type_of(item.item_type)
+		album_type: release_type_of(item.item_type, item.subtitle)
 	};
 }
 export function parse_ytm_two_row_video(item: YTNodes.MusicTwoRowItem): YTMTrack {

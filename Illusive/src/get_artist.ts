@@ -107,6 +107,7 @@ export async function youtube_music_get_artist(id: string, _opts?: ArtistOpts): 
 
 	const name = artist_response.artist.name;
 	const background_thumbnail = best_thumbnail(artist_response.artist.thumbnails)?.url;
+	if (name.trim() !== '') ytm_artist(artist_response.artist);
 	const albums = artist_response.albums.map(album => ytm_album(album, 'ALBUM'));
 	const singles_eps = artist_response.singles.map(single => ytm_album(single, 'ALBUM'));
 	const similar_artists = remember_artist_artwork(artist_response.similar_artists.map(ytm_artist));

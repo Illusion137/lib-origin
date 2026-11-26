@@ -292,14 +292,10 @@ export namespace YouTubeMusic {
 
 	export async function new_releases_albums(opts: Opts): PromiseResult<YTMAlbum[]> {
 		try {
-			const explore = await (await YouTubeSession.get(opts)).music.getExplore();
-			const albums: YTMAlbum[] = [];
-			for (const section of explore.sections) {
-				for (const item of section.contents) {
-					if (item.is(YTNodes.MusicTwoRowItem)) albums.push(Parser.parse_ytm_two_row_album(item.as(YTNodes.MusicTwoRowItem)));
-				}
-			}
-			return albums;
+			const page = await (await YouTubeSession.get(opts)).actions.execute('/browse', { browseId: 'FEmusic_new_releases_albums', client: 'YTMUSIC', parse: true });
+			return (page.contents_memo?.getType(YTNodes.MusicTwoRowItem) ?? [])
+				.filter(item => item.item_type === 'album')
+				.map(item => Parser.parse_ytm_two_row_album(item));
 		} catch (error) { return generror_catch(error, 'Failed to fetch YouTube Music new releases', 'MEDIUM'); }
 	}
 

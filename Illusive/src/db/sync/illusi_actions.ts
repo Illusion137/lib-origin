@@ -251,9 +251,12 @@ export namespace IllusiActions {
 		if (music_service.get_artist === undefined) return;
 		const artist = await music_service.get_artist(action.service_artist_id);
 		if ('error' in artist && artist.error !== undefined) return;
+		const since_year = new Date(since).getUTCFullYear();
+		const recent = (date: string | undefined) => released_since(date, since)
+			|| (action.service === 'youtube_music' && date !== undefined && new Date(date).getUTCFullYear() >= since_year);
 		const candidates = new Map<string, CompactPlaylist>();
 		for (const release of [artist.latest_release, ...artist.albums, ...artist.singles_eps]) {
-			if (release === undefined || !released_since(release.date, since)) continue;
+			if (release === undefined || !recent(release.date)) continue;
 			const key = release.title.uri ?? release.title.name;
 			if (!candidates.has(key)) candidates.set(key, release);
 		}
