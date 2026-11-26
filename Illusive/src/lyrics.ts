@@ -12,6 +12,7 @@ import { Genius } from '@origin/genius/genius';
 import type { LyricsPreloadedState } from '@origin/genius/types/Lyrics';
 import type { Action, LyricsLine, LyricsResponse, LyricsSyncType, ParsedLyrics, TrackAlignment, TrackVocals, UserLyricsBody } from '@origin/illusi/types';
 import { LetterSync } from './letter_sync';
+import { Prefs } from './prefs';
 import { LyricsAlign } from './lyrics_align';
 import { IllusiActions } from './db/sync/illusi_actions';
 import { RequestQueue } from './db/sync/request_queue';
@@ -131,10 +132,10 @@ export namespace Lyrics {
 	async function letter_sync(track_id: string, lyrics: ParsedLyrics, duration_s: number | undefined, analysis: Analysis): Promise<ParsedLyrics | null | undefined> {
 		const alignment = await analysis.alignment(track_id);
 		if (alignment === null || !fits_track(alignment, duration_s)) return undefined;
-		return LetterSync.line_sync(to_plain(lyrics), alignment);
+		return Prefs.get_pref('alignment_word_sync') ? LetterSync.word_sync(to_plain(lyrics), alignment) : LetterSync.line_sync(to_plain(lyrics), alignment);
 	}
 
-	/** Line timings for plain lyrics from the track's vocals; synced lyrics are kept as they are */
+	/** Line timings (word timings too with `alignment_word_sync`) for plain lyrics from the track's vocals; synced lyrics are kept as they are */
 	export async function with_vocal_sync(track_id: string, lyrics: ParsedLyrics, duration_s?: number, analysis: Analysis = fetched): Promise<ParsedLyrics> {
 		if (lyrics.sync_type !== 'NONE') return lyrics;
 		const aligned = await letter_sync(track_id, lyrics, duration_s, analysis);
@@ -169,11 +170,20 @@ export namespace Lyrics {
 		});
 	}
 
-	/** Line synced lyrics with word timings estimated from the track's vocals, or null when Illusi has no vocals that fit */
-	export async function vocal_word_sync<L extends LyricsLine>(track: Track, lyrics: LyricsAlign.Lined<L>): Promise<LyricsAlign.Lined<L> | null> {
+	/**
+	 * Line synced lyrics with word timings from the track's alignment (with `alignment_word_sync`), else estimated from
+	 * its vocals unless `vocals` is false; null when Illusi has neither that fits.
+	 */
+	export async function vocal_word_sync<L extends LyricsLine>(track: Track, lyrics: LyricsAlign.Lined<L>, vocals_estimate = true): Promise<LyricsAlign.Lined<L> | null> {
 		if (lyrics.sync_type !== 'LINE' || Illusi.get_session() === null) return null;
 		const id = await server_track_id(track);
 		if (typeof id !== 'string') return null;
+		if (Prefs.get_pref('alignment_word_sync')) {
+			const alignment = await cached.alignment(id);
+			const aligned = alignment !== null && fits_track(alignment, track.duration) ? LetterSync.word_sync_lines(lyrics, alignment) : null;
+			if (aligned !== null) return aligned;
+		}
+		if (!vocals_estimate) return null;
 		const vocals = await cached.vocals(id);
 		return vocals === null || !fits_track(vocals, track.duration) ? null : LyricsAlign.word_sync(lyrics, vocals);
 	}

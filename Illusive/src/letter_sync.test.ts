@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TrackAlignment } from '@origin/illusi/types';
+import type { LyricsLine, TrackAlignment } from '@origin/illusi/types';
 import { LetterSync } from './letter_sync';
 
 const ALPHABET = '-aienoutsrmkldghybpwcvjzf\'qx';
@@ -87,6 +87,62 @@ describe('LetterSync', () => {
 		const alignment = alignment_for(LINES, LINES.map((_, i) => start(i)), LINES.map(() => 'nobody knows anything about this'));
 		expect(LetterSync.place(LINES.join('\n'), alignment)!.confident).toBe(false);
 		expect(LetterSync.line_sync(LINES.join('\n'), alignment)).toBeNull();
+	});
+
+	it('word syncs plain lyrics where each word is sung', () => {
+		const lines = [...LINES.slice(0, 4), 'Oh oh oh', ...LINES.slice(4)];
+		const alignment = alignment_for(lines, lines.map((_, i) => start(i)));
+		const onsets = alignment.words.words.filter(w => !LetterSync.is_vocable(w.text)).map(w => w.start_ms);
+		const synced = LetterSync.word_sync(lines.join('\n'), alignment)!;
+		expect(synced.sync_type).toBe('WORD');
+		expect(synced.lines[4].segments).toBeUndefined();
+		const segments = synced.lines.flatMap(line => line.segments ?? []);
+		expect(segments).toHaveLength(onsets.length);
+		segments.forEach((segment, i) => {
+			expect(Math.abs(segment.start_ms - onsets[i])).toBeLessThanOrEqual(40);
+			expect(segment.end_ms).toBeGreaterThan(segment.start_ms);
+		});
+		synced.lines.forEach((line) => {
+			if (line.segments === undefined) return;
+			expect(line.segments.map(segment => segment.text).join('')).toBe(line.text);
+			expect(line.segments[0].start_ms).toBe(line.start_ms);
+			// Each word lasts until the next one starts
+			line.segments.slice(1).forEach((segment, k) => expect(line.segments![k].end_ms).toBe(segment.start_ms));
+		});
+	});
+
+	it('keeps words without letters with the word before them', () => {
+		const lines = ['Morning rises — over silver mountains', ...LINES.slice(1)];
+		const synced = LetterSync.word_sync(lines.join('\n'), alignment_for(lines.map(line => line.replace(' —', '')), lines.map((_, i) => start(i))))!;
+		expect(synced.lines[0].segments!.map(segment => segment.text)).toEqual(['Morning ', 'rises — ', 'over ', 'silver ', 'mountains']);
+	});
+
+	it('withholds word timings it withholds line timings for', () => {
+		const alignment = alignment_for(LINES, LINES.map((_, i) => start(i)), LINES.map(() => 'nobody knows anything about this'));
+		expect(LetterSync.word_sync(LINES.join('\n'), alignment)).toBeNull();
+	});
+
+	it('word syncs line synced lyrics within their own timestamps', () => {
+		const alignment = alignment_for(LINES, LINES.map((_, i) => start(i)));
+		const onsets = alignment.words.words.map(w => w.start_ms);
+		// Timestamps a little off, as sources' are
+		const lined = { sync_type: 'LINE' as const, lines: LINES.map((text, i): LyricsLine & { translated: string } => ({ text, start_ms: start(i) + (i % 2 === 0 ? 300 : -300), end_ms: null, translated: 'x' })) };
+		const synced = LetterSync.word_sync_lines(lined, alignment)!;
+		expect(synced.sync_type).toBe('WORD');
+		synced.lines.forEach((line, i) => {
+			expect(line.translated).toBe('x');
+			expect(line.start_ms).toBe(lined.lines[i].start_ms);
+			expect(line.segments!.map(segment => segment.text).join('')).toBe(line.text);
+		});
+		synced.lines.flatMap(line => line.segments!).forEach((segment, i) => expect(Math.abs(segment.start_ms - onsets[i])).toBeLessThanOrEqual(40));
+	});
+
+	it('gives null for line synced lyrics the vocals don\'t sing', () => {
+		const alignment = alignment_for(LINES, LINES.map((_, i) => start(i)));
+		const other = ['Quick brown foxes jumping', 'Lazy dogs sleeping', 'Zebras munch jicama', 'Vexed wizards quiz judges', 'Black sphinx of quartz', 'Judge my vow', 'Pack my box', 'Five dozen liquor jugs'];
+		const lined = { sync_type: 'LINE' as const, lines: other.map((text, i) => ({ text, start_ms: start(i), end_ms: null })) };
+		expect(LetterSync.word_sync_lines(lined, alignment)).toBeNull();
+		expect(LetterSync.word_sync_lines({ ...lined, sync_type: 'NONE' }, alignment)).toBeNull();
 	});
 
 	it('needs two alignable lines and an intact analysis', () => {

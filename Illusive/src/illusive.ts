@@ -400,7 +400,8 @@ export namespace Illusive {
 	export function get_youtube_lowest_quality_thumbnail_uri(video_id: string) {
 		return `https://i.ytimg.com/vi/${video_id}/1.jpg`;
 	}
-	export async function get_highest_quality_youtube_thumbnail_uri(video_id: string) {
+	/** null when YouTube has no thumbnail for the video; when YouTube can't be reached, the uri it would most likely have */
+	export async function get_highest_quality_youtube_thumbnail_uri(video_id: string): Promise<string | null> {
 		const uris_descending = [
 			`https://i.ytimg.com/vi/${video_id}/maxresdefault.jpg`,
 			`https://i.ytimg.com/vi/${video_id}/hq720.jpg`,
@@ -409,13 +410,15 @@ export namespace Illusive {
 			`https://i.ytimg.com/vi/${video_id}/mqdefault.jpg`,
 			`https://i.ytimg.com/vi/${video_id}/default.jpg`
 		];
+		let reached_youtube = false;
 		for (const uri of uris_descending) {
 			try {
 				const result = await fetch(uri, {});
 				if (result.status === 200) return uri;
+				reached_youtube = true;
 			} catch (_) { }
 		}
-		return `https://img.youtube.com/vi/${video_id}/0.jpg`;
+		return reached_youtube ? null : `https://img.youtube.com/vi/${video_id}/0.jpg`;
 	}
 
 	export async function get_highest_quality_service_thumbnail_uri(uri: string) {
@@ -452,7 +455,7 @@ export namespace Illusive {
 		if (!is_empty(track.artwork_url))
 			return await get_highest_quality_service_thumbnail_uri(track.artwork_url!);
 		if (!is_empty(track.youtube_id))
-			return await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!);
+			return await get_highest_quality_youtube_thumbnail_uri(track.youtube_id!) ?? illusi_dark_icon_index;
 		return illusi_dark_icon_index;
 	}
 

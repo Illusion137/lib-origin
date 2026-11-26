@@ -7,6 +7,7 @@ import { Translate } from '@roze/translate';
 import { LetterSync } from './letter_sync';
 import { Lyrics } from './lyrics';
 import { LyricsAlign } from './lyrics_align';
+import { Prefs } from './prefs';
 import { RequestQueue } from './db/sync/request_queue';
 import { fs } from '@native/fs/fs';
 import { SQLfs } from './sql/sql_fs';
@@ -227,6 +228,27 @@ describe('Lyrics.with_vocal_sync', () => {
 		});
 		vi.mocked(Illusi.get_session).mockReturnValue(null);
 		expect(await Lyrics.vocal_word_sync(track({ illusi_id: 'ill-words', duration: 0 }), lined)).toBeNull();
+	});
+
+	it('word syncs from the alignment with alignment_word_sync', async () => {
+		vi.spyOn(Prefs, 'get_pref').mockImplementation((key: string) => key === 'alignment_word_sync');
+		const alignment = { duration_ms: 40_000 } as TrackAlignment;
+		vi.mocked(Illusi.Tracks.alignment).mockResolvedValue(alignment);
+		vi.mocked(Illusi.Tracks.vocals).mockResolvedValue(vocals());
+		const worded: ParsedLyrics = { sync_type: 'WORD', lines: LINES.map((text, i) => ({ text, start_ms: start(i), end_ms: null, segments: [{ text, start_ms: start(i), end_ms: null }] })) };
+		const word_sync = vi.spyOn(LetterSync, 'word_sync').mockReturnValue(worded);
+		expect(await Lyrics.with_vocal_sync('ill1', unsynced)).toBe(worded);
+		expect(word_sync).toHaveBeenCalledWith(LINES.join('\n'), alignment);
+
+		const lined = { sync_type: 'LINE' as const, lines: LINES.map((text, i) => ({ text, start_ms: start(i), end_ms: null })) };
+		const word_sync_lines = vi.spyOn(LetterSync, 'word_sync_lines').mockReturnValue(worded);
+		expect(await Lyrics.vocal_word_sync(track({ illusi_id: 'ill-aligned', duration: 0 }), lined)).toBe(worded);
+		// Without the syllable estimate, nothing when the alignment doesn't fit the lyrics
+		word_sync_lines.mockReturnValue(null);
+		expect(await Lyrics.vocal_word_sync(track({ illusi_id: 'ill-aligned', duration: 0 }), lined, false)).toBeNull();
+		expect(Illusi.Tracks.vocals).not.toHaveBeenCalled();
+		expect((await Lyrics.vocal_word_sync(track({ illusi_id: 'ill-aligned', duration: 0 }), lined))?.sync_type).toBe('WORD');
+		expect(Illusi.Tracks.vocals).toHaveBeenCalled();
 	});
 
 	it('uses the vocal curve alone for files analyzed before transcription', async () => {

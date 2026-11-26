@@ -1,4 +1,4 @@
-import type { HeardWord, ParsedLyrics, TrackAlignment } from '@origin/illusi/types';
+import type { HeardWord, LyricsLine, LyricsSegment, ParsedLyrics, TrackAlignment } from '@origin/illusi/types';
 import { LyricsAlign } from './lyrics_align';
 
 export namespace LetterSync {
@@ -24,6 +24,10 @@ export namespace LetterSync {
 	const MIN_HEARD = 0.45;
 	const MAX_WEAK = 0.8;
 	const WEAK_CONFIDENCE = 0.1;
+	/** How far a line-synced line's words may be sung outside its timestamps */
+	const LINE_MARGIN_S = 0.5;
+	/** Line-synced lyrics whose letters are found in fewer of their lines than this don't match the vocals */
+	const MIN_WORDED = 0.5;
 
 	const NUMBERS: Record<string, string> = {
 		0: 'zero', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten', 20: 'twenty', 100: 'hundred'
@@ -274,8 +278,11 @@ export namespace LetterSync {
 		return spans.map(span => ({ start: span.start, end: span.end, score: span.n > 0 ? span.score / span.n : 0 }));
 	}
 
-	/** Aligns words [from, to) of the lyrics over frames [f0, f1), a star between lines; onset frame and confidence per word */
-	function align_words(ev: Evidence, emis: Float32Array, lyrics: Lyrics, from: number, to: number, f0: number, f1: number): { onset: (number | null)[]; confidence: (number | null)[] } {
+	/** Each word's first and last frame (or seconds) and its letters' mean probability; null for words not aligned */
+	interface WordTimes { onset: (number | null)[]; end: (number | null)[]; confidence: (number | null)[] }
+
+	/** Aligns words [from, to) of the lyrics over frames [f0, f1), a star between lines */
+	function align_words(ev: Evidence, emis: Float32Array, lyrics: Pick<Lyrics, 'words' | 'letters'>, from: number, to: number, f0: number, f1: number): WordTimes {
 		const width = ev.alphabet.length + 1;
 		const star = width - 1;
 		const tokens: number[] = [star];
@@ -300,30 +307,32 @@ export namespace LetterSync {
 			owner.push(-1);
 		}
 		const onset: (number | null)[] = Array(to - from).fill(null);
+		const end: (number | null)[] = Array(to - from).fill(null);
 		const confidence: (number | null)[] = Array(to - from).fill(null);
 		const spans = owner.some(o => o >= 0) ? force_align(emis, width, f0, f1, tokens) : null;
-		if (spans === null) return { onset, confidence };
+		if (spans === null) return { onset, end, confidence };
 		const scores = new Map<number, number[]>();
 		spans.forEach((span, k) => {
 			const i = owner[k];
 			if (i < 0) return;
 			if (onset[i - from] === null) onset[i - from] = f0 + span.start;
+			end[i - from] = f0 + span.end + 1;
 			const list = scores.get(i) ?? [];
 			list.push(span.score);
 			scores.set(i, list);
 		});
 		for (const [i, list] of scores) confidence[i - from] = list.reduce((a, b) => a + b, 0) / list.length;
-		return { onset, confidence };
+		return { onset, end, confidence };
 	}
 
 	/** (word, seconds, weight, margin in seconds) */
 	interface Point { word: number; t: number; weight: number; margin: number }
 
 	/**
-	 * Word onsets, aligning each chunk between consecutive anchors against its own audio (plus the anchors' margins).
+	 * Word times in seconds, aligning each chunk between consecutive anchors against its own audio (plus the anchors' margins).
 	 * With a clock, the open-ended first and last chunks only get as much singing time as their words need at a slow pace.
 	 */
-	function chunk_align(ev: Evidence, emis: Float32Array, lyrics: Lyrics, anchors: readonly Point[], bounded: boolean): { onset: (number | null)[]; confidence: (number | null)[] } {
+	function chunk_align(ev: Evidence, emis: Float32Array, lyrics: Lyrics, anchors: readonly Point[], bounded: boolean): WordTimes {
 		const n = lyrics.words.length;
 		const { clock, duration_s, frame_s } = ev;
 		let head = 0;
@@ -338,6 +347,7 @@ export namespace LetterSync {
 		}
 		const bounds = [{ word: 0, t: head, margin: 0 }, ...anchors, { word: n, t: Math.min(duration_s, tail), margin: 0 }];
 		const onset: (number | null)[] = Array(n).fill(null);
+		const end: (number | null)[] = Array(n).fill(null);
 		const confidence: (number | null)[] = Array(n).fill(null);
 		for (let k = 0; k + 1 < bounds.length; k++) {
 			const [a, b] = [bounds[k], bounds[k + 1]];
@@ -349,6 +359,7 @@ export namespace LetterSync {
 				chunk.onset.forEach((frame, j) => {
 					if (frame === null) return;
 					onset[a.word + j] = frame * frame_s;
+					end[a.word + j] = chunk.end[j]! * frame_s;
 					confidence[a.word + j] = chunk.confidence[j];
 				});
 			}
@@ -358,11 +369,12 @@ export namespace LetterSync {
 			if (lettered.length > 0 && lettered.every(i => onset[i] === null)) {
 				lettered.forEach((i, j) => {
 					onset[i] = a.t + (b.t - a.t) * j / lettered.length;
+					end[i] = a.t + (b.t - a.t) * (j + 1) / lettered.length;
 					confidence[i] = 0;
 				});
 			}
 		}
-		return { onset, confidence };
+		return { onset, end, confidence };
 	}
 
 	function line_starts(lyrics: Lyrics, onset: readonly (number | null)[], confidence: readonly (number | null)[]): { starts: (number | null)[]; confidence: number[] } {
@@ -569,8 +581,8 @@ export namespace LetterSync {
 		return out;
 	}
 
-	/** Share of line l's words Whisper heard while that line was (per these starts) being sung */
-	function heard_share(ev: Evidence, lyrics: Lyrics, starts: readonly (number | null)[], l: number): number {
+	/** Share of line l's words (`line_letters`) Whisper heard while that line was (per these starts) being sung */
+	function heard_share(ev: Evidence, line_letters: readonly string[], starts: readonly (number | null)[], l: number): number {
 		const s = starts[l];
 		if (s === null) return 0;
 		let next = s + 6;
@@ -583,7 +595,7 @@ export namespace LetterSync {
 		}
 		const until = Math.min(next, s + 12) + 1;
 		const window = ev.heard.filter(w => s - 1 <= w.start_s && w.start_s < until).map(w => w.letters);
-		const words = lyrics.line_letters[l].split(' ').filter(Boolean);
+		const words = line_letters[l].split(' ').filter(Boolean);
 		if (words.length === 0 || window.length === 0) return 0;
 		const hit = words.filter(x => window.some(w => x === w || (x.length > 3 && ratio(x, w) >= SIMILAR_WORD))).length;
 		return hit / words.length;
@@ -607,8 +619,8 @@ export namespace LetterSync {
 			let whole_heard = 0;
 			let chunked_heard = 0;
 			for (let q = l; q < j; q++) {
-				whole_heard += heard_share(ev, lyrics, whole, q);
-				chunked_heard += heard_share(ev, lyrics, chunked, q);
+				whole_heard += heard_share(ev, lyrics.line_letters, whole, q);
+				chunked_heard += heard_share(ev, lyrics.line_letters, chunked, q);
 			}
 			if (chunked_heard > whole_heard) for (let q = l; q < j; q++) out[q] = chunked[q];
 			l = j;
@@ -628,8 +640,14 @@ export namespace LetterSync {
 		confident: boolean;
 	}
 
-	/** Every line placed, with the evidence for trusting it; null when the lyrics have too few alignable lines */
-	export function place(plain: string, alignment: TrackAlignment): Placement | null {
+	interface Solved {
+		placement: Placement;
+		lyrics: Lyrics;
+		/** Word times from the pass each line's start was taken from */
+		words: WordTimes;
+	}
+
+	function solve(plain: string, alignment: TrackAlignment): Solved | null {
 		const ev = evidence_of(alignment);
 		if (ev === null) return null;
 		const lyrics = lyrics_of(plain);
@@ -648,24 +666,127 @@ export namespace LetterSync {
 		const starts = arbitrate(ev, lyrics, whole, chunked);
 		const compared = sung.filter(l => whole[l] !== null && chunked[l] !== null);
 		const agreeing = compared.length === 0 ? 0 : compared.filter(l => Math.abs(whole[l]! - chunked[l]!) <= DISAGREE_S).length / compared.length;
-		const heard_mean = sung.reduce((sum, l) => sum + heard_share(ev, lyrics, starts, l), 0) / sung.length;
+		const heard_mean = sung.reduce((sum, l) => sum + heard_share(ev, lyrics.line_letters, starts, l), 0) / sung.length;
 		const weak = sung.filter(l => whole_lines.confidence[l] < WEAK_CONFIDENCE).length / sung.length;
 
 		// Lines without a start take the one before (else after) them, and no line starts before the one above it
 		const filled = starts.map((s, l) => s ?? starts.slice(0, l).reverse().find(x => x !== null) ?? starts.slice(l).find(x => x !== null) ?? 0);
 		for (let l = 1; l < filled.length; l++) filled[l] = Math.max(filled[l], filled[l - 1]);
+		const pick = (k: keyof WordTimes) => lyrics.words.map((w, i) => (starts[w.line] !== whole[w.line] ? chunked_words : whole_words)[k][i]);
 		return {
-			lyrics: { sync_type: 'LINE', lines: lyrics.lines.map((text, l) => ({ text, start_ms: Math.round(Math.max(0, filled[l]) * 1000), end_ms: null })) },
-			agreeing,
-			heard: heard_mean,
-			weak,
-			confident: agreeing >= MIN_AGREEING && heard_mean >= MIN_HEARD && weak <= MAX_WEAK
+			placement: {
+				lyrics: { sync_type: 'LINE', lines: lyrics.lines.map((text, l) => ({ text, start_ms: Math.round(Math.max(0, filled[l]) * 1000), end_ms: null })) },
+				agreeing,
+				heard: heard_mean,
+				weak,
+				confident: agreeing >= MIN_AGREEING && heard_mean >= MIN_HEARD && weak <= MAX_WEAK
+			},
+			lyrics,
+			words: { onset: pick('onset'), end: pick('end'), confidence: pick('confidence') }
 		};
+	}
+
+	/** Every line placed, with the evidence for trusting it; null when the lyrics have too few alignable lines */
+	export function place(plain: string, alignment: TrackAlignment): Placement | null {
+		return solve(plain, alignment)?.placement ?? null;
 	}
 
 	/** Line timings for plain lyrics, or null when they can't be trusted (show the lyrics unsynced) */
 	export function line_sync(plain: string, alignment: TrackAlignment): ParsedLyrics | null {
 		const placement = place(plain, alignment);
 		return placement?.confident ? placement.lyrics : null;
+	}
+
+	/**
+	 * A line's words as segments (text keeps its trailing space), from each word's times in seconds; words without
+	 * letters join the word before them. Each word lasts until the next starts: the letters themselves are short
+	 * spikes, the singing between them isn't. Null when the line's letters were barely found.
+	 */
+	function segments_of(text: string, times: readonly { start: number | null; end: number | null; confidence: number | null }[]): LyricsSegment[] | null {
+		const tokens = text.trim().match(/\S+\s*/g) ?? [];
+		const found = times.filter(t => t.start !== null && t.end !== null);
+		if (tokens.length !== times.length || found.length === 0) return null;
+		if (found.reduce((sum, t) => sum + (t.confidence ?? 0), 0) / found.length < WEAK_CONFIDENCE) return null;
+		const words: { text: string; start: number; end: number }[] = [];
+		let pending = '';
+		tokens.forEach((token, i) => {
+			const { start, end } = times[i];
+			if (start === null || end === null) {
+				if (words.length > 0) words[words.length - 1].text += token;
+				else pending += token;
+				return;
+			}
+			const previous = words.at(-1)?.start ?? -Infinity;
+			words.push({ text: pending + token, start: Math.max(start, previous), end });
+			pending = '';
+		});
+		return words.map((w, i) => {
+			const start_ms = Math.round(w.start * 1000);
+			const end_ms = i + 1 < words.length ? Math.round(words[i + 1].start * 1000) : Math.round(Math.max(w.end, w.start) * 1000);
+			return { text: w.text, start_ms, end_ms: Math.max(start_ms, end_ms) };
+		});
+	}
+
+	/**
+	 * Word timings for plain lyrics from the letters' alignment, or null when the line timings can't be trusted. Lines
+	 * whose letters were barely found (and lines of sounds) keep only their line timing.
+	 */
+	export function word_sync(plain: string, alignment: TrackAlignment): ParsedLyrics | null {
+		const solved = solve(plain, alignment);
+		if (!solved?.placement.confident) return null;
+		const { placement, lyrics, words } = solved;
+		const lines: LyricsLine[] = placement.lyrics.lines.map((line, l) => {
+			if (lyrics.vocal_lines.has(l)) return line;
+			const idx = lyrics.words.flatMap((w, i) => (w.line === l ? [i] : []));
+			const segments = segments_of(line.text, idx.map(i => ({ start: lyrics.letters[i] ? words.onset[i] : null, end: words.end[i], confidence: words.confidence[i] })));
+			// Pushed later than its words by the line above it: the words can't be trusted either
+			if (segments === null || segments[0].start_ms < line.start_ms!) return line;
+			return { ...line, segments };
+		});
+		return { sync_type: lines.some(line => line.segments !== undefined) ? 'WORD' : 'LINE', lines };
+	}
+
+	/**
+	 * Word timings for line-synced lyrics: each line's letters aligned within its own timestamps (plus a margin), so
+	 * the source's line timing anchors them. Lines whose letters were barely found keep only their line timing; null
+	 * when that's most of them, when Whisper didn't hear the lines where they're timed (letters common to any lyrics
+	 * line up somewhere), or when the analysis isn't intact.
+	 */
+	export function word_sync_lines<L extends LyricsLine>(lyrics: LyricsAlign.Lined<L>, alignment: TrackAlignment): LyricsAlign.Lined<L> | null {
+		if (lyrics.sync_type !== 'LINE') return null;
+		const ev = evidence_of(alignment);
+		if (ev === null) return null;
+		const timed = lyrics.lines.flatMap((line, index) => (line.start_ms !== null && !LyricsAlign.is_header(line.text) && line.text.trim() !== '' ? [index] : []));
+		const line_letters = timed.map(index => lyrics.lines[index].text.trim().split(/\s+/).map(letters_of).join(' '));
+		const starts = timed.map(index => lyrics.lines[index].start_ms! / 1000);
+		const sung_k = timed.flatMap((index, k) => (lyrics.lines[index].text.trim().split(/\s+/).every(is_vocable) ? [] : [k]));
+		if (sung_k.length === 0 || sung_k.reduce((sum, k) => sum + heard_share(ev, line_letters, starts, k), 0) / sung_k.length < MIN_HEARD) return null;
+		const emis = emissions(ev, CHUNKED);
+		let sung = 0;
+		let worded = 0;
+		const lines = lyrics.lines.map(line => ({ ...line }));
+		timed.forEach((index, k) => {
+			const line = lyrics.lines[index];
+			const tokens = line.text.trim().split(/\s+/);
+			if (tokens.every(is_vocable)) return;
+			sung++;
+			const start_s = line.start_ms! / 1000;
+			const next = timed[k + 1] === undefined ? null : lyrics.lines[timed[k + 1]].start_ms! / 1000;
+			const until = next !== null && next > start_s ? next : Math.min(ev.duration_s, start_s + 10);
+			const f0 = Math.max(0, Math.trunc((start_s - LINE_MARGIN_S) / ev.frame_s));
+			const f1 = Math.min(ev.frames, Math.trunc((until + LINE_MARGIN_S) / ev.frame_s) + 1);
+			const letters = tokens.map(letters_of);
+			const times = align_words(ev, emis, { words: tokens.map(text => ({ text, line: 0 })), letters }, 0, tokens.length, f0, f1);
+			const segments = segments_of(line.text, tokens.map((_, i) => ({
+				start: times.onset[i] === null ? null : times.onset[i] * ev.frame_s,
+				end: times.end[i] === null ? null : times.end[i] * ev.frame_s,
+				confidence: times.confidence[i]
+			})));
+			if (segments === null) return;
+			worded++;
+			lines[index] = { ...lines[index], segments };
+		});
+		if (sung === 0 || worded / sung < MIN_WORDED) return null;
+		return { ...lyrics, sync_type: 'WORD', lines };
 	}
 }
