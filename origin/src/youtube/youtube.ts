@@ -83,7 +83,7 @@ export namespace YouTube {
 				title: playlist.info.title ?? '',
 				creator: [{ name: playlist.info.author?.name ?? '', channel_id: playlist.info.author?.id || undefined }],
 				description: playlist.info.description,
-				thumbnails: (playlist.info.thumbnails ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }))
+				thumbnails: Parser.thumbs(playlist.info.thumbnails)
 			},
 			tracks: playlist.items.map(Parser.parse_track_node).filter((t): t is YTTrack => t !== undefined)
 		};
@@ -128,7 +128,7 @@ export namespace YouTube {
 			const artist: YTChannelResult = {
 				channel_id: channel.metadata.external_id ?? channel_id,
 				name: channel.metadata.title ?? '',
-				thumbnails: (channel.metadata.thumbnail ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }))
+				thumbnails: Parser.thumbs(channel.metadata.thumbnail)
 			};
 			const topic_releases = register_topic_releases(session, channel);
 			const parse_track = Parser.channel_track_parser(artist);
@@ -163,7 +163,7 @@ export namespace YouTube {
 			return make_page(playlists, feed => feed.playlists.map((node) => {
 				if (node.is(YTNodes.GridPlaylist)) {
 					const gp = node.as(YTNodes.GridPlaylist);
-					return { playlist_id: gp.id, title: (gp.title.text ?? ''), thumbnails: (gp.thumbnails ?? []).map(t => ({ url: t.url, width: t.width, height: t.height })) };
+					return { playlist_id: gp.id, title: (gp.title.text ?? ''), thumbnails: Parser.thumbs(gp.thumbnails) };
 				}
 				if (node.is(YTNodes.LockupView)) {
 					const lv = node.as(YTNodes.LockupView);

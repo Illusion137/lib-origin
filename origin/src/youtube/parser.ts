@@ -57,8 +57,12 @@ export interface YTArtistResult {
 	similar_artists_continuation: string | null;
 }
 
-function thumbs(list?: Misc.Thumbnail[]): YTThumbnail[] {
-	return (list ?? []).map(t => ({ url: t.url, width: t.width, height: t.height }));
+/** YouTube serves some thumbnails (channel avatars) protocol-relative (`//yt3.googleusercontent.com/...`) */
+export function absolute_url(url: string): string {
+	return url.startsWith('//') ? `https:${url}` : url;
+}
+export function thumbs(list?: Misc.Thumbnail[]): YTThumbnail[] {
+	return (list ?? []).map(t => ({ url: absolute_url(t.url), width: t.width, height: t.height }));
 }
 function author_named(author?: Misc.Author): YTNamed {
 	return { name: author?.name ?? '', channel_id: author?.id || undefined };

@@ -144,7 +144,7 @@ export namespace YouTubeMusic {
 			title: header?.title?.text ?? '',
 			artists,
 			description: header?.description?.description?.text ?? header?.description?.text,
-			thumbnails: header_thumbnails(header).map(t => ({ url: t.url, width: t.width, height: t.height }))
+			thumbnails: Parser.thumbs(header_thumbnails(header))
 		};
 	}
 
@@ -232,7 +232,7 @@ export namespace YouTubeMusic {
 			artist: {
 				browse_id: artist_id,
 				name: header?.title?.text ?? '',
-				thumbnails: header_thumbnails(header).map(t => ({ url: t.url, width: t.width, height: t.height })),
+				thumbnails: Parser.thumbs(header_thumbnails(header)),
 				subscribers: header?.subscribers?.text
 			},
 			top_tracks: [],
